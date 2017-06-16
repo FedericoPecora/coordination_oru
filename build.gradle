@@ -1,0 +1,45 @@
+apply plugin: 'java'
+apply plugin: 'eclipse'
+
+// The Maven plugin is only required if your package is used as a library.
+apply plugin: 'maven'
+
+// The Application plugin and mainClassName attribute are only required if
+// your package is used as a binary.
+apply plugin: 'application'
+// The main class that will be executed when you do 'gradle run'
+mainClassName = 'TestingMetaCSP'
+
+sourceCompatibility = 1.6
+targetCompatibility = 1.6
+
+repositories {
+
+  // The meta-csp-framework (and all its dependencies) is on
+  // the Maven Central repository
+  mavenCentral()
+  mavenLocal()
+
+  // You can include any other Maven repository like this:
+  //maven {
+  //  url '<URL of the repo>'
+  //}
+
+}
+
+version = '0.0.0-SNAPSHOT'
+// Call your group something meaninful, e.g., '<inverse-url>.<project-name>'
+group = 'se.oru.coordination'
+
+dependencies {
+
+  // This pulls in the meta-csp-framework jar
+  //compile 'org.metacsp:meta-csp-framework:1.2.5'
+  compile 'org.metacsp:meta-csp-framework:0.0.0-SNAPSHOT'
+
+  // Add the following if you need to include jars that are not
+  // in Maven Central and that you have places in the directory "lib"
+  // (NOTE: you have to create this directory if you need it)
+  //compile fileTree(dir: 'lib', include: '**/*.jar')
+
+}
