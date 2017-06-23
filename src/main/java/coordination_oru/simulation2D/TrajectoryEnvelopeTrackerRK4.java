@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Map.Entry;
 import java.util.Random;
 import java.util.TreeMap;
 
@@ -12,7 +11,6 @@ import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.Trajectory;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelopeSolver;
-import org.metacsp.utility.logging.MetaCSPLogging;
 
 import coordination_oru.AbstractTrajectoryEnvelopeTracker;
 import coordination_oru.RobotReport;
