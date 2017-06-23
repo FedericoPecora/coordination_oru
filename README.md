@@ -22,5 +22,7 @@ To run an example, issue the following command from the source code root directo
 ```
 $ ./gradlew run
 ```
+![alt text](images/coord.png "Coordination GUI")
+
 The example continuously posts missions for three robots to reach locations along intersecting paths. The paths are stored in files provided in the ```paths``` directory. The poses of locations and pointers to relevant path files between locations are stored in the self-explanatory ```paths/test_poses_and_path_data.txt``` file.
 
