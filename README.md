@@ -7,8 +7,8 @@ This package provides an online coordination method for multiple robots. It is b
 To install, clone this repository and compile the source code with gradle (redistributable included):
 
 ```
-$ git clone X Y
-$ cd Y
+$ git clone https://github.com/FedericoPecora/coordination_oru.git
+$ cd coordination_oru
 $ ./gradlew install
 ```
 
@@ -17,4 +17,5 @@ To run an example, issue the following command from the source code root directo
 ```
 $ ./gradlew run
 ```
+The example continuously posts missions for three robots to reach locations along intersecting paths. The paths are stored in files provided in the ```paths``` directory. The poses of locations and pointers to relevant path files between locations are stored in the self-explanatory ```paths/test_poses_and_path_data.txt``` file.
 
