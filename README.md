@@ -1,5 +1,5 @@
 # coordination_oru
-This package provides an online coordination method for multiple robots. It is based on the Meta-CSP Framework library available at <a href="metacsp.org">metacsp.org</a>.
+This package provides an online coordination method for multiple robots. It is based on the Meta-CSP Framework library available at <a href="http://metacsp.org">metacsp.org</a>.
 
 ## Overview
 
