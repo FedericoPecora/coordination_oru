@@ -22,6 +22,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 	protected static final double EPSILON = 0.01;
 	protected final double MAX_VELOCITY;
 	protected final double MAX_ACCELERATION;
+	protected double overallDistance = 0.0;
 	protected double totalDistance = 0.0;
 	protected double positionToSlowDown = -1.0;
 	protected double elapsedTrackingTime = 0.0;
@@ -39,53 +40,22 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 		this(te, timeStep, temporalResolution, 1.0, 0.1, solver, cb);
 	}
 	
-	private void computeCurvatureDampening() {
+	private void computeInternalCriticalPoints() {
 		this.curvatureDampening = new double[te.getTrajectory().getPose().length];
 		this.curvatureDampening[0] = 1.0;
 		Pose[] poses = this.traj.getPose();
 		double prevTheta = poses[0].getTheta();
 		if (poses.length > 1) prevTheta = Math.atan2(poses[1].getY() - poses[0].getY(), poses[1].getX() - poses[0].getX());
-//		double[] cosValues = new double[poses.length];
-//		if (this.te.getRobotID() == 3) {
-//			System.out.println("THETA\tCOSTHETA\tCOS2THETA\tDELTACOS\tDELTACOS2");
-//		}
 		for (int i = 0; i < poses.length-1; i++) {
 			double theta = Math.atan2(poses[i+1].getY() - poses[i].getY(), poses[i+1].getX() - poses[i].getX());
-			double cosPrevTheta = Math.cos(prevTheta);
-			double cos2PrevTheta = Math.pow(cosPrevTheta,2);
-			double cosTheta = Math.cos(theta);
-			double cos2Theta = Math.pow(cosTheta,2);
-			double deltaCosTheta = (cosPrevTheta-cosTheta);
-			double deltaCos2Theta = (cos2PrevTheta-cos2Theta);
 			double deltaTheta = (theta-prevTheta);
 			prevTheta = theta;
-			//this.curvatureDampening[i+1] = Math.abs(Math.cos(deltaTheta));
-			//if (Math.abs(deltaTheta) > Math.PI/2.0) {
-//			if (this.te.getRobotID() == 3) {
-//				System.out.println(theta + "\t" + cosTheta + "\t" + cos2Theta + "\t" + deltaCosTheta + "\t" + deltaCos2Theta);
-//			}
-			//if (Math.abs(deltaCosTheta) > 1.0) {
-//			cosValues[i] = theta;
 			if (Math.abs(deltaTheta) > Math.PI/2 && Math.abs(deltaTheta) < 1.9*Math.PI) {
 				internalCriticalPoints.add(i);
 				metaCSPLogger.info("Found internal critical point (" + te.getComponent() + "): " + (i));
 			}
 			this.curvatureDampening[i+1] = 1.0;
 		}
-//		for (int i : findZeros(cosValues)) {
-//			internalCriticalPoints.add(i);
-//			metaCSPLogger.info("Found internal critical point (" + te.getComponent() + "): " + (i));
-//		}
-	}
-	
-	private ArrayList<Integer> findZeros(double[] values) {
-		ArrayList<Integer> ret = new ArrayList<Integer>();
-		for (int i = 1; i < values.length; i++) {
-			if (Math.signum(values[i-1]) + Math.signum(values[i]) == 0) {
-				ret.add(i);
-			}
-		}
-		return ret;
 	}
 	
 	private double getCurvatureDampening(int index, boolean backwards) {
@@ -102,7 +72,8 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 		this.temporalResolution = temporalResolution;
 		this.state = new State(0.0, 0.0);
 		this.totalDistance = this.computeDistance(0, traj.getPose().length-1);
-		this.computeCurvatureDampening();
+		this.overallDistance = totalDistance;
+		this.computeInternalCriticalPoints();
 		this.slowDownProfile = this.getSlowdownProfile();
 		this.positionToSlowDown = this.computePositionToSlowDown();
 		this.th = new Thread(this, "RK4 tracker " + te.getComponent());
@@ -195,19 +166,21 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 	}
 		
 	private void setInternalCriticalPoints() {
-		boolean doneOneCP = false;
+		ArrayList<Integer> toRemove = new ArrayList<Integer>();
 		for (Integer i : internalCriticalPoints) {
-			if (this.criticalPoint == -1 || i < this.criticalPoint) {
-				this.setCriticalPoint(i);
-				metaCSPLogger.info("Set internal critical point (" + te.getComponent() + "): " + i);
-				doneOneCP = true;
-				break;
+			if (this.getRobotReport().getPathIndex() > i) {
+				toRemove.add(i);
+			}
+			else {
+				if (this.criticalPoint == -1 || i < this.criticalPoint) {
+					this.setCriticalPoint(i);
+					metaCSPLogger.info("Set internal critical point (" + te.getComponent() + "): " + i);
+					break;					
+				}				
 			}
 		}
-		if (!doneOneCP && !internalCriticalPoints.isEmpty()) {
-			this.criticalPoint = -1;
-			this.totalDistance = state.getPosition()+computeDistance(getRobotReport().getPathIndex(), traj.getPose().length-1);
-			this.positionToSlowDown = computePositionToSlowDown();
+		for (Integer i : toRemove) {
+			internalCriticalPoints.remove(i);
 		}
 	}
 	
@@ -251,7 +224,6 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 			//The critical point has been reset, go to the end
 			else if (criticalPointToSet == -1) {
 				this.criticalPoint = criticalPointToSet;
-				this.setInternalCriticalPoints();
 				this.totalDistance = computeDistance(0, traj.getPose().length-1);
 				this.positionToSlowDown = computePositionToSlowDown();
 				metaCSPLogger.info("Set critical point (" + te.getComponent() + "): " + criticalPointToSet);
@@ -350,17 +322,16 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 		this.elapsedTrackingTime = 0.0;
 		double deltaTime = 0.0;
 		boolean atCP = false;
-		setInternalCriticalPoints();
 		int lastUserCriticalPoint = -1;
 		int myRobotID = te.getRobotID();
 		int myTEID = te.getID();
-		String myRobotComponent = te.getComponent();
 		
 		while (true) {
 			
+			setInternalCriticalPoints();
+			
 			//End condition: passed the middle AND velocity < 0 AND no criticalPoint 			
 			boolean skipIntegration = false;
-			boolean resumingFromInternalCP = false;
 			//if (state.getPosition() >= totalDistance/2.0 && state.getVelocity() < 0.0) {
 			if (state.getPosition() >= this.positionToSlowDown && state.getVelocity() < 0.0) {
 				if (criticalPoint == -1 && !atCP) {
@@ -380,18 +351,8 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 				skipIntegration = true;
 				if (atCP && criticalPoint != lastUserCriticalPoint) {
 					skipIntegration = false;
-					//atCP = false;
-					//System.out.println("SET ATCP = FALSE");
 				}
 				
-				//If internal critial point, remove it, it has served its purpose...
-				for (Integer i : this.internalCriticalPoints) {
-					if (criticalPoint == i) {
-						skipIntegration = false;
-						resumingFromInternalCP = true;
-					}
-				}
-
 			}
 
 			//Compute deltaTime
@@ -401,11 +362,10 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 			if (!skipIntegration) {
 				if (atCP) {
 					metaCSPLogger.info("Resuming from critical point (" + te.getComponent() + ")");
-					setInternalCriticalPoints();
 					atCP = false;
 				}
 				slowingDown = false;
-				if (!resumingFromInternalCP && state.getPosition() >= positionToSlowDown) slowingDown = true;
+				if (state.getPosition() >= positionToSlowDown) slowingDown = true;
 				double dampening = getCurvatureDampening(getRobotReport().getPathIndex(), false);
 				integrateRK4(state, elapsedTrackingTime, deltaTime, slowingDown, MAX_VELOCITY, dampening, MAX_ACCELERATION);
 

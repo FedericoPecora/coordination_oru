@@ -52,7 +52,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	
 	private boolean overlay = false;
 	
-	protected TrajectoryEnvelopeScheduler metaSolver = null;
 	protected TrajectoryEnvelopeSolver solver = null;
 	protected JTSDrawingPanel panel = null;
 	protected ArrayList<TrajectoryEnvelope> envelopesToTrack = new ArrayList<TrajectoryEnvelope>();
@@ -105,10 +104,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	public TrajectoryEnvelopeSolver getSolver() {
 		return this.solver;
 	}
-
-	public TrajectoryEnvelopeScheduler getMetaSolver() {
-		return this.metaSolver;
-	}
 	
 	/**
 	 * Instruct a given robot's tracker that it may not navigate beyond a given 
@@ -144,18 +139,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 * @param origin The origin of time (milliseconds).
 	 * @param horizon The maximum time (milliseconds).
 	 */
-	public void setupSolvers(long origin, long horizon) {
+	public void setupSolver(long origin, long horizon) {
 		
 		//Create meta solver and solver
-		metaSolver = new TrajectoryEnvelopeScheduler(origin, horizon);
-		solver = (TrajectoryEnvelopeSolver)metaSolver.getConstraintSolvers()[0];
-		
-		//Create a meta-constraint of type Map
-		//  -- meta-variables are TrajectoryEnvelopes that overlaps in time and space
-		//  -- meta-values are BeforeOrMeets constraints that separate in time
-		mapMetaConstraint = new Map(null, null);		
-		metaSolver.addMetaConstraint(mapMetaConstraint);
-		
+		solver = new TrajectoryEnvelopeSolver(origin, horizon);
+				
 		//Start a thread that checks and enforces dependencies at every clock tick
 		this.setupInferenceCallback();
 		
@@ -169,7 +157,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	
 	public void placeRobot(final int robotID, Pose currentPose, TrajectoryEnvelope parking, String location) {
 		
-		if (metaSolver == null) throw new Error("Solvers not initialized, please call method setupSolvers() first!");
+		if (solver == null) throw new Error("Solver not initialized, please call method setupSolver() first!");
 
 		synchronized (solver) {	
 			//Create a new parking envelope
@@ -475,9 +463,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			metaCSPLogger.info("Cleaning up " + te);
 			Constraint[] consToRemove = solver.getConstraintNetwork().getIncidentEdgesIncludingDependentVariables(te);
 			solver.removeConstraints(consToRemove);
-			for (Variable var : te.getRecursivelyDependentVariables()) {
-				mapMetaConstraint.removeUsage((Activity)var);
-			}
 			solver.removeVariable(te);
 		}
 	}
@@ -590,7 +575,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 */
 	public boolean addMissions(Mission ... missions) {
 
-		if (metaSolver == null) throw new Error("Solvers not initialized, please call method setupSolvers()");
+		if (solver == null) throw new Error("Solvers not initialized, please call method setupSolver()");
 
 		HashMap<Integer,ArrayList<Mission>> robotsToMissions = new HashMap<Integer,ArrayList<Mission>>();
 		for (Mission m : missions) {

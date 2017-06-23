@@ -89,7 +89,7 @@ public abstract class TestTrajectoryEnvelopeCoordinatorThreeRobots {
 		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation();
 			
 		//Need to setup infrastructure that maintains the representation
-		tec.setupSolvers(0, 100000000);
+		tec.setupSolver(0, 100000000);
 		
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		tec.setupGUI(null);
