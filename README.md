@@ -26,5 +26,5 @@ The example continuously posts missions for three robots to reach locations alon
 
 ![alt text](images/coord.png "Coordination GUI")
 
-A gray arrow between robot A and robot B indicates that robot A will yield to robot B. These precedences are computed on the fly based on the current positions of robots and the intersecting areas of their trajectory envelopes (critical sections). Priorities are computed every time a new mission is added. If multiple missions are added in batch, yielding behavior follows a fixed priority which can be specified programmatically. Driving robots always have priority over robots whose missions have been newly computed.
+A gray arrow between two robots indicates that the source robot will yield to the target robot. Priorities are computed every time a new mission is added. If multiple missions are added in batch, yielding behavior follows a fixed priority which can be specified programmatically. Driving robots always have priority over robots whose missions have been newly computed. The specific poses at which robots yield are computed on the fly based on the current positions of robots and the intersecting areas of their trajectory envelopes (critical sections). This makes it possible to achieve "following" behavior, that is, the yielding pose of a robot is updated online while the "leading" robot drives.
 
