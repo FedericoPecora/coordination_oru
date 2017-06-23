@@ -2,6 +2,11 @@
 This package provides an online coordination method for multiple robots. It is based on the Meta-CSP Framework library available at <a href="http://metacsp.org">metacsp.org</a>.
 
 ## Overview
+The coordination method is based on the trajectory envelope representation provided by the Meta-CSP framework. A trajecotry envelope is a set of spatio-temporal constraints on a robot's trajectory. The method works as follows:
+
+** For each pair of trajecotry envelopes (of two distinct robots)
+*** Bla bla
+** bla bla
 
 ## Installation
 To install, clone this repository and compile the source code with gradle (redistributable included):
