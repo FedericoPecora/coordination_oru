@@ -1,6 +1,7 @@
 package coordination_oru;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
+import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 
 /**
  * The {@link Mission} data structure represents a goal for a robot, to be reached via a given
@@ -12,37 +13,59 @@ import org.metacsp.multi.spatioTemporal.paths.Pose;
 public class Mission implements Comparable<Mission> {
 	private static int NUMMISSIONS = 0;
 	private int robotID;
-	private String path;
+	private String pathFile;
+	private PoseSteering[] path;
 	private int order = NUMMISSIONS++;
 	private String fromLocation = null;
 	private String toLocation = null;
 	private Pose fromPose = null;
 	private Pose toPose = null;
 	
+//	/**
+//	 * Instantiates a {@link Mission} for a given robot to navigate between two locations via a given path.
+//	 * @param robotID The ID of the robot.
+//	 * @param path A pointer to a file containing the path to be driven.
+//	 * @param fromLocation The identifier of the source location.
+//	 * @param toLocation The identifier of the destination location.
+//	 */
+//	public Mission(int robotID, String path, String fromLocation, String toLocation) {
+//		this(robotID, path, fromLocation, toLocation, null, null);
+//	}
+
 	/**
 	 * Instantiates a {@link Mission} for a given robot to navigate between two locations via a given path.
+	 * 
 	 * @param robotID The ID of the robot.
-	 * @param path A pointer to a file containing the path to be driven.
+	 * @param path An array of {@link PoseSteering}s representing the path to be driven.
 	 * @param fromLocation The identifier of the source location.
 	 * @param toLocation The identifier of the destination location.
+	 * @param fromPose The pose of the source location.
+	 * @param toPose The pose of the destination location.
 	 */
-	public Mission(int robotID, String path, String fromLocation, String toLocation) {
-		this(robotID, path, fromLocation, toLocation, null, null);
+	public Mission(int robotID, PoseSteering[] path, String fromLocation, String toLocation, Pose fromPose, Pose toPose) {
+		this.robotID = robotID;
+		this.pathFile = null;
+		this.path = path;
+		this.fromLocation = fromLocation;
+		this.toLocation = toLocation;
+		this.fromPose = fromPose;
+		this.toPose = toPose;
 	}
 
 	/**
 	 * Instantiates a {@link Mission} for a given robot to navigate between two locations via a given path.
 	 * 
 	 * @param robotID The ID of the robot.
-	 * @param path A pointer to a file containing the path to be driven.
+	 * @param pathFile A pointer to a file containing the path to be driven.
 	 * @param fromLocation The identifier of the source location.
 	 * @param toLocation The identifier of the destination location.
 	 * @param fromPose The pose of the source location.
 	 * @param toPose The pose of the destination location.
 	 */
-	public Mission(int robotID, String path, String fromLocation, String toLocation, Pose fromPose, Pose toPose) {
+	public Mission(int robotID, String pathFile, String fromLocation, String toLocation, Pose fromPose, Pose toPose) {
 		this.robotID = robotID;
-		this.path = path;
+		this.pathFile = pathFile;
+		this.path = null;
 		this.fromLocation = fromLocation;
 		this.toLocation = toLocation;
 		this.fromPose = fromPose;
@@ -63,11 +86,19 @@ public class Mission implements Comparable<Mission> {
 	}
 	
 	/**
+	 * Get the array of {@link PoseSteering}s representing the path to be driven.
+	 * @return The array of {@link PoseSteering}s representing the path to be driven.
+	 */
+	public PoseSteering[] getPath() {
+		return this.path;
+	}
+	
+	/**
 	 * Get the name of the file containing the path of this {@link Mission}.
 	 * @return The name of the file containing the path of this {@link Mission}.
 	 */
-	public String getPath() {
-		return this.path;
+	public String getPathFile() {
+		return this.pathFile;
 	}
 	
 	/**
@@ -88,7 +119,7 @@ public class Mission implements Comparable<Mission> {
 
 	@Override
 	public String toString() {
-		return "Robot" + this.getRobotID() + ": " + fromLocation + " --> " + toLocation + "(path: " + path + ")";
+		return "Robot" + this.getRobotID() + ": " + fromLocation + " --> " + toLocation + "(path: " + pathFile + ")";
 	}
 
 	/**

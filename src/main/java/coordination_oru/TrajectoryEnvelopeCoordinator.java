@@ -186,7 +186,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				public void onTrackingFinished() { }
 			};
 			
-			//Now start the tracker for this parking (will be ended by call to addMission for this robot)
+			//Now start the tracker for this parking (will be ended by call to addMissions for this robot)
 			final TrajectoryEnvelopeCoordinator tec = this;
 			final TrajectoryEnvelopeTrackerDummy tracker = new TrajectoryEnvelopeTrackerDummy(parking, trackingPeriodInMillis*10, TEMPORAL_RESOLUTION, solver, cb) {
 				@Override
@@ -568,7 +568,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	
 	/**
 	 * Add one or more missions for one or more robots. If more than one mission is specified for
-	 * a robot <code>r</code>, then all the robot's missions are concatenated. 
+	 * a robot <code>r</code>, then all the robot's missions are concatenated.
+	 * NOTE: For each robot <code>r</code>, all missions should be either defined with a path file or with
+	 * an array of {@link PoseSteering}s (pathfile- and path-specified missions cannot be mixed for one robot).
+	 *   
 	 * @param missions One or more {@link Mission}s, for one or more robots.
 	 * @return <code>true</code> iff for all {@link Mission}s the relevant robot is not already
 	 * engaged in another mission.
@@ -597,13 +600,23 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				ArrayList<Constraint> consToAdd = new ArrayList<Constraint>();
 //				String finalDestLocation = "";
 				ArrayList<String> pathFiles = new ArrayList<String>();
+				ArrayList<PoseSteering> overallPath = new ArrayList<PoseSteering>();
+				if (e.getValue().get(0).getPathFile() == null) pathFiles = null;
+				else overallPath = null;
 				for (Mission m : e.getValue()) {						
-					pathFiles.add(m.getPath());
+					if (pathFiles != null) pathFiles.add(m.getPathFile());
+					else {
+						for (PoseSteering ps : m.getPath()) {
+							overallPath.add(ps);
+						}
+					}
 //					finalDestLocation = m.getToLocation();
 				}
 
 				//Create a big overall driving envelope
-				TrajectoryEnvelope te = solver.createEnvelopeNoParking(robotID, pathFiles.toArray(new String[pathFiles.size()]), "Driving", footprint);
+				TrajectoryEnvelope te = null;
+				if (pathFiles != null) te = solver.createEnvelopeNoParking(robotID, pathFiles.toArray(new String[pathFiles.size()]), "Driving", footprint);
+				else te = solver.createEnvelopeNoParking(robotID, overallPath.toArray(new PoseSteering[overallPath.size()]), "Driving", footprint);
 				
 				//Add destinations as stopping points
 				synchronized(stoppingPoints) {
