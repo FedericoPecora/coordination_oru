@@ -8,7 +8,7 @@ apply plugin: 'maven'
 // your package is used as a binary.
 apply plugin: 'application'
 // The main class that will be executed when you do 'gradle run'
-mainClassName = 'TestingMetaCSP'
+mainClassName = 'TestTrajectoryEnvelopeCoordinatorThreeRobots'
 
 sourceCompatibility = 1.6
 targetCompatibility = 1.6
@@ -19,11 +19,6 @@ repositories {
   // the Maven Central repository
   mavenCentral()
   mavenLocal()
-
-  // You can include any other Maven repository like this:
-  //maven {
-  //  url '<URL of the repo>'
-  //}
 
 }
 
