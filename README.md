@@ -8,10 +8,16 @@ The coordination method is based on the trajectory envelope representation provi
 
 The coordination algorithm provided in this implementation works as follows:
 
-* For each pair of trajecotry envelopes (te1, te2) of two distinct robots, compute the areas of spatial intersection of the trajectory envelopes. Each such contiguous area is a _critical section_
-* For each critical section that has not yet been navigated through by the robot navigating te1, instruct the robot navigating te2 that it cannot proceed beyond a _critical point_ ```p``` defined as the maximum among
-  * the first pose in the path of te1 that is also in the critical section
-  * the pose along the path of te2 that is ```s``` poses behind the current pose of the robot driving te1, where ```s``` is a safety distance
+* For each pair of trajecotry envelopes (```te1```, ```te2```) of two distinct robots, compute the areas of spatial intersection of the trajectory envelopes. Each such contiguous area is a _critical section_, defined as a tuple (```te1```, ```te2```, [```start1```, ```end1```], [```start2```, ```end2```]), where
+  * ```te1``` and ```te2``` are trajectory envelopes that intesect in the critical section
+  * ```start1``` (```start2```) is the pose along the path navigated by the robot occupying ```te1 (```te2```) from which this robot's footprint intersects ```te2``` (```te1```)
+  * ```end1``` (```end2```) is the pose along the path navigated by the robot occupying ```te1``` (```te2```) from which this robot's footprint ceases to intersect ```te2``` (```te1```)
+* For each robot, select the critical section (```te1```, ```te2```, [```start1```, ```start2```], [```end1```, ```end2```]) such that
+  * the index of ```start2``` is minimum
+  * the current pose of the robot navigating ```te1``` has not reached ```end1```
+* For each critical section (```te1```, ```te2```, [```start1```, ```start2```], [```end1```, ```end2```]) selected at the previous step, instruct the robot navigating ```te2``` that it cannot proceed beyond a _critical point_ ```p``` defined as max(```start2```, ```start2``` + (```cp1``` - ```start1```) - ```s```, where
+  * ```cp1``` is the index of the current pose of the robot navigating ```te1``` along the path to ```te1```
+  * ```s``` is a safety distance
 
 Critical sections are updated whenever a new mission is added, and critical points for each robot are updated at a specified control period (by default, 1000 msec).
 
