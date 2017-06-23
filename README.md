@@ -1,5 +1,5 @@
 # coordination_oru
-This package provides an online coordination method for multiple robots. It is based on the Meta-CSP Framework library available at <a href="http://metacsp.org">metacsp.org</a>.
+This package provides an online coordination method for multiple robots. It is based on the Meta-CSP Framework library available at <a href="http://metacsp.org">metacsp.org</a>. This package includes a basic 2D robot simulation, and does not require ROS or ROSJava. A plugin that enables the use of this package with the <a href="https://github.com/OrebroUniversity/navigation_oru-release">navigation_oru</a> package will be provided in the near future.
 
 ## Overview
 The coordination method is based on the trajectory envelope representation provided by the Meta-CSP framework. A trajecotry envelope is a set of spatio-temporal constraints on a robot's trajectory. A trajecotry envelope spans over a path, which is itself a sequence of path poses ```<p1, ... pn>```. The method works as follows:
