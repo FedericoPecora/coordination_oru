@@ -14,7 +14,7 @@ The coordination algorithm provided in this implementation works as follows:
   * ```end1``` (```end2```) is the index of the first pose beyond ```start1``` (```start2```) along the path navigated by ```R1``` (```R2```) from which this robot's footprint ceases to intersect ```te2``` (```te1```)
 * For each robot, select the critical section (```te1```, ```te2```, [```start1```, ```start2```], [```end1```, ```end2```]) such that
   * the current pose of ```R2``` is not beyond the pose with index ```end2```
-  * the current pose of ```R1``` is before the pose with index ```end1``` along the path of ```te1```
+  * the current pose of ```R1``` is not beyond the pose with index ```end1```
   * ```start2``` is minimum
 * For each critical section (```te1```, ```te2```, [```start1```, ```start2```], [```end1```, ```end2```]) selected at the previous step, instruct ```R2``` that it cannot proceed beyond a _critical point_ ```p``` defined as max(```start2```, ```start2``` + (```cp1``` - ```start1```) - ```s```), where
   * ```cp1``` is the index of the current pose of ```R1``` along the path of ```te1```
