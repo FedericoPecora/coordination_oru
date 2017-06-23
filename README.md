@@ -10,7 +10,7 @@ The coordination algorithm provided in this implementation works as follows:
 
 * For each pair of trajecotry envelopes (```te1```, ```te2```) of two distinct robots, compute the areas of spatial intersection of the trajectory envelopes. Each such contiguous area is a _critical section_, defined as a tuple (```te1```, ```te2```, [```start1```, ```end1```], [```start2```, ```end2```]), where
   * ```te1``` and ```te2``` are trajectory envelopes that intesect in the critical section
-  * ```start1``` (```start2```) is the pose along the path navigated by the robot occupying ```te1 (```te2```) from which this robot's footprint intersects ```te2``` (```te1```)
+  * ```start1``` (```start2```) is the pose along the path navigated by the robot occupying ```te1``` (```te2```) from which this robot's footprint intersects ```te2``` (```te1```)
   * ```end1``` (```end2```) is the pose along the path navigated by the robot occupying ```te1``` (```te2```) from which this robot's footprint ceases to intersect ```te2``` (```te1```)
 * For each robot, select the critical section (```te1```, ```te2```, [```start1```, ```start2```], [```end1```, ```end2```]) such that
   * the index of ```start2``` is minimum
