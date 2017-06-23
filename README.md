@@ -17,7 +17,7 @@ The coordination algorithm provided in this implementation works as follows:
   * the current pose of ```R1``` is not beyond the pose with index ```end1```
   * ```start2``` is minimum
 * For each critical section (```te1```, ```te2```, [```start1```, ```start2```], [```end1```, ```end2```]) selected at the previous step, instruct ```R2``` that it cannot proceed beyond a _critical point_ ```p``` defined as max(```start2```, ```start2``` + (```cp1``` - ```start1```) - ```s```), where
-  * ```cp1``` is the index of the current pose of ```R1``` along the path of ```te1```
+  * ```cp1``` is the index of the pose closest to the current pose of ```R1``` along the path of ```te1```
   * ```s``` is a safety distance
 
 Critical sections are updated whenever a new mission is added, and critical points for each robot are updated at a specified control period (by default, 1000 msec).
