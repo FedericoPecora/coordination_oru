@@ -22,7 +22,9 @@ To run an example, issue the following command from the source code root directo
 ```
 $ ./gradlew run
 ```
+The example continuously posts missions for three robots to reach locations along intersecting paths. The paths are stored in files provided in the ```paths``` directory. The poses of locations and pointers to relevant path files between locations are stored in the self-explanatory ```paths/test_poses_and_path_data.txt``` file.
+
 ![alt text](images/coord.png "Coordination GUI")
 
-The example continuously posts missions for three robots to reach locations along intersecting paths. The paths are stored in files provided in the ```paths``` directory. The poses of locations and pointers to relevant path files between locations are stored in the self-explanatory ```paths/test_poses_and_path_data.txt``` file.
+A gray arrow between robot A and robot B indicates that robot A will yield to robot B. These precedences are computed on the fly based on the current positions of robots and the intersecting areas of their trajectory envelopes (critical sections). Priorities are computed every time a new mission is added. If multiple missions are added in batch, yielding behavior follows a fixed priority which can be specified programmatically. Driving robots always have priority over robots whose missions have been newly computed.
 
