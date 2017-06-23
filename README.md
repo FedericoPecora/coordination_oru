@@ -2,10 +2,10 @@
 This package provides an online coordination method for multiple robots. It is based on the Meta-CSP Framework library available at <a href="http://metacsp.org">metacsp.org</a>. This package includes a basic 2D robot simulation, and does not require ROS or ROSJava. A plugin that enables the use of this package with the <a href="https://github.com/OrebroUniversity/navigation_oru-release">navigation_oru</a> package will be provided in the near future.
 
 ## Overview
-The coordination method is based on the trajectory envelope representation provided by the Meta-CSP framework. A trajecotry envelope is a set of spatio-temporal constraints on a robot's trajectory. A trajecotry envelope spans over a path, which is itself a sequence of poses ```<p1, ... pn>```. The method works as follows:
+The coordination method is based on the trajectory envelope representation provided by the Meta-CSP framework. A _trajecotry envelope_ is a set of spatio-temporal constraints on a robot's trajectory. A trajecotry envelope spans over a path, which is a sequence of _poses_ ```<p1, ... pn>```. The method works as follows:
 
-* For each pair of trajecotry envelopes (te1, te2) of two distinct robots, compute the areas of spatial intersection of the trajectory envelopes (critical sections)
-* For each critical section that has not yet been navigated through by the robot navigating te1, instruct the robot navigating te2 that it cannot proceed beyond a critical point ```p``` defined as the maximum among
+* For each pair of trajecotry envelopes (te1, te2) of two distinct robots, compute the areas of spatial intersection of the trajectory envelopes. Each such contiguous area is a _critical section_
+* For each critical section that has not yet been navigated through by the robot navigating te1, instruct the robot navigating te2 that it cannot proceed beyond a _critical point_ ```p``` defined as the maximum among
   * the first pose in the path of te1 that is also in the critical section
   * the pose along the path of te2 that is ```s``` poses behind the current pose of the robot driving te1, where ```s``` is a safety distance
 
