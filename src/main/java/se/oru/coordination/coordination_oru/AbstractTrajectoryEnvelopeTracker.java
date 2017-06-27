@@ -1,4 +1,4 @@
-package coordination_oru;
+package se.oru.coordination.coordination_oru;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -16,7 +16,7 @@ import org.metacsp.time.APSPSolver;
 import org.metacsp.time.Bounds;
 import org.metacsp.utility.logging.MetaCSPLogging;
 
-import coordination_oru.simulation2D.TrajectoryEnvelopeTrackerRK4;
+import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeTrackerRK4;
 
 /**
  * This class provides the basic functionalities of a {@link TrajectoryEnvelope} tracker. Implementing

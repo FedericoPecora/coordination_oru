@@ -1,4 +1,4 @@
-package coordination_oru;
+package se.oru.coordination.coordination_oru;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;

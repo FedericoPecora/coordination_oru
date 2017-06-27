@@ -1,4 +1,4 @@
-package coordination_oru.simulation2D;
+package se.oru.coordination.coordination_oru.simulation2D;
 
 public class State {
 	

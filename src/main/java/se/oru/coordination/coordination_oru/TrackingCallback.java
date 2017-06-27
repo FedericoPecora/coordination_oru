@@ -1,4 +1,4 @@
-package coordination_oru;
+package se.oru.coordination.coordination_oru;
 
 /**
  * Implement this class to provide a callback to pass on to an {@link AbstractTrajectoryEnvelopeTracker} which

@@ -1,15 +1,15 @@
-package coordination_oru.simulation2D;
+package se.oru.coordination.coordination_oru.simulation2D;
 
 import java.util.Calendar;
 import java.util.Comparator;
 
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 
-import coordination_oru.AbstractTrajectoryEnvelopeTracker;
-import coordination_oru.Dependency;
-import coordination_oru.RobotReport;
-import coordination_oru.TrackingCallback;
-import coordination_oru.TrajectoryEnvelopeCoordinator;
+import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeTracker;
+import se.oru.coordination.coordination_oru.Dependency;
+import se.oru.coordination.coordination_oru.RobotReport;
+import se.oru.coordination.coordination_oru.TrackingCallback;
+import se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator;
 
 public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeCoordinator {
 

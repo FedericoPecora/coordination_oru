@@ -1,4 +1,4 @@
-package coordination_oru.util;
+package se.oru.coordination.coordination_oru.util;
 
 import org.metacsp.utility.logging.MetaCSPLogging;
 

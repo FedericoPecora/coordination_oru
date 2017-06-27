@@ -1,4 +1,4 @@
-package coordination_oru.simulation2D;
+package se.oru.coordination.coordination_oru.simulation2D;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -12,9 +12,9 @@ import org.metacsp.multi.spatioTemporal.paths.Trajectory;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelopeSolver;
 
-import coordination_oru.AbstractTrajectoryEnvelopeTracker;
-import coordination_oru.RobotReport;
-import coordination_oru.TrackingCallback;
+import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeTracker;
+import se.oru.coordination.coordination_oru.RobotReport;
+import se.oru.coordination.coordination_oru.TrackingCallback;
 
 public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnvelopeTracker implements Runnable {
 

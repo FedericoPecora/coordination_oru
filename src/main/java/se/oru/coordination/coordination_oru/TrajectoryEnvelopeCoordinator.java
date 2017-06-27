@@ -1,4 +1,4 @@
-package coordination_oru;
+package se.oru.coordination.coordination_oru;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -30,7 +30,7 @@ import org.metacsp.utility.logging.MetaCSPLogging;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 
-import coordination_oru.simulation2D.TrajectoryEnvelopeTrackerRK4;
+import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeTrackerRK4;
 
 /**
  * This class provides coordination for a fleet of robots. An instantiatable {@link TrajectoryEnvelopeCoordinator}

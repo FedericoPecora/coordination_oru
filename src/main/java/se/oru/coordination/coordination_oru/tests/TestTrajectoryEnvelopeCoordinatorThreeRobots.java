@@ -1,4 +1,4 @@
-package coordination_oru.tests;
+package se.oru.coordination.coordination_oru.tests;
 
 import java.io.FileNotFoundException;
 import java.io.FileReader;
@@ -10,8 +10,8 @@ import java.util.logging.Logger;
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.utility.logging.MetaCSPLogging;
 
-import coordination_oru.Mission;
-import coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
+import se.oru.coordination.coordination_oru.Mission;
+import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
 
 public abstract class TestTrajectoryEnvelopeCoordinatorThreeRobots {
 	
