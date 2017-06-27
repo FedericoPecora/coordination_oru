@@ -28,7 +28,7 @@ The coordination algorithm provided in this implementation works as follows:
 
    * ```cp1``` is the index of the pose in the path of ```te1``` that is closest to the current pose of ```R1```
    
-   * ```s``` is a safety distance
+   * ```s``` is a safety distance (number of path indices by which ```R2``` should stay behind ```R1```)
 
 Critical sections are updated (steps 1 and 2 above) whenever a new mission is added. Critical points for each robot are updated (step 3 above) at a specified control period (by default, 1000 msec).
 
