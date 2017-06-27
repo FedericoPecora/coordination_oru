@@ -50,7 +50,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected double MAX_ACCELERATION;
 	protected int trackingPeriodInMillis;
 	
-	private boolean overlay = false;
+	protected boolean overlay = false;
 	
 	protected TrajectoryEnvelopeSolver solver = null;
 	protected JTSDrawingPanel panel = null;
@@ -95,7 +95,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
         setupLogging();
 	}
 	
-	private void setupLogging() {
+	protected void setupLogging() {
 		//logDirName = "log-" + Calendar.getInstance().getTimeInMillis();
 		logDirName = "logs";
 		File dir = new File(logDirName);
@@ -212,7 +212,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	}
 	
 	
-	private int getCriticalPoint(TrajectoryEnvelope te1, TrajectoryEnvelope te2, int currentPIR1, int te1Start, int te2Start) {
+	protected int getCriticalPoint(TrajectoryEnvelope te1, TrajectoryEnvelope te2, int currentPIR1, int te1Start, int te2Start) {
 		int TRAILING_PATH_POINTS = 3;
 		int LOOKAHEAD_BUFFER = 5;
 		int depthRobot1 = currentPIR1-te1Start;
@@ -235,13 +235,13 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		throw new Error("Could not determine CP for " + te2);
 	}
 	
-	private int getCriticalPoint() {
+	protected int getCriticalPoint() {
 		int BUFFER = 10;
 		return BUFFER;
 	}
 	
 	//Update and set the critical points
-	private void updateDependencies() {
+	protected void updateDependencies() {
 
 		HashMap<Integer,TreeSet<Dependency>> currentDeps = new HashMap<Integer,TreeSet<Dependency>>();
 			
@@ -405,7 +405,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		}
 	}
 	
-	private CriticalSection[] getCriticalSections(TrajectoryEnvelope te1, TrajectoryEnvelope te2) {
+	protected CriticalSection[] getCriticalSections(TrajectoryEnvelope te1, TrajectoryEnvelope te2) {
 		GeometricShapeVariable poly1 = te1.getEnvelopeVariable();
 		GeometricShapeVariable poly2 = te2.getEnvelopeVariable();
 		Geometry shape1 = ((GeometricShapeDomain)poly1.getDomain()).getGeometry();
@@ -460,7 +460,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		return css.toArray(new CriticalSection[css.size()]);
 	}
 
-	private void cleanUp(TrajectoryEnvelope te) {
+	protected void cleanUp(TrajectoryEnvelope te) {
 		synchronized(solver) {
 			metaCSPLogger.info("Cleaning up " + te);
 			Constraint[] consToRemove = solver.getConstraintNetwork().getIncidentEdgesIncludingDependentVariables(te);
@@ -678,7 +678,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	}
 	
 	//Update viz (keep geoms alive)
-	private void updateVisualization() {
+	protected void updateVisualization() {
 		for (TrajectoryEnvelope te : solver.getRootTrajectoryEnvelopes()) {
 			GeometricShapeDomain dom = (GeometricShapeDomain)te.getEnvelopeVariable().getDomain();
 			panel.addGeometry("_"+te.getID(), dom.getGeometry(), true, false);
@@ -694,7 +694,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		}
 	}
 
-	private String[] getStatistics() {
+	protected String[] getStatistics() {
 		synchronized (trackers) {
 			String CONNECTOR_BRANCH = (char)0x251C + "" + (char)0x2500 + " ";
 			String CONNECTOR_LEAF = (char)0x2514 + "" + (char)0x2500 + " ";
@@ -724,7 +724,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		}
 	}
 
-	private void overlayStatistics() {
+	protected void overlayStatistics() {
 		String[] stats = getStatistics();
         System.out.printf(((char) 0x1b) + "[H");
         System.out.printf(((char) 0x1b) + "[1m");
@@ -736,13 +736,13 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	}
 	
 	//Print some statistics
-	private void printStatistics() {
+	protected void printStatistics() {
 		for (String s : getStatistics()) {
 			metaCSPLogger.info(s);
 		}		
 	}
 
-	private void setupInferenceCallback() {
+	protected void setupInferenceCallback() {
 		
 		Thread inference = new Thread("Coordinator inference") {
 			public void run() {
@@ -772,7 +772,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 */
 	public abstract AbstractTrajectoryEnvelopeTracker getNewTracker(TrajectoryEnvelope te, TrackingCallback cb);
 	
-	private boolean isFree(int robotID) {
+	protected boolean isFree(int robotID) {
 		AbstractTrajectoryEnvelopeTracker tracker = trackers.get(robotID);
 		if (!(tracker instanceof TrajectoryEnvelopeTrackerDummy)) return false;
 		TrajectoryEnvelopeTrackerDummy trackerDummy = (TrajectoryEnvelopeTrackerDummy)tracker;

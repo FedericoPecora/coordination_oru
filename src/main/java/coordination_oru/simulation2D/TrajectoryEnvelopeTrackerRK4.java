@@ -201,10 +201,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 	@Override
 	public void setCriticalPoint(int criticalPointToSet) {
 
-		if (criticalPointToSet != -1 && this.slowingDown && this.state.getVelocity() > 0.0) {
-			metaCSPLogger.warning("Ignored critical point (" + te.getComponent() + "): " + criticalPointToSet + " because already slowing down");
-		}
-		else if (this.criticalPoint != criticalPointToSet) {
+		if (this.criticalPoint != criticalPointToSet) {
 			
 			//A new intermediate index to stop at has been given
 			if (criticalPointToSet != -1 && criticalPointToSet > getRobotReport().getPathIndex()) {				
@@ -231,8 +228,8 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 			}
 
 			//Critical point = current position, ignore
-			else if (criticalPointToSet != -1 && criticalPointToSet == getRobotReport().getPathIndex()) {
-				metaCSPLogger.warning("Ignored critical point (" + te.getComponent() + "): " + criticalPointToSet + " because robot is already at that point AND CURRENT CP IS " + this.criticalPoint);
+			else if (criticalPointToSet != -1 && criticalPointToSet <= getRobotReport().getPathIndex()) {
+				metaCSPLogger.warning("Ignored critical point (" + te.getComponent() + "): " + criticalPointToSet + " because robot is already at or past that point (and current CP is " + this.criticalPoint + ")");
 			}
 			
 			//The critical point has been reset, go to the end
