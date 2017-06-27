@@ -264,7 +264,10 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 						RobotReport rr = null;
 						while ((rr = getRobotReport()) == null) {
 							metaCSPLogger.info("(waiting for "+te.getComponent()+"'s tracker to come online)");
+							try { Thread.sleep(100); }
+							catch (InterruptedException e) { e.printStackTrace(); }
 						}
+
 						//Get current sequence number from robot report...
 						int currentSeqNumber = rr.getPathIndex();
 	

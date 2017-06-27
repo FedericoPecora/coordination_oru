@@ -12,10 +12,7 @@ import java.util.TreeSet;
 import java.util.logging.Logger;
 
 import org.metacsp.framework.Constraint;
-import org.metacsp.framework.Variable;
 import org.metacsp.meta.spatioTemporal.paths.Map;
-import org.metacsp.meta.spatioTemporal.paths.TrajectoryEnvelopeScheduler;
-import org.metacsp.multi.activity.Activity;
 import org.metacsp.multi.allenInterval.AllenIntervalConstraint;
 import org.metacsp.multi.spatial.DE9IM.GeometricShapeDomain;
 import org.metacsp.multi.spatial.DE9IM.GeometricShapeVariable;
@@ -308,8 +305,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							
 							if (!skip) {
 								//Compute waiting point
-//								int depthRobot1 = Math.max(0, rr1.getPathIndex()-cs.getTe1Start());
-//								int waitingPoint = Math.max(0, cs.getTe2Start()+depthRobot1-getCriticalPoint());
 								int waitingPoint = getCriticalPoint(cs.getTe1(), cs.getTe2(), rr1.getPathIndex(), cs.getTe1Start(), cs.getTe2Start());
 								if (waitingPoint >= 0) {		
 									//Make new dependency
