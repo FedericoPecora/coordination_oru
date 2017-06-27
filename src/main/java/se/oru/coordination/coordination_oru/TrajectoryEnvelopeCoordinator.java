@@ -27,8 +27,6 @@ import org.metacsp.utility.logging.MetaCSPLogging;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 
-import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeTrackerRK4;
-
 /**
  * This class provides coordination for a fleet of robots. An instantiatable {@link TrajectoryEnvelopeCoordinator}
  * must provide an implementation of a time keeping method, a {@link TrajectoryEnvelope} tracker factory, and
@@ -368,11 +366,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			//Collect all driving envelopes
 			ArrayList<TrajectoryEnvelope> tes = new ArrayList<TrajectoryEnvelope>();
 			for (AbstractTrajectoryEnvelopeTracker atet : trackers.values()) {
-				if (atet instanceof TrajectoryEnvelopeTrackerRK4) {
+				if (!(atet instanceof TrajectoryEnvelopeTrackerDummy)) {
 					tes.add(atet.getTrajectoryEnvelope());
 				}
 			}
-
+			
 			//All driving envelopes have precedence over new ones
 			for (int i = 0; i < tes.size(); i++) {
 				for (int j = 0; j < envelopesToTrack.size(); j++) {
@@ -401,6 +399,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	}
 	
 	protected CriticalSection[] getCriticalSections(TrajectoryEnvelope te1, TrajectoryEnvelope te2) {
+		
 		GeometricShapeVariable poly1 = te1.getEnvelopeVariable();
 		GeometricShapeVariable poly2 = te2.getEnvelopeVariable();
 		Geometry shape1 = ((GeometricShapeDomain)poly1.getDomain()).getGeometry();
