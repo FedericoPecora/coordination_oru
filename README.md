@@ -24,7 +24,7 @@ The coordination algorithm provided in this implementation works as follows:
    
    * ```start2``` is minimum
    
-3. For each critical section (```te1```, ```te2```, [```start1```, ```start2```], [```end1```, ```end2```]) selected at the previous step, instruct ```R2``` that it cannot proceed beyond a _critical point_ ```p``` defined as max(```start2```, ```start2``` + (```cp1``` - ```start1```) - ```s```), where
+3. For each critical section (```te1```, ```te2```, [```start1```, ```start2```], [```end1```, ```end2```]) selected at step 2, instruct ```R2``` that it cannot proceed beyond a _critical point_ ```p``` defined as max(```start2```, ```start2``` + (```cp1``` - ```start1```) - ```s```), where
 
    * ```cp1``` is the index of the pose in the path of ```te1``` that is closest to the current pose of ```R1```
    
