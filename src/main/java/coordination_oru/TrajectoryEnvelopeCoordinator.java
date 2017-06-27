@@ -65,6 +65,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected Logger metaCSPLogger = MetaCSPLogging.getLogger(TrajectoryEnvelopeCoordinator.class);
 	protected String logDirName = null;
 	
+	protected HashMap<AbstractTrajectoryEnvelopeTracker,Integer> communicatedCPs = new HashMap<AbstractTrajectoryEnvelopeTracker, Integer>();
+	
 	protected Map mapMetaConstraint = null;
 
 	/**
@@ -112,7 +114,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 * @param criticalPoint The index of the path pose beyond which the robot should not navigate.
 	 */
 	public void setCriticalPoint(int robotID, int criticalPoint) {
-		trackers.get(robotID).setCriticalPoint(criticalPoint);
+		if (!communicatedCPs.containsKey(trackers.get(robotID)) || !communicatedCPs.get(trackers.get(robotID)).equals(criticalPoint) ) {
+			communicatedCPs.put(trackers.get(robotID), criticalPoint);
+			trackers.get(robotID).setCriticalPoint(criticalPoint);
+		}
 	}
 	
 	/**
@@ -330,14 +335,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			currentDependencies.clear();
 			for (Integer robotID : robotIDs) {
 				if (!currentDeps.containsKey(robotID)) {
-					AbstractTrajectoryEnvelopeTracker waitingTrackerToBeReleased = trackers.get(robotID);
-					waitingTrackerToBeReleased.setCriticalPoint(-1);
-					metaCSPLogger.info("Released robot " + waitingTrackerToBeReleased.getTrajectoryEnvelope().getComponent());
+					setCriticalPoint(robotID, -1);
 				}
 				else {
 					Dependency firstDep = currentDeps.get(robotID).first();
-					metaCSPLogger.info("Requesting to set dependency: " + firstDep);
-					firstDep.getWaitingTracker().setCriticalPoint(firstDep.getWaitingPoint());
+					setCriticalPoint(firstDep.getWaitingTracker().getTrajectoryEnvelope().getRobotID(), firstDep.getWaitingPoint());
 					currentDependencies.add(firstDep);
 				}
 			}
@@ -544,6 +546,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						//clean up this tracker's TE
 						cleanUp(te);
 						
+						//remove communicatedCP entry
+						communicatedCPs.remove(trackers.get(te.getRobotID()));
+						
 						//make a new parking tracker (park the robot)
 						placeRobot(te.getRobotID(), null, endParking, null);
 					
@@ -627,7 +632,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						if (!stoppingPoints.keySet().contains(robotID)) stoppingPoints.put(robotID, new ArrayList<Integer>());
 						if (!stoppingPoints.get(robotID).contains(stoppingPoint)) stoppingPoints.get(robotID).add(stoppingPoint);
 					}
-					System.out.println("STOPPING POINTS: " + stoppingPoints);
+					metaCSPLogger.info("Stopping points along trajectory for Robot" + robotID + ": " + stoppingPoints);
 				}
 				
 				//Put in more realistic DTs computed with the RK4 integrator
@@ -690,31 +695,33 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	}
 
 	private String[] getStatistics() {
-		String CONNECTOR_BRANCH = (char)0x251C + "" + (char)0x2500 + " ";
-		String CONNECTOR_LEAF = (char)0x2514 + "" + (char)0x2500 + " ";
-		ArrayList<String> ret = new ArrayList<String>();
-		int numVar = solver.getConstraintNetwork().getVariables().length;
-		int numCon = solver.getConstraintNetwork().getConstraints().length;
-		ret.add("Status @ "  + getCurrentTimeInMillis() + " ms");
-		
-		ret.add(CONNECTOR_BRANCH + "Network ........ " + numVar + " variables, " + numCon + " constriants");
-		HashSet<Integer> allRobots = new HashSet<Integer>();
-		for (Integer robotID : trackers.keySet()) {
-			allRobots.add(robotID);
+		synchronized (trackers) {
+			String CONNECTOR_BRANCH = (char)0x251C + "" + (char)0x2500 + " ";
+			String CONNECTOR_LEAF = (char)0x2514 + "" + (char)0x2500 + " ";
+			ArrayList<String> ret = new ArrayList<String>();
+			int numVar = solver.getConstraintNetwork().getVariables().length;
+			int numCon = solver.getConstraintNetwork().getConstraints().length;
+			ret.add("Status @ "  + getCurrentTimeInMillis() + " ms");
+			
+			ret.add(CONNECTOR_BRANCH + "Network ........ " + numVar + " variables, " + numCon + " constriants");
+			HashSet<Integer> allRobots = new HashSet<Integer>();
+			for (Integer robotID : trackers.keySet()) {
+				allRobots.add(robotID);
+			}
+			String st = CONNECTOR_BRANCH + "Robots ......... ";
+			for (Integer robotID : allRobots) {
+				AbstractTrajectoryEnvelopeTracker tracker = trackers.get(robotID);
+				RobotReport rr = tracker.getRobotReport(); 
+				int currentPP = rr.getPathIndex();
+				st += tracker.te.getComponent();
+				if (tracker instanceof TrajectoryEnvelopeTrackerDummy) st += " (P)";
+				else st += " (D)";
+				st += ": " + currentPP + "   ";
+			}
+			ret.add(st);
+			ret.add(CONNECTOR_LEAF + "Dependencies ... " + currentDependencies);
+			return ret.toArray(new String[ret.size()]);
 		}
-		String st = CONNECTOR_BRANCH + "Robots ......... ";
-		for (Integer robotID : allRobots) {
-			AbstractTrajectoryEnvelopeTracker tracker = trackers.get(robotID);
-			RobotReport rr = tracker.getRobotReport(); 
-			int currentPP = rr.getPathIndex();
-			st += tracker.te.getComponent();
-			if (tracker instanceof TrajectoryEnvelopeTrackerDummy) st += " (P)";
-			else st += " (D)";
-			st += ": " + currentPP + "   ";
-		}
-		ret.add(st);
-		ret.add(CONNECTOR_LEAF + "Dependencies ... " + currentDependencies);
-		return ret.toArray(new String[ret.size()]);
 	}
 
 	private void overlayStatistics() {

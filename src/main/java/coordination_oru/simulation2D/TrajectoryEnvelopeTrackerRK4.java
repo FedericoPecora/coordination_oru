@@ -35,7 +35,6 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 	private TreeMap<Double,Double> slowDownProfile = null;
 	private boolean slowingDown = false;
 
-
 	public TrajectoryEnvelopeTrackerRK4(TrajectoryEnvelope te, int timeStep, double temporalResolution, TrajectoryEnvelopeSolver solver, TrackingCallback cb) {
 		this(te, timeStep, temporalResolution, 1.0, 0.1, solver, cb);
 	}
@@ -85,6 +84,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 			catch (InterruptedException e) { e.printStackTrace(); }
 		}
 		this.th.start();
+		this.startInternalCPThread();
 	}
 
 	public static double computeDistance(Trajectory traj, int startIndex, int endIndex) {
@@ -97,6 +97,39 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 
 	private double computeDistance(int startIndex, int endIndex) {
 		return computeDistance(this.traj, startIndex, endIndex);
+	}
+
+	private void startInternalCPThread() {
+		Thread t = new Thread() {
+			private HashMap<Integer,Integer> userCPReplacements = new HashMap<Integer, Integer>();
+			public void run() {
+				while (th.isAlive()) {
+					ArrayList<Integer> toRemove = new ArrayList<Integer>();
+					for (Integer i : internalCriticalPoints) {
+						if (getRobotReport().getPathIndex() >= i) {
+							toRemove.add(i);
+							setCriticalPoint(userCPReplacements.get(i));
+							metaCSPLogger.info("Restored critical point (" + te.getComponent() + "): " + userCPReplacements.get(i) + " which was masked by internal critical point " + i);
+							break;
+						}
+						else {
+							if (criticalPoint == -1 || criticalPoint > i) {
+								userCPReplacements.put(i, criticalPoint);
+								metaCSPLogger.info("Set internal critical point (" + te.getComponent() + "): " + i + " replacing critical point " + criticalPoint);
+								setCriticalPoint(i);
+								break;					
+							}
+						}
+					}
+					for (Integer i : toRemove) {
+						internalCriticalPoints.remove(i);
+					}
+					try { Thread.sleep(trackingPeriodInMillis); }
+					catch (InterruptedException e) { e.printStackTrace(); }
+				}
+			}
+		};
+		t.start();
 	}
 	
 	private TreeMap<Double,Double> getSlowdownProfile() {
@@ -164,26 +197,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 		    state.setVelocity(state.getVelocity()+dvdt*deltaTime);
 		}
 	}
-		
-	private void setInternalCriticalPoints() {
-		ArrayList<Integer> toRemove = new ArrayList<Integer>();
-		for (Integer i : internalCriticalPoints) {
-			if (this.getRobotReport().getPathIndex() > i) {
-				toRemove.add(i);
-			}
-			else {
-				if (this.criticalPoint == -1 || i < this.criticalPoint) {
-					this.setCriticalPoint(i);
-					metaCSPLogger.info("Set internal critical point (" + te.getComponent() + "): " + i);
-					break;					
-				}				
-			}
-		}
-		for (Integer i : toRemove) {
-			internalCriticalPoints.remove(i);
-		}
-	}
-	
+			
 	@Override
 	public void setCriticalPoint(int criticalPointToSet) {
 
@@ -217,7 +231,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 			}
 
 			//Critical point = current position, ignore
-			else if (criticalPointToSet == getRobotReport().getPathIndex()) {
+			else if (criticalPointToSet != -1 && criticalPointToSet == getRobotReport().getPathIndex()) {
 				metaCSPLogger.warning("Ignored critical point (" + te.getComponent() + "): " + criticalPointToSet + " because robot is already at that point AND CURRENT CP IS " + this.criticalPoint);
 			}
 			
@@ -322,14 +336,11 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 		this.elapsedTrackingTime = 0.0;
 		double deltaTime = 0.0;
 		boolean atCP = false;
-		int lastUserCriticalPoint = -1;
 		int myRobotID = te.getRobotID();
 		int myTEID = te.getID();
 		
 		while (true) {
-			
-			setInternalCriticalPoints();
-			
+						
 			//End condition: passed the middle AND velocity < 0 AND no criticalPoint 			
 			boolean skipIntegration = false;
 			//if (state.getPosition() >= totalDistance/2.0 && state.getVelocity() < 0.0) {
@@ -345,13 +356,9 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 				if (!atCP /*&& getRobotReport().getPathIndex() == criticalPoint*/) {
 					metaCSPLogger.info("At critical point (" + te.getComponent() + "): " + criticalPoint);
 					atCP = true;
-					lastUserCriticalPoint = criticalPoint;
 				}
 				
 				skipIntegration = true;
-				if (atCP && criticalPoint != lastUserCriticalPoint) {
-					skipIntegration = false;
-				}
 				
 			}
 
