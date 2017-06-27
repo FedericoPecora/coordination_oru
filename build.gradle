@@ -29,8 +29,8 @@ group = 'se.oru.coordination'
 dependencies {
 
   // This pulls in the meta-csp-framework jar
-  //compile 'org.metacsp:meta-csp-framework:1.2.5'
-  compile 'org.metacsp:meta-csp-framework:0.0.0-SNAPSHOT'
+  compile 'org.metacsp:meta-csp-framework:1.2.6'
+  //compile 'org.metacsp:meta-csp-framework:0.0.0-SNAPSHOT'
 
   // Add the following if you need to include jars that are not
   // in Maven Central and that you have places in the directory "lib"
