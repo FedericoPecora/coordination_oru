@@ -8,15 +8,15 @@ The coordination method is based on the trajectory envelope representation provi
 
 The coordination algorithm provided in this implementation works as follows:
 
-1 For each pair of trajecotry envelopes (```te1```, ```te2```) that are navigated by robots ```R1``` and ```R2```, compute the areas of spatial intersection of the trajectory envelopes. Each such contiguous area is a _critical section_, defined as a tuple (```te1```, ```te2```, [```start1```, ```end1```], [```start2```, ```end2```]), where
+1. For each pair of trajecotry envelopes (```te1```, ```te2```) that are navigated by robots ```R1``` and ```R2```, compute the areas of spatial intersection of the trajectory envelopes. Each such contiguous area is a _critical section_, defined as a tuple (```te1```, ```te2```, [```start1```, ```end1```], [```start2```, ```end2```]), where
   * ```te1``` and ```te2``` are trajectory envelopes that intesect in the critical section
   * ```start1``` (```start2```) is the index of the first pose along the path navigated by ```R1``` (```R2```) at which this robot's footprint intersects ```te2``` (```te1```)
   * ```end1``` (```end2```) is the index of the first pose beyond ```start1``` (```start2```) along the path navigated by ```R1``` (```R2```) from which this robot's footprint ceases to intersect ```te2``` (```te1```)
-1 For each robot, select the critical section (```te1```, ```te2```, [```start1```, ```start2```], [```end1```, ```end2```]) such that
+1. For each robot, select the critical section (```te1```, ```te2```, [```start1```, ```start2```], [```end1```, ```end2```]) such that
   * the current pose of ```R2``` is not beyond the pose with index ```end2```
   * the current pose of ```R1``` is not beyond the pose with index ```end1```
   * ```start2``` is minimum
-1 For each critical section (```te1```, ```te2```, [```start1```, ```start2```], [```end1```, ```end2```]) selected at the previous step, instruct ```R2``` that it cannot proceed beyond a _critical point_ ```p``` defined as max(```start2```, ```start2``` + (```cp1``` - ```start1```) - ```s```), where
+1. For each critical section (```te1```, ```te2```, [```start1```, ```start2```], [```end1```, ```end2```]) selected at the previous step, instruct ```R2``` that it cannot proceed beyond a _critical point_ ```p``` defined as max(```start2```, ```start2``` + (```cp1``` - ```start1```) - ```s```), where
   * ```cp1``` is the index of the pose in the path of ```te1``` that is closest to the current pose of ```R1```
   * ```s``` is a safety distance
 
