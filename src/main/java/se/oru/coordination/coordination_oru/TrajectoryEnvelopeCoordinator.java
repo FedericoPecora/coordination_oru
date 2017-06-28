@@ -134,6 +134,16 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	};
 	
 	/**
+	 * Set the footprint of this TrajectoryEnvelope, which is used for computing the spatial envelope.
+	 * Provide the bounding polygon of the machine assuming its reference point is in (0,0), and its
+	 * orientation is aligned with the x-axis. The coordinates must be in CW or CCW order.
+	 * @param coordinates The coordinates delimiting bounding polygon of the footprint.
+	 */
+	public void setFootprint(Coordinate ... coordinates) {
+		this.footprint = coordinates; 
+	}
+	
+	/**
 	 * Call this method to setup the solvers that manage the {@link TrajectoryEnvelope} representation
 	 * underlying the coordinator.
 	 * @param origin The origin of time (milliseconds).
