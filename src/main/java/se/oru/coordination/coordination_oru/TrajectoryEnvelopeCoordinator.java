@@ -681,12 +681,13 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		if (mapYAMLFile != null) panel.setMap(mapYAMLFile);
 	}
 	
-//	/**
-//	 * Scale and translate the view of the GUI to include all geometries. 
-//	 */
-//	public void centerView() {
+	/**
+	 * Scale and translate the view of the GUI to include all geometries. 
+	 */
+	public void centerView() {
 //		this.panel.centerView();
-//	}
+		this.panel.reinitVisualization();
+	}
 	
 	//Update viz (keep geoms alive)
 	protected void updateVisualization() {
