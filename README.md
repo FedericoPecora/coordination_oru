@@ -75,18 +75,18 @@ The motion planner and its Java interface are purposefully kept very simple. It 
 Please install the OMPL and MRPT libraries. Both are present in the official Ubuntu repositories (tested on Ubuntu 16-04):
 
 ```
-sudo apt-get install libompl-dev
-sudo apt-get install mrpt-apps libmrpt-dev
+$ sudo apt-get install libompl-dev
+$ sudo apt-get install mrpt-apps libmrpt-dev
 ```
 
 Then, compile and install the ```simplereedssheppcarplanner``` shared library as follows:
 
 ```
-cd coordination_oru/SimpleReedsSheppCarPlanner
-cmake .
-make
-sudo make install
-sudo ldconfig
+$ cd coordination_oru/SimpleReedsSheppCarPlanner
+$ cmake .
+$ make
+$ sudo make install
+$ sudo ldconfig
 ```
 
 This will install ```libsimplereedssheppcarplanner.so``` in your ```/usr/local/lib``` directory. A simple JNA-based Java interface to the library is provided in package ```se.oru.coordination.coordination_oru.motionplanning```. The Java class  ```ReedsSheppCarPlanner``` in the same package can be instantiated and used to obtain motions for robots with Reeds-Shepp kinematics.
