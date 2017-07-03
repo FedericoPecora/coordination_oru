@@ -60,11 +60,15 @@ More detailed information is posted in the terminal. It can be inspected offline
 
 ## The ```SimpleReedsSheppCarPlanner``` motion planner
 
-A simple motion planner is provided for testing the coordination framework without the need for pre-computed path files. This simple motion planner depends on
+A simple motion planner is provided for testing the coordination framework without the need for pre-computed path files.  The planner can be used to obtain paths for robots with Reeds-Shepp kinematics (Dubin's car-like robots that can move both forwards and backwards).
+
+The provided motion planner depends on
 
 * The Open Motion Planning Library (OMPL), http://ompl.kavrakilab.org/
 
 * The Mobile Robot Programming Toolkit (MRPT), http://www.mrpt.org/
+
+The motion planner and its Java interface are purposefully kept very simple. It performs rather poorly in terms of the quality of paths it returns, and is _not_ suited for anything beyond simple examples. Please consider developing a more performing and principled integration with your motion planning software of choice, as done in the <a href="https://github.com/FedericoPecora/coordination_oru_ros">coordination_oru_ros</a> package.
 
 ## Installing the ```SimpleReedsSheppCarPlanner``` motion planner
 
@@ -85,7 +89,7 @@ sudo make install
 sudo ldconfig
 ```
 
-This will install ```libsimplereedssheppplanner.so``` in your ```/usr/local/lib``` directory. A simple JNA-based Java interface to the library is provided in package ```se.oru.coordination.coordination_oru.motionplanning```. The Java class  ```ReedsSheppPlanner``` in the same package can be instantiated and used to obtain motions for robots with Reeds-Shepp kinematics (Dubin's car-like robots that can move both forwards and backwards).
+This will install ```libsimplereedssheppplanner.so``` in your ```/usr/local/lib``` directory. A simple JNA-based Java interface to the library is provided in package ```se.oru.coordination.coordination_oru.motionplanning```. The Java class  ```ReedsSheppPlanner``` in the same package can be instantiated and used to obtain motions for robots with Reeds-Shepp kinematics.
 
 ## Using the ```SimpleReedsSheppCarPlanner``` motion planner
 
