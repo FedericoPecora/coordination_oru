@@ -85,7 +85,7 @@ sudo make install
 sudo ldconfig
 ```
 
-This will install ```libsimplereedssheppplanner.so``` in your ```/usr/local/lib``` directory. A simple JNA-based Java interface to the library is provided by class ```ReedsSheppPlannerLib``` in package ```se.oru.coordination.coordination_oru.motionplanning```. The class ```ReedsSheppPlanner``` in the same package provides a simple interface to the motion planner. 
+This will install ```libsimplereedssheppplanner.so``` in your ```/usr/local/lib``` directory. A simple JNA-based Java interface to the library is provided in package ```se.oru.coordination.coordination_oru.motionplanning```. The Java class  ```ReedsSheppPlanner``` in the same package can be instantiated and used to obtain motions for robots with Reeds-Shepp kinematics (Dubin's car-like robots that can move both forwards and backwards).
 
 ## Using the ```SimpleReedsSheppCarPlanner``` motion planner
 
