@@ -12,7 +12,7 @@ import com.sun.jna.ptr.PointerByReference;
 
 public interface ReedsSheppPlannerLib extends Library {
 	
-	public ReedsSheppPlannerLib INSTANCE = (ReedsSheppPlannerLib) Native.loadLibrary("simplereedssheppplanner", ReedsSheppPlannerLib.class);
+	public ReedsSheppPlannerLib INSTANCE = (ReedsSheppPlannerLib) Native.loadLibrary("simplereedssheppcarplanner", ReedsSheppPlannerLib.class);
 	
 	public boolean plan(String mapFilename, double mapResolution, double robotRadius, double startX, double startY, double startTheta, double goalX, double goalY, double goalTheta, PointerByReference path, IntByReference pathLength, int numInterpolationPoints, double turningRadius);
 	

@@ -79,7 +79,7 @@ sudo apt-get install libompl-dev
 sudo apt-get install mrpt-apps libmrpt-dev
 ```
 
-Then, compile and install the ```simplereedssheppplanner``` shared library as follows:
+Then, compile and install the ```simplereedssheppcarplanner``` shared library as follows:
 
 ```
 cd coordination_oru/SimpleReedsSheppCarPlanner
@@ -89,7 +89,7 @@ sudo make install
 sudo ldconfig
 ```
 
-This will install ```libsimplereedssheppplanner.so``` in your ```/usr/local/lib``` directory. A simple JNA-based Java interface to the library is provided in package ```se.oru.coordination.coordination_oru.motionplanning```. The Java class  ```ReedsSheppPlanner``` in the same package can be instantiated and used to obtain motions for robots with Reeds-Shepp kinematics.
+This will install ```libsimplereedssheppcarplanner.so``` in your ```/usr/local/lib``` directory. A simple JNA-based Java interface to the library is provided in package ```se.oru.coordination.coordination_oru.motionplanning```. The Java class  ```ReedsSheppPlanner``` in the same package can be instantiated and used to obtain motions for robots with Reeds-Shepp kinematics.
 
 ## Using the ```SimpleReedsSheppCarPlanner``` motion planner
 
