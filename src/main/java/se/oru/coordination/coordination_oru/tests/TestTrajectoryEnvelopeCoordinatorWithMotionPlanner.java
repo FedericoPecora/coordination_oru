@@ -2,15 +2,11 @@ package se.oru.coordination.coordination_oru.tests;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Scanner;
 import java.util.logging.Logger;
-
-import javax.imageio.ImageIO;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
@@ -26,8 +22,6 @@ import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoord
 
 public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner {
 	
-	private static HashMap<String,Pose> locations = new HashMap<String, Pose>();
-	private static HashMap<String,String> paths = new HashMap<String, String>();
 	private static Logger metaCSPLogger = MetaCSPLogging.getLogger(TestTrajectoryEnvelopeCoordinatorWithMotionPlanner.class);
 	public static HashMap<Integer,ArrayList<Mission>> missions = new HashMap<Integer, ArrayList<Mission>>();
 
