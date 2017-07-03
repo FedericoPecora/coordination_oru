@@ -82,9 +82,10 @@ cd coordination_oru/SimpleReedsSheppCarPlanner
 cmake .
 make
 sudo make install
+sudo ldconfig
 ```
 
-This will install ```libsimplereedssheppplanner.so``` in your ```/usr/local/lib``` directory. A simple JNA-based Java interface to the library is provided by class ```se.oru.coordination.coordination_oru.motionplanning.ReedsSheppPlannerLib```. Class ```ReedsSheppPlanner``` in the same package provides a simple interface to the motion planner. 
+This will install ```libsimplereedssheppplanner.so``` in your ```/usr/local/lib``` directory. A simple JNA-based Java interface to the library is provided by class ```ReedsSheppPlannerLib``` in package ```se.oru.coordination.coordination_oru.motionplanning```. The class ```ReedsSheppPlanner``` in the same package provides a simple interface to the motion planner. 
 
 ## Using the ```SimpleReedsSheppCarPlanner``` motion planner
 
