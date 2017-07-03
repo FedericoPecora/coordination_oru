@@ -21,7 +21,7 @@ import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 
 import se.oru.coordination.coordination_oru.Mission;
-import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppPlanner;
+import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
 
 public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner {
@@ -85,7 +85,7 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner {
 		//tec.setupGUI(null);
 				
 		//Instantiate a simple motion planner
-		ReedsSheppPlanner rsp = new ReedsSheppPlanner();
+		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
 		rsp.setMapFilename("maps"+File.separator+getProperty("image", yamlFile));
 		double res = Double.parseDouble(getProperty("resolution", yamlFile));
 		rsp.setMapResolution(res);

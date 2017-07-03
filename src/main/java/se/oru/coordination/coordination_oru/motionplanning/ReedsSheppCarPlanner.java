@@ -19,9 +19,9 @@ import com.vividsolutions.jts.awt.ShapeWriter;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.util.AffineTransformation;
 
-import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppPlannerLib.PathPose;
+import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppCarPlannerLib.PathPose;
 
-public class ReedsSheppPlanner {
+public class ReedsSheppCarPlanner {
 
 	private static String TEMP_MAP_DIR = ".tempMaps";
 	private static int numObstacles = 0;
@@ -37,7 +37,7 @@ public class ReedsSheppPlanner {
 	private int numInterpolationPoints = 0;
 	private double turningRadius = 1.0;
 
-	public ReedsSheppPlanner() {
+	public ReedsSheppCarPlanner() {
 		deleteDir(new File(TEMP_MAP_DIR));
 		new File(TEMP_MAP_DIR).mkdir();
 	}
@@ -113,13 +113,13 @@ public class ReedsSheppPlanner {
 	public boolean plan() {
 		path = new PointerByReference();
 		pathLength = new IntByReference();
-		if (ReedsSheppPlannerLib.INSTANCE.plan(mapFilename, mapResolution, robotRadius, start.getX(), start.getY(), start.getTheta(), goal.getX(), goal.getY(), goal.getTheta(), path, pathLength, numInterpolationPoints, turningRadius)) {
+		if (ReedsSheppCarPlannerLib.INSTANCE.plan(mapFilename, mapResolution, robotRadius, start.getX(), start.getY(), start.getTheta(), goal.getX(), goal.getY(), goal.getTheta(), path, pathLength, numInterpolationPoints, turningRadius)) {
 			final Pointer pathVals = path.getValue();
 			final PathPose valsRef = new PathPose(pathVals);
 			valsRef.read();
 			int numVals = pathLength.getValue();
 			pathPoses = (PathPose[])valsRef.toArray(numVals);
-			ReedsSheppPlannerLib.INSTANCE.cleanupPath(pathVals);
+			ReedsSheppCarPlannerLib.INSTANCE.cleanupPath(pathVals);
 			return true;
 		}
 		return false;

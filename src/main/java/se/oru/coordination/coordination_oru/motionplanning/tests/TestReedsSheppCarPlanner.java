@@ -4,12 +4,12 @@ package se.oru.coordination.coordination_oru.motionplanning.tests;
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 
-import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppPlanner;
+import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppCarPlanner;
 
-public class TestReedsSheppPlanner {
+public class TestReedsSheppCarPlanner {
 	
 	public static void main(String[] args) {
-		ReedsSheppPlanner rsp = new ReedsSheppPlanner();
+		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
 		rsp.setMapFilename("maps/map-partial.png");
 		rsp.setMapResolution(0.1);
 		rsp.setRobotRadius(0.5);
