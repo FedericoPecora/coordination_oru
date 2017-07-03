@@ -41,16 +41,15 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected static final long STOPPING_TIME = 5000;
 	protected int CONTROL_PERIOD;
 	protected double TEMPORAL_RESOLUTION;
-	protected double MAX_VELOCITY;
-	protected double MAX_ACCELERATION;
-	protected int trackingPeriodInMillis;
 	
 	protected boolean overlay = false;
 	
 	protected TrajectoryEnvelopeSolver solver = null;
 	protected JTSDrawingPanel panel = null;
 	protected ArrayList<TrajectoryEnvelope> envelopesToTrack = new ArrayList<TrajectoryEnvelope>();
-	protected HashMap<Integer,ArrayList<CriticalSection>> criticalSections = new HashMap<Integer,ArrayList<CriticalSection>>();
+	protected HashMap<CriticalSection,Dependency> criticalSectionsToDeps = new HashMap<CriticalSection, Dependency>();
+	protected ArrayList<CriticalSection> allCriticalSections = new ArrayList<CriticalSection>();
+//	protected HashMap<Integer,ArrayList<CriticalSection>> criticalSections = new HashMap<Integer,ArrayList<CriticalSection>>();
 	protected HashMap<Integer,ArrayList<Integer>> stoppingPoints = new HashMap<Integer,ArrayList<Integer>>();
 	protected HashMap<Integer,Thread> stoppingPointTimers = new HashMap<Integer,Thread>();
 	
@@ -167,7 +166,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	
 	public void placeRobot(final int robotID, Pose currentPose, TrajectoryEnvelope parking, String location) {
 		
-		if (solver == null) throw new Error("Solver not initialized, please call method setupSolver() first!");
+		if (solver == null) {
+			metaCSPLogger.severe("Solver not initialized, please call method setupSolver() first!");
+			throw new Error("Solver not initialized, please call method setupSolver() first!");
+		}
 
 		synchronized (solver) {	
 			//Create a new parking envelope
@@ -180,7 +182,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			AllenIntervalConstraint release = new AllenIntervalConstraint(AllenIntervalConstraint.Type.Release, new Bounds(time, time));
 			release.setFrom(parking);
 			release.setTo(parking);
-			if (!solver.addConstraint(release)) throw new Error("Could not release " + parking + " with constriant " + release);
+			if (!solver.addConstraint(release)) {
+				metaCSPLogger.severe("Could not release " + parking + " with constriant " + release);
+				throw new Error("Could not release " + parking + " with constriant " + release);
+			}
 			metaCSPLogger.info("Placed " + parking.getComponent() + " in pose " + currentPose + ": " + parking);
 			
 			TrackingCallback cb = new TrackingCallback() {
@@ -198,7 +203,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			
 			//Now start the tracker for this parking (will be ended by call to addMissions for this robot)
 			final TrajectoryEnvelopeCoordinator tec = this;
-			final TrajectoryEnvelopeTrackerDummy tracker = new TrajectoryEnvelopeTrackerDummy(parking, trackingPeriodInMillis*10, TEMPORAL_RESOLUTION, solver, cb) {
+			final TrajectoryEnvelopeTrackerDummy tracker = new TrajectoryEnvelopeTrackerDummy(parking, 300, TEMPORAL_RESOLUTION, solver, cb) {
 				@Override
 				public long getCurrentTimeInMillis() {
 					return tec.getCurrentTimeInMillis();
@@ -217,17 +222,33 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	}
 	
 	
-	protected int getCriticalPoint(TrajectoryEnvelope te1, TrajectoryEnvelope te2, int currentPIR1, int te1Start, int te2Start) {
+	//Robot 2 follows robot 1
+	protected int getCriticalPoint(TrajectoryEnvelope te1, TrajectoryEnvelope te2, int currentPIR1, int te1Start, int te1End, int te2Start) {
+		
+		//Number of additional path points robot 2 should stay behind robot 1
 		int TRAILING_PATH_POINTS = 3;
-		int LOOKAHEAD_BUFFER = 5;
+		
+		//How far ahead in robot 1's trajectory should we look ahead for collisions
+		//(all the way to end of critical section if robots can drive in opposing directions)
+		int LOOKAHEAD = te1End; //5;
+		
+		//How far into the critical section has robot 1 reached 
 		int depthRobot1 = currentPIR1-te1Start;
+		
+		//If robot 1 not in critical section yet, return critical section start as waiting point for robot 2
 		if (depthRobot1 < 0) return Math.max(0, te2Start-TRAILING_PATH_POINTS);	
+		
+		//Compute sweep of robot 1's footprint from current position to LOOKAHEAD
 		Pose robot1Pose = te1.getTrajectory().getPose()[currentPIR1];
 		Geometry robot1InPose = TrajectoryEnvelope.getFootprint(te1.getFootprint(), robot1Pose.getX(), robot1Pose.getY(), robot1Pose.getTheta());
-		for (int i = 1; i <= LOOKAHEAD_BUFFER && currentPIR1+i < te1.getTrajectory().getPose().length; i++) {
+		for (int i = 1; currentPIR1+i < LOOKAHEAD && currentPIR1+i < te1.getTrajectory().getPose().length; i++) {
 			Pose robot1NextPose = te1.getTrajectory().getPose()[currentPIR1+i];
 			robot1InPose = robot1InPose.union(TrajectoryEnvelope.getFootprint(te1.getFootprint(), robot1NextPose.getX(), robot1NextPose.getY(), robot1NextPose.getTheta()));			
 		}
+		
+		//Starting from the same depth into the critical section as that of robot 1,
+		//and decreasing the pose index backwards down to 0,
+		//return the pose index as soon as robot 2's footprint does not intersect with robot 1s sweep
 		for (int i = Math.min(te2.getTrajectory().getPose().length-1, te2Start+depthRobot1); i > 0; i--) {
 			Pose robot2Pose = te2.getTrajectory().getPose()[i];
 			Geometry robot2InPose = TrajectoryEnvelope.getFootprint(te2.getFootprint(), robot2Pose.getX(), robot2Pose.getY(), robot2Pose.getTheta());
@@ -235,6 +256,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				return Math.max(0, i-TRAILING_PATH_POINTS);
 			}
 		}
+
+		//The above should have returned, as i is decremented until robot 2 is before the critical section
 		System.out.println("Robot" + te1.getRobotID() + ": start=" +te1Start + " depth=" + depthRobot1 + " Robot" + te2.getRobotID() + ": start=" + te2Start);
 		metaCSPLogger.severe("Could not determine CP for " + te2);
 		throw new Error("Could not determine CP for " + te2);
@@ -245,92 +268,169 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		return BUFFER;
 	}
 	
+	//Spawn a waiting thread at this stopping point
+	protected void spawnWaitingThread(final int robotID, final int index) {
+		Thread stoppingPointTimer = new Thread() {
+			private long startTime = Calendar.getInstance().getTimeInMillis();
+			public void run() {
+				while (Calendar.getInstance().getTimeInMillis()-startTime < STOPPING_TIME) {
+					try { Thread.sleep(100); }
+					catch (InterruptedException e) { e.printStackTrace(); }
+				}
+				stoppingPoints.get(robotID).remove(index);
+				stoppingPointTimers.remove(robotID);
+				//waitingTracker.setCriticalPoint(-1);
+			}
+		};
+		stoppingPointTimer.start();
+		stoppingPointTimers.put(robotID,stoppingPointTimer);		
+	}
+	
 	//Update and set the critical points
 	protected void updateDependencies() {
 
 		HashMap<Integer,TreeSet<Dependency>> currentDeps = new HashMap<Integer,TreeSet<Dependency>>();
-			
-		//Update dependencies	
+
+		//Make deps from un-reached stopping points
 		Set<Integer> robotIDs = trackers.keySet();
-		for (final Integer waitingRobot : robotIDs) {
-			
-			AbstractTrajectoryEnvelopeTracker waitingTracker = trackers.get(waitingRobot);
-			RobotReport rrWaiting = waitingTracker.getRobotReport();
-			
-			//Make deps from stopping points
+		for (int robotID : robotIDs) {
+			AbstractTrajectoryEnvelopeTracker robotTracker = trackers.get(robotID);
+			RobotReport robotReport = robotTracker.getRobotReport();
 			synchronized(stoppingPoints) {
-				if (stoppingPoints.containsKey(waitingRobot)) {
-					for (int i = 0; i < stoppingPoints.get(waitingRobot).size(); i++) {
-						int stoppingPoint = stoppingPoints.get(waitingRobot).get(i);
-						if (rrWaiting.getPathIndex() <= stoppingPoint) {
-							Dependency dep = new Dependency(waitingTracker.getTrajectoryEnvelope(), null, stoppingPoint, 0, waitingTracker, null);
-							if (!currentDeps.containsKey(waitingRobot)) currentDeps.put(waitingRobot, new TreeSet<Dependency>());
-							currentDeps.get(waitingRobot).add(dep);					
+				if (stoppingPoints.containsKey(robotID)) {
+					for (int i = 0; i < stoppingPoints.get(robotID).size(); i++) {
+						int stoppingPoint = stoppingPoints.get(robotID).get(i);
+						if (robotReport.getPathIndex() <= stoppingPoint) {
+							Dependency dep = new Dependency(robotTracker.getTrajectoryEnvelope(), null, stoppingPoint, 0, robotTracker, null);
+							if (!currentDeps.containsKey(robotID)) currentDeps.put(robotID, new TreeSet<Dependency>());
+							currentDeps.get(robotID).add(dep);					
 						}
-						if (Math.abs(rrWaiting.getPathIndex()-stoppingPoint) <= 1 && rrWaiting.getCriticalPoint() == stoppingPoint && !stoppingPointTimers.containsKey(waitingRobot)) {
-							final int index = i;
-							Thread stoppingPointTimer = new Thread() {
-								private long startTime = Calendar.getInstance().getTimeInMillis();
-								public void run() {
-									while (Calendar.getInstance().getTimeInMillis()-startTime < STOPPING_TIME) {
-										try { Thread.sleep(100); }
-										catch (InterruptedException e) { e.printStackTrace(); }
-									}
-									stoppingPoints.get(waitingRobot).remove(index);
-									stoppingPointTimers.remove(waitingRobot);
-									//waitingTracker.setCriticalPoint(-1);
-								}
-							};
-							stoppingPointTimer.start();
-							stoppingPointTimers.put(waitingRobot,stoppingPointTimer);
+						//Start waiting thread if the stopping point has been reached
+						if (Math.abs(robotReport.getPathIndex()-stoppingPoint) <= 1 && robotReport.getCriticalPoint() == stoppingPoint && !stoppingPointTimers.containsKey(robotID)) {
+							spawnWaitingThread(robotID, i);
 						}
 					}
 				}
 			}
-
-			//Make deps from critical sections
-			synchronized(criticalSections) {
-				if (criticalSections.containsKey(waitingRobot)) {
-					ArrayList<CriticalSection> toRemove = new ArrayList<CriticalSection>();
-					for (CriticalSection cs : criticalSections.get(waitingRobot)) {
-						int robot1 = cs.getTe1().getRobotID();
-						AbstractTrajectoryEnvelopeTracker trackerRobot1 = trackers.get(robot1);
-						RobotReport rr1 = trackerRobot1.getRobotReport();
-						if (rr1.getPathIndex() < cs.getTe1End()) {
-	
-							//Check if there are CSs that start earlier and have same leading robot,
-							// and if so, skip this CS
-							boolean skip = false;
-							for (CriticalSection cs1 : criticalSections.get(waitingRobot)) {
-								if (!cs1.equals(cs)) {
-									int robot11 = cs1.getTe1().getRobotID();
-									if (robot11 == robot1 && cs1.getTe1Start() < cs.getTe1Start()) {
-										skip = true;
-										break;
-									}
-								}
-							}
-							
-							if (!skip) {
-								//Compute waiting point
-								int waitingPoint = getCriticalPoint(cs.getTe1(), cs.getTe2(), rr1.getPathIndex(), cs.getTe1Start(), cs.getTe2Start());
-								if (waitingPoint >= 0) {		
-									//Make new dependency
-									Dependency dep = new Dependency(cs.getTe2(), cs.getTe1(), waitingPoint, rr1.getPathIndex()+1, waitingTracker, trackerRobot1);
-									if (!currentDeps.containsKey(waitingRobot)) currentDeps.put(waitingRobot, new TreeSet<Dependency>());
-									currentDeps.get(waitingRobot).add(dep);
-								}
-							}
-							
+		}
+		
+		//Make deps from critical sections, and remove obsolete critical sections
+		synchronized(allCriticalSections) {
+			
+			ArrayList<CriticalSection> toRemove = new ArrayList<CriticalSection>();
+			for (CriticalSection cs : allCriticalSections) {
+				
+				//Will be assigned depending on current situation of robot reports...
+				int waitingRobotID = -1;
+				int drivingRobotID = -1;
+				AbstractTrajectoryEnvelopeTracker waitingTracker = null;
+				AbstractTrajectoryEnvelopeTracker drivingTracker = null;
+				int waitingCurrentIndex = -1;
+				int drivingCurrentIndex = -1;
+				TrajectoryEnvelope waitingTE = null;
+				TrajectoryEnvelope drivingTE = null;
+				int waitingCSStart = -1;
+				int drivingCSStart = -1;
+				int waitingCSEnd = -1;
+				int drivingCSEnd = -1;
+				
+				AbstractTrajectoryEnvelopeTracker robotTracker1 = trackers.get(cs.getTe1().getRobotID());
+				RobotReport robotReport1 = robotTracker1.getRobotReport();
+				AbstractTrajectoryEnvelopeTracker robotTracker2 = trackers.get(cs.getTe2().getRobotID());
+				RobotReport robotReport2 = robotTracker2.getRobotReport();
+				if (!(robotTracker1 instanceof TrajectoryEnvelopeTrackerDummy) && !(robotTracker2 instanceof TrajectoryEnvelopeTrackerDummy)) {
+					//Either robot past end of the critical section --> critical section is obsolete
+					if (robotReport1.getPathIndex() > cs.getTe1End() || robotReport2.getPathIndex() > cs.getTe2End()) {
+						toRemove.add(cs);
+						continue;
+					}
+					//Neither robot has reached the critical section --> random (robot 1 waits)
+					else if (robotReport1.getPathIndex() < cs.getTe1Start() && robotReport2.getPathIndex() < cs.getTe2Start()) {
+						waitingCurrentIndex = robotReport1.getPathIndex();
+						drivingCurrentIndex = robotReport2.getPathIndex();
+						waitingTE = cs.getTe1();
+						drivingTE = cs.getTe2();
+						waitingCSStart = cs.getTe1Start();
+						drivingCSStart = cs.getTe2Start();
+						waitingCSEnd = cs.getTe1End();
+						drivingCSEnd = cs.getTe2End();
+					}
+					//Both robots in the critical section --> see if there is a necessary ordering
+					else if (robotReport1.getPathIndex() >= cs.getTe1Start() && robotReport2.getPathIndex() >= cs.getTe2Start()) {
+						System.out.println("OOPS!!");
+					}
+					//Robot 1 has not reached critical section, robot 2 in critical section --> robot 1 waits
+					else if (robotReport1.getPathIndex() < cs.getTe1Start() && robotReport2.getPathIndex() >= cs.getTe2Start()) {
+						waitingCurrentIndex = robotReport1.getPathIndex();
+						drivingCurrentIndex = robotReport2.getPathIndex();
+						waitingTE = cs.getTe1();
+						drivingTE = cs.getTe2();
+						waitingCSStart = cs.getTe1Start();
+						drivingCSStart = cs.getTe2Start();
+						waitingCSEnd = cs.getTe1End();
+						drivingCSEnd = cs.getTe2End();
+					}
+					//Robot 2 has not reached critical section, robot 1 in critical section --> robot 2 waits
+					else if (robotReport1.getPathIndex() >= cs.getTe1Start() && robotReport2.getPathIndex() < cs.getTe2Start()) {
+						waitingCurrentIndex = robotReport2.getPathIndex();
+						drivingCurrentIndex = robotReport1.getPathIndex();
+						waitingTE = cs.getTe2();
+						drivingTE = cs.getTe1();
+						waitingCSStart = cs.getTe2Start();
+						drivingCSStart = cs.getTe1Start();
+						waitingCSEnd = cs.getTe2End();
+						drivingCSEnd = cs.getTe1End();
+					}
+					//Both robots in critical section --> re-impose previously decided dependency
+					else {
+						Dependency previousDep = criticalSectionsToDeps.get(cs);
+						if (previousDep == null) {
+							metaCSPLogger.severe("Could not coordinate at critical section " + cs);
+							throw new Error("Could not coordinate at critical section " + cs);
+						}
+						if (previousDep.getWaitingRobotID() == robotTracker1.getTrajectoryEnvelope().getRobotID()) {
+							waitingCurrentIndex = robotReport1.getPathIndex();
+							drivingCurrentIndex = robotReport2.getPathIndex();
+							waitingTE = cs.getTe1();
+							drivingTE = cs.getTe2();
+							waitingCSStart = cs.getTe1Start();
+							drivingCSStart = cs.getTe2Start();
 						}
 						else {
-							toRemove.add(cs);
+							waitingCurrentIndex = robotReport2.getPathIndex();
+							drivingCurrentIndex = robotReport1.getPathIndex();
+							waitingTE = cs.getTe2();
+							drivingTE = cs.getTe1();
+							waitingCSStart = cs.getTe2Start();
+							drivingCSStart = cs.getTe1Start();
 						}
 					}
-					for (CriticalSection cs : toRemove) {
-						criticalSections.get(waitingRobot).remove(cs);
+
+					waitingRobotID = waitingTE.getRobotID();
+					drivingRobotID = drivingTE.getRobotID();
+					waitingTracker = trackers.get(waitingRobotID);
+					drivingTracker = trackers.get(drivingRobotID);
+
+					//Compute waiting path index point for waiting robot
+					int waitingPoint = getCriticalPoint(drivingTE, waitingTE, drivingCurrentIndex, drivingCSStart, drivingCSEnd, waitingCSStart);
+					if (waitingPoint >= 0) {		
+						//Make new dependency
+						Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCurrentIndex+1, waitingTracker, drivingTracker);
+						if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
+						currentDeps.get(waitingRobotID).add(dep);
+						criticalSectionsToDeps.put(cs, dep);
+					}
+					else {
+						metaCSPLogger.severe("Waiting point < 0 for critical section " + cs);
+						throw new Error("Waiting point < 0 for critical section " + cs);
 					}
 				}
+			}
+			
+			//Remove obsolete critical sections
+			for (CriticalSection cs : toRemove) {
+				this.criticalSectionsToDeps.remove(cs);
+				this.allCriticalSections.remove(cs);
 			}
 		}
 
@@ -348,6 +448,109 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			}
 		}
 	}
+
+//	protected void updateDependencies() {
+//
+//		HashMap<Integer,TreeSet<Dependency>> currentDeps = new HashMap<Integer,TreeSet<Dependency>>();
+//			
+//		//Update dependencies	
+//		Set<Integer> robotIDs = trackers.keySet();
+//		for (final Integer waitingRobot : robotIDs) {
+//			
+//			AbstractTrajectoryEnvelopeTracker waitingTracker = trackers.get(waitingRobot);
+//			RobotReport rrWaiting = waitingTracker.getRobotReport();
+//			
+//			//Make deps from stopping points
+//			synchronized(stoppingPoints) {
+//				if (stoppingPoints.containsKey(waitingRobot)) {
+//					for (int i = 0; i < stoppingPoints.get(waitingRobot).size(); i++) {
+//						int stoppingPoint = stoppingPoints.get(waitingRobot).get(i);
+//						if (rrWaiting.getPathIndex() <= stoppingPoint) {
+//							Dependency dep = new Dependency(waitingTracker.getTrajectoryEnvelope(), null, stoppingPoint, 0, waitingTracker, null);
+//							if (!currentDeps.containsKey(waitingRobot)) currentDeps.put(waitingRobot, new TreeSet<Dependency>());
+//							currentDeps.get(waitingRobot).add(dep);					
+//						}
+//						if (Math.abs(rrWaiting.getPathIndex()-stoppingPoint) <= 1 && rrWaiting.getCriticalPoint() == stoppingPoint && !stoppingPointTimers.containsKey(waitingRobot)) {
+//							final int index = i;
+//							Thread stoppingPointTimer = new Thread() {
+//								private long startTime = Calendar.getInstance().getTimeInMillis();
+//								public void run() {
+//									while (Calendar.getInstance().getTimeInMillis()-startTime < STOPPING_TIME) {
+//										try { Thread.sleep(100); }
+//										catch (InterruptedException e) { e.printStackTrace(); }
+//									}
+//									stoppingPoints.get(waitingRobot).remove(index);
+//									stoppingPointTimers.remove(waitingRobot);
+//									//waitingTracker.setCriticalPoint(-1);
+//								}
+//							};
+//							stoppingPointTimer.start();
+//							stoppingPointTimers.put(waitingRobot,stoppingPointTimer);
+//						}
+//					}
+//				}
+//			}
+//
+//			//Make deps from critical sections
+//			synchronized(criticalSections) {
+//				if (criticalSections.containsKey(waitingRobot)) {
+//					ArrayList<CriticalSection> toRemove = new ArrayList<CriticalSection>();
+//					for (CriticalSection cs : criticalSections.get(waitingRobot)) {
+//						int robot1 = cs.getTe1().getRobotID();
+//						AbstractTrajectoryEnvelopeTracker trackerRobot1 = trackers.get(robot1);
+//						RobotReport rr1 = trackerRobot1.getRobotReport();
+//						if (rr1.getPathIndex() < cs.getTe1End()) {
+//	
+//							//Check if there are CSs that start earlier and have same leading robot,
+//							// and if so, skip this CS
+//							boolean skip = false;
+//							for (CriticalSection cs1 : criticalSections.get(waitingRobot)) {
+//								if (!cs1.equals(cs)) {
+//									int robot11 = cs1.getTe1().getRobotID();
+//									if (robot11 == robot1 && cs1.getTe1Start() < cs.getTe1Start()) {
+//										skip = true;
+//										break;
+//									}
+//								}
+//							}
+//							
+//							if (!skip) {
+//								//Compute waiting point
+//								int waitingPoint = getCriticalPoint(cs.getTe1(), cs.getTe2(), rr1.getPathIndex(), cs.getTe1Start(), cs.getTe2Start());
+//								if (waitingPoint >= 0) {		
+//									//Make new dependency
+//									Dependency dep = new Dependency(cs.getTe2(), cs.getTe1(), waitingPoint, rr1.getPathIndex()+1, waitingTracker, trackerRobot1);
+//									if (!currentDeps.containsKey(waitingRobot)) currentDeps.put(waitingRobot, new TreeSet<Dependency>());
+//									currentDeps.get(waitingRobot).add(dep);
+//								}
+//							}
+//							
+//						}
+//						else {
+//							toRemove.add(cs);
+//						}
+//					}
+//					for (CriticalSection cs : toRemove) {
+//						criticalSections.get(waitingRobot).remove(cs);
+//					}
+//				}
+//			}
+//		}
+//
+//		synchronized(currentDependencies) {
+//			currentDependencies.clear();
+//			for (Integer robotID : robotIDs) {
+//				if (!currentDeps.containsKey(robotID)) {
+//					setCriticalPoint(robotID, -1);
+//				}
+//				else {
+//					Dependency firstDep = currentDeps.get(robotID).first();
+//					setCriticalPoint(firstDep.getWaitingTracker().getTrajectoryEnvelope().getRobotID(), firstDep.getWaitingPoint());
+//					currentDependencies.add(firstDep);
+//				}
+//			}
+//		}
+//	}
 	
 	/**
 	 * Defines the criteria with which robots are given priorities. Note that 
@@ -364,14 +567,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 */
 	public void computeCriticalSections() {
 
-		synchronized(criticalSections) {
+		synchronized(allCriticalSections) {
 
 			System.out.println("Computing critical sections...");
-			if (this.criticalSections == null) {
-				this.criticalSections = new HashMap<Integer,ArrayList<CriticalSection>>();			
-			}
-
-			envelopesToTrack.sort(getOrdering());
 
 			//Collect all driving envelopes
 			ArrayList<TrajectoryEnvelope> tes = new ArrayList<TrajectoryEnvelope>();
@@ -381,32 +579,73 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				}
 			}
 			
-			//All driving envelopes have precedence over new ones
+			//Compute critical sections between driving and new envelopes
 			for (int i = 0; i < tes.size(); i++) {
 				for (int j = 0; j < envelopesToTrack.size(); j++) {
 					for (CriticalSection cs : getCriticalSections(tes.get(i), envelopesToTrack.get(j))) {
-						//int robot1ID = envelopesToTrack.get(i).getRobotID();
-						int robot2ID = envelopesToTrack.get(j).getRobotID();
-						if (!this.criticalSections.containsKey(robot2ID)) this.criticalSections.put(robot2ID, new ArrayList<CriticalSection>());
-						this.criticalSections.get(robot2ID).add(cs);
+						this.allCriticalSections.add(cs);
 					}
 				}
 			}	
 
-			//New envelopes precede each other as specified by sorting criteria above (see Comparator comp)
+			//Compute critical sections between new envelopes
 			for (int i = 0; i < envelopesToTrack.size(); i++) {
 				for (int j = i+1; j < envelopesToTrack.size(); j++) {
 					for (CriticalSection cs : getCriticalSections(envelopesToTrack.get(i), envelopesToTrack.get(j))) {
-						//int robot1ID = envelopesToTrack.get(i).getRobotID();
-						int robot2ID = envelopesToTrack.get(j).getRobotID();
-						if (!this.criticalSections.containsKey(robot2ID)) this.criticalSections.put(robot2ID, new ArrayList<CriticalSection>());
-						this.criticalSections.get(robot2ID).add(cs);
+						this.allCriticalSections.add(cs);
 					}
 				}
 			}
-	
+			
+			System.out.println("... there are " + allCriticalSections.size() + " critical sections");
 		}
 	}
+
+//	public void computeCriticalSections() {
+//
+//		synchronized(criticalSections) {
+//
+//			System.out.println("Computing critical sections...");
+//			if (this.criticalSections == null) {
+//				this.criticalSections = new HashMap<Integer,ArrayList<CriticalSection>>();			
+//			}
+//
+//			envelopesToTrack.sort(getOrdering());
+//
+//			//Collect all driving envelopes
+//			ArrayList<TrajectoryEnvelope> tes = new ArrayList<TrajectoryEnvelope>();
+//			for (AbstractTrajectoryEnvelopeTracker atet : trackers.values()) {
+//				if (!(atet instanceof TrajectoryEnvelopeTrackerDummy)) {
+//					tes.add(atet.getTrajectoryEnvelope());
+//				}
+//			}
+//			
+//			//All driving envelopes have precedence over new ones
+//			for (int i = 0; i < tes.size(); i++) {
+//				for (int j = 0; j < envelopesToTrack.size(); j++) {
+//					for (CriticalSection cs : getCriticalSections(tes.get(i), envelopesToTrack.get(j))) {
+//						//int robot1ID = envelopesToTrack.get(i).getRobotID();
+//						int robot2ID = envelopesToTrack.get(j).getRobotID();
+//						if (!this.criticalSections.containsKey(robot2ID)) this.criticalSections.put(robot2ID, new ArrayList<CriticalSection>());
+//						this.criticalSections.get(robot2ID).add(cs);
+//					}
+//				}
+//			}	
+//
+//			//New envelopes precede each other as specified by sorting criteria above (see Comparator comp)
+//			for (int i = 0; i < envelopesToTrack.size(); i++) {
+//				for (int j = i+1; j < envelopesToTrack.size(); j++) {
+//					for (CriticalSection cs : getCriticalSections(envelopesToTrack.get(i), envelopesToTrack.get(j))) {
+//						//int robot1ID = envelopesToTrack.get(i).getRobotID();
+//						int robot2ID = envelopesToTrack.get(j).getRobotID();
+//						if (!this.criticalSections.containsKey(robot2ID)) this.criticalSections.put(robot2ID, new ArrayList<CriticalSection>());
+//						this.criticalSections.get(robot2ID).add(cs);
+//					}
+//				}
+//			}
+//	
+//		}
+//	}
 	
 	protected CriticalSection[] getCriticalSections(TrajectoryEnvelope te1, TrajectoryEnvelope te2) {
 		
@@ -531,17 +770,14 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							stoppingPoints.remove(te.getRobotID());
 						}
 						
-						//remove critical sections in which this robot should go first
-						synchronized(criticalSections) {
-							for (int robotID : criticalSections.keySet()) {
-								ArrayList<CriticalSection> toRemove = new ArrayList<CriticalSection>();
-								for (CriticalSection cs : criticalSections.get(robotID)) {
-									if (cs.getTe1().getRobotID() == te.getRobotID()) {
-										toRemove.add(cs);
-									}
-								}
-								for (CriticalSection cs : toRemove) criticalSections.get(robotID).remove(cs);
+						//remove critical sections in which this robot is involved
+						synchronized(allCriticalSections) {
+							ArrayList<CriticalSection> toRemove = new ArrayList<CriticalSection>();
+							for (CriticalSection cs : allCriticalSections) {
+								if (cs.getTe1().getRobotID() == te.getRobotID() || cs.getTe2().getRobotID() == te.getRobotID()) toRemove.add(cs);
 							}
+							for (CriticalSection cs : toRemove) allCriticalSections.remove(cs);
+							
 						}
 						
 						//clean up the old parking envelope
@@ -587,7 +823,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 */
 	public boolean addMissions(Mission ... missions) {
 
-		if (solver == null) throw new Error("Solvers not initialized, please call method setupSolver()");
+		if (solver == null) {
+			metaCSPLogger.severe("Solvers not initialized, please call method setupSolver()");
+			throw new Error("Solvers not initialized, please call method setupSolver()");
+		}
 
 		HashMap<Integer,ArrayList<Mission>> robotsToMissions = new HashMap<Integer,ArrayList<Mission>>();
 		for (Mission m : missions) {

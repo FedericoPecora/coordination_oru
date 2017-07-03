@@ -87,7 +87,7 @@ public abstract class TestTrajectoryEnvelopeCoordinatorThreeRobots {
 		// -- the getCurrentTimeInMillis() method, which is used by the coordinator to keep time
 		// -- the getOrdering() method, which should return a method for prioritizing robots 
 		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation();
-			
+
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
 		
