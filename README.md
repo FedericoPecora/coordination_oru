@@ -72,7 +72,7 @@ The motion planner and its Java interface are purposefully kept very simple. It 
 
 ## Installing the ```SimpleReedsSheppCarPlanner``` motion planner
 
-Please install the OMPL and MRPT libraries. Both are present in the official Ubuntu repositories (tested on Ubuntu 16-04):
+Please install the OMPL and MRPT libraries. Both are present in the official Ubuntu repositories (tested on Ubuntu 16.04):
 
 ```
 $ sudo apt-get install libompl-dev
