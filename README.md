@@ -62,13 +62,13 @@ More detailed information is posted in the terminal. It can be inspected offline
 
 A simple motion planner is provided for testing the coordination framework without the need for pre-computed path files. This simple motion planner depends on
 
--- The Open Motion Planning Library (OMPL), http://ompl.kavrakilab.org/
+* The Open Motion Planning Library (OMPL), http://ompl.kavrakilab.org/
 
--- The Mobile Robot Programming Toolkit (MRPT), http://www.mrpt.org/
+* The Mobile Robot Programming Toolkit (MRPT), http://www.mrpt.org/
 
-## Installing the simple motion planner
+## Installing the ```SimpleReedsSheppCarPlanner``` motion planner
 
-Please install OMPL and MRPT libraries. Both are present in the official Ubuntu repositories (tested on Ubuntu 16-04):
+Please install the OMPL and MRPT libraries. Both are present in the official Ubuntu repositories (tested on Ubuntu 16-04):
 
 ```
 sudo apt-get install libompl-dev
@@ -86,7 +86,8 @@ sudo make install
 
 This will install ```libsimplereedssheppplanner.so``` in your ```/usr/local/lib``` directory. A simple JNA-based Java interface to the library is provided by class ```se.oru.coordination.coordination_oru.motionplanning.ReedsSheppPlannerLib```. Class ```ReedsSheppPlanner``` in the same package provides a simple interface to the motion planner. 
 
-## Using the simple motion planner
+## Using the ```SimpleReedsSheppCarPlanner``` motion planner
+
 A simple example showing how to invoke the motion planner is provided by class ```TestReedsSheppPlanner``` in package ```se.oru.coordination.coordination_oru.motionplanning.tests```.
 
 Please see the example ```TestTrajectoryEnvelopeCoordinatorWithMotionPlanner``` in package ```se.oru.coordination.coordination_oru.tests``` for how to use the path planner with coordination.
