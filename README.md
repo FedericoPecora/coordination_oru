@@ -75,7 +75,7 @@ sudo apt-get install libompl-dev
 sudo apt-get install mrpt-apps libmrpt-dev
 ```
 
-After installing the required libraries above, compile and install the provided ```simplereedssheppplanner``` shared library as follows:
+Then, compile and install the provided ```simplereedssheppplanner``` shared library as follows:
 
 ```
 cd coordination_oru/SimpleReedsSheppCarPlanner
