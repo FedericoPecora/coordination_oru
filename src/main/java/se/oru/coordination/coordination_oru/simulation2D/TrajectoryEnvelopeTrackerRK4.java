@@ -34,7 +34,12 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 	private Random rand = new Random();
 	private TreeMap<Double,Double> slowDownProfile = null;
 	private boolean slowingDown = false;
+	private boolean useInternalCPs = true;
 
+	public void setUseInternalCriticalPoints(boolean value) {
+		this.useInternalCPs = value;
+	}
+	
 	public TrajectoryEnvelopeTrackerRK4(TrajectoryEnvelope te, int timeStep, double temporalResolution, TrajectoryEnvelopeSolver solver, TrackingCallback cb) {
 		this(te, timeStep, temporalResolution, 1.0, 0.1, solver, cb);
 	}
@@ -84,7 +89,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 			catch (InterruptedException e) { e.printStackTrace(); }
 		}
 		this.th.start();
-		this.startInternalCPThread();
+		if (useInternalCPs) this.startInternalCPThread();
 	}
 
 	public static double computeDistance(Trajectory traj, int startIndex, int endIndex) {

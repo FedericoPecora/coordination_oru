@@ -55,7 +55,7 @@ public class CriticalSection {
 	
 	public String toString() {
 		String ret = "";
-		ret += "CriticalSection from (" + te1.getRobotID() + "@" + te1Start + "," + te2.getRobotID() + "@" + te2Start + ") to (" + te1.getRobotID() + "@" + te1End + "," + te2.getRobotID() + "@" + te2End + ")\n\t" + te1 + "\n\t" + te2; 
+		ret += "CriticalSection (Robot" + te1.getRobotID() + " [" + te1Start + ";" + te1End + "], Robot" + te2.getRobotID() + " [" + te2Start + ";" + te2End + "])"; //\n\t" + te1 + "\n\t" + te2; 
 		return ret;
 	}
 }

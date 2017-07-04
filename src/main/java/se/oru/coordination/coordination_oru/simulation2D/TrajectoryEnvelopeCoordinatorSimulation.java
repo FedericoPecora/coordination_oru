@@ -17,6 +17,7 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	protected double MAX_VELOCITY;
 	protected double MAX_ACCELERATION;
 	protected int trackingPeriodInMillis;
+	protected boolean useInternalCPs = true;
 
 	/**
 	 * Create a new {@link TrajectoryEnvelopeCoordinatorSimulation} with the following default values:
@@ -31,6 +32,19 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	 */
 	public TrajectoryEnvelopeCoordinatorSimulation() {
 		this(1000, 1000, 10.0, 1.0, 30);
+	}
+	
+	/**
+	 * Create a new {@link TrajectoryEnvelopeCoordinatorSimulation} with the following default values:
+	 * <ul>
+	 * <li><code>CONTROL_PERIOD</code> = 1000</li>
+	 * <li><code>TEMPORAL_RESOLUTION</code> = 1000</li>
+	 * <li><code>trackingPeriodInMillis</code> = 30</li>
+	 * <li><code>PARKING_DURATION</code> = 3000</li>
+	 * </ul>
+	 */
+	public TrajectoryEnvelopeCoordinatorSimulation(double MAX_VELOCITY, double MAX_ACCELERATION) {
+		this(1000, 1000, MAX_VELOCITY, MAX_ACCELERATION, 30);
 	}
 
 	/**
@@ -61,6 +75,14 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 		this.MAX_VELOCITY = MAX_VELOCITY;
 		this.MAX_ACCELERATION = MAX_ACCELERATION;
 		this.trackingPeriodInMillis = trackingPeriodInMillis;
+	}
+	
+	/**
+	 * Enable (default) or disable the use of internal critical points in the {@link TrajectoryEnvelopeTrackerRK4} trackers.
+	 * @param value <code>true</code> if these critical points should be used to slow down, <code>false</code> otherwise.
+	 */
+	public void setUseInternalCriticalPoints(boolean value) {
+		this.useInternalCPs = value;
 	}
 
 	@Override
@@ -108,6 +130,7 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 				return Calendar.getInstance().getTimeInMillis()-START_TIME;
 			}
 		};
+		ret.setUseInternalCriticalPoints(this.useInternalCPs);
 		return ret;
 	}
 

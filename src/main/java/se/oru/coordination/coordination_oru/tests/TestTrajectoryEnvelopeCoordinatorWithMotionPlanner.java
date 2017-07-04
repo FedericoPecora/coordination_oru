@@ -6,6 +6,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
@@ -63,7 +64,7 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner {
 		// -- the factory method getNewTracker() which returns a trajectory envelope tracker (also abstract)
 		// -- the getCurrentTimeInMillis() method, which is used by the coordinator to keep time
 		// -- the getOrdering() method, which should return a method for prioritizing robots 
-		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation();
+		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(4.0,1.0);
 		Coordinate footprint1 = new Coordinate(-1.0,0.5);
 		Coordinate footprint2 = new Coordinate(1.0,0.5);
 		Coordinate footprint3 = new Coordinate(1.0,-0.5);
@@ -77,7 +78,11 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner {
 		String yamlFile = "maps/map.yaml";
 		tec.setupGUI(yamlFile);
 		//tec.setupGUI(null);
-				
+
+		tec.setUseInternalCriticalPoints(false);
+		
+		MetaCSPLogging.setLevel(tec.getClass().getSuperclass(), Level.FINEST);
+
 		//Instantiate a simple motion planner
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
 		rsp.setMapFilename("maps"+File.separator+getProperty("image", yamlFile));
