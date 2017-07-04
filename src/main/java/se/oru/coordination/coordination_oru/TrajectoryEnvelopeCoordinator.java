@@ -246,9 +246,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		}
 		
 		//Starting from the same depth into the critical section as that of robot 1,
-		//and decreasing the pose index backwards down to 0,
-		//return the pose index as soon as robot 2's footprint does not intersect with robot 1s sweep
-		for (int i = Math.min(te2.getTrajectory().getPose().length-1, te2Start+depthRobot1); i > 0; i--) {
+		//and decreasing the pose index backwards down to te2Start,
+		//return the pose index as soon as robot 2's footprint does not intersect with robot 1's sweep
+		for (int i = Math.min(te2.getTrajectory().getPose().length-1, te2Start+depthRobot1); i > te2Start-1; i--) {
 			Pose robot2Pose = te2.getTrajectory().getPose()[i];
 			Geometry robot2InPose = TrajectoryEnvelope.getFootprint(te2.getFootprint(), robot2Pose.getX(), robot2Pose.getY(), robot2Pose.getTheta());
 			if (!robot1InPose.intersects(robot2InPose)) {
@@ -256,10 +256,14 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			}
 		}
 
-		//The above should have returned, as i is decremented until robot 2 is before the critical section
-		System.out.println("Robot" + te1.getRobotID() + ": start=" +te1Start + " depth=" + depthRobot1 + " Robot" + te2.getRobotID() + ": start=" + te2Start);
-		metaCSPLogger.severe("Could not determine CP for " + te2);
-		throw new Error("Could not determine CP for " + te2);
+		//The only situation where the above has not returned is when robot 2 should
+		//stay "parked", therefore wait at index 0
+		return 0;
+		
+//		//The above should have returned, as i is decremented until robot 2 is before the critical section
+//		System.out.println("Robot" + te1.getRobotID() + ": start=" +te1Start + " depth=" + depthRobot1 + " Robot" + te2.getRobotID() + ": start=" + te2Start);
+//		metaCSPLogger.severe("Could not determine CP for " + te2);
+//		throw new Error("Could not determine CP for " + te2);
 	}
 	
 	protected int getCriticalPoint() {
