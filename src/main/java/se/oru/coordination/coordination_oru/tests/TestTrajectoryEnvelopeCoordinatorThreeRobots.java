@@ -78,9 +78,7 @@ public abstract class TestTrajectoryEnvelopeCoordinatorThreeRobots {
 
 
 	public static void main(String[] args) throws InterruptedException {
-		
-		//Some constants used by the trajectory envelope trackers and coordinator:
-		
+				
 		//Instantiate a trajectory envelope coordinator.
 		//This requires providing implementations of:
 		// -- the factory method getNewTracker() which returns a trajectory envelope tracker (also abstract)
@@ -101,24 +99,24 @@ public abstract class TestTrajectoryEnvelopeCoordinatorThreeRobots {
 		// -- creates a trajectory envelope for each location, representing the fact that the robot is parked
 		// -- each trajectory envelope has a path of one pose (the pose of the location)
 		// -- each trajectory envelope is the footprint of the corresponding robot in that pose
-		tec.placeRobot(1, getLocation("r1p"), null, "r1p");
-		tec.placeRobot(2, getLocation("r2p"), null, "r2p");
-		tec.placeRobot(3, getLocation("r3p"), null, "r3p");
+		tec.placeRobot(1, getLocation("r1p"));
+		tec.placeRobot(2, getLocation("r2p"));
+		tec.placeRobot(3, getLocation("r3p"));
 
 		String prefix = "paths/";
 		//Make a mission for each robot, and store it in the global hashmap:
 		// -- from parking location of robot i (rip)
 		// -- to destination location of robot i (desti)
-		putMission(new Mission(1, prefix+getPathFile("r1p", "dest1"), "r1p", "dest1", getLocation("r1p"), getLocation("dest1")));
-		putMission(new Mission(2, prefix+getPathFile("r2p", "dest2"), "r2p", "dest2", getLocation("r2p"), getLocation("dest2")));
-		putMission(new Mission(3, prefix+getPathFile("r3p", "dest3"), "r3p", "dest3", getLocation("r3p"), getLocation("dest3")));
+		putMission(new Mission(1, prefix+getPathFile("r1p", "dest1"), getLocation("r1p"), getLocation("dest1")));
+		putMission(new Mission(2, prefix+getPathFile("r2p", "dest2"), getLocation("r2p"), getLocation("dest2")));
+		putMission(new Mission(3, prefix+getPathFile("r3p", "dest3"), getLocation("r3p"), getLocation("dest3")));
 
 		//Make another mission for each robot, and store it in the global hashmap:
 		// -- from destination location of robot i (desti)
 		// -- to parking location of robot i (rip)
-		putMission(new Mission(1, prefix+getPathFile("dest1", "r1p"), "dest1", "r1p", getLocation("dest1"), getLocation("r1p")));
-		putMission(new Mission(2, prefix+getPathFile("dest2", "r2p"), "dest2", "r2p", getLocation("dest2"), getLocation("r2p")));
-		putMission(new Mission(3, prefix+getPathFile("dest3", "r3p"), "dest3", "r3p", getLocation("dest3"), getLocation("r3p")));
+		putMission(new Mission(1, prefix+getPathFile("dest1", "r1p"), getLocation("dest1"), getLocation("r1p")));
+		putMission(new Mission(2, prefix+getPathFile("dest2", "r2p"), getLocation("dest2"), getLocation("r2p")));
+		putMission(new Mission(3, prefix+getPathFile("dest3", "r3p"), getLocation("dest3"), getLocation("r3p")));
 
 		metaCSPLogger.info("Added missions " + missions);
 

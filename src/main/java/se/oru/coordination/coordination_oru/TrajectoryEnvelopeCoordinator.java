@@ -163,6 +163,14 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 */
 	public abstract long getCurrentTimeInMillis(); 
 	
+	public void placeRobot(final int robotID, Pose currentPose) {
+		this.placeRobot(robotID, currentPose, null, currentPose.toString());
+	}
+	
+	public void placeRobot(final int robotID, TrajectoryEnvelope parking) {
+		this.placeRobot(robotID, null, parking, null);
+	}
+	
 	public void placeRobot(final int robotID, Pose currentPose, TrajectoryEnvelope parking, String location) {
 		
 		if (solver == null) {
@@ -258,7 +266,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 		//The only situation where the above has not returned is when robot 2 should
 		//stay "parked", therefore wait at index 0
-		return 0;
+		return Math.max(0, te2Start-TRAILING_PATH_POINTS);
 		
 //		//The above should have returned, as i is decremented until robot 2 is before the critical section
 //		System.out.println("Robot" + te1.getRobotID() + ": start=" +te1Start + " depth=" + depthRobot1 + " Robot" + te2.getRobotID() + ": start=" + te2Start);
@@ -603,7 +611,12 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				TrackingCallback cb = new TrackingCallback() {
 	
 					@Override
-					public void beforeTrackingStart() { }
+					public void beforeTrackingStart() {
+						//Sleep for one control period
+						//(allows to impose critical points before tracking actually starts)
+						try { Thread.sleep(CONTROL_PERIOD); }
+						catch (InterruptedException e) { e.printStackTrace(); }
+					}
 					
 					@Override
 					public void onTrackingStart() { }

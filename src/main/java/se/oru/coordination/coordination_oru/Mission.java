@@ -21,17 +21,17 @@ public class Mission implements Comparable<Mission> {
 	private Pose fromPose = null;
 	private Pose toPose = null;
 	
-//	/**
-//	 * Instantiates a {@link Mission} for a given robot to navigate between two locations via a given path.
-//	 * @param robotID The ID of the robot.
-//	 * @param path A pointer to a file containing the path to be driven.
-//	 * @param fromLocation The identifier of the source location.
-//	 * @param toLocation The identifier of the destination location.
-//	 */
-//	public Mission(int robotID, String path, String fromLocation, String toLocation) {
-//		this(robotID, path, fromLocation, toLocation, null, null);
-//	}
 
+	/**
+	 * Instantiates a {@link Mission} for a given robot to navigate between two locations via a given path.
+	 * 
+	 * @param robotID The ID of the robot.
+	 * @param path An array of {@link PoseSteering}s representing the path to be driven.
+	 */
+	public Mission(int robotID, PoseSteering[] path) {
+		this(robotID, path, path[0].getPose().toString(), path[path.length-1].getPose().toString(), path[0].getPose(), path[path.length-1].getPose());
+	}
+		
 	/**
 	 * Instantiates a {@link Mission} for a given robot to navigate between two locations via a given path.
 	 * 
@@ -52,6 +52,18 @@ public class Mission implements Comparable<Mission> {
 		this.toPose = toPose;
 	}
 
+	/**
+	 * Instantiates a {@link Mission} for a given robot to navigate between two locations via a given path.
+	 * 
+	 * @param robotID The ID of the robot.
+	 * @param pathFile A pointer to a file containing the path to be driven.
+	 * @param fromPose The pose of the source location.
+	 * @param toPose The pose of the destination location.
+	 */
+	public Mission(int robotID, String pathFile, Pose fromPose, Pose toPose) {
+		this(robotID, pathFile, null, null, fromPose, toPose);
+	}
+		
 	/**
 	 * Instantiates a {@link Mission} for a given robot to navigate between two locations via a given path.
 	 * 

@@ -6,7 +6,6 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
@@ -81,7 +80,7 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner {
 
 		tec.setUseInternalCriticalPoints(false);
 		
-		MetaCSPLogging.setLevel(tec.getClass().getSuperclass(), Level.FINEST);
+		//MetaCSPLogging.setLevel(tec.getClass().getSuperclass(), Level.FINEST);
 
 		//Instantiate a simple motion planner
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
@@ -91,45 +90,45 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner {
 		rsp.setRobotRadius(1.1);
 		rsp.setTurningRadius(4.0);
 		
-		Pose startPose1 = new Pose(2.0,28.0,0.0);
-		Pose goalPose1 = new Pose(1.0,1.0,0.0);
-		Pose startPose2 = new Pose(2.0,38.0,0.0);
-		Pose goalPose2 = new Pose(2.0,3.0,0.0);
+		Pose startPoseRobot1 = new Pose(2.0,28.0,0.0);
+		Pose goalPoseRobot1 = new Pose(1.0,1.0,0.0);
+		Pose startPoseRobot2 = new Pose(2.0,38.0,0.0);
+		Pose goalPoseRobot2 = new Pose(2.0,3.0,0.0);
 		
 		//Place robots in their initial locations (looked up in the data file that was loaded above)
 		// -- creates a trajectory envelope for each location, representing the fact that the robot is parked
 		// -- each trajectory envelope has a path of one pose (the pose of the location)
 		// -- each trajectory envelope is the footprint of the corresponding robot in that pose
-		tec.placeRobot(1, startPose1, null, "r1p");
-		tec.placeRobot(2, startPose2, null, "r2p");
+		tec.placeRobot(1, startPoseRobot1);
+		tec.placeRobot(2, startPoseRobot2);
 
-		rsp.setStart(startPose1);
-		rsp.setGoal(goalPose1);
+		rsp.setStart(startPoseRobot1);
+		rsp.setGoal(goalPoseRobot1);
 		Geometry fpGeom = TrajectoryEnvelope.createFootprintPolygon(footprint1, footprint2, footprint3, footprint4);
-		rsp.addObstacles(fpGeom, startPose2, goalPose2);
-		if (!rsp.plan()) throw new Error ("No path between " + startPose1 + " and " + goalPose1);
+		rsp.addObstacles(fpGeom, startPoseRobot2, goalPoseRobot2);
+		if (!rsp.plan()) throw new Error ("No path between " + startPoseRobot1 + " and " + goalPoseRobot1);
 		PoseSteering[] pss1 = rsp.getPath();
-		rsp.setStart(goalPose1);
-		rsp.setGoal(startPose1);
-		if (!rsp.plan()) throw new Error ("No path between " + goalPose1 + " and " + startPose1);
+		rsp.setStart(goalPoseRobot1);
+		rsp.setGoal(startPoseRobot1);
+		if (!rsp.plan()) throw new Error ("No path between " + goalPoseRobot1 + " and " + startPoseRobot1);
 		PoseSteering[] pss1Inv = rsp.getPath();
 
-		rsp.setStart(startPose2);
-		rsp.setGoal(goalPose2);
+		rsp.setStart(startPoseRobot2);
+		rsp.setGoal(goalPoseRobot2);
 		rsp.clearObstacles();
-		rsp.addObstacles(fpGeom, startPose1, goalPose1);
-		if (!rsp.plan()) throw new Error ("No path between " + startPose2 + " and " + goalPose2);
+		rsp.addObstacles(fpGeom, startPoseRobot1, goalPoseRobot1);
+		if (!rsp.plan()) throw new Error ("No path between " + startPoseRobot2 + " and " + goalPoseRobot2);
 		PoseSteering[] pss2 = rsp.getPath();
-		rsp.setStart(goalPose2);
-		rsp.setGoal(startPose2);
-		if (!rsp.plan()) throw new Error ("No path between " + goalPose2 + " and " + startPose2);
+		rsp.setStart(goalPoseRobot2);
+		rsp.setGoal(startPoseRobot2);
+		if (!rsp.plan()) throw new Error ("No path between " + goalPoseRobot2 + " and " + startPoseRobot2);
 		PoseSteering[] pss2Inv = rsp.getPath();
 
-		putMission(new Mission(1, pss1, "r1p", "dest1", startPose1, goalPose1));
-		putMission(new Mission(1, pss1Inv, "dest1", "r1p", goalPose1, startPose1));
+		putMission(new Mission(1, pss1, "r1start", "r1dest", startPoseRobot1, goalPoseRobot1));
+		putMission(new Mission(1, pss1Inv, "r1dest", "r1start", goalPoseRobot1, startPoseRobot1));
 
-		putMission(new Mission(2, pss2, "r2p", "dest2", startPose2, goalPose2));
-		putMission(new Mission(2, pss2Inv, "dest2", "r2p", goalPose2, startPose2));
+		putMission(new Mission(2, pss2, "r2start", "r2dest", startPoseRobot2, goalPoseRobot2));
+		putMission(new Mission(2, pss2Inv, "r2dest", "r2start", goalPoseRobot2, startPoseRobot2));
 
 		metaCSPLogger.info("Added missions " + missions);
 
