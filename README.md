@@ -25,7 +25,7 @@ The coordination algorithm provided in this implementation works as follows:
    * if only one of the two robots has entered the critical section, assign priority to that robot
 
    * (if both robots have entered the critical section, assign the previously assigned priority)
-
+Note that...
 
 3. For each critical section (```te1```, ```te2```, [```start1```, ```start2```], [```end1```, ```end2```]) found above, let ```R2``` be the robot that was _not_ given priority in step 2. Inform ```R2``` that it _cannot_ proceed beyond a _critical point_ ```p``` defined as max(```start2```, ```start2``` + (```cp1``` - ```start1```) - ```s```), where
 
