@@ -12,25 +12,28 @@ The coordination algorithm provided in this implementation works as follows:
 
    * ```te1``` and ```te2``` are trajectory envelopes that intesect in the critical section
    
-   * ```start1``` (```start2```) is the index of the first pose along the path navigated by ```R1``` (```R2```) at which this robot's footprint intersects ```te2``` (```te1```)
+   * ```start1``` (```start2```) is the index of the first pose along the path navigated by robot ```R1``` (```R2```) at which this robot's footprint intersects ```te2``` (```te1```)
    
-   * ```end1``` (```end2```) is the index of the first pose beyond ```start1``` (```start2```) along the path navigated by ```R1``` (```R2```) from which this robot's footprint ceases to intersect ```te2``` (```te1```)
-   
-2. For each robot, select the critical section (```te1```, ```te2```, [```start1```, ```start2```], [```end1```, ```end2```]) such that
+   * ```end1``` (```end2```) is the index of the first pose beyond ```start1``` (```start2```) along the path navigated by robot ```R1``` (```R2```) from which this robot's footprint ceases to intersect ```te2``` (```te1```)
 
-   * the current pose of ```R2``` is not beyond the pose with index ```end2```
-   
-   * the current pose of ```R1``` is not beyond the pose with index ```end1```
-   
-   * ```start2``` is minimum
-   
-3. For each critical section (```te1```, ```te2```, [```start1```, ```start2```], [```end1```, ```end2```]) selected at step 2, instruct ```R2``` that it cannot proceed beyond a _critical point_ ```p``` defined as max(```start2```, ```start2``` + (```cp1``` - ```start1```) - ```s```), where
+2. For each critical section (```te1```, ```te2```, [```start1```, ```start2```], [```end1```, ```end2```]) found at step 1, decide whether the critical section is relevant, and, if so, which among robots ```{ R1, R2 }``` should transit the critical section first:
 
-   * ```cp1``` is the index of the pose in the path of ```te1``` that is closest to the current pose of ```R1```
+   * if either of the two robots has exited the critical section, discard this critical section
+   
+   * if neither robot has entered the critical section, assign priority to the robot that is closest to the start of the critical section
+
+   * if only one of the two robots has entered the critical section, assign priority to that robot
+
+   * (if both robots have entered the critical section, assign the previously assigned priority)
+
+
+3. For each critical section (```te1```, ```te2```, [```start1```, ```start2```], [```end1```, ```end2```]) found above, let ```R2``` be the robot that was _not_ given priority in step 2. Inform ```R2``` that it _cannot_ proceed beyond a _critical point_ ```p``` defined as max(```start2```, ```start2``` + (```cp1``` - ```start1```) - ```s```), where
+
+   * ```cp1``` is the index of the pose in the path of ```te1``` that is closest to the current pose of the robot given priority (```R1```)
    
    * ```s``` is a safety distance (number of path indices by which ```R2``` should stay behind ```R1```)
 
-Critical sections are updated (steps 1 and 2 above) whenever a new mission is added. Critical points for each robot are updated (step 3 above) at a specified control period (by default, 1000 msec).
+New critical sections are added (step 1 above) whenever new missions are added. Critical sections are filtered (step 2) and critical points for each robot are updated (step 3) at a specified control period (by default, 1000 msec).
 
 ## Installation
 To install, clone this repository and compile the source code with gradle (redistributable included):
