@@ -131,7 +131,7 @@ public class Mission implements Comparable<Mission> {
 
 	@Override
 	public String toString() {
-		return "Robot" + this.getRobotID() + ": " + fromLocation + " --> " + toLocation + "(path: " + pathFile + ")";
+		return "Robot" + this.getRobotID() + ": " + fromLocation + " --> " + toLocation + (pathFile != null ? " (path: " + pathFile + ")" : "");
 	}
 
 	/**
