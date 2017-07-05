@@ -89,6 +89,7 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner {
 		rsp.setMapResolution(res);
 		rsp.setRobotRadius(1.1);
 		rsp.setTurningRadius(4.0);
+		rsp.setNumInterpolationPoints(1000);
 		
 		Pose startPoseRobot1 = new Pose(2.0,28.0,0.0);
 		Pose goalPoseRobot1 = new Pose(1.0,1.0,0.0);
@@ -124,11 +125,11 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner {
 		if (!rsp.plan()) throw new Error ("No path between " + goalPoseRobot2 + " and " + startPoseRobot2);
 		PoseSteering[] pss2Inv = rsp.getPath();
 
-		putMission(new Mission(1, pss1, "r1start", "r1dest", startPoseRobot1, goalPoseRobot1));
-		putMission(new Mission(1, pss1Inv, "r1dest", "r1start", goalPoseRobot1, startPoseRobot1));
+		putMission(new Mission(1, pss1));
+		putMission(new Mission(1, pss1Inv));
 
-		putMission(new Mission(2, pss2, "r2start", "r2dest", startPoseRobot2, goalPoseRobot2));
-		putMission(new Mission(2, pss2Inv, "r2dest", "r2start", goalPoseRobot2, startPoseRobot2));
+		putMission(new Mission(2, pss2));
+		putMission(new Mission(2, pss2Inv));
 
 		metaCSPLogger.info("Added missions " + missions);
 
