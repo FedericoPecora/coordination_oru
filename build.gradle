@@ -8,7 +8,7 @@ apply plugin: 'maven'
 // your package is used as a binary.
 apply plugin: 'application'
 // The main class that will be executed when you do 'gradle run'
-mainClassName = 'coordination_oru.tests.TestTrajectoryEnvelopeCoordinatorThreeRobots'
+mainClassName = 'se.oru.coordination.coordination_oru.tests.TestTrajectoryEnvelopeCoordinatorThreeRobots'
 
 sourceCompatibility = 1.6
 targetCompatibility = 1.6
