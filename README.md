@@ -32,7 +32,7 @@ The coordination algorithm provided in this implementation works as follows:
    
    * ```s``` is a safety distance (number of path indices by which ```R2``` should stay behind ```R1```)
 
-New critical sections are added (step 1 above) whenever new missions are added. Critical sections are filtered (step 2) and critical points for each robot are updated (step 3) at a specified control period (by default, 1000 msec).
+New critical sections are added (step 1) whenever new missions are added. Critical sections are filtered and priorities decided (step 2), and critical points for each robot are updated (step 3) at a specified control period (by default, 1000 msec).
 
 ## Installation
 To install, clone this repository and compile the source code with gradle (redistributable included):
