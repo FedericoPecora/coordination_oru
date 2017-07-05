@@ -29,7 +29,7 @@ group = 'se.oru.coordination'
 dependencies {
 
   // This pulls in the meta-csp-framework jar
-  compile 'org.metacsp:meta-csp-framework:1.2.8'
+  compile 'org.metacsp:meta-csp-framework:1.2.9'
   //compile 'org.metacsp:meta-csp-framework:0.0.0-SNAPSHOT'
   compile 'net.java.dev.jna:jna:4.4.0'
 
