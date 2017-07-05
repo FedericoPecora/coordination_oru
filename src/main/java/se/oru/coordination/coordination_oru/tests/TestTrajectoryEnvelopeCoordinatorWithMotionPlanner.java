@@ -35,7 +35,10 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner {
 			while((st=br.readLine()) != null){
 				String key = st.substring(0, st.indexOf(":")).trim();
 				String value = st.substring(st.indexOf(":")+1).trim();
-				if (key.equals(property)) ret = value;
+				if (key.equals(property)) {
+					ret = value;
+					break;
+				}
 			}
 			br.close();
 		}

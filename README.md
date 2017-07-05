@@ -97,4 +97,6 @@ This will install ```libsimplereedssheppcarplanner.so``` in your ```/usr/local/l
 
 A simple example showing how to invoke the motion planner is provided by class ```TestReedsSheppCarPlanner``` in package ```se.oru.coordination.coordination_oru.motionplanning.tests```.
 
-Please see the example ```TestTrajectoryEnvelopeCoordinatorWithMotionPlanner``` in package ```se.oru.coordination.coordination_oru.tests``` for how to use the path planner with coordination.
+Please see the example ```TestTrajectoryEnvelopeCoordinatorWithMotionPlanner``` in package ```se.oru.coordination.coordination_oru.tests``` for how to use the path planner with coordination (screenshot shown below).
+
+![alt text](images/coord-rsp.png "Coordination with the ReedsSheppCarPlanner")
