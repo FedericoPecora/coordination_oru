@@ -6,12 +6,16 @@ import java.util.Calendar;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.logging.Logger;
 
+import org.jgrapht.alg.cycle.JohnsonSimpleCycles;
+import org.jgrapht.graph.DirectedMultigraph;
 import org.metacsp.framework.Constraint;
+import org.metacsp.framework.Variable;
 import org.metacsp.meta.spatioTemporal.paths.Map;
 import org.metacsp.multi.allenInterval.AllenIntervalConstraint;
 import org.metacsp.multi.spatial.DE9IM.GeometricShapeDomain;
@@ -26,6 +30,8 @@ import org.metacsp.utility.logging.MetaCSPLogging;
 
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
+
+import edu.uci.ics.jung.graph.DirectedSparseMultigraph;
 
 /**
  * This class provides coordination for a fleet of robots. An instantiatable {@link TrajectoryEnvelopeCoordinator}
@@ -297,6 +303,63 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		stoppingPointTimers.put(robotID,stoppingPointTimer);		
 	}
 	
+	// Deadlock:
+	// R1-x/R2-y
+	// R2-z/R1-w               --> deadlock iff (x<w and z<y)
+	// 
+	// R1-x1/R2-x2
+	// R2-x3/R3-x4
+	// R3-x5/R4-x6
+	// ...
+	// Rj-x(2j-1)/R(j+1)-x(2j)
+	// ...
+	// Rn-x(2n-1)/R1-x(2n)     --> deadlock iff xi x(i+1) forall i in [1..n]
+	
+	
+	private void findCycles() {
+		DirectedMultigraph<Integer,Dependency> g = new DirectedMultigraph<Integer, Dependency>(Dependency.class);
+		for (Dependency dep : currentDependencies) {
+			if (!g.containsVertex(dep.getWaitingRobotID())) g.addVertex(dep.getWaitingRobotID());
+			if (!g.containsVertex(dep.getDrivingRobotID())) g.addVertex(dep.getDrivingRobotID());
+			g.addEdge(dep.getWaitingRobotID(), dep.getDrivingRobotID(), dep);
+		}
+		JohnsonSimpleCycles<Integer, Dependency> cycleFinder = new JohnsonSimpleCycles<Integer, Dependency>(g);
+		List<List<Integer>> cycles = cycleFinder.findSimpleCycles();
+		for (List<Integer> cycle : cycles) {
+			ArrayList<ArrayList<Dependency>> edgesAlongCycle = new ArrayList<ArrayList<Dependency>>();
+			for (int i = 0; i < cycle.size(); i++) {
+				if (i < cycle.size()-1) {
+					edgesAlongCycle.add(new ArrayList<Dependency>(g.getAllEdges(cycle.get(i), cycle.get(i+1))));
+				}
+				else {
+					edgesAlongCycle.add(new ArrayList<Dependency>(g.getAllEdges(cycle.get(i), cycle.get(0))));
+				}
+			}
+
+			for (int i = 0; i < edgesAlongCycle.size()-1; i++) {
+				boolean safe = true;
+				for (Dependency dep1 : edgesAlongCycle.get(i)) {
+					for (Dependency dep2 : edgesAlongCycle.get(i+1)) {
+						if (unsafePair(dep1, dep2)) {
+							safe = false;
+						}
+					}
+				}
+				if (safe) {
+					System.out.println("Cycle: " + edgesAlongCycle + " is SAFE");
+					break;
+				}
+				if (i == edgesAlongCycle.size()-2) System.out.println("Cycle: " + edgesAlongCycle + " is NOT SAFE");
+			}
+			
+		}
+	}
+	
+	private boolean unsafePair(Dependency dep1, Dependency dep2) {
+		if (dep1.getWaitingPoint() < dep2.getReleasingPoint()) return true;
+		return false;
+	}
+	
 	//Update and set the critical points
 	protected void updateDependencies() {
 
@@ -483,6 +546,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					currentDependencies.add(firstDep);
 				}
 			}
+			findCycles();
 		}
 	}
 	

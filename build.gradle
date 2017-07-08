@@ -32,6 +32,7 @@ dependencies {
   compile 'org.metacsp:meta-csp-framework:1.2.9'
   //compile 'org.metacsp:meta-csp-framework:0.0.0-SNAPSHOT'
   compile 'net.java.dev.jna:jna:4.4.0'
+  compile 'org.jgrapht:jgrapht-core:1.0.1'
 
   // Add the following if you need to include jars that are not
   // in Maven Central and that you have places in the directory "lib"
