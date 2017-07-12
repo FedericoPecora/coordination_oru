@@ -31,11 +31,11 @@ public class ReedsSheppCarPlanner {
 	private double robotRadius = 1.0;
 	private Pose start = null;
 	private Pose goal = null;
-	private PathPose[] pathPoses = null;
 	private PointerByReference path = null;
 	private IntByReference pathLength = null;
 	private int numInterpolationPoints = 0;
 	private double turningRadius = 1.0;
+	private PoseSteering[] pathPS = null;
 
 	public ReedsSheppCarPlanner() {
 		deleteDir(new File(TEMP_MAP_DIR));
@@ -102,12 +102,7 @@ public class ReedsSheppCarPlanner {
 	}
 
 	public PoseSteering[] getPath() {
-		if (path == null) return null;
-		PoseSteering[] ps = new PoseSteering[pathPoses.length];
-		for (int i = 0; i < pathPoses.length; i++) {
-			ps[i] = new PoseSteering(pathPoses[i].x, pathPoses[i].y, pathPoses[i].theta, 0.0);
-		}
-		return ps;
+		return this.pathPS;
 	}
 
 	public boolean plan() {
@@ -118,7 +113,11 @@ public class ReedsSheppCarPlanner {
 			final PathPose valsRef = new PathPose(pathVals);
 			valsRef.read();
 			int numVals = pathLength.getValue();
-			pathPoses = (PathPose[])valsRef.toArray(numVals);
+			PathPose[] pathPoses = (PathPose[])valsRef.toArray(numVals);
+			pathPS = new PoseSteering[pathPoses.length];
+			for (int i = 0; i < pathPoses.length; i++) {
+				pathPS[i] = new PoseSteering(pathPoses[i].x, pathPoses[i].y, pathPoses[i].theta, 0.0);
+			}
 			ReedsSheppCarPlannerLib.INSTANCE.cleanupPath(pathVals);
 			return true;
 		}
