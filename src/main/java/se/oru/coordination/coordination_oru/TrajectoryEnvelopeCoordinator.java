@@ -524,7 +524,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 					//Compute waiting path index point for waiting robot
 					int waitingPoint = getCriticalPoint(drivingTE, waitingTE, drivingCurrentIndex, drivingCSStart, drivingCSEnd, waitingCSStart);
-					//int waitingPoint = waitingCSStart;
+					//int waitingPoint = Math.max(0,waitingCSStart-1);
 					if (waitingPoint >= 0) {		
 						//Make new dependency
 						//Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCurrentIndex+1, waitingTracker, drivingTracker);

@@ -1,5 +1,6 @@
 package se.oru.coordination.coordination_oru.tests;
 
+import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -10,6 +11,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Random;
 import java.util.logging.Logger;
+
+import javax.imageio.ImageIO;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
@@ -91,36 +94,47 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner4 {
 
 		//Instantiate a simple motion planner
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-		rsp.setMapFilename("maps"+File.separator+getProperty("image", yamlFile));
+		String mapFile = "maps"+File.separator+getProperty("image", yamlFile);
+		rsp.setMapFilename(mapFile);
 		double res = Double.parseDouble(getProperty("resolution", yamlFile));
 		rsp.setMapResolution(res);
 		rsp.setRobotRadius(1.1);
 		rsp.setTurningRadius(4.0);
 		rsp.setNumInterpolationPoints(100);
-		double height = 1.5;
+		double deltaY = 3;
+		double height = deltaY/2;
+		double mapHeight = -1;
 		
-		int[] robotIDs = new int[] {1,2,3,4};
+		try {
+			BufferedImage img = ImageIO.read(new File(mapFile));
+			mapHeight = img.getHeight()*res*0.9;
+			System.out.println("mapHeight = " + mapHeight);
+		}
+		catch (IOException e) { e.printStackTrace(); }
+
+		
+		int[] robotIDs = new int[] {1,2,3,4,5,6,7,8,9,10,11,12};
 		for (int index = 0; index < robotIDs.length; index++) {
 			int robotID = robotIDs[index];
 			ArrayList<Pose> posesRobot = new ArrayList<Pose>();
 			//if (index%2==0) {
 			if (robotID%2==0) {
-				posesRobot.add(new Pose(2.0,10.0-height*index,0.0));
-				posesRobot.add(new Pose(10.0,13.0-height*index,0.0));
-				posesRobot.add(new Pose(18.0,10.0-height*index,0.0));
-				posesRobot.add(new Pose(26.0,13.0-height*index,0.0));
-				posesRobot.add(new Pose(34.0,10.0-height*index,0.0));
-				posesRobot.add(new Pose(42.0,13.0-height*index,0.0));
-				posesRobot.add(new Pose(50.0,10.0-height*index,0.0));				
+				posesRobot.add(new Pose(2.0,mapHeight-deltaY-height*index,0.0));
+				posesRobot.add(new Pose(10.0,mapHeight-height*index,0.0));
+				posesRobot.add(new Pose(18.0,mapHeight-deltaY-height*index,0.0));
+				posesRobot.add(new Pose(26.0,mapHeight-height*index,0.0));
+				posesRobot.add(new Pose(34.0,mapHeight-deltaY-height*index,0.0));
+				posesRobot.add(new Pose(42.0,mapHeight-height*index,0.0));
+				posesRobot.add(new Pose(50.0,mapHeight-deltaY-height*index,0.0));
 			}
 			else {
-				posesRobot.add(new Pose(50.0,13.0-height*(index-1),Math.PI));
-				posesRobot.add(new Pose(42.0,10.0-height*(index-1),Math.PI));
-				posesRobot.add(new Pose(34.0,13.0-height*(index-1),Math.PI));
-				posesRobot.add(new Pose(26.0,10.0-height*(index-1),Math.PI));
-				posesRobot.add(new Pose(18.0,13.0-height*(index-1),Math.PI));
-				posesRobot.add(new Pose(10.0,10.0-height*(index-1),Math.PI));
-				posesRobot.add(new Pose(2.0,13.0-height*(index-1),Math.PI));
+				posesRobot.add(new Pose(50.0,mapHeight-height*(index-1),Math.PI));
+				posesRobot.add(new Pose(42.0,mapHeight-deltaY-height*(index-1),Math.PI));
+				posesRobot.add(new Pose(34.0,mapHeight-height*(index-1),Math.PI));
+				posesRobot.add(new Pose(26.0,mapHeight-deltaY-height*(index-1),Math.PI));
+				posesRobot.add(new Pose(18.0,mapHeight-height*(index-1),Math.PI));
+				posesRobot.add(new Pose(10.0,mapHeight-deltaY-height*(index-1),Math.PI));
+				posesRobot.add(new Pose(2.0,mapHeight-height*(index-1),Math.PI));
 			}
 			tec.placeRobot(robotID, posesRobot.get(0));
 			ArrayList<PoseSteering> pathsRobot = new ArrayList<PoseSteering>();
