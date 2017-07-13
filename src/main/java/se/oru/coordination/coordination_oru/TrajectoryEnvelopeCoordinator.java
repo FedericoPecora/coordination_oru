@@ -30,6 +30,8 @@ import org.metacsp.utility.logging.MetaCSPLogging;
 
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryCollection;
+import com.vividsolutions.jts.geom.MultiPolygon;
 
 import edu.uci.ics.jung.graph.DirectedSparseMultigraph;
 
@@ -419,7 +421,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						metaCSPLogger.finest("OBSOLETE critical section\n\t" + cs);
 						continue;
 					}
-					//Neither robot has reached the critical section --> random (robot 1 waits)
+					//Neither robot has reached the critical section --> closest robot leads
 					else if (robotReport1.getPathIndex() < cs.getTe1Start() && robotReport2.getPathIndex() < cs.getTe2Start()) {
 						
 						Dependency previousDep = criticalSectionsToDeps.get(cs);
@@ -431,6 +433,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 								drivingTE = cs.getTe2();
 								waitingCSStart = cs.getTe1Start();
 								drivingCSStart = cs.getTe2Start();
+								waitingCSEnd = cs.getTe1End();
+								drivingCSEnd = cs.getTe2End();
 							}
 							else {
 								waitingCurrentIndex = robotReport2.getPathIndex();
@@ -439,6 +443,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 								drivingTE = cs.getTe1();
 								waitingCSStart = cs.getTe2Start();
 								drivingCSStart = cs.getTe1Start();
+								waitingCSEnd = cs.getTe2End();
+								drivingCSEnd = cs.getTe1End();
 							}
 							metaCSPLogger.finest("R1 (OUT) / R2 (OUT) --> reusing previous ordering\n\t" + cs);
 						}
@@ -483,6 +489,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					//Both robots in critical section --> re-impose previously decided dependency
 					else {
 						Dependency previousDep = criticalSectionsToDeps.get(cs);
+						//A previous dep must exist because we assume robots cannot start both within the same critical section
 						if (previousDep == null) {
 							metaCSPLogger.severe("Could not coordinate at critical section " + cs);
 							throw new Error("Could not coordinate at critical section " + cs);
@@ -494,6 +501,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							drivingTE = cs.getTe2();
 							waitingCSStart = cs.getTe1Start();
 							drivingCSStart = cs.getTe2Start();
+							waitingCSEnd = cs.getTe1End();
+							drivingCSEnd = cs.getTe2End();
 						}
 						else {
 							waitingCurrentIndex = robotReport2.getPathIndex();
@@ -502,6 +511,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							drivingTE = cs.getTe1();
 							waitingCSStart = cs.getTe2Start();
 							drivingCSStart = cs.getTe1Start();
+							waitingCSEnd = cs.getTe2End();
+							drivingCSEnd = cs.getTe1End();
 						}
 						metaCSPLogger.finest("R1 (IN) / R2 (IN) critical section: " + cs);
 					}
@@ -513,9 +524,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 					//Compute waiting path index point for waiting robot
 					int waitingPoint = getCriticalPoint(drivingTE, waitingTE, drivingCurrentIndex, drivingCSStart, drivingCSEnd, waitingCSStart);
+					//int waitingPoint = waitingCSStart;
 					if (waitingPoint >= 0) {		
 						//Make new dependency
-						Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCurrentIndex+1, waitingTracker, drivingTracker);
+						//Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCurrentIndex+1, waitingTracker, drivingTracker);
+						Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd, waitingTracker, drivingTracker);
 						if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
 						currentDeps.get(waitingRobotID).add(dep);
 						criticalSectionsToDeps.put(cs, dep);
@@ -598,54 +611,51 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	}
 
 	protected CriticalSection[] getCriticalSections(TrajectoryEnvelope te1, TrajectoryEnvelope te2) {
-		
 		GeometricShapeVariable poly1 = te1.getEnvelopeVariable();
 		GeometricShapeVariable poly2 = te2.getEnvelopeVariable();
 		Geometry shape1 = ((GeometricShapeDomain)poly1.getDomain()).getGeometry();
 		Geometry shape2 = ((GeometricShapeDomain)poly2.getDomain()).getGeometry();
 		ArrayList<CriticalSection> css = new ArrayList<CriticalSection>();
 		if (shape1.intersects(shape2)) {
-			//Geometry intersection = shape1.intersection(shape2);
 			PoseSteering[] path1 = te1.getTrajectory().getPoseSteering();
 			PoseSteering[] path2 = te2.getTrajectory().getPoseSteering();
-			boolean started = false;
 			int te1Start = -1;
 			int te2Start = -1;
 			int te1End = -1;
 			int te2End = -1;
-			for (int i = 0; i < path1.length; i++) {
-				Geometry placement1 = te1.makeFootprint(path1[i]);
-				if (!started && placement1.intersects(shape2)) {
-					for (int j = 0; j < path2.length; j++) {
-						Geometry placement2 = te2.makeFootprint(path2[j]);
-						if (placement2.intersects(placement1)) {
-							started = true;
-							//Critical Section start: (i, j)
-							te1Start = i;
-							te2Start = j;
-							break;
-						}
-					}					
-				}
-				else if (started && !placement1.intersects(shape2)) {
-					started = false;
-					for (int j = te2Start; j < path2.length; j++) {
-						Geometry placement2 = te2.makeFootprint(path2[j]);
-						if (!placement2.intersects(shape1)) {
-							//Critical Section end: (i, j)
-							te1End = i;
-							te2End = j;
-							CriticalSection oneCS = new CriticalSection(te1, te2, te1Start, te2Start, te1End, te2End);
-							css.add(oneCS);
-							break;
-						}
+			Geometry gc = shape1.intersection(shape2);
+			for (int i = 0; i < gc.getNumGeometries(); i++) {
+				Geometry g = gc.getGeometryN(i);
+				boolean started = false;
+				for (int j = 0; j < path1.length; j++) {
+					Geometry placement1 = te1.makeFootprint(path1[j]);
+					if (!started && placement1.intersects(g)) {
+						started = true;
+						te1Start = j;
+					}
+					else if (started && !placement1.intersects(g)) {
+						te1End = j;
+						break;
+					}
+					if (j == path1.length-1) {
+						te1End = path1.length-1;						
 					}
 				}
-			}
-			if (started) {
-				te1End = path1.length-1;
-				te2End = path2.length-1;
 				started = false;
+				for (int j = 0; j < path2.length; j++) {
+					Geometry placement2 = te2.makeFootprint(path2[j]);
+					if (!started && placement2.intersects(g)) {
+						started = true;
+						te2Start = j;
+					}
+					else if (started && !placement2.intersects(g)) {
+						te2End = j;
+						break;
+					}
+					if (j == path2.length-1) {
+						te2End = path2.length-1;						
+					}
+				}
 				CriticalSection oneCS = new CriticalSection(te1, te2, te1Start, te2Start, te1End, te2End);
 				css.add(oneCS);
 			}
