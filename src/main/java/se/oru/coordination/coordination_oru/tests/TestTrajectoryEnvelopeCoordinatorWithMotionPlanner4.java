@@ -108,12 +108,11 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner4 {
 		try {
 			BufferedImage img = ImageIO.read(new File(mapFile));
 			mapHeight = img.getHeight()*res*0.9;
-			System.out.println("mapHeight = " + mapHeight);
 		}
 		catch (IOException e) { e.printStackTrace(); }
 
 		
-		int[] robotIDs = new int[] {1,2,3,4,5,6,7,8,9,10,11,12};
+		int[] robotIDs = new int[] {1,2,3,4};
 		for (int index = 0; index < robotIDs.length; index++) {
 			int robotID = robotIDs[index];
 			ArrayList<Pose> posesRobot = new ArrayList<Pose>();
