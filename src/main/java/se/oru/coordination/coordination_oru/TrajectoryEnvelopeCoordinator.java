@@ -3,6 +3,7 @@ package se.oru.coordination.coordination_oru;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -306,16 +307,17 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	}
 	
 	// Deadlock:
-	// R1-x/R2-y
-	// R2-z/R1-w               --> deadlock iff (x<w and z<y)
+	//  R1-x/R2-y
+	//  R2-z/R1-w 
+	// (R1-x/R2-y)              --> deadlock iff (x<w and z<y)
 	// 
-	// R1-x1/R2-x2
-	// R2-x3/R3-x4
-	// R3-x5/R4-x6
-	// ...
-	// Rj-x(2j-1)/R(j+1)-x(2j)
-	// ...
-	// Rn-x(2n-1)/R1-x(2n)     --> deadlock iff xi x(i+1) forall i in [1..n]
+	//  R1-x1/R2-x2
+	//  R2-x3/R3-x4
+	//  R3-x5/R4-x6
+	//  ...
+	//  Rj-x(2j-1)/R(j+1)-x(2j)
+	//  ...
+	//  Rn-x(2n-1)/R1-x(2n)     --> deadlock iff xi x(i+1) forall i in [1..n]
 	
 	
 	private void findCycles() {
@@ -329,6 +331,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		List<List<Integer>> cycles = cycleFinder.findSimpleCycles();
 		for (List<Integer> cycle : cycles) {
 			ArrayList<ArrayList<Dependency>> edgesAlongCycle = new ArrayList<ArrayList<Dependency>>();
+			Collections.reverse(cycle);
 			for (int i = 0; i < cycle.size(); i++) {
 				if (i < cycle.size()-1) {
 					edgesAlongCycle.add(new ArrayList<Dependency>(g.getAllEdges(cycle.get(i), cycle.get(i+1))));
@@ -358,7 +361,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	}
 	
 	private boolean unsafePair(Dependency dep1, Dependency dep2) {
-		if (dep1.getWaitingPoint() < dep2.getReleasingPoint()) return true;
+		if (dep2.getWaitingPoint() < dep1.getReleasingPoint()) return true;
 		return false;
 	}
 	
@@ -423,10 +426,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					}
 					//Neither robot has reached the critical section --> closest robot leads
 					else if (robotReport1.getPathIndex() < cs.getTe1Start() && robotReport2.getPathIndex() < cs.getTe2Start()) {
-						
-						Dependency previousDep = criticalSectionsToDeps.get(cs);
-						if (previousDep != null) {
-							if (previousDep.getWaitingRobotID() == robotTracker1.getTrajectoryEnvelope().getRobotID()) {
+						if (getOrdering() != null) {
+							if (getOrdering().compare(cs.getTe1(), cs.getTe2()) > 0) {
 								waitingCurrentIndex = robotReport1.getPathIndex();
 								drivingCurrentIndex = robotReport2.getPathIndex();
 								waitingTE = cs.getTe1();
@@ -434,7 +435,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 								waitingCSStart = cs.getTe1Start();
 								drivingCSStart = cs.getTe2Start();
 								waitingCSEnd = cs.getTe1End();
-								drivingCSEnd = cs.getTe2End();
+								drivingCSEnd = cs.getTe2End();															
 							}
 							else {
 								waitingCurrentIndex = robotReport2.getPathIndex();
@@ -446,19 +447,44 @@ public abstract class TrajectoryEnvelopeCoordinator {
 								waitingCSEnd = cs.getTe2End();
 								drivingCSEnd = cs.getTe1End();
 							}
-							metaCSPLogger.finest("R1 (OUT) / R2 (OUT) --> reusing previous ordering\n\t" + cs);
 						}
 						else {
-							boolean robot2Closest = ((cs.getTe2Start()-robotReport2.getPathIndex()) < (cs.getTe1Start()-robotReport1.getPathIndex())); 
-							waitingCurrentIndex = robot2Closest ? robotReport1.getPathIndex() : robotReport2.getPathIndex();
-							drivingCurrentIndex = robot2Closest ? robotReport2.getPathIndex() : robotReport1.getPathIndex();
-							waitingTE = robot2Closest ? cs.getTe1() : cs.getTe2();
-							drivingTE = robot2Closest ? cs.getTe2() : cs.getTe1();
-							waitingCSStart = robot2Closest ? cs.getTe1Start() : cs.getTe2Start();
-							drivingCSStart = robot2Closest ? cs.getTe2Start() : cs.getTe1Start();
-							waitingCSEnd = robot2Closest ? cs.getTe1End() : cs.getTe2End();
-							drivingCSEnd = robot2Closest ? cs.getTe2End() : cs.getTe1End();
-							metaCSPLogger.finest("R1 (OUT) / R2 (OUT) --> " + (robot2Closest ? "R2 > R1" : "R1 > R2") + "\n\t" + cs);
+							Dependency previousDep = criticalSectionsToDeps.get(cs);
+							if (previousDep != null) {
+								if (previousDep.getWaitingRobotID() == robotTracker1.getTrajectoryEnvelope().getRobotID()) {
+									waitingCurrentIndex = robotReport1.getPathIndex();
+									drivingCurrentIndex = robotReport2.getPathIndex();
+									waitingTE = cs.getTe1();
+									drivingTE = cs.getTe2();
+									waitingCSStart = cs.getTe1Start();
+									drivingCSStart = cs.getTe2Start();
+									waitingCSEnd = cs.getTe1End();
+									drivingCSEnd = cs.getTe2End();
+								}
+								else {
+									waitingCurrentIndex = robotReport2.getPathIndex();
+									drivingCurrentIndex = robotReport1.getPathIndex();
+									waitingTE = cs.getTe2();
+									drivingTE = cs.getTe1();
+									waitingCSStart = cs.getTe2Start();
+									drivingCSStart = cs.getTe1Start();
+									waitingCSEnd = cs.getTe2End();
+									drivingCSEnd = cs.getTe1End();
+								}
+								metaCSPLogger.finest("R1 (OUT) / R2 (OUT) --> reusing previous ordering\n\t" + cs);
+							}
+							else {
+								boolean robot2Closest = ((cs.getTe2Start()-robotReport2.getPathIndex()) < (cs.getTe1Start()-robotReport1.getPathIndex())); 
+								waitingCurrentIndex = robot2Closest ? robotReport1.getPathIndex() : robotReport2.getPathIndex();
+								drivingCurrentIndex = robot2Closest ? robotReport2.getPathIndex() : robotReport1.getPathIndex();
+								waitingTE = robot2Closest ? cs.getTe1() : cs.getTe2();
+								drivingTE = robot2Closest ? cs.getTe2() : cs.getTe1();
+								waitingCSStart = robot2Closest ? cs.getTe1Start() : cs.getTe2Start();
+								drivingCSStart = robot2Closest ? cs.getTe2Start() : cs.getTe1Start();
+								waitingCSEnd = robot2Closest ? cs.getTe1End() : cs.getTe2End();
+								drivingCSEnd = robot2Closest ? cs.getTe2End() : cs.getTe1End();
+								metaCSPLogger.finest("R1 (OUT) / R2 (OUT) --> " + (robot2Closest ? "R2 > R1" : "R1 > R2") + "\n\t" + cs);
+							}
 						}
 					}
 					

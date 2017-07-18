@@ -110,7 +110,7 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 							if (dep.getDrivingTracker() != null) {
 								RobotReport rrDriving = dep.getDrivingTracker().getRobotReport();
 								String arrowIdentifier = "_"+dep.getWaitingRobotID()+"-"+dep.getDrivingRobotID();
-								panel.addArrow(arrowIdentifier, rrWaiting.getPose(), rrDriving.getPose());
+								//panel.addArrow(arrowIdentifier, rrWaiting.getPose(), rrDriving.getPose());
 								//panel.addArrow(arrowIdentifier, dep.getWaitingPose(), dep.getReleasingPose());
 							}
 //							else {
@@ -144,13 +144,7 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	//Criteria according to which envelopes (i.e., the robots that drive them) precede each other
 	@Override
 	public Comparator<TrajectoryEnvelope> getOrdering() {
-		Comparator<TrajectoryEnvelope> comp = new  Comparator<TrajectoryEnvelope>() {
-			@Override
-			public int compare(TrajectoryEnvelope o1, TrajectoryEnvelope o2) {
-				return o1.getRobotID()-o2.getRobotID();
-			}
-		};
-		return comp;
+		return null;
 	}
 
 }
