@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
@@ -21,12 +22,13 @@ import org.metacsp.utility.logging.MetaCSPLogging;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 
+import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeTracker;
 import se.oru.coordination.coordination_oru.Mission;
 import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
 
 public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner3 {
-	
+
 	private static Logger metaCSPLogger = MetaCSPLogging.getLogger(TestTrajectoryEnvelopeCoordinatorWithMotionPlanner3.class);
 	public static HashMap<Integer,ArrayList<Mission>> missions = new HashMap<Integer, ArrayList<Mission>>();
 
@@ -50,28 +52,44 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner3 {
 		catch (IOException e) { e.printStackTrace(); }
 		return ret;
 	}
-	
+
 	//Convenience method to put a mission into a global hashmap
 	private static void putMission(Mission m) {
 		if (!missions.containsKey(m.getRobotID())) missions.put(m.getRobotID(), new ArrayList<Mission>());
 		missions.get(m.getRobotID()).add(m);
 	}
-	
+
 	//Convenience method to get the i-th mission for a given robotID from the global hashmap	
 	private static Mission getMission(int robotID, int missionNumber) {
 		return missions.get(robotID).get(missionNumber);
 	}
-	
+
 	public static void main(String[] args) throws InterruptedException {
-		
+
 		//Some constants used by the trajectory envelope trackers and coordinator:
-		
+
 		//Instantiate a trajectory envelope coordinator.
-		//This requires providing implementations of:
+		//The TrajectoryEnvelopeCoordinatorSimulation implementation provides
 		// -- the factory method getNewTracker() which returns a trajectory envelope tracker (also abstract)
 		// -- the getCurrentTimeInMillis() method, which is used by the coordinator to keep time
+		//You still need to provide the implementation of:
 		// -- the getOrdering() method, which should return a method for prioritizing robots 
-		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(4.0,1.0);
+		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(4.0,1.0)
+		{
+			@Override
+			public Comparator<AbstractTrajectoryEnvelopeTracker> getOrdering() {
+				Comparator<AbstractTrajectoryEnvelopeTracker> comp = new Comparator<AbstractTrajectoryEnvelopeTracker>() {
+					@Override
+					public int compare(AbstractTrajectoryEnvelopeTracker o1, AbstractTrajectoryEnvelopeTracker o2) {
+						if (o2.getRobotReport().getVelocity() > o1.getRobotReport().getVelocity()) return 1;
+						if (o1.getRobotReport().getVelocity() > o2.getRobotReport().getVelocity()) return -1;
+						return 0;
+					}
+				};
+				return comp;
+			}
+		};
+
 		Coordinate footprint1 = new Coordinate(-1.0,0.5);
 		Coordinate footprint2 = new Coordinate(1.0,0.5);
 		Coordinate footprint3 = new Coordinate(1.0,-0.5);
@@ -80,14 +98,14 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner3 {
 
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
-		
+
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		String yamlFile = "maps/map-empty.yaml";
 		tec.setupGUI(yamlFile);
 		//tec.setupGUI(null);
 
 		tec.setUseInternalCriticalPoints(false);
-		
+
 		//MetaCSPLogging.setLevel(tec.getClass().getSuperclass(), Level.FINEST);
 
 		//Instantiate a simple motion planner
@@ -98,7 +116,7 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner3 {
 		rsp.setRobotRadius(1.1);
 		rsp.setTurningRadius(4.0);
 		rsp.setNumInterpolationPoints(100);
-		
+
 		ArrayList<Pose> posesRobot1 = new ArrayList<Pose>();
 		posesRobot1.add(new Pose(2.0,10.0,0.0));
 		posesRobot1.add(new Pose(10.0,13.0,0.0));
@@ -139,7 +157,7 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner3 {
 		ArrayList<PoseSteering> pathsRobot1Inv = new ArrayList<PoseSteering>();
 		pathsRobot1Inv.addAll(pathsRobot1);
 		Collections.reverse(pathsRobot1Inv);
-		
+
 		ArrayList<PoseSteering> pathsRobot2 = new ArrayList<PoseSteering>();
 		for (int i = 0; i < posesRobot2.size()-1; i++) {
 			rsp.setStart(posesRobot2.get(i));
@@ -197,7 +215,7 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner3 {
 			//Start the thread!
 			t.start();
 		}
-				
+
 	}
-	
+
 }

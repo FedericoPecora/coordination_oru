@@ -3,18 +3,22 @@ package se.oru.coordination.coordination_oru.tests;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Scanner;
 import java.util.logging.Logger;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
+import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 import org.metacsp.utility.logging.MetaCSPLogging;
 
+import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeTracker;
 import se.oru.coordination.coordination_oru.Mission;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
+import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeTrackerRK4;
 
 public abstract class TestTrajectoryEnvelopeCoordinatorThreeRobots {
-	
+
 	private static HashMap<String,Pose> locations = new HashMap<String, Pose>();
 	private static HashMap<String,String> paths = new HashMap<String, String>();
 	private static Logger metaCSPLogger = MetaCSPLogging.getLogger(TestTrajectoryEnvelopeCoordinatorThreeRobots.class);
@@ -25,12 +29,12 @@ public abstract class TestTrajectoryEnvelopeCoordinatorThreeRobots {
 		if (!missions.containsKey(m.getRobotID())) missions.put(m.getRobotID(), new ArrayList<Mission>());
 		missions.get(m.getRobotID()).add(m);
 	}
-	
+
 	//Convenience method to get the i-th mission for a given robotID from the global hashmap	
 	private static Mission getMission(int robotID, int missionNumber) {
 		return missions.get(robotID).get(missionNumber);
 	}
-	
+
 	//Load location and path data from a file
 	public static void loadLocationAndPathData(String fileName) {
 		try {
@@ -47,9 +51,9 @@ public abstract class TestTrajectoryEnvelopeCoordinatorThreeRobots {
 					else {
 						String locationName = oneline[0];
 						ps = new Pose(
-							new Double(oneline[1]).doubleValue(),
-							new Double(oneline[2]).doubleValue(),
-							new Double(oneline[3]).doubleValue());
+								new Double(oneline[1]).doubleValue(),
+								new Double(oneline[2]).doubleValue(),
+								new Double(oneline[3]).doubleValue());
 						locations.put(locationName, ps);
 					}
 				}
@@ -65,7 +69,7 @@ public abstract class TestTrajectoryEnvelopeCoordinatorThreeRobots {
 		if (ret == null) throw new Error("Unknown location " + name);
 		return ret;
 	}
-	
+
 	//Convenience method to get path files from the data loaded by method loadLocationAndPathData()
 	public static String getPathFile(String fromLocation, String toLocation) {
 		String ret = paths.get(fromLocation+"->"+toLocation);
@@ -74,27 +78,42 @@ public abstract class TestTrajectoryEnvelopeCoordinatorThreeRobots {
 		if (ret == null) throw new Error("No path between " + fromLocation + " and " + toLocation);
 		return ret;
 	}
-	
+
 
 
 	public static void main(String[] args) throws InterruptedException {
-				
+
 		//Instantiate a trajectory envelope coordinator.
-		//This requires providing implementations of:
+		//The TrajectoryEnvelopeCoordinatorSimulation implementation provides
 		// -- the factory method getNewTracker() which returns a trajectory envelope tracker (also abstract)
 		// -- the getCurrentTimeInMillis() method, which is used by the coordinator to keep time
+		//You still need to provide the implementation of:
 		// -- the getOrdering() method, which should return a method for prioritizing robots 
-		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation();
+		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(4.0,1.0)
+		{
+			@Override
+			public Comparator<AbstractTrajectoryEnvelopeTracker> getOrdering() {
+				Comparator<AbstractTrajectoryEnvelopeTracker> comp = new Comparator<AbstractTrajectoryEnvelopeTracker>() {
+					@Override
+					public int compare(AbstractTrajectoryEnvelopeTracker o1, AbstractTrajectoryEnvelopeTracker o2) {
+						if (o2.getRobotReport().getVelocity() > o1.getRobotReport().getVelocity()) return 1;
+						if (o1.getRobotReport().getVelocity() > o2.getRobotReport().getVelocity()) return -1;
+						return 0;
+					}
+				};
+				return comp;
+			}
+		};
 
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
-		
+
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		tec.setupGUI(null);
 
 		//Load data file with locations and pointers to files containing paths between locations
 		loadLocationAndPathData("paths/test_poses_and_path_data.txt");
-		
+
 		//Place robots in their initial locations (looked up in the data file that was loaded above)
 		// -- creates a trajectory envelope for each location, representing the fact that the robot is parked
 		// -- each trajectory envelope has a path of one pose (the pose of the location)
@@ -147,7 +166,7 @@ public abstract class TestTrajectoryEnvelopeCoordinatorThreeRobots {
 			//Start the thread!
 			t.start();
 		}
-				
+
 	}
-	
+
 }

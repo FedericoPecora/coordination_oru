@@ -20,6 +20,7 @@ import org.metacsp.utility.logging.MetaCSPLogging;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 
+import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeTracker;
 import se.oru.coordination.coordination_oru.Mission;
 import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
@@ -66,23 +67,24 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner6 {
 		//Some constants used by the trajectory envelope trackers and coordinator:
 		
 		//Instantiate a trajectory envelope coordinator.
-		//This requires providing implementations of:
+		//The TrajectoryEnvelopeCoordinatorSimulation implementation provides
 		// -- the factory method getNewTracker() which returns a trajectory envelope tracker (also abstract)
 		// -- the getCurrentTimeInMillis() method, which is used by the coordinator to keep time
+		//You still need to provide the implementation of:
 		// -- the getOrdering() method, which should return a method for prioritizing robots 
 		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(4.0,1.0)
 		{
 			@Override
-			public Comparator<TrajectoryEnvelope> getOrdering() {
-				Comparator<TrajectoryEnvelope> comp = new Comparator<TrajectoryEnvelope>() {
+			public Comparator<AbstractTrajectoryEnvelopeTracker> getOrdering() {
+				Comparator<AbstractTrajectoryEnvelopeTracker> comp = new Comparator<AbstractTrajectoryEnvelopeTracker>() {
 					@Override
-					public int compare(TrajectoryEnvelope o1, TrajectoryEnvelope o2) {
-						if (o1.getRobotID() == 1 && o2.getRobotID() == 2) return -1;
-						if (o1.getRobotID() == 2 && o2.getRobotID() == 1) return 1;
-						if (o1.getRobotID() == 1 && o2.getRobotID() == 3) return 1;
-						if (o1.getRobotID() == 3 && o2.getRobotID() == 1) return -1;
-						if (o1.getRobotID() == 2 && o2.getRobotID() == 3) return -1;
-						if (o1.getRobotID() == 3 && o2.getRobotID() == 2) return 1;
+					public int compare(AbstractTrajectoryEnvelopeTracker o1, AbstractTrajectoryEnvelopeTracker o2) {
+						if (o1.getTrajectoryEnvelope().getRobotID() == 1 && o2.getTrajectoryEnvelope().getRobotID() == 2) return -1;
+						if (o1.getTrajectoryEnvelope().getRobotID() == 2 && o2.getTrajectoryEnvelope().getRobotID() == 1) return 1;
+						if (o1.getTrajectoryEnvelope().getRobotID() == 1 && o2.getTrajectoryEnvelope().getRobotID() == 3) return 1;
+						if (o1.getTrajectoryEnvelope().getRobotID() == 3 && o2.getTrajectoryEnvelope().getRobotID() == 1) return -1;
+						if (o1.getTrajectoryEnvelope().getRobotID() == 2 && o2.getTrajectoryEnvelope().getRobotID() == 3) return -1;
+						if (o1.getTrajectoryEnvelope().getRobotID() == 3 && o2.getTrajectoryEnvelope().getRobotID() == 2) return 1;
 						return 0;
 					}
 				};

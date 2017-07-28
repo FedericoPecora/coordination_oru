@@ -309,7 +309,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	// Deadlock:
 	//  R1-x/R2-y
 	//  R2-z/R1-w 
-	// (R1-x/R2-y)              --> deadlock iff (x<w and z<y)
+	// (R1-x/R2-y)              --> deadlock iff (y>z AND w>x)
 	// 
 	//  R1-x1/R2-x2
 	//  R2-x3/R3-x4
@@ -317,7 +317,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	//  ...
 	//  Rj-x(2j-1)/R(j+1)-x(2j)
 	//  ...
-	//  Rn-x(2n-1)/R1-x(2n)     --> deadlock iff xi x(i+1) forall i in [1..n]
+	//  Rn-x(2n-1)/R1-x(2n)     
+	// (R1-x1/R2-x2)            --> deadlock iff x(2j)>x(2j+1) forall j in [1..n] AND x(2n)>x1
 	
 	
 	private void findCycles() {
@@ -341,6 +342,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				}
 			}
 
+			
 			for (int i = 0; i < edgesAlongCycle.size()-1; i++) {
 				boolean safe = true;
 				for (Dependency dep1 : edgesAlongCycle.get(i)) {
@@ -351,10 +353,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					}
 				}
 				if (safe) {
-					System.out.println("Cycle: " + edgesAlongCycle + " is SAFE");
+					System.out.println("Cycle: " + edgesAlongCycle + " is deadlock-free");
 					break;
 				}
-				if (i == edgesAlongCycle.size()-2) System.out.println("Cycle: " + edgesAlongCycle + " is NOT SAFE");
+				if (i == edgesAlongCycle.size()-2) System.out.println("Cycle: " + edgesAlongCycle + " is NOT deadlock-free");
 			}
 			
 		}
@@ -424,10 +426,36 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						metaCSPLogger.finest("OBSOLETE critical section\n\t" + cs);
 						continue;
 					}
-					//Neither robot has reached the critical section --> closest robot leads
+					//Neither robot has reached the critical section --> follow ordering or closest robot if ordering = null
 					else if (robotReport1.getPathIndex() < cs.getTe1Start() && robotReport2.getPathIndex() < cs.getTe2Start()) {
-						if (getOrdering() != null) {
-							if (getOrdering().compare(cs.getTe1(), cs.getTe2()) > 0) {
+						
+						Dependency previousDep = criticalSectionsToDeps.get(cs);
+						if (previousDep != null) {
+							if (previousDep.getWaitingRobotID() == robotTracker1.getTrajectoryEnvelope().getRobotID()) {
+								waitingCurrentIndex = robotReport1.getPathIndex();
+								drivingCurrentIndex = robotReport2.getPathIndex();
+								waitingTE = cs.getTe1();
+								drivingTE = cs.getTe2();
+								waitingCSStart = cs.getTe1Start();
+								drivingCSStart = cs.getTe2Start();
+								waitingCSEnd = cs.getTe1End();
+								drivingCSEnd = cs.getTe2End();
+							}
+							else {
+								waitingCurrentIndex = robotReport2.getPathIndex();
+								drivingCurrentIndex = robotReport1.getPathIndex();
+								waitingTE = cs.getTe2();
+								drivingTE = cs.getTe1();
+								waitingCSStart = cs.getTe2Start();
+								drivingCSStart = cs.getTe1Start();
+								waitingCSEnd = cs.getTe2End();
+								drivingCSEnd = cs.getTe1End();
+							}
+							metaCSPLogger.finest("R1 (OUT) / R2 (OUT) --> reusing previous ordering\n\t" + cs);
+						}
+
+						else if (getOrdering() != null) {
+							if (getOrdering().compare(robotTracker1, robotTracker2) > 0) {
 								waitingCurrentIndex = robotReport1.getPathIndex();
 								drivingCurrentIndex = robotReport2.getPathIndex();
 								waitingTE = cs.getTe1();
@@ -448,43 +476,18 @@ public abstract class TrajectoryEnvelopeCoordinator {
 								drivingCSEnd = cs.getTe1End();
 							}
 						}
+						
 						else {
-							Dependency previousDep = criticalSectionsToDeps.get(cs);
-							if (previousDep != null) {
-								if (previousDep.getWaitingRobotID() == robotTracker1.getTrajectoryEnvelope().getRobotID()) {
-									waitingCurrentIndex = robotReport1.getPathIndex();
-									drivingCurrentIndex = robotReport2.getPathIndex();
-									waitingTE = cs.getTe1();
-									drivingTE = cs.getTe2();
-									waitingCSStart = cs.getTe1Start();
-									drivingCSStart = cs.getTe2Start();
-									waitingCSEnd = cs.getTe1End();
-									drivingCSEnd = cs.getTe2End();
-								}
-								else {
-									waitingCurrentIndex = robotReport2.getPathIndex();
-									drivingCurrentIndex = robotReport1.getPathIndex();
-									waitingTE = cs.getTe2();
-									drivingTE = cs.getTe1();
-									waitingCSStart = cs.getTe2Start();
-									drivingCSStart = cs.getTe1Start();
-									waitingCSEnd = cs.getTe2End();
-									drivingCSEnd = cs.getTe1End();
-								}
-								metaCSPLogger.finest("R1 (OUT) / R2 (OUT) --> reusing previous ordering\n\t" + cs);
-							}
-							else {
-								boolean robot2Closest = ((cs.getTe2Start()-robotReport2.getPathIndex()) < (cs.getTe1Start()-robotReport1.getPathIndex())); 
-								waitingCurrentIndex = robot2Closest ? robotReport1.getPathIndex() : robotReport2.getPathIndex();
-								drivingCurrentIndex = robot2Closest ? robotReport2.getPathIndex() : robotReport1.getPathIndex();
-								waitingTE = robot2Closest ? cs.getTe1() : cs.getTe2();
-								drivingTE = robot2Closest ? cs.getTe2() : cs.getTe1();
-								waitingCSStart = robot2Closest ? cs.getTe1Start() : cs.getTe2Start();
-								drivingCSStart = robot2Closest ? cs.getTe2Start() : cs.getTe1Start();
-								waitingCSEnd = robot2Closest ? cs.getTe1End() : cs.getTe2End();
-								drivingCSEnd = robot2Closest ? cs.getTe2End() : cs.getTe1End();
-								metaCSPLogger.finest("R1 (OUT) / R2 (OUT) --> " + (robot2Closest ? "R2 > R1" : "R1 > R2") + "\n\t" + cs);
-							}
+							boolean robot2Closest = ((cs.getTe2Start()-robotReport2.getPathIndex()) < (cs.getTe1Start()-robotReport1.getPathIndex())); 
+							waitingCurrentIndex = robot2Closest ? robotReport1.getPathIndex() : robotReport2.getPathIndex();
+							drivingCurrentIndex = robot2Closest ? robotReport2.getPathIndex() : robotReport1.getPathIndex();
+							waitingTE = robot2Closest ? cs.getTe1() : cs.getTe2();
+							drivingTE = robot2Closest ? cs.getTe2() : cs.getTe1();
+							waitingCSStart = robot2Closest ? cs.getTe1Start() : cs.getTe2Start();
+							drivingCSStart = robot2Closest ? cs.getTe2Start() : cs.getTe1Start();
+							waitingCSEnd = robot2Closest ? cs.getTe1End() : cs.getTe2End();
+							drivingCSEnd = robot2Closest ? cs.getTe2End() : cs.getTe1End();
+							metaCSPLogger.finest("R1 (OUT) / R2 (OUT) --> " + (robot2Closest ? "R2 > R1" : "R1 > R2") + "\n\t" + cs);
 						}
 					}
 					
@@ -596,7 +599,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 * in one batch. 
 	 * @return A criteria to prioritize robots driving a batch of {@link Mission}s.
 	 */
-	public abstract Comparator<TrajectoryEnvelope> getOrdering();
+	public abstract Comparator<AbstractTrajectoryEnvelopeTracker> getOrdering();
 	
 	/**
 	 * Update the set of current critical sections. This should be called every time

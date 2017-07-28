@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Random;
 import java.util.logging.Logger;
@@ -16,10 +17,12 @@ import javax.imageio.ImageIO;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
+import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 import org.metacsp.utility.logging.MetaCSPLogging;
 
 import com.vividsolutions.jts.geom.Coordinate;
 
+import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeTracker;
 import se.oru.coordination.coordination_oru.Mission;
 import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
@@ -52,28 +55,44 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner4 {
 		catch (IOException e) { e.printStackTrace(); }
 		return ret;
 	}
-	
+
 	//Convenience method to put a mission into a global hashmap
 	private static void putMission(Mission m) {
 		if (!missions.containsKey(m.getRobotID())) missions.put(m.getRobotID(), new ArrayList<Mission>());
 		missions.get(m.getRobotID()).add(m);
 	}
-	
+
 	//Convenience method to get the i-th mission for a given robotID from the global hashmap	
 	private static Mission getMission(int robotID, int missionNumber) {
 		return missions.get(robotID).get(missionNumber);
 	}
-	
+
 	public static void main(String[] args) throws InterruptedException {
-		
+
 		//Some constants used by the trajectory envelope trackers and coordinator:
-		
+
 		//Instantiate a trajectory envelope coordinator.
-		//This requires providing implementations of:
+		//The TrajectoryEnvelopeCoordinatorSimulation implementation provides
 		// -- the factory method getNewTracker() which returns a trajectory envelope tracker (also abstract)
 		// -- the getCurrentTimeInMillis() method, which is used by the coordinator to keep time
+		//You still need to provide the implementation of:
 		// -- the getOrdering() method, which should return a method for prioritizing robots 
-		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(4.0,1.0);
+		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(4.0,1.0)
+		{
+			@Override
+			public Comparator<AbstractTrajectoryEnvelopeTracker> getOrdering() {
+				Comparator<AbstractTrajectoryEnvelopeTracker> comp = new Comparator<AbstractTrajectoryEnvelopeTracker>() {
+					@Override
+					public int compare(AbstractTrajectoryEnvelopeTracker o1, AbstractTrajectoryEnvelopeTracker o2) {
+						if (o2.getRobotReport().getVelocity() > o1.getRobotReport().getVelocity()) return 1;
+						if (o1.getRobotReport().getVelocity() > o2.getRobotReport().getVelocity()) return -1;
+						return 0;
+					}
+				};
+				return comp;
+			}
+		};
+
 		Coordinate footprint1 = new Coordinate(-1.0,0.5);
 		Coordinate footprint2 = new Coordinate(1.0,0.5);
 		Coordinate footprint3 = new Coordinate(1.0,-0.5);
@@ -82,14 +101,14 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner4 {
 
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
-		
+
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		String yamlFile = "maps/map-empty.yaml";
 		tec.setupGUI(yamlFile);
 		//tec.setupGUI(null);
 
 		tec.setUseInternalCriticalPoints(false);
-		
+
 		//MetaCSPLogging.setLevel(tec.getClass().getSuperclass(), Level.FINEST);
 
 		//Instantiate a simple motion planner
@@ -104,14 +123,14 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner4 {
 		double deltaY = 3;
 		double height = deltaY/2;
 		double mapHeight = -1;
-		
+
 		try {
 			BufferedImage img = ImageIO.read(new File(mapFile));
 			mapHeight = img.getHeight()*res*0.9;
 		}
 		catch (IOException e) { e.printStackTrace(); }
 
-		
+
 		int[] robotIDs = new int[] {1,2,3,4};
 		for (int index = 0; index < robotIDs.length; index++) {
 			int robotID = robotIDs[index];
@@ -189,7 +208,7 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner4 {
 			//Start the thread!
 			t.start();
 		}
-				
+
 	}
-	
+
 }

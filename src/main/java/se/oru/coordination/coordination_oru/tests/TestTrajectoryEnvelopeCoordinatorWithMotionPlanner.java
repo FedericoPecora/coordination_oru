@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.logging.Logger;
 
@@ -16,12 +17,13 @@ import org.metacsp.utility.logging.MetaCSPLogging;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 
+import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeTracker;
 import se.oru.coordination.coordination_oru.Mission;
 import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
 
 public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner {
-	
+
 	private static Logger metaCSPLogger = MetaCSPLogging.getLogger(TestTrajectoryEnvelopeCoordinatorWithMotionPlanner.class);
 	public static HashMap<Integer,ArrayList<Mission>> missions = new HashMap<Integer, ArrayList<Mission>>();
 
@@ -45,28 +47,44 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner {
 		catch (IOException e) { e.printStackTrace(); }
 		return ret;
 	}
-	
+
 	//Convenience method to put a mission into a global hashmap
 	private static void putMission(Mission m) {
 		if (!missions.containsKey(m.getRobotID())) missions.put(m.getRobotID(), new ArrayList<Mission>());
 		missions.get(m.getRobotID()).add(m);
 	}
-	
+
 	//Convenience method to get the i-th mission for a given robotID from the global hashmap	
 	private static Mission getMission(int robotID, int missionNumber) {
 		return missions.get(robotID).get(missionNumber);
 	}
-	
+
 	public static void main(String[] args) throws InterruptedException {
-		
+
 		//Some constants used by the trajectory envelope trackers and coordinator:
-		
+
 		//Instantiate a trajectory envelope coordinator.
-		//This requires providing implementations of:
+		//The TrajectoryEnvelopeCoordinatorSimulation implementation provides
 		// -- the factory method getNewTracker() which returns a trajectory envelope tracker (also abstract)
 		// -- the getCurrentTimeInMillis() method, which is used by the coordinator to keep time
+		//You still need to provide the implementation of:
 		// -- the getOrdering() method, which should return a method for prioritizing robots 
-		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(4.0,1.0);
+		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(4.0,1.0)
+		{
+			@Override
+			public Comparator<AbstractTrajectoryEnvelopeTracker> getOrdering() {
+				Comparator<AbstractTrajectoryEnvelopeTracker> comp = new Comparator<AbstractTrajectoryEnvelopeTracker>() {
+					@Override
+					public int compare(AbstractTrajectoryEnvelopeTracker o1, AbstractTrajectoryEnvelopeTracker o2) {
+						if (o2.getRobotReport().getVelocity() > o1.getRobotReport().getVelocity()) return 1;
+						if (o1.getRobotReport().getVelocity() > o2.getRobotReport().getVelocity()) return -1;
+						return 0;
+					}
+				};
+				return comp;
+			}
+		};
+
 		Coordinate footprint1 = new Coordinate(-1.0,0.5);
 		Coordinate footprint2 = new Coordinate(1.0,0.5);
 		Coordinate footprint3 = new Coordinate(1.0,-0.5);
@@ -75,14 +93,14 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner {
 
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
-		
+
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		String yamlFile = "maps/map.yaml";
 		tec.setupGUI(yamlFile);
 		//tec.setupGUI(null);
 
 		tec.setUseInternalCriticalPoints(false);
-		
+
 		//MetaCSPLogging.setLevel(tec.getClass().getSuperclass(), Level.FINEST);
 
 		//Instantiate a simple motion planner
@@ -93,12 +111,12 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner {
 		rsp.setRobotRadius(1.1);
 		rsp.setTurningRadius(4.0);
 		rsp.setNumInterpolationPoints(1000);
-		
+
 		Pose startPoseRobot1 = new Pose(2.0,28.0,0.0);
 		Pose goalPoseRobot1 = new Pose(1.0,1.0,0.0);
 		Pose startPoseRobot2 = new Pose(2.0,38.0,0.0);
 		Pose goalPoseRobot2 = new Pose(2.0,3.0,0.0);
-		
+
 		//Place robots in their initial locations (looked up in the data file that was loaded above)
 		// -- creates a trajectory envelope for each location, representing the fact that the robot is parked
 		// -- each trajectory envelope has a path of one pose (the pose of the location)
@@ -163,7 +181,7 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner {
 			//Start the thread!
 			t.start();
 		}
-				
+
 	}
-	
+
 }
