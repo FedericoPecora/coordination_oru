@@ -72,26 +72,20 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner6 {
 		// -- the getCurrentTimeInMillis() method, which is used by the coordinator to keep time
 		//You still need to provide the implementation of:
 		// -- the getOrdering() method, which should return a method for prioritizing robots 
-		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(4.0,1.0)
-		{
+		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(4.0,1.0);
+		tec.addComparator(new Comparator<AbstractTrajectoryEnvelopeTracker>() {
 			@Override
-			public Comparator<AbstractTrajectoryEnvelopeTracker> getOrdering() {
-				Comparator<AbstractTrajectoryEnvelopeTracker> comp = new Comparator<AbstractTrajectoryEnvelopeTracker>() {
-					@Override
-					public int compare(AbstractTrajectoryEnvelopeTracker o1, AbstractTrajectoryEnvelopeTracker o2) {
-						if (o1.getTrajectoryEnvelope().getRobotID() == 1 && o2.getTrajectoryEnvelope().getRobotID() == 2) return -1;
-						if (o1.getTrajectoryEnvelope().getRobotID() == 2 && o2.getTrajectoryEnvelope().getRobotID() == 1) return 1;
-						if (o1.getTrajectoryEnvelope().getRobotID() == 1 && o2.getTrajectoryEnvelope().getRobotID() == 3) return 1;
-						if (o1.getTrajectoryEnvelope().getRobotID() == 3 && o2.getTrajectoryEnvelope().getRobotID() == 1) return -1;
-						if (o1.getTrajectoryEnvelope().getRobotID() == 2 && o2.getTrajectoryEnvelope().getRobotID() == 3) return -1;
-						if (o1.getTrajectoryEnvelope().getRobotID() == 3 && o2.getTrajectoryEnvelope().getRobotID() == 2) return 1;
-						return 0;
-					}
-				};
-				return comp;
+			public int compare(AbstractTrajectoryEnvelopeTracker o1, AbstractTrajectoryEnvelopeTracker o2) {
+				if (o1.getTrajectoryEnvelope().getRobotID() == 1 && o2.getTrajectoryEnvelope().getRobotID() == 2) return -1;
+				if (o1.getTrajectoryEnvelope().getRobotID() == 2 && o2.getTrajectoryEnvelope().getRobotID() == 1) return 1;
+				if (o1.getTrajectoryEnvelope().getRobotID() == 1 && o2.getTrajectoryEnvelope().getRobotID() == 3) return 1;
+				if (o1.getTrajectoryEnvelope().getRobotID() == 3 && o2.getTrajectoryEnvelope().getRobotID() == 1) return -1;
+				if (o1.getTrajectoryEnvelope().getRobotID() == 2 && o2.getTrajectoryEnvelope().getRobotID() == 3) return -1;
+				if (o1.getTrajectoryEnvelope().getRobotID() == 3 && o2.getTrajectoryEnvelope().getRobotID() == 2) return 1;
+				return 0;
 			}
-		};
-		
+		});
+
 		Coordinate[] ret = new Coordinate[6];		
 		ret[0] = new Coordinate(0.36, 0.0);
 		ret[1] = new Coordinate(0.18, 0.36);

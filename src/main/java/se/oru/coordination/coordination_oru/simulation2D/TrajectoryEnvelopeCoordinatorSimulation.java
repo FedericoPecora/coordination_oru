@@ -141,10 +141,4 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 		return Calendar.getInstance().getTimeInMillis()-START_TIME;
 	}
 
-	//Criteria according to which envelopes (i.e., the robots that drive them) precede each other
-	@Override
-	public Comparator<AbstractTrajectoryEnvelopeTracker> getOrdering() {
-		return null;
-	}
-
 }

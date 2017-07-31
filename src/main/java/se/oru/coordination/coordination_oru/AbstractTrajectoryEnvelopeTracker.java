@@ -233,6 +233,14 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 		}
 	}
 	
+	/**
+	 * Returns <code>true</code> iff tracking has started.
+	 * @return <code>true</code> iff tracking has started.
+	 */
+	public boolean trackingStrated() {
+		return calledStartTracking;
+	}
+	
 	protected void startMonitoringThread() {
 				
 		//Start a thread that monitors the sub-envelopes and finishes them when appropriate

@@ -3,6 +3,7 @@ package se.oru.coordination.coordination_oru;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -13,6 +14,8 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.logging.Logger;
 
+import org.apache.commons.collections.comparators.ComparatorChain;
+import org.apache.commons.collections15.ComparatorUtils;
 import org.jgrapht.alg.cycle.JohnsonSimpleCycles;
 import org.jgrapht.graph.DirectedMultigraph;
 import org.metacsp.framework.Constraint;
@@ -70,6 +73,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected HashMap<AbstractTrajectoryEnvelopeTracker,Integer> communicatedCPs = new HashMap<AbstractTrajectoryEnvelopeTracker, Integer>();
 	
 	protected Map mapMetaConstraint = null;
+	
+	protected ComparatorChain comparators = new ComparatorChain();
 
 	/**
 	 * Create a new {@link TrajectoryEnvelopeCoordinator}, with control period 1000 msec,
@@ -419,16 +424,21 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				RobotReport robotReport1 = robotTracker1.getRobotReport();
 				AbstractTrajectoryEnvelopeTracker robotTracker2 = trackers.get(cs.getTe2().getRobotID());
 				RobotReport robotReport2 = robotTracker2.getRobotReport();
+				
+				//Both robots are driving, let's determine an ordering for them thru this critical section
 				if (!(robotTracker1 instanceof TrajectoryEnvelopeTrackerDummy) && !(robotTracker2 instanceof TrajectoryEnvelopeTrackerDummy)) {
+					
 					//One or both robots past end of the critical section --> critical section is obsolete
 					if (robotReport1.getPathIndex() > cs.getTe1End() || robotReport2.getPathIndex() > cs.getTe2End()) {
 						toRemove.add(cs);
-						metaCSPLogger.finest("OBSOLETE critical section\n\t" + cs);
+						metaCSPLogger.finest("Obsolete critical section\n\t" + cs);
 						continue;
 					}
+					
 					//Neither robot has reached the critical section --> follow ordering or closest robot if ordering = null
 					else if (robotReport1.getPathIndex() < cs.getTe1Start() && robotReport2.getPathIndex() < cs.getTe2Start()) {
-						
+				
+						//We had already decided an order, let's keep it
 						Dependency previousDep = criticalSectionsToDeps.get(cs);
 						if (previousDep != null) {
 							if (previousDep.getWaitingRobotID() == robotTracker1.getTrajectoryEnvelope().getRobotID()) {
@@ -454,8 +464,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							metaCSPLogger.finest("R1 (OUT) / R2 (OUT) --> reusing previous ordering\n\t" + cs);
 						}
 
-						else if (getOrdering() != null) {
-							if (getOrdering().compare(robotTracker1, robotTracker2) > 0) {
+						//Decide an ordering based on the ordering function
+						else if (this.comparators.size() > 0) {
+							if (this.comparators.compare(robotTracker1, robotTracker2) > 0) {
 								waitingCurrentIndex = robotReport1.getPathIndex();
 								drivingCurrentIndex = robotReport2.getPathIndex();
 								waitingTE = cs.getTe1();
@@ -477,6 +488,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							}
 						}
 						
+						//No ordering function, decide an ordering based on distance (closest goes first)
 						else {
 							boolean robot2Closest = ((cs.getTe2Start()-robotReport2.getPathIndex()) < (cs.getTe1Start()-robotReport1.getPathIndex())); 
 							waitingCurrentIndex = robot2Closest ? robotReport1.getPathIndex() : robotReport2.getPathIndex();
@@ -503,6 +515,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						drivingCSEnd = cs.getTe2End();
 						metaCSPLogger.finest("R1 (OUT) / R2 (IN) --> R2 > R1\n\t" + cs);
 					}
+					
 					//Robot 2 has not reached critical section, robot 1 in critical section --> robot 2 waits
 					else if (robotReport1.getPathIndex() >= cs.getTe1Start() && robotReport2.getPathIndex() < cs.getTe2Start()) {
 						waitingCurrentIndex = robotReport2.getPathIndex();
@@ -515,6 +528,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						drivingCSEnd = cs.getTe1End();
 						metaCSPLogger.finest("R1 (IN) / R2 (OUT) --> R1 > R2\n\t" + cs);
 					}
+					
 					//Both robots in critical section --> re-impose previously decided dependency
 					else {
 						Dependency previousDep = criticalSectionsToDeps.get(cs);
@@ -553,10 +567,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 					//Compute waiting path index point for waiting robot
 					int waitingPoint = getCriticalPoint(drivingTE, waitingTE, drivingCurrentIndex, drivingCSStart, drivingCSEnd, waitingCSStart);
-					//int waitingPoint = Math.max(0,waitingCSStart-1);
 					if (waitingPoint >= 0) {		
 						//Make new dependency
-						//Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCurrentIndex+1, waitingTracker, drivingTracker);
 						Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd, waitingTracker, drivingTracker);
 						if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
 						currentDeps.get(waitingRobotID).add(dep);
@@ -592,14 +604,16 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		}
 	}
 	
+	
 	/**
-	 * Defines the criteria with which robots are given priorities. Note that 
-	 * order of adding {@link Mission}s pre-empts the ordering given by this method. In other words,
-	 * this method provides an ordering for robots whose {@link Mission}s were added
-	 * in one batch. 
-	 * @return A criteria to prioritize robots driving a batch of {@link Mission}s.
+	 * Add a criterion for determining the order of robots through critical sections
+	 * (comparator of {@link AbstractTrajectoryEnvelopeTracker}s). 
+	 * Comparators are considered in the order in which they are added.
+	 * @param c A new comparator for determining robot ordering through critical sections.
 	 */
-	public abstract Comparator<AbstractTrajectoryEnvelopeTracker> getOrdering();
+	public void addComparator(Comparator<AbstractTrajectoryEnvelopeTracker> c) {
+		this.comparators.addComparator(c);
+	}
 	
 	/**
 	 * Update the set of current critical sections. This should be called every time

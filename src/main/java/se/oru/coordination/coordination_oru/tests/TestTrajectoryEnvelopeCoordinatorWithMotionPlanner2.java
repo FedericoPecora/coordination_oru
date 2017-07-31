@@ -61,29 +61,21 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner2 {
 
 	public static void main(String[] args) throws InterruptedException {
 
-		//Some constants used by the trajectory envelope trackers and coordinator:
-
 		//Instantiate a trajectory envelope coordinator.
 		//The TrajectoryEnvelopeCoordinatorSimulation implementation provides
 		// -- the factory method getNewTracker() which returns a trajectory envelope tracker (also abstract)
 		// -- the getCurrentTimeInMillis() method, which is used by the coordinator to keep time
 		//You still need to provide the implementation of:
 		// -- the getOrdering() method, which should return a method for prioritizing robots 
-		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(4.0,1.0)
-		{
+		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(4.0,1.0);
+		tec.addComparator(new Comparator<AbstractTrajectoryEnvelopeTracker>() {
 			@Override
-			public Comparator<AbstractTrajectoryEnvelopeTracker> getOrdering() {
-				Comparator<AbstractTrajectoryEnvelopeTracker> comp = new Comparator<AbstractTrajectoryEnvelopeTracker>() {
-					@Override
-					public int compare(AbstractTrajectoryEnvelopeTracker o1, AbstractTrajectoryEnvelopeTracker o2) {
-						if (o2.getRobotReport().getVelocity() > o1.getRobotReport().getVelocity()) return 1;
-						if (o1.getRobotReport().getVelocity() > o2.getRobotReport().getVelocity()) return -1;
-						return 0;
-					}
-				};
-				return comp;
+			public int compare(AbstractTrajectoryEnvelopeTracker o1, AbstractTrajectoryEnvelopeTracker o2) {
+				if (o1.trackingStrated() && o2.trackingStrated()) return 0;
+				if (o1.trackingStrated()) return -1;
+				return 1;
 			}
-		};
+		});
 
 		Coordinate footprint1 = new Coordinate(-1.0,0.5);
 		Coordinate footprint2 = new Coordinate(1.0,0.5);
