@@ -3,7 +3,6 @@ package se.oru.coordination.coordination_oru;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -15,11 +14,9 @@ import java.util.TreeSet;
 import java.util.logging.Logger;
 
 import org.apache.commons.collections.comparators.ComparatorChain;
-import org.apache.commons.collections15.ComparatorUtils;
 import org.jgrapht.alg.cycle.JohnsonSimpleCycles;
 import org.jgrapht.graph.DirectedMultigraph;
 import org.metacsp.framework.Constraint;
-import org.metacsp.framework.Variable;
 import org.metacsp.meta.spatioTemporal.paths.Map;
 import org.metacsp.multi.allenInterval.AllenIntervalConstraint;
 import org.metacsp.multi.spatial.DE9IM.GeometricShapeDomain;
@@ -34,10 +31,6 @@ import org.metacsp.utility.logging.MetaCSPLogging;
 
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.GeometryCollection;
-import com.vividsolutions.jts.geom.MultiPolygon;
-
-import edu.uci.ics.jung.graph.DirectedSparseMultigraph;
 
 /**
  * This class provides coordination for a fleet of robots. An instantiatable {@link TrajectoryEnvelopeCoordinator}
