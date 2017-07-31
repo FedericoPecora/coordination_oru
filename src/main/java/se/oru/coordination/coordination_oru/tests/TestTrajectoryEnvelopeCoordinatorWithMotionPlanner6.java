@@ -70,8 +70,7 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner6 {
 		//The TrajectoryEnvelopeCoordinatorSimulation implementation provides
 		// -- the factory method getNewTracker() which returns a trajectory envelope tracker (also abstract)
 		// -- the getCurrentTimeInMillis() method, which is used by the coordinator to keep time
-		//You still need to provide the implementation of:
-		// -- the getOrdering() method, which should return a method for prioritizing robots 
+		//You still need to add a comparator to determine robot orderings thru critical sections
 		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(4.0,1.0);
 		tec.addComparator(new Comparator<AbstractTrajectoryEnvelopeTracker>() {
 			@Override
