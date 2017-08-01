@@ -44,13 +44,13 @@ $ ./gradlew install
 ```
 
 ## Running an example
-To run an example, issue the following command from the source code root directory:
+A number of examples are provided. Issue the following command from the source code root directory for instructions on how to run the examples:
 ```
 $ ./gradlew run
 ```
-The example continuously posts missions for three robots to reach locations along intersecting paths. The paths are stored in files provided in the ```paths``` directory. The poses of locations and pointers to relevant path files between locations are stored in the self-explanatory ```paths/test_poses_and_path_data.txt``` file.
+In the first demo, ```TestTrajectoryEnvelopeCoordinatorThreeRobots```, missions are continuously posted for three robots to reach locations along intersecting paths. The paths are stored in files provided in the ```paths``` directory. The poses of locations and pointers to relevant path files between locations are stored in the self-explanatory ```paths/test_poses_and_path_data.txt``` file.
 
-Running the above example opens a GUI showing the current state of the three robots.
+Running the examples opens a GUI showing the current state of the three robots. For the first example, the GUI looks like this:
 
 ![alt text](images/coord.png "Coordination GUI")
 
@@ -62,7 +62,7 @@ More detailed information is posted in the terminal. It can be inspected offline
 
 ## The ```SimpleReedsSheppCarPlanner``` motion planner
 
-A simple motion planner is provided for testing the coordination framework without the need for pre-computed path files.  The planner can be used to obtain paths for robots with Reeds-Shepp kinematics (Dubin's car-like robots that can move both forwards and backwards).
+A simple motion planner is provided for testing the coordination framework without the need for pre-computed path files. The planner can be used to obtain paths for robots with Reeds-Shepp kinematics (Dubin's car-like robots that can move both forwards and backwards), and is used in several of the included demos.
 
 The provided motion planner depends on
 

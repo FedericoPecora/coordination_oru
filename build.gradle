@@ -8,7 +8,7 @@ apply plugin: 'maven'
 // your package is used as a binary.
 apply plugin: 'application'
 // The main class that will be executed when you do 'gradle run'
-mainClassName = 'se.oru.coordination.coordination_oru.tests.TestTrajectoryEnvelopeCoordinatorThreeRobots'
+mainClassName = 'se.oru.coordination.coordination_oru.demo.DemoLauncher'
 
 sourceCompatibility = 1.6
 targetCompatibility = 1.6
@@ -33,10 +33,17 @@ dependencies {
   //compile 'org.metacsp:meta-csp-framework:0.0.0-SNAPSHOT'
   compile 'net.java.dev.jna:jna:4.4.0'
   compile 'org.jgrapht:jgrapht-core:1.0.1'
+  compile 'org.reflections:reflections:0.9.11'
 
   // Add the following if you need to include jars that are not
   // in Maven Central and that you have places in the directory "lib"
   // (NOTE: you have to create this directory if you need it)
   //compile fileTree(dir: 'lib', include: '**/*.jar')
 
+}
+
+run {
+    if (project.hasProperty("demo")) {
+        args(demo)
+    }
 }
