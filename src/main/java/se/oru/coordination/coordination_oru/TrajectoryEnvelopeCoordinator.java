@@ -1025,6 +1025,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	public abstract AbstractTrajectoryEnvelopeTracker getNewTracker(TrajectoryEnvelope te, TrackingCallback cb);
 	
 	protected boolean isFree(int robotID) {
+		for (TrajectoryEnvelope te : envelopesToTrack) if (te.getRobotID() == robotID) return false;
 		AbstractTrajectoryEnvelopeTracker tracker = trackers.get(robotID);
 		if (!(tracker instanceof TrajectoryEnvelopeTrackerDummy)) return false;
 		TrajectoryEnvelopeTrackerDummy trackerDummy = (TrajectoryEnvelopeTrackerDummy)tracker;
