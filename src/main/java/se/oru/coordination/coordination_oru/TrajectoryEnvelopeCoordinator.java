@@ -1,6 +1,8 @@
 package se.oru.coordination.coordination_oru;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
@@ -917,8 +919,35 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 */
 	public void setupGUI(String mapYAMLFile) {
 		//Show everything in a GUI (vehicle positions are updated in real time by the trackers, see below)
-		panel = JTSDrawingPanel.makeEmpty("Current status of robots");		
+		panel = JTSDrawingPanel.makeEmpty("Current status of robots");
 		if (mapYAMLFile != null) panel.setMap(mapYAMLFile);
+	}
+	
+	/**
+	 * Dump a vector graphics file with the contents of the GUI. Note: this operation is slow, so this method
+	 * should not be called within the control loop.
+	 * @param fileName Name of the PDF file to write to.
+	 */
+	public void dumpPDF(String fileName) {
+		panel.writePDF(fileName);
+	}
+
+	/**
+	 * Dump a vector graphics file with the contents of the GUI. Note: this operation is slow, so this method
+	 * should not be called within the control loop.
+	 * @param fileName Name of the SVG file to write to.
+	 */
+	public void dumpSVG(String fileName) {
+		panel.writeSVG(fileName);
+	}
+	
+	/**
+	 * Dump a vector graphics file with the contents of the GUI. Note: this operation is slow, so this method
+	 * should not be called within the control loop.
+	 * @param fileName Name of the EPS file to write to.
+	 */
+	public void dumpEPS(String fileName) {
+		panel.writeEPS(fileName);
 	}
 	
 	/**
