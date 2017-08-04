@@ -1,10 +1,14 @@
 package se.oru.coordination.coordination_oru;
 
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.io.File;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -1043,6 +1047,35 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		//Show everything in a GUI (vehicle positions are updated in real time by the trackers, see below)
 		panel = JTSDrawingPanel.makeEmpty("Current status of robots");
 		if (mapYAMLFile != null) panel.setMap(mapYAMLFile);
+		panel.addKeyListener(new KeyListener() {
+			
+			@Override
+			public void keyTyped(KeyEvent e) {
+				String fileName = new SimpleDateFormat("yyyyMMddHHmmss").format(new Date());
+				if (e.getKeyChar() == 's') {
+					fileName += ".svg";
+					dumpSVG(fileName);
+					System.out.println("Saved screenshot " + fileName);
+				}
+				else if (e.getKeyChar() == 'p') {
+					fileName += ".pdf";
+					dumpPDF(fileName);
+					System.out.println("Saved screenshot " + fileName);
+				}
+				if (e.getKeyChar() == 'e') {
+					fileName += ".eps";
+					dumpEPS(fileName);
+					System.out.println("Saved screenshot " + fileName);
+				}
+			}
+			
+			@Override
+			public void keyReleased(KeyEvent e) { }
+			
+			@Override
+			public void keyPressed(KeyEvent e) { }
+		});
+		panel.setFocusable(true);
 	}
 	
 	/**
