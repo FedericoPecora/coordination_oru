@@ -21,7 +21,11 @@ import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 
 import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeTracker;
+import se.oru.coordination.coordination_oru.ConstantAccelerationForwardModel;
+import se.oru.coordination.coordination_oru.CriticalSection;
 import se.oru.coordination.coordination_oru.Mission;
+import se.oru.coordination.coordination_oru.RobotAtCriticalSection;
+import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
 
@@ -64,22 +68,29 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner5 {
 
 	public static void main(String[] args) throws InterruptedException {
 
-		//Some constants used by the trajectory envelope trackers and coordinator:
-
+		double MAX_ACCEL = 1.0;
+		double MAX_VEL = 4.0;
 		//Instantiate a trajectory envelope coordinator.
 		//The TrajectoryEnvelopeCoordinatorSimulation implementation provides
 		// -- the factory method getNewTracker() which returns a trajectory envelope tracker (also abstract)
 		// -- the getCurrentTimeInMillis() method, which is used by the coordinator to keep time
 		//You still need to add a comparator to determine robot orderings thru critical sections
-		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(4.0,1.0);
-		tec.addComparator(new Comparator<AbstractTrajectoryEnvelopeTracker>() {
+		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(MAX_VEL,MAX_ACCEL);
+		tec.addComparator(new Comparator<RobotAtCriticalSection> () {
 			@Override
-			public int compare(AbstractTrajectoryEnvelopeTracker o1, AbstractTrajectoryEnvelopeTracker o2) {
-				if (o1.trackingStrated() && o2.trackingStrated()) return 0;
-				if (o1.trackingStrated()) return -1;
-				return 1;
+			public int compare(RobotAtCriticalSection o1, RobotAtCriticalSection o2) {
+				CriticalSection cs = o1.getCriticalSection();
+				RobotReport robotReport1 = o1.getTrajectoryEnvelopeTracker().getRobotReport();
+				RobotReport robotReport2 = o2.getTrajectoryEnvelopeTracker().getRobotReport();
+				return ((cs.getTe1Start()-robotReport1.getPathIndex())-(cs.getTe2Start()-robotReport2.getPathIndex()));
 			}
 		});
+		//You probably also want to provide a non-trivial forward model
+		//(the default assumes that robots can always stop)
+		tec.setForwardModel(1, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL));
+		tec.setForwardModel(2, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL));
+		tec.setForwardModel(3, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL));
+		tec.setForwardModel(4, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL));
 
 		Coordinate footprint1 = new Coordinate(-1.0,0.5);
 		Coordinate footprint2 = new Coordinate(1.0,0.5);
@@ -108,14 +119,6 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner5 {
 		rsp.setRobotRadius(1.1);
 		rsp.setTurningRadius(4.0);
 		rsp.setNumInterpolationPoints(1000);
-		double minDim = -1;
-		double delta = 3;
-
-		try {
-			BufferedImage img = ImageIO.read(new File(mapFile));
-			minDim = 0.7*Math.min(img.getHeight()*res, img.getWidth()*res);
-		}
-		catch (IOException e) { e.printStackTrace(); }
 
 		Pose startPoseRobot1 = new Pose(10.0,3.0,Math.PI);
 		Pose goalPoseRobot1 = new Pose(3.0,10.0,Math.PI/2);

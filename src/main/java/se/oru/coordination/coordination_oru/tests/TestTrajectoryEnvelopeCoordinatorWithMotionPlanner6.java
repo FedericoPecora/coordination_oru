@@ -21,7 +21,11 @@ import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 
 import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeTracker;
+import se.oru.coordination.coordination_oru.ConstantAccelerationForwardModel;
+import se.oru.coordination.coordination_oru.CriticalSection;
 import se.oru.coordination.coordination_oru.Mission;
+import se.oru.coordination.coordination_oru.RobotAtCriticalSection;
+import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
 
@@ -64,27 +68,34 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner6 {
 	
 	public static void main(String[] args) throws InterruptedException {
 		
-		//Some constants used by the trajectory envelope trackers and coordinator:
-		
+		double MAX_ACCEL = 1.0;
+		double MAX_VEL = 4.0;
 		//Instantiate a trajectory envelope coordinator.
 		//The TrajectoryEnvelopeCoordinatorSimulation implementation provides
 		// -- the factory method getNewTracker() which returns a trajectory envelope tracker (also abstract)
 		// -- the getCurrentTimeInMillis() method, which is used by the coordinator to keep time
 		//You still need to add a comparator to determine robot orderings thru critical sections
-		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(4.0,1.0);
-		tec.addComparator(new Comparator<AbstractTrajectoryEnvelopeTracker>() {
+		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(MAX_VEL,MAX_ACCEL);
+		tec.addComparator(new Comparator<RobotAtCriticalSection> () {
 			@Override
-			public int compare(AbstractTrajectoryEnvelopeTracker o1, AbstractTrajectoryEnvelopeTracker o2) {
-				if (o1.getTrajectoryEnvelope().getRobotID() == 1 && o2.getTrajectoryEnvelope().getRobotID() == 2) return -1;
-				if (o1.getTrajectoryEnvelope().getRobotID() == 2 && o2.getTrajectoryEnvelope().getRobotID() == 1) return 1;
-				if (o1.getTrajectoryEnvelope().getRobotID() == 1 && o2.getTrajectoryEnvelope().getRobotID() == 3) return 1;
-				if (o1.getTrajectoryEnvelope().getRobotID() == 3 && o2.getTrajectoryEnvelope().getRobotID() == 1) return -1;
-				if (o1.getTrajectoryEnvelope().getRobotID() == 2 && o2.getTrajectoryEnvelope().getRobotID() == 3) return -1;
-				if (o1.getTrajectoryEnvelope().getRobotID() == 3 && o2.getTrajectoryEnvelope().getRobotID() == 2) return 1;
+			public int compare(RobotAtCriticalSection o1, RobotAtCriticalSection o2) {
+				int robot1ID = o1.getTrajectoryEnvelopeTracker().getTrajectoryEnvelope().getRobotID();
+				int robot2ID = o2.getTrajectoryEnvelopeTracker().getTrajectoryEnvelope().getRobotID();
+				if (robot1ID == 1 && robot2ID == 2) return -1;
+				if (robot1ID == 2 && robot2ID == 1) return 1;
+				if (robot1ID == 1 && robot2ID == 3) return 1;
+				if (robot1ID == 3 && robot2ID == 1) return -1;
+				if (robot1ID == 2 && robot2ID == 3) return -1;
+				if (robot1ID == 3 && robot2ID == 2) return 1;
 				return 0;
 			}
 		});
-
+		//You probably also want to provide a non-trivial forward model
+		//(the default assumes that robots can always stop)
+		tec.setForwardModel(1, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL));
+		tec.setForwardModel(2, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL));
+		tec.setForwardModel(3, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL));
+		
 		Coordinate[] ret = new Coordinate[6];		
 		ret[0] = new Coordinate(0.36, 0.0);
 		ret[1] = new Coordinate(0.18, 0.36);

@@ -26,9 +26,9 @@ import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
 
-public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner {
+public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner9 {
 
-	private static Logger metaCSPLogger = MetaCSPLogging.getLogger(TestTrajectoryEnvelopeCoordinatorWithMotionPlanner.class);
+	private static Logger metaCSPLogger = MetaCSPLogging.getLogger(TestTrajectoryEnvelopeCoordinatorWithMotionPlanner9.class);
 	public static HashMap<Integer,ArrayList<Mission>> missions = new HashMap<Integer, ArrayList<Mission>>();
 
 	//Get property from YAML file
@@ -86,7 +86,7 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner {
 		//(the default assumes that robots can always stop)
 		tec.setForwardModel(1, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL));
 		tec.setForwardModel(2, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL));
-
+		
 		Coordinate footprint1 = new Coordinate(-1.0,0.5);
 		Coordinate footprint2 = new Coordinate(1.0,0.5);
 		Coordinate footprint3 = new Coordinate(1.0,-0.5);
@@ -97,7 +97,7 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner {
 		tec.setupSolver(0, 100000000);
 
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
-		String yamlFile = "maps/map.yaml";
+		String yamlFile = "maps/map-empty.yaml";
 		tec.setupGUI(yamlFile);
 		//tec.setupGUI(null);
 
@@ -114,10 +114,14 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner {
 		rsp.setTurningRadius(4.0);
 		rsp.setNumInterpolationPoints(1000);
 
-		Pose startPoseRobot1 = new Pose(2.0,28.0,0.0);
-		Pose goalPoseRobot1 = new Pose(1.0,1.0,0.0);
-		Pose startPoseRobot2 = new Pose(2.0,38.0,0.0);
-		Pose goalPoseRobot2 = new Pose(2.0,3.0,0.0);
+		Pose startPoseRobot1 = new Pose(12.0,2.0,Math.PI/2);
+		Pose goalPoseRobot11 = new Pose(12.0,10.0,Math.PI/4);
+		Pose goalPoseRobot12 = new Pose(17.0,7.0,-Math.PI/2);
+		Pose goalPoseRobot13 = new Pose(14.0,4.0,Math.PI);
+		Pose goalPoseRobot14 = new Pose(12.0,10.0,Math.PI/2);
+		Pose goalPoseRobot15 = new Pose(13.0,15.0,Math.PI*3/4);
+		Pose startPoseRobot2 = new Pose(3.0,3.0,0.0);
+		Pose goalPoseRobot2 = new Pose(20.0,15.0,Math.PI/4);
 
 		//Place robots in their initial locations (looked up in the data file that was loaded above)
 		// -- creates a trajectory envelope for each location, representing the fact that the robot is parked
@@ -126,63 +130,43 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner {
 		tec.placeRobot(1, startPoseRobot1);
 		tec.placeRobot(2, startPoseRobot2);
 
+		ArrayList<PoseSteering> pathRobot1 = new ArrayList<PoseSteering>();
+		ArrayList<PoseSteering> pathRobot2 = new ArrayList<PoseSteering>();
 		rsp.setStart(startPoseRobot1);
-		rsp.setGoal(goalPoseRobot1);
+		rsp.setGoal(goalPoseRobot11);
 		Geometry fpGeom = TrajectoryEnvelope.createFootprintPolygon(footprint1, footprint2, footprint3, footprint4);
 		rsp.addObstacles(fpGeom, startPoseRobot2, goalPoseRobot2);
-		if (!rsp.plan()) throw new Error ("No path between " + startPoseRobot1 + " and " + goalPoseRobot1);
-		PoseSteering[] pss1 = rsp.getPath();
-		rsp.setStart(goalPoseRobot1);
-		rsp.setGoal(startPoseRobot1);
-		if (!rsp.plan()) throw new Error ("No path between " + goalPoseRobot1 + " and " + startPoseRobot1);
-		PoseSteering[] pss1Inv = rsp.getPath();
+		if (!rsp.plan()) throw new Error ("No path between " + startPoseRobot1 + " and " + goalPoseRobot11);
+		for (PoseSteering ps : rsp.getPath()) pathRobot1.add(ps);
+		rsp.setStart(goalPoseRobot11);
+		rsp.setGoal(goalPoseRobot12);
+		if (!rsp.plan()) throw new Error ("No path between " + goalPoseRobot11 + " and " + goalPoseRobot12);
+		for (PoseSteering ps : rsp.getPath()) pathRobot1.add(ps);
+		rsp.setStart(goalPoseRobot12);
+		rsp.setGoal(goalPoseRobot13);
+		if (!rsp.plan()) throw new Error ("No path between " + goalPoseRobot12 + " and " + goalPoseRobot13);
+		for (PoseSteering ps : rsp.getPath()) pathRobot1.add(ps);
+		rsp.setStart(goalPoseRobot13);
+		rsp.setGoal(goalPoseRobot14);
+		if (!rsp.plan()) throw new Error ("No path between " + goalPoseRobot13 + " and " + goalPoseRobot14);
+		for (PoseSteering ps : rsp.getPath()) pathRobot1.add(ps);
+		rsp.setStart(goalPoseRobot14);
+		rsp.setGoal(goalPoseRobot15);
+		if (!rsp.plan()) throw new Error ("No path between " + goalPoseRobot14 + " and " + goalPoseRobot15);
+		for (PoseSteering ps : rsp.getPath()) pathRobot1.add(ps);
 
 		rsp.setStart(startPoseRobot2);
 		rsp.setGoal(goalPoseRobot2);
 		rsp.clearObstacles();
-		rsp.addObstacles(fpGeom, startPoseRobot1, goalPoseRobot1);
+		rsp.addObstacles(fpGeom, startPoseRobot1, goalPoseRobot15);
 		if (!rsp.plan()) throw new Error ("No path between " + startPoseRobot2 + " and " + goalPoseRobot2);
-		PoseSteering[] pss2 = rsp.getPath();
-		rsp.setStart(goalPoseRobot2);
-		rsp.setGoal(startPoseRobot2);
-		if (!rsp.plan()) throw new Error ("No path between " + goalPoseRobot2 + " and " + startPoseRobot2);
-		PoseSteering[] pss2Inv = rsp.getPath();
+		for (PoseSteering ps : rsp.getPath()) pathRobot2.add(ps);
 
-		putMission(new Mission(1, pss1));
-		putMission(new Mission(1, pss1Inv));
-
-		putMission(new Mission(2, pss2));
-		putMission(new Mission(2, pss2Inv));
+		tec.addMissions(new Mission(1, pathRobot1.toArray(new PoseSteering[pathRobot1.size()])), new Mission(2, pathRobot2.toArray(new PoseSteering[pathRobot2.size()])));
+		tec.computeCriticalSections();
+		tec.startTrackingAddedMissions();
 
 		metaCSPLogger.info("Added missions " + missions);
-
-		//Start a mission dispatching thread for each robot, which will run forever
-		for (int i = 1; i <= 2; i++) {
-			final int robotID = i;
-			//For each robot, create a thread that dispatches the "next" mission when the robot is free 
-			Thread t = new Thread() {
-				int iteration = 0;
-				public void run() {
-					while (true) {
-						//Mission to dispatch alternates between (rip -> desti) and (desti -> rip)
-						Mission m = getMission(robotID, iteration%2);
-						synchronized(tec) {
-							//addMission returns true iff the robot was free to accept a new mission
-							if (tec.addMissions(m)) {
-								tec.computeCriticalSections();
-								tec.startTrackingAddedMissions();
-								iteration++;
-							}
-						}
-						//Sleep for a little (2 sec)
-						try { Thread.sleep(2000); }
-						catch (InterruptedException e) { e.printStackTrace(); }
-					}
-				}
-			};
-			//Start the thread!
-			t.start();
-		}
 
 	}
 

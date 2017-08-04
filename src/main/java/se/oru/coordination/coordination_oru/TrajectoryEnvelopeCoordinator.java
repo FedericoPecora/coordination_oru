@@ -1,8 +1,6 @@
 package se.oru.coordination.coordination_oru;
 
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
@@ -70,6 +68,22 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected Map mapMetaConstraint = null;
 	
 	protected ComparatorChain comparators = new ComparatorChain();
+	protected HashMap<Integer,ForwardModel> forwardModels = new HashMap<Integer, ForwardModel>();
+	
+	public void setForwardModel(int robotID, ForwardModel fm) {
+		this.forwardModels.put(robotID, fm);
+	}
+	
+	public ForwardModel getForwardModel(int robotID) {
+		if (forwardModels.containsKey(robotID)) return forwardModels.get(robotID);
+		System.out.println("Returning default FM for " + robotID);
+		return new ForwardModel() {
+			@Override
+			public boolean canStop(TrajectoryEnvelope te, RobotReport currentState, int targetPathIndex) {
+				return true;
+			}
+		};
+	}
 
 	/**
 	 * Create a new {@link TrajectoryEnvelopeCoordinator}, with control period 1000 msec,
@@ -367,6 +381,34 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		return false;
 	}
 	
+	private boolean getOrder(AbstractTrajectoryEnvelopeTracker robotTracker1, RobotReport robotReport1, AbstractTrajectoryEnvelopeTracker robotTracker2, RobotReport robotReport2, CriticalSection cs) {
+
+		ForwardModel fm1 = getForwardModel(robotTracker1.getTrajectoryEnvelope().getRobotID());
+		ForwardModel fm2 = getForwardModel(robotTracker2.getTrajectoryEnvelope().getRobotID());
+		boolean canStopRobot1 = fm1.canStop(robotTracker1.getTrajectoryEnvelope(), robotReport1, cs.getTe1Start());
+		boolean canStopRobot2 = fm2.canStop(robotTracker2.getTrajectoryEnvelope(), robotReport2, cs.getTe2Start());
+		
+		if (!canStopRobot1 && !canStopRobot2) throw new Error("Neither robot can stop at " + cs);
+		
+		//If both can stop, use ordering function (or closest if no ordering function)
+		if (canStopRobot1 && canStopRobot2) {
+			metaCSPLogger.finest("Both robots can stop at " + cs);
+			RobotAtCriticalSection r1atcs = new RobotAtCriticalSection(robotTracker1, cs);
+			RobotAtCriticalSection r2atcs = new RobotAtCriticalSection(robotTracker2, cs);
+			if (this.comparators.size() > 0) return (this.comparators.compare(r1atcs,r2atcs) < 0);
+			//No ordering function, decide an ordering based on distance (closest goes first)
+			else return ((cs.getTe2Start()-robotReport2.getPathIndex()) > (cs.getTe1Start()-robotReport1.getPathIndex())); 
+		}
+		else if (!canStopRobot1) {
+			metaCSPLogger.finest("Robot" + robotTracker1.getTrajectoryEnvelope().getRobotID() + " cannot stop at " + cs);
+			return true;
+		}
+		else {
+			metaCSPLogger.finest("Robot" + robotTracker2.getTrajectoryEnvelope().getRobotID() + " cannot stop at " + cs);
+			return false;
+		}
+	}
+	
 	//Update and set the critical points
 	protected void updateDependencies() {
 
@@ -430,72 +472,95 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						continue;
 					}
 					
-					//Neither robot has reached the critical section --> follow ordering or closest robot if ordering = null
+					//Neither robot has reached the critical section --> follow ordering heuristic if FW model allows it
 					else if (robotReport1.getPathIndex() < cs.getTe1Start() && robotReport2.getPathIndex() < cs.getTe2Start()) {
-				
-						//We had already decided an order, let's keep it
-						Dependency previousDep = criticalSectionsToDeps.get(cs);
-						if (previousDep != null) {
-							if (previousDep.getWaitingRobotID() == robotTracker1.getTrajectoryEnvelope().getRobotID()) {
-								waitingCurrentIndex = robotReport1.getPathIndex();
-								drivingCurrentIndex = robotReport2.getPathIndex();
-								waitingTE = cs.getTe1();
-								drivingTE = cs.getTe2();
-								waitingCSStart = cs.getTe1Start();
-								drivingCSStart = cs.getTe2Start();
-								waitingCSEnd = cs.getTe1End();
-								drivingCSEnd = cs.getTe2End();
-							}
-							else {
-								waitingCurrentIndex = robotReport2.getPathIndex();
-								drivingCurrentIndex = robotReport1.getPathIndex();
-								waitingTE = cs.getTe2();
-								drivingTE = cs.getTe1();
-								waitingCSStart = cs.getTe2Start();
-								drivingCSStart = cs.getTe1Start();
-								waitingCSEnd = cs.getTe2End();
-								drivingCSEnd = cs.getTe1End();
-							}
-							metaCSPLogger.finest("R1 (OUT) / R2 (OUT) --> reusing previous ordering\n\t" + cs);
+						
+						if (getOrder(robotTracker1, robotReport1, robotTracker2, robotReport2, cs)) {
+							waitingCurrentIndex = robotReport2.getPathIndex();
+							drivingCurrentIndex = robotReport1.getPathIndex();
+							waitingTE = cs.getTe2();
+							drivingTE = cs.getTe1();
+							waitingCSStart = cs.getTe2Start();
+							drivingCSStart = cs.getTe1Start();
+							waitingCSEnd = cs.getTe2End();
+							drivingCSEnd = cs.getTe1End();							
 						}
-
-						//Decide an ordering based on the ordering function
-						else if (this.comparators.size() > 0) {
-							if (this.comparators.compare(robotTracker1, robotTracker2) > 0) {
-								waitingCurrentIndex = robotReport1.getPathIndex();
-								drivingCurrentIndex = robotReport2.getPathIndex();
-								waitingTE = cs.getTe1();
-								drivingTE = cs.getTe2();
-								waitingCSStart = cs.getTe1Start();
-								drivingCSStart = cs.getTe2Start();
-								waitingCSEnd = cs.getTe1End();
-								drivingCSEnd = cs.getTe2End();															
-							}
-							else {
-								waitingCurrentIndex = robotReport2.getPathIndex();
-								drivingCurrentIndex = robotReport1.getPathIndex();
-								waitingTE = cs.getTe2();
-								drivingTE = cs.getTe1();
-								waitingCSStart = cs.getTe2Start();
-								drivingCSStart = cs.getTe1Start();
-								waitingCSEnd = cs.getTe2End();
-								drivingCSEnd = cs.getTe1End();
-							}
+						else {
+							waitingCurrentIndex = robotReport1.getPathIndex();
+							drivingCurrentIndex = robotReport2.getPathIndex();
+							waitingTE = cs.getTe1();
+							drivingTE = cs.getTe2();
+							waitingCSStart = cs.getTe1Start();
+							drivingCSStart = cs.getTe2Start();
+							waitingCSEnd = cs.getTe1End();
+							drivingCSEnd = cs.getTe2End();
 						}
 						
-						//No ordering function, decide an ordering based on distance (closest goes first)
-						else {
-							boolean robot2Closest = ((cs.getTe2Start()-robotReport2.getPathIndex()) < (cs.getTe1Start()-robotReport1.getPathIndex())); 
-							waitingCurrentIndex = robot2Closest ? robotReport1.getPathIndex() : robotReport2.getPathIndex();
-							drivingCurrentIndex = robot2Closest ? robotReport2.getPathIndex() : robotReport1.getPathIndex();
-							waitingTE = robot2Closest ? cs.getTe1() : cs.getTe2();
-							drivingTE = robot2Closest ? cs.getTe2() : cs.getTe1();
-							waitingCSStart = robot2Closest ? cs.getTe1Start() : cs.getTe2Start();
-							drivingCSStart = robot2Closest ? cs.getTe2Start() : cs.getTe1Start();
-							waitingCSEnd = robot2Closest ? cs.getTe1End() : cs.getTe2End();
-							drivingCSEnd = robot2Closest ? cs.getTe2End() : cs.getTe1End();
-							metaCSPLogger.finest("R1 (OUT) / R2 (OUT) --> " + (robot2Closest ? "R2 > R1" : "R1 > R2") + "\n\t" + cs);
-						}
+//						////////////////////////////// FROM HERE
+//						//We had already decided an order, let's keep it
+//						Dependency previousDep = criticalSectionsToDeps.get(cs);
+//						if (previousDep != null) {
+//							if (previousDep.getWaitingRobotID() == robotTracker1.getTrajectoryEnvelope().getRobotID()) {
+//								waitingCurrentIndex = robotReport1.getPathIndex();
+//								drivingCurrentIndex = robotReport2.getPathIndex();
+//								waitingTE = cs.getTe1();
+//								drivingTE = cs.getTe2();
+//								waitingCSStart = cs.getTe1Start();
+//								drivingCSStart = cs.getTe2Start();
+//								waitingCSEnd = cs.getTe1End();
+//								drivingCSEnd = cs.getTe2End();
+//							}
+//							else {
+//								waitingCurrentIndex = robotReport2.getPathIndex();
+//								drivingCurrentIndex = robotReport1.getPathIndex();
+//								waitingTE = cs.getTe2();
+//								drivingTE = cs.getTe1();
+//								waitingCSStart = cs.getTe2Start();
+//								drivingCSStart = cs.getTe1Start();
+//								waitingCSEnd = cs.getTe2End();
+//								drivingCSEnd = cs.getTe1End();
+//							}
+//							metaCSPLogger.finest("R1 (OUT) / R2 (OUT) --> reusing previous ordering\n\t" + cs);
+//						}
+//
+//						//Decide an ordering based on the ordering function
+//						else if (this.comparators.size() > 0) {
+//							if (this.comparators.compare(robotTracker1, robotTracker2) > 0) {
+//								waitingCurrentIndex = robotReport1.getPathIndex();
+//								drivingCurrentIndex = robotReport2.getPathIndex();
+//								waitingTE = cs.getTe1();
+//								drivingTE = cs.getTe2();
+//								waitingCSStart = cs.getTe1Start();
+//								drivingCSStart = cs.getTe2Start();
+//								waitingCSEnd = cs.getTe1End();
+//								drivingCSEnd = cs.getTe2End();															
+//							}
+//							else {
+//								waitingCurrentIndex = robotReport2.getPathIndex();
+//								drivingCurrentIndex = robotReport1.getPathIndex();
+//								waitingTE = cs.getTe2();
+//								drivingTE = cs.getTe1();
+//								waitingCSStart = cs.getTe2Start();
+//								drivingCSStart = cs.getTe1Start();
+//								waitingCSEnd = cs.getTe2End();
+//								drivingCSEnd = cs.getTe1End();
+//							}
+//						}
+//						
+//						//No ordering function, decide an ordering based on distance (closest goes first)
+//						else {
+//							boolean robot2Closest = ((cs.getTe2Start()-robotReport2.getPathIndex()) < (cs.getTe1Start()-robotReport1.getPathIndex())); 
+//							waitingCurrentIndex = robot2Closest ? robotReport1.getPathIndex() : robotReport2.getPathIndex();
+//							drivingCurrentIndex = robot2Closest ? robotReport2.getPathIndex() : robotReport1.getPathIndex();
+//							waitingTE = robot2Closest ? cs.getTe1() : cs.getTe2();
+//							drivingTE = robot2Closest ? cs.getTe2() : cs.getTe1();
+//							waitingCSStart = robot2Closest ? cs.getTe1Start() : cs.getTe2Start();
+//							drivingCSStart = robot2Closest ? cs.getTe2Start() : cs.getTe1Start();
+//							waitingCSEnd = robot2Closest ? cs.getTe1End() : cs.getTe2End();
+//							drivingCSEnd = robot2Closest ? cs.getTe2End() : cs.getTe1End();
+//							metaCSPLogger.finest("R1 (OUT) / R2 (OUT) --> " + (robot2Closest ? "R2 > R1" : "R1 > R2") + "\n\t" + cs);
+//						}
+//						////////////////////////////// TO HERE
 					}
 					
 					//Robot 1 has not reached critical section, robot 2 in critical section --> robot 1 waits
@@ -606,7 +671,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 * Comparators are considered in the order in which they are added.
 	 * @param c A new comparator for determining robot ordering through critical sections.
 	 */
-	public void addComparator(Comparator<AbstractTrajectoryEnvelopeTracker> c) {
+	public void addComparator(Comparator<RobotAtCriticalSection> c) {
 		this.comparators.addComparator(c);
 	}
 	
@@ -657,6 +722,63 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		if (shape1.intersects(shape2)) {
 			PoseSteering[] path1 = te1.getTrajectory().getPoseSteering();
 			PoseSteering[] path2 = te2.getTrajectory().getPoseSteering();
+			Geometry gc = shape1.intersection(shape2);
+			for (int i = 0; i < gc.getNumGeometries(); i++) {
+				ArrayList<Integer> te1Starts = new ArrayList<Integer>();
+				ArrayList<Integer> te1Ends = new ArrayList<Integer>();
+				ArrayList<Integer> te2Starts = new ArrayList<Integer>();
+				ArrayList<Integer> te2Ends = new ArrayList<Integer>();
+				Geometry g = gc.getGeometryN(i);
+				boolean started = false;
+				for (int j = 0; j < path1.length; j++) {
+					Geometry placement1 = te1.makeFootprint(path1[j]);
+					if (!started && placement1.intersects(g)) {
+						started = true;
+						te1Starts.add(j);
+					}
+					else if (started && !placement1.intersects(g)) {
+						te1Ends.add(j);
+						started = false;
+					}
+					if (started && j == path1.length-1) {
+						te1Ends.add(path1.length-1);
+					}
+				}
+				started = false;
+				for (int j = 0; j < path2.length; j++) {
+					Geometry placement2 = te2.makeFootprint(path2[j]);
+					if (!started && placement2.intersects(g)) {
+						started = true;
+						te2Starts.add(j);
+					}
+					else if (started && !placement2.intersects(g)) {
+						te2Ends.add(j);
+						started = false;
+					}
+					if (started && j == path2.length-1) {
+						te2Ends.add(path2.length-1);
+					}
+				}
+				for (int k1 = 0; k1 < te1Starts.size(); k1++) {
+					for (int k2 = 0; k2 < te2Starts.size(); k2++) {
+						CriticalSection oneCS = new CriticalSection(te1, te2, te1Starts.get(k1), te2Starts.get(k2), te1Ends.get(k1), te2Ends.get(k2));
+						css.add(oneCS);
+					}					
+				}
+			}
+		}
+		return css.toArray(new CriticalSection[css.size()]);
+	}
+	
+	protected CriticalSection[] getCriticalSectionsSimple(TrajectoryEnvelope te1, TrajectoryEnvelope te2) {
+		GeometricShapeVariable poly1 = te1.getEnvelopeVariable();
+		GeometricShapeVariable poly2 = te2.getEnvelopeVariable();
+		Geometry shape1 = ((GeometricShapeDomain)poly1.getDomain()).getGeometry();
+		Geometry shape2 = ((GeometricShapeDomain)poly2.getDomain()).getGeometry();
+		ArrayList<CriticalSection> css = new ArrayList<CriticalSection>();
+		if (shape1.intersects(shape2)) {
+			PoseSteering[] path1 = te1.getTrajectory().getPoseSteering();
+			PoseSteering[] path2 = te2.getTrajectory().getPoseSteering();
 			int te1Start = -1;
 			int te2Start = -1;
 			int te1End = -1;
@@ -676,7 +798,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						break;
 					}
 					if (j == path1.length-1) {
-						te1End = path1.length-1;						
+						te1End = path1.length-1;
 					}
 				}
 				started = false;
@@ -691,7 +813,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						break;
 					}
 					if (j == path2.length-1) {
-						te2End = path2.length-1;						
+						te2End = path2.length-1;
 					}
 				}
 				CriticalSection oneCS = new CriticalSection(te1, te2, te1Start, te2Start, te1End, te2End);
