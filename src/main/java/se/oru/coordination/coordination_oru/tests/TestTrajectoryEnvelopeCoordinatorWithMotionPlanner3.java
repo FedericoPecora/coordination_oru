@@ -129,6 +129,7 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner3 {
 		posesRobot1.add(new Pose(50.0,10.0,0.0));
 
 		ArrayList<Pose> posesRobot2 = new ArrayList<Pose>();
+		//Robot 1 and robot 2 in opposing directions
 		posesRobot2.add(new Pose(50.0,13.0,Math.PI));
 		posesRobot2.add(new Pose(42.0,10.0,Math.PI));
 		posesRobot2.add(new Pose(34.0,13.0,Math.PI));
@@ -136,7 +137,16 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner3 {
 		posesRobot2.add(new Pose(18.0,13.0,Math.PI));
 		posesRobot2.add(new Pose(10.0,10.0,Math.PI));
 		posesRobot2.add(new Pose(2.0,13.0,Math.PI));
-
+		
+//		//Robot 1 and Robot 2 in same direction
+//		posesRobot2.add(new Pose(2.0,13.0,0.0));
+//		posesRobot2.add(new Pose(10.0,10.0,0.0));
+//		posesRobot2.add(new Pose(18.0,13.0,0.0));
+//		posesRobot2.add(new Pose(26.0,10.0,0.0));
+//		posesRobot2.add(new Pose(34.0,13.0,0.0));
+//		posesRobot2.add(new Pose(42.0,10.0,0.0));
+//		posesRobot2.add(new Pose(50.0,13.0,0.0));
+		
 		//Place robots in their initial locations (looked up in the data file that was loaded above)
 		// -- creates a trajectory envelope for each location, representing the fact that the robot is parked
 		// -- each trajectory envelope has a path of one pose (the pose of the location)
@@ -200,10 +210,12 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner3 {
 							//addMission returns true iff the robot was free to accept a new mission
 							if (tec.addMissions(m)) {
 								tec.computeCriticalSections();
-								long delay = minDelay+rand.nextInt(maxDelay-minDelay);
-								//Sleep for a random delay in [minDelay,maxDelay]
-								try { Thread.sleep(delay); }
-								catch (InterruptedException e) { e.printStackTrace(); }
+								if (minDelay > 0) {
+									long delay = minDelay+rand.nextInt(maxDelay-minDelay);
+									//Sleep for a random delay in [minDelay,maxDelay]
+									try { Thread.sleep(delay); }
+									catch (InterruptedException e) { e.printStackTrace(); }
+								}
 								tec.startTrackingAddedMissions();
 								iteration++;
 							}
