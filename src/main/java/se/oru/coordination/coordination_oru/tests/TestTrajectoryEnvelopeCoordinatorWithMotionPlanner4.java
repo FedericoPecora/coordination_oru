@@ -90,6 +90,13 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner4 {
 				return ((cs.getTe1Start()-robotReport1.getPathIndex())-(cs.getTe2Start()-robotReport2.getPathIndex()));
 			}
 		});
+		tec.addComparator(new Comparator<RobotAtCriticalSection> () {
+			@Override
+			public int compare(RobotAtCriticalSection o1, RobotAtCriticalSection o2) {
+				return (o2.getTrajectoryEnvelopeTracker().getTrajectoryEnvelope().getRobotID()-o1.getTrajectoryEnvelopeTracker().getTrajectoryEnvelope().getRobotID());
+			}
+		});
+
 
 		Coordinate footprint1 = new Coordinate(-1.0,0.5);
 		Coordinate footprint2 = new Coordinate(1.0,0.5);

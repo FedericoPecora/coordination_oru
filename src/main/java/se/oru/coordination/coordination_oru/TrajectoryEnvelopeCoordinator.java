@@ -479,6 +479,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					//Neither robot has reached the critical section --> follow ordering heuristic if FW model allows it
 					else if (robotReport1.getPathIndex() < cs.getTe1Start() && robotReport2.getPathIndex() < cs.getTe2Start()) {
 						
+						//If robot 1 has priority over robot 2
 						if (getOrder(robotTracker1, robotReport1, robotTracker2, robotReport2, cs)) {
 							waitingCurrentIndex = robotReport2.getPathIndex();
 							drivingCurrentIndex = robotReport1.getPathIndex();
@@ -489,6 +490,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							waitingCSEnd = cs.getTe2End();
 							drivingCSEnd = cs.getTe1End();							
 						}
+
+						//If robot 2 has priority over robot 1
 						else {
 							waitingCurrentIndex = robotReport1.getPathIndex();
 							drivingCurrentIndex = robotReport2.getPathIndex();
@@ -499,72 +502,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							waitingCSEnd = cs.getTe1End();
 							drivingCSEnd = cs.getTe2End();
 						}
-						
-//						////////////////////////////// FROM HERE
-//						//We had already decided an order, let's keep it
-//						Dependency previousDep = criticalSectionsToDeps.get(cs);
-//						if (previousDep != null) {
-//							if (previousDep.getWaitingRobotID() == robotTracker1.getTrajectoryEnvelope().getRobotID()) {
-//								waitingCurrentIndex = robotReport1.getPathIndex();
-//								drivingCurrentIndex = robotReport2.getPathIndex();
-//								waitingTE = cs.getTe1();
-//								drivingTE = cs.getTe2();
-//								waitingCSStart = cs.getTe1Start();
-//								drivingCSStart = cs.getTe2Start();
-//								waitingCSEnd = cs.getTe1End();
-//								drivingCSEnd = cs.getTe2End();
-//							}
-//							else {
-//								waitingCurrentIndex = robotReport2.getPathIndex();
-//								drivingCurrentIndex = robotReport1.getPathIndex();
-//								waitingTE = cs.getTe2();
-//								drivingTE = cs.getTe1();
-//								waitingCSStart = cs.getTe2Start();
-//								drivingCSStart = cs.getTe1Start();
-//								waitingCSEnd = cs.getTe2End();
-//								drivingCSEnd = cs.getTe1End();
-//							}
-//							metaCSPLogger.finest("R1 (OUT) / R2 (OUT) --> reusing previous ordering\n\t" + cs);
-//						}
-//
-//						//Decide an ordering based on the ordering function
-//						else if (this.comparators.size() > 0) {
-//							if (this.comparators.compare(robotTracker1, robotTracker2) > 0) {
-//								waitingCurrentIndex = robotReport1.getPathIndex();
-//								drivingCurrentIndex = robotReport2.getPathIndex();
-//								waitingTE = cs.getTe1();
-//								drivingTE = cs.getTe2();
-//								waitingCSStart = cs.getTe1Start();
-//								drivingCSStart = cs.getTe2Start();
-//								waitingCSEnd = cs.getTe1End();
-//								drivingCSEnd = cs.getTe2End();															
-//							}
-//							else {
-//								waitingCurrentIndex = robotReport2.getPathIndex();
-//								drivingCurrentIndex = robotReport1.getPathIndex();
-//								waitingTE = cs.getTe2();
-//								drivingTE = cs.getTe1();
-//								waitingCSStart = cs.getTe2Start();
-//								drivingCSStart = cs.getTe1Start();
-//								waitingCSEnd = cs.getTe2End();
-//								drivingCSEnd = cs.getTe1End();
-//							}
-//						}
-//						
-//						//No ordering function, decide an ordering based on distance (closest goes first)
-//						else {
-//							boolean robot2Closest = ((cs.getTe2Start()-robotReport2.getPathIndex()) < (cs.getTe1Start()-robotReport1.getPathIndex())); 
-//							waitingCurrentIndex = robot2Closest ? robotReport1.getPathIndex() : robotReport2.getPathIndex();
-//							drivingCurrentIndex = robot2Closest ? robotReport2.getPathIndex() : robotReport1.getPathIndex();
-//							waitingTE = robot2Closest ? cs.getTe1() : cs.getTe2();
-//							drivingTE = robot2Closest ? cs.getTe2() : cs.getTe1();
-//							waitingCSStart = robot2Closest ? cs.getTe1Start() : cs.getTe2Start();
-//							drivingCSStart = robot2Closest ? cs.getTe2Start() : cs.getTe1Start();
-//							waitingCSEnd = robot2Closest ? cs.getTe1End() : cs.getTe2End();
-//							drivingCSEnd = robot2Closest ? cs.getTe2End() : cs.getTe1End();
-//							metaCSPLogger.finest("R1 (OUT) / R2 (OUT) --> " + (robot2Closest ? "R2 > R1" : "R1 > R2") + "\n\t" + cs);
-//						}
-//						////////////////////////////// TO HERE
+
 					}
 					
 					//Robot 1 has not reached critical section, robot 2 in critical section --> robot 1 waits

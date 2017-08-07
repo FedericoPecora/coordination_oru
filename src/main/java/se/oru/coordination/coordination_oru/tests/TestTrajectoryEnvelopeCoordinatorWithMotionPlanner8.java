@@ -81,6 +81,13 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner8 {
 				return ((cs.getTe1Start()-robotReport1.getPathIndex())-(cs.getTe2Start()-robotReport2.getPathIndex()));
 			}
 		});
+		tec.addComparator(new Comparator<RobotAtCriticalSection> () {
+			@Override
+			public int compare(RobotAtCriticalSection o1, RobotAtCriticalSection o2) {
+				return (o2.getTrajectoryEnvelopeTracker().getTrajectoryEnvelope().getRobotID()-o1.getTrajectoryEnvelopeTracker().getTrajectoryEnvelope().getRobotID());
+			}
+		});
+
 		//You probably also want to provide a non-trivial forward model
 		//(the default assumes that robots can always stop)
 		tec.setForwardModel(1, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL));
@@ -150,11 +157,7 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner8 {
 		Mission m3 = new Mission(3,pss3);
 		tec.addMissions(m1,m2,m3);
 		tec.computeCriticalSections();
-		//tec.startTrackingAddedMissions();
-		Thread.sleep(2000);
-//		tec.dumpPDF("testing.pdf");
-//		tec.dumpEPS("testing.eps");
-		tec.dumpSVG("testing.svg");
+		tec.startTrackingAddedMissions();
 		
 	}
 	
