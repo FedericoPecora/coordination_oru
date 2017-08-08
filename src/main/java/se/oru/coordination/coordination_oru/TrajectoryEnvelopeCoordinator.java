@@ -711,59 +711,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		}
 		return css.toArray(new CriticalSection[css.size()]);
 	}
-	
-	protected CriticalSection[] getCriticalSectionsSimple(TrajectoryEnvelope te1, TrajectoryEnvelope te2) {
-		GeometricShapeVariable poly1 = te1.getEnvelopeVariable();
-		GeometricShapeVariable poly2 = te2.getEnvelopeVariable();
-		Geometry shape1 = ((GeometricShapeDomain)poly1.getDomain()).getGeometry();
-		Geometry shape2 = ((GeometricShapeDomain)poly2.getDomain()).getGeometry();
-		ArrayList<CriticalSection> css = new ArrayList<CriticalSection>();
-		if (shape1.intersects(shape2)) {
-			PoseSteering[] path1 = te1.getTrajectory().getPoseSteering();
-			PoseSteering[] path2 = te2.getTrajectory().getPoseSteering();
-			int te1Start = -1;
-			int te2Start = -1;
-			int te1End = -1;
-			int te2End = -1;
-			Geometry gc = shape1.intersection(shape2);
-			for (int i = 0; i < gc.getNumGeometries(); i++) {
-				Geometry g = gc.getGeometryN(i);
-				boolean started = false;
-				for (int j = 0; j < path1.length; j++) {
-					Geometry placement1 = te1.makeFootprint(path1[j]);
-					if (!started && placement1.intersects(g)) {
-						started = true;
-						te1Start = j;
-					}
-					else if (started && !placement1.intersects(g)) {
-						te1End = j;
-						break;
-					}
-					if (j == path1.length-1) {
-						te1End = path1.length-1;
-					}
-				}
-				started = false;
-				for (int j = 0; j < path2.length; j++) {
-					Geometry placement2 = te2.makeFootprint(path2[j]);
-					if (!started && placement2.intersects(g)) {
-						started = true;
-						te2Start = j;
-					}
-					else if (started && !placement2.intersects(g)) {
-						te2End = j;
-						break;
-					}
-					if (j == path2.length-1) {
-						te2End = path2.length-1;
-					}
-				}
-				CriticalSection oneCS = new CriticalSection(te1, te2, te1Start, te2Start, te1End, te2End);
-				css.add(oneCS);
-			}
-		}
-		return css.toArray(new CriticalSection[css.size()]);
-	}
 
 	protected void cleanUp(TrajectoryEnvelope te) {
 		synchronized(solver) {
