@@ -12,6 +12,8 @@ import org.metacsp.multi.spatioTemporal.paths.Trajectory;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelopeSolver;
 
+import com.vividsolutions.jts.geom.Geometry;
+
 import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeTracker;
 import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.TrackingCallback;
@@ -81,6 +83,50 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 		this.slowDownProfile = this.getSlowdownProfile();
 		this.positionToSlowDown = this.computePositionToSlowDown();
 		this.th = new Thread(this, "RK4 tracker " + te.getComponent());
+	}
+	
+	public int getCriticalPoint(TrajectoryEnvelope te1, TrajectoryEnvelope te2, int currentPIR1, int te1Start, int te1End, int te2Start) {
+		
+		//Number of additional path points robot 2 should stay behind robot 1
+		int TRAILING_PATH_POINTS = 3;
+		
+		//How far ahead in robot 1's trajectory should we look ahead for collisions
+		//(all the way to end of critical section if robots can drive in opposing directions)
+		int LOOKAHEAD = te1End; //5;
+		
+		//How far into the critical section has robot 1 reached 
+		int depthRobot1 = currentPIR1-te1Start;
+		
+		//If robot 1 not in critical section yet, return critical section start as waiting point for robot 2
+		if (depthRobot1 < 0) return Math.max(0, te2Start-TRAILING_PATH_POINTS);	
+		
+		//Compute sweep of robot 1's footprint from current position to LOOKAHEAD
+		Pose robot1Pose = te1.getTrajectory().getPose()[currentPIR1];
+		Geometry robot1InPose = TrajectoryEnvelope.getFootprint(te1.getFootprint(), robot1Pose.getX(), robot1Pose.getY(), robot1Pose.getTheta());
+		for (int i = 1; currentPIR1+i < LOOKAHEAD && currentPIR1+i < te1.getTrajectory().getPose().length; i++) {
+			Pose robot1NextPose = te1.getTrajectory().getPose()[currentPIR1+i];
+			robot1InPose = robot1InPose.union(TrajectoryEnvelope.getFootprint(te1.getFootprint(), robot1NextPose.getX(), robot1NextPose.getY(), robot1NextPose.getTheta()));			
+		}
+		
+		//Starting from the same depth into the critical section as that of robot 1,
+		//and decreasing the pose index backwards down to te2Start,
+		//return the pose index as soon as robot 2's footprint does not intersect with robot 1's sweep
+		for (int i = Math.min(te2.getTrajectory().getPose().length-1, te2Start+depthRobot1); i > te2Start-1; i--) {
+			Pose robot2Pose = te2.getTrajectory().getPose()[i];
+			Geometry robot2InPose = TrajectoryEnvelope.getFootprint(te2.getFootprint(), robot2Pose.getX(), robot2Pose.getY(), robot2Pose.getTheta());
+			if (!robot1InPose.intersects(robot2InPose)) {
+				return Math.max(0, i-TRAILING_PATH_POINTS);
+			}
+		}
+
+		//The only situation where the above has not returned is when robot 2 should
+		//stay "parked", therefore wait at index 0
+		return Math.max(0, te2Start-TRAILING_PATH_POINTS);
+		
+//		//The above should have returned, as i is decremented until robot 2 is before the critical section
+//		System.out.println("Robot" + te1.getRobotID() + ": start=" +te1Start + " depth=" + depthRobot1 + " Robot" + te2.getRobotID() + ": start=" + te2Start);
+//		metaCSPLogger.severe("Could not determine CP for " + te2);
+//		throw new Error("Could not determine CP for " + te2);
 	}
 	
 	public void startTracking() {
