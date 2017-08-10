@@ -20,6 +20,14 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	protected int trackingPeriodInMillis;
 	protected boolean useInternalCPs = true;
 
+	public int getControlPeriod() {
+		return trackingPeriodInMillis;
+	}
+	
+	public double getTemporalResolution() {
+		return 1000.0;
+	}
+	
 	/**
 	 * Create a new {@link TrajectoryEnvelopeCoordinatorSimulation} with the following default values:
 	 * <ul>
