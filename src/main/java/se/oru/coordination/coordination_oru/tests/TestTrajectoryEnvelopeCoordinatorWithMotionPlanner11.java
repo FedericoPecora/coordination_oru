@@ -2,22 +2,18 @@ package se.oru.coordination.coordination_oru.tests;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Scanner;
 import java.util.logging.Logger;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
-import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
-import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 import org.metacsp.utility.logging.MetaCSPLogging;
 
-import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.Geometry;
-
-import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeTracker;
 import se.oru.coordination.coordination_oru.ConstantAccelerationForwardModel;
 import se.oru.coordination.coordination_oru.CriticalSection;
 import se.oru.coordination.coordination_oru.Mission;
@@ -26,9 +22,11 @@ import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
 
-public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner {
+public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner11 {
 
-	private static Logger metaCSPLogger = MetaCSPLogging.getLogger(TestTrajectoryEnvelopeCoordinatorWithMotionPlanner.class);
+	private static HashMap<String,Pose> locations = new HashMap<String, Pose>();
+	private static HashMap<String,String> paths = new HashMap<String, String>();
+	private static Logger metaCSPLogger = MetaCSPLogging.getLogger(TestTrajectoryEnvelopeCoordinatorWithMotionPlanner11.class);
 	public static HashMap<Integer,ArrayList<Mission>> missions = new HashMap<Integer, ArrayList<Mission>>();
 
 	//Get property from YAML file
@@ -51,7 +49,7 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner {
 		catch (IOException e) { e.printStackTrace(); }
 		return ret;
 	}
-
+	
 	//Convenience method to put a mission into a global hashmap
 	private static void putMission(Mission m) {
 		if (!missions.containsKey(m.getRobotID())) missions.put(m.getRobotID(), new ArrayList<Mission>());
@@ -63,10 +61,54 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner {
 		return missions.get(robotID).get(missionNumber);
 	}
 
+	//Load location and path data from a file
+	public static void loadLocationAndPathData(String fileName) {
+		try {
+			Scanner in = new Scanner(new FileReader(fileName));
+			while (in.hasNextLine()) {
+				String line = in.nextLine().trim();
+				if (line.length() != 0 && !line.startsWith("#")) {
+					String[] oneline = line.split(" |\t");
+					Pose ps = null;
+					if (line.contains("->")) {
+						paths.put(oneline[0]+oneline[1]+oneline[2], oneline[3]);
+						System.out.println("Added to paths paths: " + oneline[0]+oneline[1]+oneline[2] + " --> " + oneline[3]);
+					}
+					else {
+						String locationName = oneline[0];
+						ps = new Pose(
+								new Double(oneline[1]).doubleValue(),
+								new Double(oneline[2]).doubleValue(),
+								new Double(oneline[3]).doubleValue());
+						locations.put(locationName, ps);
+					}
+				}
+			}
+			in.close();
+		}
+		catch (FileNotFoundException e) { e.printStackTrace(); }
+	}
+
+	//Convenience method to get locations from the data loaded by method loadLocationAndPathData()
+	public static Pose getLocation(String name) {
+		Pose ret = locations.get(name);
+		if (ret == null) throw new Error("Unknown location " + name);
+		return ret;
+	}
+
+	//Convenience method to get path files from the data loaded by method loadLocationAndPathData()
+	public static String getPathFile(String fromLocation, String toLocation) {
+		String ret = paths.get(fromLocation+"->"+toLocation);
+		if (!locations.containsKey(fromLocation)) throw new Error("Unknown location " + fromLocation);
+		if (!locations.containsKey(toLocation)) throw new Error("Unknown location " + toLocation);
+		if (ret == null) throw new Error("No path between " + fromLocation + " and " + toLocation);
+		return ret;
+	}
+
 	public static void main(String[] args) throws InterruptedException {
 
-		double MAX_ACCEL = 1.0;
-		double MAX_VEL = 4.0;
+		double MAX_ACCEL = 5.0;
+		double MAX_VEL = 15.0;
 		//Instantiate a trajectory envelope coordinator.
 		//The TrajectoryEnvelopeCoordinatorSimulation implementation provides
 		// -- the factory method getNewTracker() which returns a trajectory envelope tracker (also abstract)
@@ -88,83 +130,61 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner {
 				return (o2.getTrajectoryEnvelopeTracker().getTrajectoryEnvelope().getRobotID()-o1.getTrajectoryEnvelopeTracker().getTrajectoryEnvelope().getRobotID());
 			}
 		});
-
+		
 		//You probably also want to provide a non-trivial forward model
 		//(the default assumes that robots can always stop)
 		tec.setForwardModel(1, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getControlPeriod(), tec.getTemporalResolution()));
 		tec.setForwardModel(2, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getControlPeriod(), tec.getTemporalResolution()));
-
-		Coordinate footprint1 = new Coordinate(-1.0,0.5);
-		Coordinate footprint2 = new Coordinate(1.0,0.5);
-		Coordinate footprint3 = new Coordinate(1.0,-0.5);
-		Coordinate footprint4 = new Coordinate(-1.0,-0.5);
-		tec.setFootprint(footprint1, footprint2, footprint3, footprint4);
+		tec.setForwardModel(3, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getControlPeriod(), tec.getTemporalResolution()));
 
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
 
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
-		String yamlFile = "maps/map.yaml";
-		tec.setupGUI(yamlFile);
-		//tec.setupGUI(null);
+		tec.setupGUI(null);
 
-		tec.setUseInternalCriticalPoints(false);
-
-		//MetaCSPLogging.setLevel(tec.getClass().getSuperclass(), Level.FINEST);
-
-		//Instantiate a simple motion planner
-		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-		rsp.setMapFilename("maps"+File.separator+getProperty("image", yamlFile));
-		double res = Double.parseDouble(getProperty("resolution", yamlFile));
-		rsp.setMapResolution(res);
-		rsp.setRobotRadius(1.1);
-		rsp.setTurningRadius(4.0);
-		rsp.setNumInterpolationPoints(1000);
-
-		Pose startPoseRobot1 = new Pose(2.0,28.0,0.0);
-		Pose goalPoseRobot1 = new Pose(1.0,1.0,0.0);
-		Pose startPoseRobot2 = new Pose(2.0,38.0,0.0);
-		Pose goalPoseRobot2 = new Pose(2.0,3.0,0.0);
+		//Load data file with locations and pointers to files containing paths between locations
+		loadLocationAndPathData("paths/test_poses2.txt");
 
 		//Place robots in their initial locations (looked up in the data file that was loaded above)
 		// -- creates a trajectory envelope for each location, representing the fact that the robot is parked
 		// -- each trajectory envelope has a path of one pose (the pose of the location)
 		// -- each trajectory envelope is the footprint of the corresponding robot in that pose
-		tec.placeRobot(1, startPoseRobot1);
-		tec.placeRobot(2, startPoseRobot2);
+		tec.placeRobot(1, getLocation("r1p"));
+		tec.placeRobot(2, getLocation("r2p"));
+		tec.placeRobot(3, getLocation("r3p"));
 
-		rsp.setStart(startPoseRobot1);
-		rsp.setGoal(goalPoseRobot1);
-		Geometry fpGeom = TrajectoryEnvelope.createFootprintPolygon(footprint1, footprint2, footprint3, footprint4);
-		rsp.addObstacles(fpGeom, startPoseRobot2, goalPoseRobot2);
-		if (!rsp.plan()) throw new Error ("No path between " + startPoseRobot1 + " and " + goalPoseRobot1);
-		PoseSteering[] pss1 = rsp.getPath();
-		rsp.setStart(goalPoseRobot1);
-		rsp.setGoal(startPoseRobot1);
-		if (!rsp.plan()) throw new Error ("No path between " + goalPoseRobot1 + " and " + startPoseRobot1);
-		PoseSteering[] pss1Inv = rsp.getPath();
-
-		rsp.setStart(startPoseRobot2);
-		rsp.setGoal(goalPoseRobot2);
-		rsp.clearObstacles();
-		//rsp.addObstacles(fpGeom, startPoseRobot1, goalPoseRobot1);
-		if (!rsp.plan()) throw new Error ("No path between " + startPoseRobot2 + " and " + goalPoseRobot2);
-		PoseSteering[] pss2 = rsp.getPath();
-		rsp.setStart(goalPoseRobot2);
-		rsp.setGoal(startPoseRobot2);
-		if (!rsp.plan()) throw new Error ("No path between " + goalPoseRobot2 + " and " + startPoseRobot2);
-		PoseSteering[] pss2Inv = rsp.getPath();
-
-		putMission(new Mission(1, pss1));
-		putMission(new Mission(1, pss1Inv));
-
-		putMission(new Mission(2, pss2));
-		putMission(new Mission(2, pss2Inv));
-
+		String yamlFile = "maps/map-empty.yaml";
+		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
+		rsp.setMapFilename("maps"+File.separator+getProperty("image", yamlFile));
+		double res = Double.parseDouble(getProperty("resolution", yamlFile));
+		rsp.setMapResolution(0.2);
+		rsp.setRobotRadius(1.1);
+		rsp.setTurningRadius(4.0);
+		rsp.setNumInterpolationPoints(100);
+		
+		rsp.setStart(getLocation("r1p"));
+		rsp.setGoal(getLocation("dest1"));
+		rsp.plan();
+		putMission(new Mission(1,rsp.getPath()));
+		putMission(new Mission(1,rsp.getPathInv()));
+		
+		rsp.setStart(getLocation("r2p"));
+		rsp.setGoal(getLocation("dest2"));
+		rsp.plan();
+		putMission(new Mission(2,rsp.getPath()));
+		putMission(new Mission(2,rsp.getPathInv()));
+		
+		rsp.setStart(getLocation("r3p"));
+		rsp.setGoal(getLocation("dest3"));
+		rsp.plan();
+		putMission(new Mission(3,rsp.getPath()));
+		putMission(new Mission(3,rsp.getPathInv()));
+	
 		metaCSPLogger.info("Added missions " + missions);
 
 		//Start a mission dispatching thread for each robot, which will run forever
-		for (int i = 1; i <= 2; i++) {
+		for (int i = 1; i <= 3; i++) {
 			final int robotID = i;
 			//For each robot, create a thread that dispatches the "next" mission when the robot is free 
 			Thread t = new Thread() {
@@ -172,7 +192,7 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner {
 				public void run() {
 					while (true) {
 						//Mission to dispatch alternates between (rip -> desti) and (desti -> rip)
-						Mission m = getMission(robotID, iteration%2);
+						Mission m = getMission(robotID, iteration%missions.get(robotID).size());
 						synchronized(tec) {
 							//addMission returns true iff the robot was free to accept a new mission
 							if (tec.addMissions(m)) {

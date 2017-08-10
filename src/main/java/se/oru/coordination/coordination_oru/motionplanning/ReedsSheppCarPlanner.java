@@ -6,6 +6,9 @@ import java.awt.Shape;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 
 import javax.imageio.ImageIO;
 
@@ -103,6 +106,13 @@ public class ReedsSheppCarPlanner {
 
 	public PoseSteering[] getPath() {
 		return this.pathPS;
+	}
+	
+	public PoseSteering[] getPathInv() {
+		ArrayList<PoseSteering> inv = new ArrayList<PoseSteering>();
+		for (PoseSteering ps : this.pathPS) inv.add(ps);
+		Collections.reverse(inv);
+		return inv.toArray(new PoseSteering[inv.size()]);
 	}
 
 	public boolean plan() {

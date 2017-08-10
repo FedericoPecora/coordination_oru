@@ -34,7 +34,11 @@ import org.metacsp.utility.UI.JTSDrawingPanel;
 import org.metacsp.utility.logging.MetaCSPLogging;
 
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.CoordinateArrays;
+import com.vividsolutions.jts.geom.CoordinateSequence;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.Polygon;
+import com.vividsolutions.jts.geom.util.GeometryEditor.CoordinateOperation;
 
 /**
  * This class provides coordination for a fleet of robots. An instantiatable {@link TrajectoryEnvelopeCoordinator}
@@ -73,6 +77,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	
 	protected ComparatorChain comparators = new ComparatorChain();
 	protected HashMap<Integer,ForwardModel> forwardModels = new HashMap<Integer, ForwardModel>();
+	protected double maxFootprintDimension = 0.0;
 	
 	public void setForwardModel(int robotID, ForwardModel fm) {
 		this.forwardModels.put(robotID, fm);
@@ -165,7 +170,16 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 * @param coordinates The coordinates delimiting bounding polygon of the footprint.
 	 */
 	public void setFootprint(Coordinate ... coordinates) {
-		this.footprint = coordinates; 
+		this.footprint = coordinates;
+		ArrayList<Double> fpX = new ArrayList<Double>();
+		ArrayList<Double> fpY = new ArrayList<Double>();
+		for (Coordinate coord : this.footprint) {
+			fpX.add(coord.x);
+			fpY.add(coord.y);
+		}
+		Collections.sort(fpX);
+		Collections.sort(fpY);
+		maxFootprintDimension = Math.max(fpX.get(fpX.size()-1)-fpX.get(0), fpY.get(fpY.size()-1)-fpY.get(0));
 	}
 	
 	/**
@@ -387,10 +401,23 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	
 	private boolean getOrder(AbstractTrajectoryEnvelopeTracker robotTracker1, RobotReport robotReport1, AbstractTrajectoryEnvelopeTracker robotTracker2, RobotReport robotReport2, CriticalSection cs) {
 
+		if (cs.getTe1End() == cs.getTe1().getPathLength()-1) {
+			metaCSPLogger.info("Robot" + cs.getTe1().getRobotID() + " will park in " + cs + ", letting Robot" + cs.getTe2().getRobotID() + " go first");
+			return false;
+		}
+		if (cs.getTe2End() == cs.getTe2().getPathLength()-1) {
+			metaCSPLogger.info("Robot" + cs.getTe2().getRobotID() + " will park in " + cs + ", letting Robot" + cs.getTe1().getRobotID() + " go first");
+			return true;
+		}
+		
 		ForwardModel fm1 = getForwardModel(robotTracker1.getTrajectoryEnvelope().getRobotID());
 		ForwardModel fm2 = getForwardModel(robotTracker2.getTrajectoryEnvelope().getRobotID());
-		boolean canStopRobot1 = fm1.canStop(robotTracker1.getTrajectoryEnvelope(), robotReport1, cs.getTe1Start());
-		boolean canStopRobot2 = fm2.canStop(robotTracker2.getTrajectoryEnvelope(), robotReport2, cs.getTe2Start());
+		boolean canStopRobot1 = false;
+		boolean canStopRobot2 = false;
+		if (robotTracker1.getCriticalPoint() <= cs.getTe1Start()) canStopRobot1 = true;
+		else canStopRobot1 = fm1.canStop(robotTracker1.getTrajectoryEnvelope(), robotReport1, cs.getTe1Start());
+		if (robotTracker2.getCriticalPoint() <= cs.getTe2Start()) canStopRobot2 = true;
+		else canStopRobot2 = fm2.canStop(robotTracker2.getTrajectoryEnvelope(), robotReport2, cs.getTe2Start());
 		
 		if (!canStopRobot1 && !canStopRobot2) throw new Error("Neither robot can stop at " + cs);
 		
@@ -404,11 +431,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			else return ((cs.getTe2Start()-robotReport2.getPathIndex()) > (cs.getTe1Start()-robotReport1.getPathIndex())); 
 		}
 		else if (!canStopRobot1) {
-			metaCSPLogger.finest("Robot" + robotTracker1.getTrajectoryEnvelope().getRobotID() + " cannot stop at " + cs);
+			metaCSPLogger.info("Robot" + robotTracker1.getTrajectoryEnvelope().getRobotID() + " cannot stop at " + cs);
 			return true;
 		}
 		else {
-			metaCSPLogger.finest("Robot" + robotTracker2.getTrajectoryEnvelope().getRobotID() + " cannot stop at " + cs);
+			metaCSPLogger.info("Robot" + robotTracker2.getTrajectoryEnvelope().getRobotID() + " cannot stop at " + cs);
 			return false;
 		}
 	}
@@ -656,6 +683,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	}
 
 	protected CriticalSection[] getCriticalSections(TrajectoryEnvelope te1, TrajectoryEnvelope te2) {
+		
 		GeometricShapeVariable poly1 = te1.getEnvelopeVariable();
 		GeometricShapeVariable poly2 = te2.getEnvelopeVariable();
 		Geometry shape1 = ((GeometricShapeDomain)poly1.getDomain()).getGeometry();
@@ -665,12 +693,30 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			PoseSteering[] path1 = te1.getTrajectory().getPoseSteering();
 			PoseSteering[] path2 = te2.getTrajectory().getPoseSteering();
 			Geometry gc = shape1.intersection(shape2);
-			for (int i = 0; i < gc.getNumGeometries(); i++) {
+			ArrayList<Geometry> allIntersections = new ArrayList<Geometry>();
+			if (gc.getNumGeometries() == 1) {
+				allIntersections.add(gc);
+			}
+			else {
+				for (int i = 1; i < gc.getNumGeometries(); i++) {
+					Geometry prev = gc.getGeometryN(i-1);
+					Geometry next = gc.getGeometryN(i);
+					if (prev.distance(next) < maxFootprintDimension) {
+						//System.out.println("MERGED! (maxdim is " + maxDim + ")");
+						allIntersections.add(prev.union(next).convexHull());
+					}
+					else {
+						allIntersections.add(prev);
+						if (i == gc.getNumGeometries()-1) allIntersections.add(next);
+					}
+				}
+			}
+			for (int i = 0; i < allIntersections.size(); i++) {
 				ArrayList<Integer> te1Starts = new ArrayList<Integer>();
 				ArrayList<Integer> te1Ends = new ArrayList<Integer>();
 				ArrayList<Integer> te2Starts = new ArrayList<Integer>();
 				ArrayList<Integer> te2Ends = new ArrayList<Integer>();
-				Geometry g = gc.getGeometryN(i);
+				Geometry g = allIntersections.get(i);
 				boolean started = false;
 				for (int j = 0; j < path1.length; j++) {
 					Geometry placement1 = te1.makeFootprint(path1[j]);
@@ -936,7 +982,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			
 			@Override
 			public void keyTyped(KeyEvent e) {
-				String fileName = new SimpleDateFormat("yyyyMMddHHmmss").format(new Date());
+				String fileName = new SimpleDateFormat("yyyy-MM-dd-HH:mm:ss:SSS").format(new Date());
 				if (e.getKeyChar() == 's') {
 					fileName += ".svg";
 					dumpSVG(fileName);
