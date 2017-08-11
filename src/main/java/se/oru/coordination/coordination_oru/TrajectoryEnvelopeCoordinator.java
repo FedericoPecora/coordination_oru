@@ -34,11 +34,7 @@ import org.metacsp.utility.UI.JTSDrawingPanel;
 import org.metacsp.utility.logging.MetaCSPLogging;
 
 import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.CoordinateArrays;
-import com.vividsolutions.jts.geom.CoordinateSequence;
 import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.Polygon;
-import com.vividsolutions.jts.geom.util.GeometryEditor.CoordinateOperation;
 
 /**
  * This class provides coordination for a fleet of robots. An instantiatable {@link TrajectoryEnvelopeCoordinator}
@@ -314,12 +310,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 //		metaCSPLogger.severe("Could not determine CP for " + te2);
 //		throw new Error("Could not determine CP for " + te2);
 	}
-	
-	protected int getCriticalPoint() {
-		int BUFFER = 10;
-		return BUFFER;
-	}
-	
+		
 	//Spawn a waiting thread at this stopping point
 	protected void spawnWaitingThread(final int robotID, final int index) {
 		Thread stoppingPointTimer = new Thread() {
@@ -700,7 +691,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			else {
 				for (int i = 1; i < gc.getNumGeometries(); i++) {
 					Geometry prev = gc.getGeometryN(i-1);
-					Geometry next = gc.getGeometryN(i);
+					Geometry next = gc.getGeometryN(i);					
 					if (prev.distance(next) < maxFootprintDimension) {
 						//System.out.println("MERGED! (maxdim is " + maxDim + ")");
 						allIntersections.add(prev.union(next).convexHull());
