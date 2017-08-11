@@ -20,7 +20,7 @@ public class DemoLauncher {
 
 	private static void printUsage() {
 		
-		String st = "Usage: ./gradlew run -Pdemo=<demo>\n  Available options for <demo>";
+		String st = "\nUsage: ./gradlew run -Pdemo=<demo>\n\nAvailable options for <demo>";
 		
 		List<ClassLoader> classLoadersList = new LinkedList<ClassLoader>();
 		classLoadersList.add(ClasspathHelper.contextClassLoader());
@@ -52,6 +52,9 @@ public class DemoLauncher {
 			st += "\n    " +cln;
 		}
 		System.out.println(st);
+		System.out.println("\nNOTE: Most examples require the ReedsSheppCarPlanner motion planner, which is provided via a"
+				         + "\n      linked library that has to be built and depends on ompl (http://ompl.kavrakilab.org/)"
+				         + "\n      and mrpt (http://www.mrpt.org/) - see REAME.md for building instructions.");
 	}
 	
 	public static void main(String[] args) {
