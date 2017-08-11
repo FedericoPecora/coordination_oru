@@ -102,4 +102,12 @@ Example ```TestTrajectoryEnvelopeCoordinatorWithMotionPlanner``` in package ```s
 ![alt text](images/coord-rsp.png "Coordination with the ReedsSheppCarPlanner")
 
 ## License
-<a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-nc/4.0/88x31.png" /></a><br /><span xmlns:dct="http://purl.org/dc/terms/" property="dct:title">coordination_oru</span> by <span xmlns:cc="http://creativecommons.org/ns#" property="cc:attributionName">Federico Pecora</span> is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons Attribution-NonCommercial 4.0 International License</a>.
+coordination_oru - Online coordination for multiple robots
+
+Copyright (C) 2017 Federico Pecora
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
