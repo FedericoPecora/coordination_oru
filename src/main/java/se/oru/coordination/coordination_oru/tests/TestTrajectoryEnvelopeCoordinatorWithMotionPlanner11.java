@@ -19,10 +19,12 @@ import se.oru.coordination.coordination_oru.CriticalSection;
 import se.oru.coordination.coordination_oru.Mission;
 import se.oru.coordination.coordination_oru.RobotAtCriticalSection;
 import se.oru.coordination.coordination_oru.RobotReport;
+import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
 
-public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner11 {
+@DemoDescription(desc = "Three robots coordinating at high speed (paths obtained with the ReedsSheppCarPlanner).")
+public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner11 {
 
 	private static HashMap<String,Pose> locations = new HashMap<String, Pose>();
 	private static HashMap<String,String> paths = new HashMap<String, String>();

@@ -28,10 +28,12 @@ import se.oru.coordination.coordination_oru.CriticalSection;
 import se.oru.coordination.coordination_oru.Mission;
 import se.oru.coordination.coordination_oru.RobotAtCriticalSection;
 import se.oru.coordination.coordination_oru.RobotReport;
+import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
 
-public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner4 {
+@DemoDescription(desc = "Coordiantion of 4 robots along wave-like paths obtained with the ReedsSheppCarPlanner in opposing directions.")
+public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner4 {
 
 	public static int MIN_DELAY = 500;
 	public static int MAX_DELAY = 0;

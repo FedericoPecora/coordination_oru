@@ -20,7 +20,7 @@ public class DemoLauncher {
 
 	private static void printUsage() {
 		
-		String st = "Usage: ./gradlew run -Pdemo=<demo>\n  Available options for <demo>:";
+		String st = "Usage: ./gradlew run -Pdemo=<demo>\n  Available options for <demo>";
 		
 		List<ClassLoader> classLoadersList = new LinkedList<ClassLoader>();
 		classLoadersList.add(ClasspathHelper.contextClassLoader());
@@ -32,10 +32,21 @@ public class DemoLauncher {
 		    .filterInputsBy(new FilterBuilder().include(FilterBuilder.prefix(testsPackage))));
 		
 		Set<Class<?>> classes = reflections.getSubTypesOf(Object.class);
+		int length = 0;
+		for (Class<? extends Object> cl : classes) {
+			if (!cl.getSimpleName().equals("")) length = Math.max(length, cl.getSimpleName().length());
+		}
 		TreeSet<String> orderedClasses = new TreeSet<String>();
 		
 		for (Class<? extends Object> cl : classes) {
-			if (!cl.getSimpleName().equals("")) orderedClasses.add(cl.getSimpleName());
+			DemoDescription desc = cl.getAnnotation(DemoDescription.class);
+			if (!cl.getSimpleName().equals("")) {
+				int buffer = length-cl.getSimpleName().length()+5;
+				String bufferString = " ";
+				for (int i = 0; i < buffer; i++) bufferString += ".";
+				bufferString += " ";
+				orderedClasses.add(cl.getSimpleName() + (desc != null ? bufferString + desc.desc() : ""));
+			}
 		}			
 		for (String cln : orderedClasses) {
 			st += "\n    " +cln;

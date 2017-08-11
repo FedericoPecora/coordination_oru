@@ -16,9 +16,11 @@ import se.oru.coordination.coordination_oru.CriticalSection;
 import se.oru.coordination.coordination_oru.Mission;
 import se.oru.coordination.coordination_oru.RobotAtCriticalSection;
 import se.oru.coordination.coordination_oru.RobotReport;
+import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
 
-public abstract class TestTrajectoryEnvelopeCoordinatorThreeRobots {
+@DemoDescription(desc = "Simple test showing the use of pre-planned paths stored in files.")
+public class TestTrajectoryEnvelopeCoordinatorThreeRobots {
 
 	private static HashMap<String,Pose> locations = new HashMap<String, Pose>();
 	private static HashMap<String,String> paths = new HashMap<String, String>();
