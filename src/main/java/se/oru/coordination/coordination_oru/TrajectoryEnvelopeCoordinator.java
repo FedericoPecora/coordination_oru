@@ -315,6 +315,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected void spawnWaitingThread(final int robotID, final int index) {
 		Thread stoppingPointTimer = new Thread() {
 			private long startTime = Calendar.getInstance().getTimeInMillis();
+			@Override
 			public void run() {
 				while (Calendar.getInstance().getTimeInMillis()-startTime < STOPPING_TIME) {
 					try { Thread.sleep(100); }
@@ -1103,6 +1104,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected void setupInferenceCallback() {
 		
 		Thread inference = new Thread("Coordinator inference") {
+			@Override
 			public void run() {
 				while (true) {
 					synchronized(solver) {						

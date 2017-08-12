@@ -245,6 +245,7 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 				
 		//Start a thread that monitors the sub-envelopes and finishes them when appropriate
 		Thread monitorSubEnvelopes = new Thread("Abstract tracker " + te.getComponent()) {
+			@Override
 			public void run() {	
 
 				int prevSeqNumber = -1;

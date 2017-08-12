@@ -83,6 +83,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 		this.th = new Thread(this, "RK4 tracker " + te.getComponent());
 	}
 	
+	@Override
 	public void startTracking() {
 		while (this.th == null) {
 			try { Thread.sleep(10); }
@@ -107,6 +108,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 	private void startInternalCPThread() {
 		Thread t = new Thread() {
 			private HashMap<Integer,Integer> userCPReplacements = new HashMap<Integer, Integer>();
+			@Override
 			public void run() {
 				while (th.isAlive()) {
 					ArrayList<Integer> toRemove = new ArrayList<Integer>();

@@ -23,6 +23,7 @@ public class ConstantAccelerationForwardModel implements ForwardModel {
 		this.TEMPORAL_RESOLUTION = TEMPORAL_RESOLUTION;
 	}
 
+	@Override
 	public boolean canStop(TrajectoryEnvelope te, RobotReport currentState, int targetPathIndex) {
 		double distance = se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeTrackerRK4.computeDistance(te.getTrajectory(), (currentState.getPathIndex() != -1 ? currentState.getPathIndex() : 0), targetPathIndex);
 		State state = new State(0.0, currentState.getVelocity());

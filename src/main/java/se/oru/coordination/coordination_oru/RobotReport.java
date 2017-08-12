@@ -75,6 +75,7 @@ public class RobotReport {
 		return criticalPoint;
 	}
 
+	@Override
 	public String toString() {
 		return "Distance: " + MetaCSPLogging.printDouble(this.distanceTraveled,4) +  "  Pose: " + this.pose + "  Index: " + this.pathIndex + "  Velocity: " + MetaCSPLogging.printDouble(velocity,4);
 	}

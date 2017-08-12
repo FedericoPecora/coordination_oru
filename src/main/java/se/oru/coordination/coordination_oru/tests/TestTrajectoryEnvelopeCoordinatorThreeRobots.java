@@ -1,15 +1,6 @@
 package se.oru.coordination.coordination_oru.tests;
 
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Scanner;
-import java.util.logging.Logger;
-
-import org.metacsp.multi.spatioTemporal.paths.Pose;
-import org.metacsp.utility.logging.MetaCSPLogging;
 
 import se.oru.coordination.coordination_oru.ConstantAccelerationForwardModel;
 import se.oru.coordination.coordination_oru.CriticalSection;
@@ -18,71 +9,10 @@ import se.oru.coordination.coordination_oru.RobotAtCriticalSection;
 import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
+import se.oru.coordination.coordination_oru.util.Missions;
 
 @DemoDescription(desc = "Simple test showing the use of pre-planned paths stored in files.")
 public class TestTrajectoryEnvelopeCoordinatorThreeRobots {
-
-	private static HashMap<String,Pose> locations = new HashMap<String, Pose>();
-	private static HashMap<String,String> paths = new HashMap<String, String>();
-	private static Logger metaCSPLogger = MetaCSPLogging.getLogger(TestTrajectoryEnvelopeCoordinatorThreeRobots.class);
-	public static HashMap<Integer,ArrayList<Mission>> missions = new HashMap<Integer, ArrayList<Mission>>();
-
-	//Convenience method to put a mission into a global hashmap
-	private static void putMission(Mission m) {
-		if (!missions.containsKey(m.getRobotID())) missions.put(m.getRobotID(), new ArrayList<Mission>());
-		missions.get(m.getRobotID()).add(m);
-	}
-
-	//Convenience method to get the i-th mission for a given robotID from the global hashmap	
-	private static Mission getMission(int robotID, int missionNumber) {
-		return missions.get(robotID).get(missionNumber);
-	}
-
-	//Load location and path data from a file
-	public static void loadLocationAndPathData(String fileName) {
-		try {
-			Scanner in = new Scanner(new FileReader(fileName));
-			while (in.hasNextLine()) {
-				String line = in.nextLine().trim();
-				if (line.length() != 0 && !line.startsWith("#")) {
-					String[] oneline = line.split(" |\t");
-					Pose ps = null;
-					if (line.contains("->")) {
-						paths.put(oneline[0]+oneline[1]+oneline[2], oneline[3]);
-						System.out.println("Added to paths paths: " + oneline[0]+oneline[1]+oneline[2] + " --> " + oneline[3]);
-					}
-					else {
-						String locationName = oneline[0];
-						ps = new Pose(
-								new Double(oneline[1]).doubleValue(),
-								new Double(oneline[2]).doubleValue(),
-								new Double(oneline[3]).doubleValue());
-						locations.put(locationName, ps);
-					}
-				}
-			}
-			in.close();
-		}
-		catch (FileNotFoundException e) { e.printStackTrace(); }
-	}
-
-	//Convenience method to get locations from the data loaded by method loadLocationAndPathData()
-	public static Pose getLocation(String name) {
-		Pose ret = locations.get(name);
-		if (ret == null) throw new Error("Unknown location " + name);
-		return ret;
-	}
-
-	//Convenience method to get path files from the data loaded by method loadLocationAndPathData()
-	public static String getPathFile(String fromLocation, String toLocation) {
-		String ret = paths.get(fromLocation+"->"+toLocation);
-		if (!locations.containsKey(fromLocation)) throw new Error("Unknown location " + fromLocation);
-		if (!locations.containsKey(toLocation)) throw new Error("Unknown location " + toLocation);
-		if (ret == null) throw new Error("No path between " + fromLocation + " and " + toLocation);
-		return ret;
-	}
-
-
 
 	public static void main(String[] args) throws InterruptedException {
 
@@ -112,9 +42,9 @@ public class TestTrajectoryEnvelopeCoordinatorThreeRobots {
 		
 		//You probably also want to provide a non-trivial forward model
 		//(the default assumes that robots can always stop)
-		tec.setForwardModel(1, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL));
-		tec.setForwardModel(2, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL));
-		tec.setForwardModel(3, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL));
+		tec.setForwardModel(1, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getControlPeriod(), tec.getTemporalResolution()));
+		tec.setForwardModel(2, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getControlPeriod(), tec.getTemporalResolution()));
+		tec.setForwardModel(3, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getControlPeriod(), tec.getTemporalResolution()));
 
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
@@ -123,32 +53,32 @@ public class TestTrajectoryEnvelopeCoordinatorThreeRobots {
 		tec.setupGUI(null);
 
 		//Load data file with locations and pointers to files containing paths between locations
-		loadLocationAndPathData("paths/test_poses_and_path_data.txt");
+		Missions.loadLocationAndPathData("paths/test_poses_and_path_data.txt");
 
 		//Place robots in their initial locations (looked up in the data file that was loaded above)
 		// -- creates a trajectory envelope for each location, representing the fact that the robot is parked
 		// -- each trajectory envelope has a path of one pose (the pose of the location)
 		// -- each trajectory envelope is the footprint of the corresponding robot in that pose
-		tec.placeRobot(1, getLocation("r1p"));
-		tec.placeRobot(2, getLocation("r2p"));
-		tec.placeRobot(3, getLocation("r3p"));
+		tec.placeRobot(1, Missions.getLocation("r1p"));
+		tec.placeRobot(2, Missions.getLocation("r2p"));
+		tec.placeRobot(3, Missions.getLocation("r3p"));
 
 		String prefix = "paths/";
 		//Make a mission for each robot, and store it in the global hashmap:
 		// -- from parking location of robot i (rip)
 		// -- to destination location of robot i (desti)
-		putMission(new Mission(1, prefix+getPathFile("r1p", "dest1"), getLocation("r1p"), getLocation("dest1")));
-		putMission(new Mission(2, prefix+getPathFile("r2p", "dest2"), getLocation("r2p"), getLocation("dest2")));
-		putMission(new Mission(3, prefix+getPathFile("r3p", "dest3"), getLocation("r3p"), getLocation("dest3")));
+		Missions.putMission(new Mission(1, prefix+Missions.getPathFile("r1p", "dest1"), Missions.getLocation("r1p"), Missions.getLocation("dest1")));
+		Missions.putMission(new Mission(2, prefix+Missions.getPathFile("r2p", "dest2"), Missions.getLocation("r2p"), Missions.getLocation("dest2")));
+		Missions.putMission(new Mission(3, prefix+Missions.getPathFile("r3p", "dest3"), Missions.getLocation("r3p"), Missions.getLocation("dest3")));
 
 		//Make another mission for each robot, and store it in the global hashmap:
 		// -- from destination location of robot i (desti)
 		// -- to parking location of robot i (rip)
-		putMission(new Mission(1, prefix+getPathFile("dest1", "r1p"), getLocation("dest1"), getLocation("r1p")));
-		putMission(new Mission(2, prefix+getPathFile("dest2", "r2p"), getLocation("dest2"), getLocation("r2p")));
-		putMission(new Mission(3, prefix+getPathFile("dest3", "r3p"), getLocation("dest3"), getLocation("r3p")));
+		Missions.putMission(new Mission(1, prefix+Missions.getPathFile("dest1", "r1p"), Missions.getLocation("dest1"), Missions.getLocation("r1p")));
+		Missions.putMission(new Mission(2, prefix+Missions.getPathFile("dest2", "r2p"), Missions.getLocation("dest2"), Missions.getLocation("r2p")));
+		Missions.putMission(new Mission(3, prefix+Missions.getPathFile("dest3", "r3p"), Missions.getLocation("dest3"), Missions.getLocation("r3p")));
 
-		metaCSPLogger.info("Added missions " + missions);
+		System.out.println("Added missions " + Missions.getMissions());
 
 		//Start a mission dispatching thread for each robot, which will run forever
 		for (int i = 1; i <= 3; i++) {
@@ -156,10 +86,11 @@ public class TestTrajectoryEnvelopeCoordinatorThreeRobots {
 			//For each robot, create a thread that dispatches the "next" mission when the robot is free 
 			Thread t = new Thread() {
 				int iteration = 0;
+				@Override
 				public void run() {
 					while (true) {
 						//Mission to dispatch alternates between (rip -> desti) and (desti -> rip)
-						Mission m = getMission(robotID, iteration%2);
+						Mission m = Missions.getMission(robotID, iteration%2);
 						synchronized(tec) {
 							//addMission returns true iff the robot was free to accept a new mission
 							if (tec.addMissions(m)) {

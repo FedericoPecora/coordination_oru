@@ -1,28 +1,21 @@
 package se.oru.coordination.coordination_oru.tests;
 
 import java.awt.image.BufferedImage;
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.Random;
-import java.util.logging.Logger;
 
 import javax.imageio.ImageIO;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
-import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
-import org.metacsp.utility.logging.MetaCSPLogging;
 
 import com.vividsolutions.jts.geom.Coordinate;
 
-import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeTracker;
 import se.oru.coordination.coordination_oru.ConstantAccelerationForwardModel;
 import se.oru.coordination.coordination_oru.CriticalSection;
 import se.oru.coordination.coordination_oru.Mission;
@@ -31,47 +24,13 @@ import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
+import se.oru.coordination.coordination_oru.util.Missions;
 
 @DemoDescription(desc = "Coordiantion of 4 robots along wave-like paths obtained with the ReedsSheppCarPlanner in opposing directions.")
 public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner4 {
 
 	public static int MIN_DELAY = 500;
 	public static int MAX_DELAY = 0;
-
-	private static Logger metaCSPLogger = MetaCSPLogging.getLogger(TestTrajectoryEnvelopeCoordinatorWithMotionPlanner4.class);
-	public static HashMap<Integer,ArrayList<Mission>> missions = new HashMap<Integer, ArrayList<Mission>>();
-
-	//Get property from YAML file
-	public static String getProperty(String property, String yamlFile) {
-		String ret = null;
-		try {
-			File file = new File(yamlFile);
-			BufferedReader br = new BufferedReader(new FileReader(file));
-			String st;
-			while((st=br.readLine()) != null){
-				String key = st.substring(0, st.indexOf(":")).trim();
-				String value = st.substring(st.indexOf(":")+1).trim();
-				if (key.equals(property)) {
-					ret = value;
-					break;
-				}
-			}
-			br.close();
-		}
-		catch (IOException e) { e.printStackTrace(); }
-		return ret;
-	}
-
-	//Convenience method to put a mission into a global hashmap
-	private static void putMission(Mission m) {
-		if (!missions.containsKey(m.getRobotID())) missions.put(m.getRobotID(), new ArrayList<Mission>());
-		missions.get(m.getRobotID()).add(m);
-	}
-
-	//Convenience method to get the i-th mission for a given robotID from the global hashmap	
-	private static Mission getMission(int robotID, int missionNumber) {
-		return missions.get(robotID).get(missionNumber);
-	}
 
 	public static void main(String[] args) throws InterruptedException {
 
@@ -120,9 +79,9 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner4 {
 
 		//Instantiate a simple motion planner
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-		String mapFile = "maps"+File.separator+getProperty("image", yamlFile);
+		String mapFile = "maps"+File.separator+Missions.getProperty("image", yamlFile);
 		rsp.setMapFilename(mapFile);
-		double res = Double.parseDouble(getProperty("resolution", yamlFile));
+		double res = Double.parseDouble(Missions.getProperty("resolution", yamlFile));
 		rsp.setMapResolution(res);
 		rsp.setRobotRadius(1.1);
 		rsp.setTurningRadius(4.0);
@@ -179,11 +138,11 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner4 {
 			pathsRobotInv.addAll(pathsRobot);
 			Collections.reverse(pathsRobotInv);
 
-			putMission(new Mission(robotID, pathsRobot.toArray(new PoseSteering[pathsRobot.size()])));
-			putMission(new Mission(robotID, pathsRobotInv.toArray(new PoseSteering[pathsRobotInv.size()])));
+			Missions.putMission(new Mission(robotID, pathsRobot.toArray(new PoseSteering[pathsRobot.size()])));
+			Missions.putMission(new Mission(robotID, pathsRobotInv.toArray(new PoseSteering[pathsRobotInv.size()])));
 		}
 
-		metaCSPLogger.info("Added missions " + missions);
+		System.out.println("Added missions " + Missions.getMissions());
 
 		final Random rand = new Random(Calendar.getInstance().getTimeInMillis());
 		//Start a mission dispatching thread for each robot, which will run forever
@@ -191,10 +150,11 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner4 {
 			//For each robot, create a thread that dispatches the "next" mission when the robot is free 
 			Thread t = new Thread() {
 				int iteration = 0;
+				@Override
 				public void run() {
 					while (true) {
 						//Mission to dispatch alternates between (rip -> desti) and (desti -> rip)
-						Mission m = getMission(robotID, iteration%2);
+						Mission m = Missions.getMission(robotID, iteration%2);
 						synchronized(tec) {
 							//addMission returns true iff the robot was free to accept a new mission
 							if (tec.addMissions(m)) {

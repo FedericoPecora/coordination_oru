@@ -31,6 +31,7 @@ public class State {
 		return new State(this.getPosition(), this.getVelocity());
 	}
 	
+	@Override
 	public String toString() {
 		return "Pos: " + this.getPosition() + " Vel: " + this.getVelocity();
 	}

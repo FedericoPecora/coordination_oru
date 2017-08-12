@@ -71,6 +71,7 @@ public class CriticalSection {
 		this.te2Break = te2Break;
 	}
 	
+	@Override
 	public String toString() {
 		String ret = "";
 		ret += "CriticalSection (Robot" + te1.getRobotID() + " [" + te1Start + ";" + te1End + "], Robot" + te2.getRobotID() + " [" + te2Start + ";" + te2End + "])"; //\n\t" + te1 + "\n\t" + te2; 

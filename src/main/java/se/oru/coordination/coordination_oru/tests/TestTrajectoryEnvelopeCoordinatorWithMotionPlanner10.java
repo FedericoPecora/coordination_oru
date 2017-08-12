@@ -1,25 +1,10 @@
 package se.oru.coordination.coordination_oru.tests;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Scanner;
-import java.util.logging.Logger;
-
-import org.metacsp.multi.spatioTemporal.paths.Pose;
-import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
-import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
-import org.metacsp.utility.logging.MetaCSPLogging;
 
 import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.Geometry;
 
-import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeTracker;
 import se.oru.coordination.coordination_oru.ConstantAccelerationForwardModel;
 import se.oru.coordination.coordination_oru.CriticalSection;
 import se.oru.coordination.coordination_oru.Mission;
@@ -28,91 +13,10 @@ import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
+import se.oru.coordination.coordination_oru.util.Missions;
 
 @DemoDescription(desc = "Four robots cycling through rooms in a large environment (paths obtained with the ReedsSheppCarPlanner).")
 public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner10 {
-
-	private static HashMap<String,Pose> locations = new HashMap<String, Pose>();
-	private static HashMap<String,String> paths = new HashMap<String, String>();
-
-	private static Logger metaCSPLogger = MetaCSPLogging.getLogger(TestTrajectoryEnvelopeCoordinatorWithMotionPlanner10.class);
-	public static HashMap<Integer,ArrayList<Mission>> missions = new HashMap<Integer, ArrayList<Mission>>();
-
-	//Load location and path data from a file
-	public static void loadLocationAndPathData(String fileName) {
-		try {
-			Scanner in = new Scanner(new FileReader(fileName));
-			while (in.hasNextLine()) {
-				String line = in.nextLine().trim();
-				if (line.length() != 0 && !line.startsWith("#")) {
-					String[] oneline = line.split(" |\t");
-					Pose ps = null;
-					if (line.contains("->")) {
-						paths.put(oneline[0]+oneline[1]+oneline[2], oneline[3]);
-						System.out.println("Added to paths paths: " + oneline[0]+oneline[1]+oneline[2] + " --> " + oneline[3]);
-					}
-					else {
-						String locationName = oneline[0];
-						ps = new Pose(
-								new Double(oneline[1]).doubleValue(),
-								new Double(oneline[2]).doubleValue(),
-								new Double(oneline[3]).doubleValue());
-						locations.put(locationName, ps);
-					}
-				}
-			}
-			in.close();
-		}
-		catch (FileNotFoundException e) { e.printStackTrace(); }
-	}
-
-	//Convenience method to get locations from the data loaded by method loadLocationAndPathData()
-	public static Pose getLocation(String name) {
-		Pose ret = locations.get(name);
-		if (ret == null) throw new Error("Unknown location " + name);
-		return ret;
-	}
-
-	//Convenience method to get path files from the data loaded by method loadLocationAndPathData()
-	public static String getPathFile(String fromLocation, String toLocation) {
-		String ret = paths.get(fromLocation+"->"+toLocation);
-		if (!locations.containsKey(fromLocation)) throw new Error("Unknown location " + fromLocation);
-		if (!locations.containsKey(toLocation)) throw new Error("Unknown location " + toLocation);
-		if (ret == null) throw new Error("No path between " + fromLocation + " and " + toLocation);
-		return ret;
-	}
-	
-	//Get property from YAML file
-	public static String getProperty(String property, String yamlFile) {
-		String ret = null;
-		try {
-			File file = new File(yamlFile);
-			BufferedReader br = new BufferedReader(new FileReader(file));
-			String st;
-			while((st=br.readLine()) != null){
-				String key = st.substring(0, st.indexOf(":")).trim();
-				String value = st.substring(st.indexOf(":")+1).trim();
-				if (key.equals(property)) {
-					ret = value;
-					break;
-				}
-			}
-			br.close();
-		}
-		catch (IOException e) { e.printStackTrace(); }
-		return ret;
-	}
-
-	//Convenience method to put a mission into a global hashmap
-	private static void putMission(Mission m) {
-		if (!missions.containsKey(m.getRobotID())) missions.put(m.getRobotID(), new ArrayList<Mission>());
-		missions.get(m.getRobotID()).add(m);
-	}
-
-	//Convenience method to get the i-th mission for a given robotID from the global hashmap	
-	private static Mission getMission(int robotID, int missionNumber) {
-		return missions.get(robotID).get(missionNumber);
-	}
 
 	public static void main(String[] args) throws InterruptedException {
 
@@ -141,7 +45,7 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner10 {
 		});
 		
 
-		loadLocationAndPathData("paths/test_poses.txt");
+		Missions.loadLocationAndPathData("paths/test_poses.txt");
 
 		Coordinate footprint1 = new Coordinate(-1.0,0.5);
 		Coordinate footprint2 = new Coordinate(1.0,0.5);
@@ -159,8 +63,8 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner10 {
 		tec.setUseInternalCriticalPoints(false);
 
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-		rsp.setMapFilename("maps"+File.separator+getProperty("image", yamlFile));
-		double res = Double.parseDouble(getProperty("resolution", yamlFile));
+		rsp.setMapFilename("maps"+File.separator+Missions.getProperty("image", yamlFile));
+		double res = Double.parseDouble(Missions.getProperty("resolution", yamlFile));
 		rsp.setMapResolution(res);
 		rsp.setRobotRadius(1.1);
 		rsp.setTurningRadius(4.0);
@@ -169,42 +73,42 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner10 {
 		Integer[] robotIDs = new Integer[] {1,2,3,4};
 		for (Integer robotID : robotIDs) {
 			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getControlPeriod(), tec.getTemporalResolution()));	
-			tec.placeRobot(robotID, getLocation("a"+robotID));
+			tec.placeRobot(robotID, Missions.getLocation("a"+robotID));
 			
-			rsp.setStart(getLocation("a"+robotID));
-			rsp.setGoal(getLocation("b"+robotID));
+			rsp.setStart(Missions.getLocation("a"+robotID));
+			rsp.setGoal(Missions.getLocation("b"+robotID));
 			rsp.plan();
-			putMission(new Mission(robotID,rsp.getPath()));
+			Missions.putMission(new Mission(robotID,rsp.getPath()));
 			
-			rsp.setStart(getLocation("b"+robotID));
-			rsp.setGoal(getLocation("c"+robotID));
+			rsp.setStart(Missions.getLocation("b"+robotID));
+			rsp.setGoal(Missions.getLocation("c"+robotID));
 			rsp.plan();
-			putMission(new Mission(robotID,rsp.getPath()));
+			Missions.putMission(new Mission(robotID,rsp.getPath()));
 			
-			rsp.setStart(getLocation("c"+robotID));
-			rsp.setGoal(getLocation("d"+robotID));
+			rsp.setStart(Missions.getLocation("c"+robotID));
+			rsp.setGoal(Missions.getLocation("d"+robotID));
 			rsp.plan();
-			putMission(new Mission(robotID,rsp.getPath()));
+			Missions.putMission(new Mission(robotID,rsp.getPath()));
 			
-			rsp.setStart(getLocation("d"+robotID));
-			rsp.setGoal(getLocation("g"+robotID));
+			rsp.setStart(Missions.getLocation("d"+robotID));
+			rsp.setGoal(Missions.getLocation("g"+robotID));
 			rsp.plan();
-			putMission(new Mission(robotID,rsp.getPath()));
+			Missions.putMission(new Mission(robotID,rsp.getPath()));
 
-			rsp.setStart(getLocation("g"+robotID));
-			rsp.setGoal(getLocation("e"+robotID));
+			rsp.setStart(Missions.getLocation("g"+robotID));
+			rsp.setGoal(Missions.getLocation("e"+robotID));
 			rsp.plan();
-			putMission(new Mission(robotID,rsp.getPath()));
+			Missions.putMission(new Mission(robotID,rsp.getPath()));
 
-			rsp.setStart(getLocation("e"+robotID));
-			rsp.setGoal(getLocation("f"+robotID));
+			rsp.setStart(Missions.getLocation("e"+robotID));
+			rsp.setGoal(Missions.getLocation("f"+robotID));
 			rsp.plan();
-			putMission(new Mission(robotID,rsp.getPath()));
+			Missions.putMission(new Mission(robotID,rsp.getPath()));
 			
-			rsp.setStart(getLocation("f"+robotID));
-			rsp.setGoal(getLocation("a"+robotID));
+			rsp.setStart(Missions.getLocation("f"+robotID));
+			rsp.setGoal(Missions.getLocation("a"+robotID));
 			rsp.plan();
-			putMission(new Mission(robotID,rsp.getPath()));
+			Missions.putMission(new Mission(robotID,rsp.getPath()));
 
 		}
 		
@@ -213,9 +117,10 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner10 {
 			//For each robot, create a thread that dispatches the "next" mission when the robot is free 
 			Thread t = new Thread() {
 				int iteration = 0;
+				@Override
 				public void run() {
 					while (true) {
-						Mission m = getMission(robotID, iteration%missions.get(robotID).size());
+						Mission m = Missions.getMission(robotID, iteration%Missions.getMissions(robotID).size());
 						synchronized(tec) {
 							//addMission returns true iff the robot was free to accept a new mission
 							if (tec.addMissions(m)) {

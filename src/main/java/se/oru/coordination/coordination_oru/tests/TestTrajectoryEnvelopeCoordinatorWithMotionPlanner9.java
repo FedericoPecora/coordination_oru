@@ -2,13 +2,11 @@ package se.oru.coordination.coordination_oru.tests;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Scanner;
 import java.util.logging.Logger;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
@@ -19,7 +17,6 @@ import org.metacsp.utility.logging.MetaCSPLogging;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 
-import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeTracker;
 import se.oru.coordination.coordination_oru.ConstantAccelerationForwardModel;
 import se.oru.coordination.coordination_oru.CriticalSection;
 import se.oru.coordination.coordination_oru.Mission;
@@ -28,45 +25,11 @@ import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
+import se.oru.coordination.coordination_oru.util.Missions;
 
 @DemoDescription(desc = "One-shot navigation of 2 robots showing multiple overlapping critical sections.")
 public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner9 {
-
-	private static Logger metaCSPLogger = MetaCSPLogging.getLogger(TestTrajectoryEnvelopeCoordinatorWithMotionPlanner9.class);
-	public static HashMap<Integer,ArrayList<Mission>> missions = new HashMap<Integer, ArrayList<Mission>>();
-
-	//Get property from YAML file
-	public static String getProperty(String property, String yamlFile) {
-		String ret = null;
-		try {
-			File file = new File(yamlFile);
-			BufferedReader br = new BufferedReader(new FileReader(file));
-			String st;
-			while((st=br.readLine()) != null){
-				String key = st.substring(0, st.indexOf(":")).trim();
-				String value = st.substring(st.indexOf(":")+1).trim();
-				if (key.equals(property)) {
-					ret = value;
-					break;
-				}
-			}
-			br.close();
-		}
-		catch (IOException e) { e.printStackTrace(); }
-		return ret;
-	}
-
-	//Convenience method to put a mission into a global hashmap
-	private static void putMission(Mission m) {
-		if (!missions.containsKey(m.getRobotID())) missions.put(m.getRobotID(), new ArrayList<Mission>());
-		missions.get(m.getRobotID()).add(m);
-	}
-
-	//Convenience method to get the i-th mission for a given robotID from the global hashmap	
-	private static Mission getMission(int robotID, int missionNumber) {
-		return missions.get(robotID).get(missionNumber);
-	}
-
+	
 	public static void main(String[] args) throws InterruptedException {
 
 		double MAX_ACCEL = 1.0;
@@ -118,8 +81,8 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner9 {
 
 		//Instantiate a simple motion planner
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-		rsp.setMapFilename("maps"+File.separator+getProperty("image", yamlFile));
-		double res = Double.parseDouble(getProperty("resolution", yamlFile));
+		rsp.setMapFilename("maps"+File.separator+Missions.getProperty("image", yamlFile));
+		double res = Double.parseDouble(Missions.getProperty("resolution", yamlFile));
 		rsp.setMapResolution(res);
 		rsp.setRobotRadius(1.1);
 		rsp.setTurningRadius(4.0);
@@ -176,8 +139,6 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner9 {
 		tec.addMissions(new Mission(1, pathRobot1.toArray(new PoseSteering[pathRobot1.size()])), new Mission(2, pathRobot2.toArray(new PoseSteering[pathRobot2.size()])));
 		tec.computeCriticalSections();
 		tec.startTrackingAddedMissions();
-
-		metaCSPLogger.info("Added missions " + missions);
 
 	}
 
