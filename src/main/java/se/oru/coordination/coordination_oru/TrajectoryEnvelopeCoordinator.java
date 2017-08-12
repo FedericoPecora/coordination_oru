@@ -73,7 +73,18 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	
 	protected ComparatorChain comparators = new ComparatorChain();
 	protected HashMap<Integer,ForwardModel> forwardModels = new HashMap<Integer, ForwardModel>();
-	protected double maxFootprintDimension = 0.0;
+
+	//Default footprint (same for all robots)
+	//NOTE: coordinates must be in CCW or CW order
+	protected Coordinate[] footprint = new Coordinate[] {
+			new Coordinate(-1.7, 0.7),	//back left
+			new Coordinate(-1.7, -0.7),	//back right
+			new Coordinate(2.7, -0.7),	//front right
+			new Coordinate(2.7, 0.7)	//front left
+	};
+
+	//Reflects the default footprint
+	protected double maxFootprintDimension = 4.4;
 	
 	public void setForwardModel(int robotID, ForwardModel fm) {
 		this.forwardModels.put(robotID, fm);
@@ -149,15 +160,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	public RobotReport getRobotReport(int robotID) {
 		return trackers.get(robotID).getRobotReport();
 	}
-
-	//Define the footprint (same for all robots)
-	//NOTE: coordinates must be in CCW or CW order
-	protected Coordinate[] footprint = new Coordinate[] {
-			new Coordinate(-1.7, 0.7),	//back left
-			new Coordinate(-1.7, -0.7),	//back right
-			new Coordinate(2.7, -0.7),	//front right
-			new Coordinate(2.7, 0.7)	//front left
-	};
 	
 	/**
 	 * Set the footprint of this TrajectoryEnvelope, which is used for computing the spatial envelope.
@@ -167,6 +169,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 */
 	public void setFootprint(Coordinate ... coordinates) {
 		this.footprint = coordinates;
+		computemaxFootprintDimension();
+	}
+	
+	private void computemaxFootprintDimension() {
 		ArrayList<Double> fpX = new ArrayList<Double>();
 		ArrayList<Double> fpY = new ArrayList<Double>();
 		for (Coordinate coord : this.footprint) {
@@ -969,6 +975,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	public void setupGUI(String mapYAMLFile) {
 		//Show everything in a GUI (vehicle positions are updated in real time by the trackers, see below)
 		panel = JTSDrawingPanel.makeEmpty("Current status of robots");
+		panel.setArrowHeadSizeInMeters(0.6*maxFootprintDimension);
+		panel.setTextSizeInMeters(0.8*maxFootprintDimension);
+		System.out.println("TEXT SIZE IN METERS IS " + 0.5*maxFootprintDimension);
 		if (mapYAMLFile != null) panel.setMap(mapYAMLFile);
 		panel.addKeyListener(new KeyListener() {
 			
