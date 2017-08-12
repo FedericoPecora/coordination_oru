@@ -14,14 +14,28 @@ import org.reflections.util.ClasspathHelper;
 import org.reflections.util.ConfigurationBuilder;
 import org.reflections.util.FilterBuilder;
 
+import se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator;
+import se.oru.coordination.coordination_oru.util.StringUtils;
+
 public class DemoLauncher {
 
 	private static final String testsPackage = "se.oru.coordination.coordination_oru.tests";
 
 	private static void printUsage() {
-		
-		String st = "\nUsage: ./gradlew run -Pdemo=<demo>\n\nAvailable options for <demo>";
-		
+
+		System.out.println("\n"+TrajectoryEnvelopeCoordinator.TITLE);
+		System.out.println(TrajectoryEnvelopeCoordinator.COPYRIGHT+"\n");
+		if (TrajectoryEnvelopeCoordinator.LICENSEE != null) {
+			List<String> lic = StringUtils.fitWidth(TrajectoryEnvelopeCoordinator.PRIVATE_LICENSE, 72, 5);
+			for (String st : lic) System.out.println(st);
+		}
+		else {
+			List<String> lic = StringUtils.fitWidth(TrajectoryEnvelopeCoordinator.PUBLIC_LICENSE, 72, 5);
+			for (String st : lic) System.out.println(st);
+		}
+
+		System.out.println("\nUsage: ./gradlew run -Pdemo=<demo>\n\nAvailable options for <demo>");
+
 		List<ClassLoader> classLoadersList = new LinkedList<ClassLoader>();
 		classLoadersList.add(ClasspathHelper.contextClassLoader());
 		classLoadersList.add(ClasspathHelper.staticClassLoader());
@@ -36,25 +50,26 @@ public class DemoLauncher {
 		for (Class<? extends Object> cl : classes) {
 			if (!cl.getSimpleName().equals("")) length = Math.max(length, cl.getSimpleName().length());
 		}
-		TreeSet<String> orderedClasses = new TreeSet<String>();
 		
+		String CONNECTOR_LEAF = (char)0x2514 + "" + (char)0x2500 + " ";
+
 		for (Class<? extends Object> cl : classes) {
 			DemoDescription desc = cl.getAnnotation(DemoDescription.class);
 			if (!cl.getSimpleName().equals("")) {
-				int buffer = length-cl.getSimpleName().length()+5;
-				String bufferString = " ";
-				for (int i = 0; i < buffer; i++) bufferString += ".";
-				bufferString += " ";
-				orderedClasses.add(cl.getSimpleName() + (desc != null ? bufferString + desc.desc() : ""));
+				System.out.println("\n   "+cl.getSimpleName());
+				if (desc != null) {
+					List<String> descStrings = StringUtils.description("   "+CONNECTOR_LEAF,desc.desc(), 72);
+					for (String ds : descStrings) System.out.println(ds);
+				}
 			}
 		}			
-		for (String cln : orderedClasses) {
-			st += "\n    " +cln;
-		}
-		System.out.println(st);
-		System.out.println("\nNOTE: Most examples require the ReedsSheppCarPlanner motion planner, which is provided via a"
-				         + "\n      linked library that has to be built and depends on ompl (http://ompl.kavrakilab.org/)"
-				         + "\n      and mrpt (http://www.mrpt.org/) - see REAME.md for building instructions.");
+		
+		System.out.println();
+		String note = "Most examples require the ReedsSheppCarPlanner motion planner, which is provided via a"
+				+ "linked library that has to be built and depends on ompl (http://ompl.kavrakilab.org/)"
+				+ "and mrpt (http://www.mrpt.org/). See REAME.md for building instructions.";
+		List<String> formattedNote = StringUtils.description("NOTE: ", note, 72);
+		for (String line : formattedNote) System.out.println(line);
 	}
 	
 	public static void main(String[] args) {

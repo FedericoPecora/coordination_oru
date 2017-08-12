@@ -45,7 +45,20 @@ import com.vividsolutions.jts.geom.Geometry;
  *
  */
 public abstract class TrajectoryEnvelopeCoordinator {
+
+	public static String TITLE = "coordination_oru - Online coordination for multiple robots";
+	public static String COPYRIGHT = "Copyright (C) 2017 Federico Pecora";
 	
+	//null -> public (GPL3) license
+	public static String LICENSEE = null;
+	
+	public static String PUBLIC_LICENSE = "This program comes with ABSOLUTELY NO WARRANTY. "
+			+ "This is free software, and you are welcome to redistribute it "
+			+ "under certain conditions; see LICENSE for details.";
+	public static String PRIVATE_LICENSE = "This program comes with ABSOLUTELY NO WARRANTY. "
+			+ "This program has been licensed to " + LICENSEE + ". The licensee may "
+			+ "redistribute it under certain conditions; see LICENSE for details.";
+
 	public static final int PARKING_DURATION = 3000;
 	protected static final long STOPPING_TIME = 5000;
 	protected int CONTROL_PERIOD;
@@ -206,14 +219,32 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 */
 	public abstract long getCurrentTimeInMillis(); 
 	
+	/**
+	 * Place a robot with a given ID in a given {@link Pose}.
+	 * @param robotID The ID of the robot.
+	 * @param currentPose The {@link Pose} in which to place the robot.
+	 */
 	public void placeRobot(final int robotID, Pose currentPose) {
 		this.placeRobot(robotID, currentPose, null, currentPose.toString());
 	}
 	
+	/**
+	 * Place a robot with a given ID in the first {@link Pose} of a given {@link TrajectoryEnvelope}.
+	 * @param robotID The ID of the robot.
+	 * @param parking The {@link TrajectoryEnvelope} in whci the robot is parked.
+	 */
 	public void placeRobot(final int robotID, TrajectoryEnvelope parking) {
 		this.placeRobot(robotID, null, parking, null);
 	}
 	
+	/**
+	 * Place a robot with a given ID in a given {@link Pose} of a given {@link TrajectoryEnvelope},
+	 * labeled with a given string.
+	 * @param robotID The ID of the robot.
+	 * @param currentPose The {@link Pose} of the robot.
+	 * @param parking The {@link TrajectoryEnvelope} in which the robot is parked.
+	 * @param location A label representing the {@link TrajectoryEnvelope}.
+	 */
 	public void placeRobot(final int robotID, Pose currentPose, TrajectoryEnvelope parking, String location) {
 		
 		if (solver == null) {
@@ -272,8 +303,82 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	}
 	
 	
-	//Robot 2 follows robot 1
-	public int getCriticalPoint(TrajectoryEnvelope te1, TrajectoryEnvelope te2, int currentPIR1, int te1Start, int te1End, int te2Start) {
+	/**
+	 * Get the path index beyond which a robot should not navigate, given the {@link TrajectoryEnvelope} of another robot.  
+	 * @param te1 The {@link TrajectoryEnvelope} of the leading robot.
+	 * @param te2 The {@link TrajectoryEnvelope} of the yielding robot.
+	 * @param currentPIR1 The current path index of the leading robot.
+	 * @param te1Start The path index
+	 * @param te1End
+	 * @param te2Start
+	 * @return
+	 */
+	public int getCriticalPoint(int yieldingRobotID, CriticalSection cs, int leadingRobotCurrentPathIndex) {
+		
+		//Number of additional path points robot 2 should stay behind robot 1
+		int TRAILING_PATH_POINTS = 3;
+		
+		//How far ahead in robot 1's trajectory should we look ahead for collisions
+		//(all the way to end of critical section if robots can drive in opposing directions)
+		int LOOKAHEAD = -1;
+		if (cs.getTe1().getRobotID() == yieldingRobotID) LOOKAHEAD = cs.getTe2End();
+		else LOOKAHEAD = cs.getTe1End();
+		
+		int leadingRobotStart = -1;
+		int yieldingRobotStart = -1;
+		if (cs.getTe1().getRobotID() == yieldingRobotID) {
+			leadingRobotStart = cs.getTe2Start();
+			yieldingRobotStart = cs.getTe1Start();
+		}
+		else {
+			leadingRobotStart = cs.getTe1Start();
+			yieldingRobotStart = cs.getTe2Start();
+		}
+		
+		TrajectoryEnvelope leadingRobotTE = null;
+		TrajectoryEnvelope yieldingRobotTE = null;
+		if (cs.getTe1().getRobotID() == yieldingRobotID) {
+			leadingRobotTE = cs.getTe2();
+			yieldingRobotTE = cs.getTe1();
+		}
+		else {
+			leadingRobotTE = cs.getTe1();
+			yieldingRobotTE = cs.getTe2();			
+		}
+
+		//How far into the critical section has robot 1 reached 
+		int leadingRobotDepth = leadingRobotCurrentPathIndex-leadingRobotStart;
+		
+		//If robot 1 not in critical section yet, return critical section start as waiting point for robot 2
+		if (leadingRobotDepth < 0) return Math.max(0, yieldingRobotStart-TRAILING_PATH_POINTS);	
+		
+		//Compute sweep of robot 1's footprint from current position to LOOKAHEAD
+		Pose leadingRobotPose = leadingRobotTE.getTrajectory().getPose()[leadingRobotCurrentPathIndex];
+		Geometry leadingRobotInPose = TrajectoryEnvelope.getFootprint(leadingRobotTE.getFootprint(), leadingRobotPose.getX(), leadingRobotPose.getY(), leadingRobotPose.getTheta());
+		for (int i = 1; leadingRobotCurrentPathIndex+i < LOOKAHEAD && leadingRobotCurrentPathIndex+i < leadingRobotTE.getTrajectory().getPose().length; i++) {
+			Pose robot1NextPose = leadingRobotTE.getTrajectory().getPose()[leadingRobotCurrentPathIndex+i];
+			leadingRobotInPose = leadingRobotInPose.union(TrajectoryEnvelope.getFootprint(leadingRobotTE.getFootprint(), robot1NextPose.getX(), robot1NextPose.getY(), robot1NextPose.getTheta()));			
+		}
+		
+		//Starting from the same depth into the critical section as that of robot 1,
+		//and decreasing the pose index backwards down to te2Start,
+		//return the pose index as soon as robot 2's footprint does not intersect with robot 1's sweep
+		for (int i = Math.min(yieldingRobotTE.getTrajectory().getPose().length-1, yieldingRobotStart+leadingRobotDepth); i > yieldingRobotStart-1; i--) {
+			Pose yieldingRobotPose = yieldingRobotTE.getTrajectory().getPose()[i];
+			Geometry yieldingRobotInPose = TrajectoryEnvelope.getFootprint(yieldingRobotTE.getFootprint(), yieldingRobotPose.getX(), yieldingRobotPose.getY(), yieldingRobotPose.getTheta());
+			if (!leadingRobotInPose.intersects(yieldingRobotInPose)) {
+				return Math.max(0, i-TRAILING_PATH_POINTS);
+			}
+		}
+
+		//The only situation where the above has not returned is when robot 2 should
+		//stay "parked", therefore wait at index 0
+		return Math.max(0, yieldingRobotStart-TRAILING_PATH_POINTS);
+		
+	}
+
+	@Deprecated
+	public int getCriticalPoint2(TrajectoryEnvelope te1, TrajectoryEnvelope te2, int currentPIR1, int te1Start, int te1End, int te2Start) {
 		
 		//Number of additional path points robot 2 should stay behind robot 1
 		int TRAILING_PATH_POINTS = 3;
@@ -477,14 +582,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				int drivingRobotID = -1;
 				AbstractTrajectoryEnvelopeTracker waitingTracker = null;
 				AbstractTrajectoryEnvelopeTracker drivingTracker = null;
-				int waitingCurrentIndex = -1;
 				int drivingCurrentIndex = -1;
 				TrajectoryEnvelope waitingTE = null;
 				TrajectoryEnvelope drivingTE = null;
-				int waitingCSStart = -1;
-				int drivingCSStart = -1;
-				int waitingCSEnd = -1;
-				int drivingCSEnd = -1;
 				
 				AbstractTrajectoryEnvelopeTracker robotTracker1 = trackers.get(cs.getTe1().getRobotID());
 				RobotReport robotReport1 = robotTracker1.getRobotReport();
@@ -506,53 +606,33 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						
 						//If robot 1 has priority over robot 2
 						if (getOrder(robotTracker1, robotReport1, robotTracker2, robotReport2, cs)) {
-							waitingCurrentIndex = robotReport2.getPathIndex();
 							drivingCurrentIndex = robotReport1.getPathIndex();
 							waitingTE = cs.getTe2();
 							drivingTE = cs.getTe1();
-							waitingCSStart = cs.getTe2Start();
-							drivingCSStart = cs.getTe1Start();
-							waitingCSEnd = cs.getTe2End();
-							drivingCSEnd = cs.getTe1End();							
 						}
 
 						//If robot 2 has priority over robot 1
 						else {
-							waitingCurrentIndex = robotReport1.getPathIndex();
 							drivingCurrentIndex = robotReport2.getPathIndex();
 							waitingTE = cs.getTe1();
 							drivingTE = cs.getTe2();
-							waitingCSStart = cs.getTe1Start();
-							drivingCSStart = cs.getTe2Start();
-							waitingCSEnd = cs.getTe1End();
-							drivingCSEnd = cs.getTe2End();
 						}
 
 					}
 					
 					//Robot 1 has not reached critical section, robot 2 in critical section --> robot 1 waits
 					else if (robotReport1.getPathIndex() < cs.getTe1Start() && robotReport2.getPathIndex() >= cs.getTe2Start()) {
-						waitingCurrentIndex = robotReport1.getPathIndex();
 						drivingCurrentIndex = robotReport2.getPathIndex();
 						waitingTE = cs.getTe1();
 						drivingTE = cs.getTe2();
-						waitingCSStart = cs.getTe1Start();
-						drivingCSStart = cs.getTe2Start();
-						waitingCSEnd = cs.getTe1End();
-						drivingCSEnd = cs.getTe2End();
 						metaCSPLogger.finest("R1 (OUT) / R2 (IN) --> R2 > R1\n\t" + cs);
 					}
 					
 					//Robot 2 has not reached critical section, robot 1 in critical section --> robot 2 waits
 					else if (robotReport1.getPathIndex() >= cs.getTe1Start() && robotReport2.getPathIndex() < cs.getTe2Start()) {
-						waitingCurrentIndex = robotReport2.getPathIndex();
 						drivingCurrentIndex = robotReport1.getPathIndex();
 						waitingTE = cs.getTe2();
 						drivingTE = cs.getTe1();
-						waitingCSStart = cs.getTe2Start();
-						drivingCSStart = cs.getTe1Start();
-						waitingCSEnd = cs.getTe2End();
-						drivingCSEnd = cs.getTe1End();
 						metaCSPLogger.finest("R1 (IN) / R2 (OUT) --> R1 > R2\n\t" + cs);
 					}
 					
@@ -565,24 +645,14 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							throw new Error("Could not coordinate at critical section " + cs);
 						}
 						if (previousDep.getWaitingRobotID() == robotTracker1.getTrajectoryEnvelope().getRobotID()) {
-							waitingCurrentIndex = robotReport1.getPathIndex();
 							drivingCurrentIndex = robotReport2.getPathIndex();
 							waitingTE = cs.getTe1();
 							drivingTE = cs.getTe2();
-							waitingCSStart = cs.getTe1Start();
-							drivingCSStart = cs.getTe2Start();
-							waitingCSEnd = cs.getTe1End();
-							drivingCSEnd = cs.getTe2End();
 						}
 						else {
-							waitingCurrentIndex = robotReport2.getPathIndex();
 							drivingCurrentIndex = robotReport1.getPathIndex();
 							waitingTE = cs.getTe2();
 							drivingTE = cs.getTe1();
-							waitingCSStart = cs.getTe2Start();
-							drivingCSStart = cs.getTe1Start();
-							waitingCSEnd = cs.getTe2End();
-							drivingCSEnd = cs.getTe1End();
 						}
 						metaCSPLogger.finest("R1 (IN) / R2 (IN) critical section: " + cs);
 					}
@@ -593,9 +663,13 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					drivingTracker = trackers.get(drivingRobotID);
 
 					//Compute waiting path index point for waiting robot
-					int waitingPoint = getCriticalPoint(drivingTE, waitingTE, drivingCurrentIndex, drivingCSStart, drivingCSEnd, waitingCSStart);
+					//int waitingPoint = getCriticalPoint(drivingTE, waitingTE, drivingCurrentIndex, drivingCSStart, drivingCSEnd, waitingCSStart);
+					int waitingPoint = getCriticalPoint(waitingRobotID, cs, drivingCurrentIndex);
 					if (waitingPoint >= 0) {		
 						//Make new dependency
+						int drivingCSEnd = -1;
+						if (waitingRobotID == cs.getTe1().getRobotID()) drivingCSEnd = cs.getTe2End();
+						else drivingCSEnd = cs.getTe1End();
 						Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd, waitingTracker, drivingTracker);
 						if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
 						currentDeps.get(waitingRobotID).add(dep);
