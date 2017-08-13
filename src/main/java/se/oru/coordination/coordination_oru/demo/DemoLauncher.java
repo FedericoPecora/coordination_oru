@@ -51,8 +51,6 @@ public class DemoLauncher {
 			if (!cl.getSimpleName().equals("")) length = Math.max(length, cl.getSimpleName().length());
 		}
 		
-//		String CONNECTOR_LEAF = (char)0x2514 + "" + (char)0x2500 + " ";
-
 		for (Class<? extends Object> cl : classes) {
 			DemoDescription desc = cl.getAnnotation(DemoDescription.class);
 			if (!cl.getSimpleName().equals("")) {
@@ -63,11 +61,6 @@ public class DemoLauncher {
 				}
 				List<String> descStrings = StringUtils.description("   "+cl.getSimpleName()+": ", descString, 72, 6);
 				for (String ds : descStrings) System.out.println(ds);
-//				System.out.println("\n   "+cl.getSimpleName());
-//				if (desc != null) {
-//					List<String> descStrings = StringUtils.description("   "+CONNECTOR_LEAF,desc.desc(), 72);
-//					for (String ds : descStrings) System.out.println(ds);
-//				}
 			}
 		}			
 		
