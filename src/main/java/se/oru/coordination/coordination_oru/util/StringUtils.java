@@ -7,11 +7,14 @@ public class StringUtils {
 
 	
 	public static List<String> description(String heading, String paragraph, int maxWidth) {
+		return description(heading, paragraph, maxWidth, heading.length());
+	}
+	
+	public static List<String> description(String heading, String paragraph, int maxWidth, int indent) {
 		String[] words = paragraph.split(" ");
 		List<String> ret = new ArrayList<String>();
 		if(words == null || words.length == 0) return ret;
 		String indentString = "";
-		int indent = heading.length();
 		for (int i = 0; i < indent; i++) indentString += " "; 
 		String st = heading;
 		for (int i = 0; i < words.length; i++) {
