@@ -28,9 +28,9 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner7 {
 		double MAX_VEL = 4.0;
 		//Instantiate a trajectory envelope coordinator.
 		//The TrajectoryEnvelopeCoordinatorSimulation implementation provides
-		// -- the factory method getNewTracker() which returns a trajectory envelope tracker (also abstract)
+		// -- the factory method getNewTracker() which returns a trajectory envelope tracker
 		// -- the getCurrentTimeInMillis() method, which is used by the coordinator to keep time
-		//You still need to add a comparator to determine robot orderings thru critical sections
+		//You still need to add one or more comparators to determine robot orderings thru critical sections (comparators are evaluated in the order in which they are added)
 		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(MAX_VEL,MAX_ACCEL);
 		tec.addComparator(new Comparator<RobotAtCriticalSection> () {
 			@Override

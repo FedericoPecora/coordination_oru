@@ -27,9 +27,9 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner12 {
 		double MAX_VEL = 4.0;
 		//Instantiate a trajectory envelope coordinator.
 		//The TrajectoryEnvelopeCoordinatorSimulation implementation provides
-		// -- the factory method getNewTracker() which returns a trajectory envelope tracker (also abstract)
+		// -- the factory method getNewTracker() which returns a trajectory envelope tracker
 		// -- the getCurrentTimeInMillis() method, which is used by the coordinator to keep time
-		//You still need to add a comparator to determine robot orderings thru critical sections
+		//You still need to add one or more comparators to determine robot orderings thru critical sections (comparators are evaluated in the order in which they are added)
 		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(MAX_VEL,MAX_ACCEL);
 		tec.addComparator(new Comparator<RobotAtCriticalSection> () {
 			@Override
@@ -47,13 +47,13 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner12 {
 			}
 		});
 
+		//You can set a footprint that is specific for each robot
 		Coordinate[] fp1 = new Coordinate[] {
 				new Coordinate(-1.0,0.5),
 				new Coordinate(1.0,0.5),
 				new Coordinate(1.0,-0.5),
 				new Coordinate(-1.0,-0.5)
 		};
-		
 		Coordinate[] fp2 = new Coordinate[] {
 				new Coordinate(0.36, 0.0),
 				new Coordinate(0.18, 0.36),
@@ -62,7 +62,6 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner12 {
 				new Coordinate(-0.18, -0.36),
 				new Coordinate(0.18, -0.36)
 		};
-		
 		Coordinate[] fp3 = new Coordinate[] {
 				new Coordinate(-2.0,0.9),
 				new Coordinate(2.0,0.9),
