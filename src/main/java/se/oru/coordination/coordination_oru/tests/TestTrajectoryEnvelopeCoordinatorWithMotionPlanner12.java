@@ -69,9 +69,9 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner12 {
 				new Coordinate(2.0,-0.9),
 				new Coordinate(-2.0,-0.9)
 		};
-		tec.setFootprint(1,fp2);
+		tec.setFootprint(1,fp1);
 		tec.setFootprint(2,fp2);
-		tec.setFootprint(3,fp2);
+		tec.setFootprint(3,fp3);
 
 		//You probably also want to provide a non-trivial forward model
 		//(the default assumes that robots can always stop)
