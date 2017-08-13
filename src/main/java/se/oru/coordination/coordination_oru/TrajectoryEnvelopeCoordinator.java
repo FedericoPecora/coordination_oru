@@ -1129,6 +1129,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	public void setupGUI(String mapYAMLFile) {
 		//Show everything in a GUI (vehicle positions are updated in real time by the trackers, see below)
 		panel = JTSDrawingPanel.makeEmpty("Current status of robots");
+		panel.setSmoothTransitions(true);
 		panel.setArrowHeadSizeInMeters(0.6*getMaxFootprintDimension(1));
 		panel.setTextSizeInMeters(0.8*getMaxFootprintDimension(1));
 		//System.out.println("TEXT SIZE IN METERS IS " + 0.5*getMaxFootprintDimension(1));
