@@ -9,7 +9,7 @@ import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppCarPlanner;
 public class TestReedsSheppCarPlanner {
 	
 	public static void main(String[] args) {
-		double distanceBetweenPathPoints = 0.5;
+		double distanceBetweenPathPoints = 0.4;
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
 		rsp.setMapFilename("maps/map-partial.png");
 		rsp.setMapResolution(0.1);
@@ -27,8 +27,10 @@ public class TestReedsSheppCarPlanner {
 			for (int i = 0; i < pss.length-1; i++) {
 				totalDist += pss[i].getPose().distanceTo(pss[i+1].getPose());
 			}
-			System.out.println("Total distance: " + totalDist);
-			System.out.println("(Number of path points)*(distance between path points) = " + pss.length*distanceBetweenPathPoints);
+			System.out.println("- Number of path points: " + pss.length);
+			System.out.println("- Total distance: " + totalDist);
+			System.out.println("- Max distance between path points: " + distanceBetweenPathPoints);
+			System.out.println("- (Number of path points)*(max distance between path points) = " + pss.length*distanceBetweenPathPoints);
 		}
 	}
 
