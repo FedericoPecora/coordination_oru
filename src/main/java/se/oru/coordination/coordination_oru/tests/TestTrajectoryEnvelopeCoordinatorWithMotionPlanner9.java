@@ -86,7 +86,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner9 {
 		rsp.setMapResolution(res);
 		rsp.setRobotRadius(1.1);
 		rsp.setTurningRadius(4.0);
-		rsp.setNumInterpolationPoints(1000);
+		rsp.setDistanceBetweenPathPoints(0.5);
 
 		Pose startPoseRobot1 = new Pose(12.0,2.0,Math.PI/2);
 		Pose goalPoseRobot11 = new Pose(12.0,10.0,Math.PI/4);

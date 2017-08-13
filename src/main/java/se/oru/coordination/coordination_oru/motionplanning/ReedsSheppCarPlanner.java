@@ -35,7 +35,7 @@ public class ReedsSheppCarPlanner {
 	private Pose goal = null;
 	private PointerByReference path = null;
 	private IntByReference pathLength = null;
-	private int numInterpolationPoints = 0;
+	private double distanceBetweenPathPoints = 0.5;
 	private double turningRadius = 1.0;
 	private PoseSteering[] pathPS = null;
 
@@ -65,8 +65,8 @@ public class ReedsSheppCarPlanner {
 		this.robotRadius = rad;
 	}
 
-	public void setNumInterpolationPoints(int num) {
-		this.numInterpolationPoints = num;
+	public void setDistanceBetweenPathPoints(double maxDistance) {
+		this.distanceBetweenPathPoints = maxDistance;
 	}
 
 	public void setTurningRadius(double rad) {
@@ -117,7 +117,7 @@ public class ReedsSheppCarPlanner {
 	public boolean plan() {
 		path = new PointerByReference();
 		pathLength = new IntByReference();
-		if (ReedsSheppCarPlannerLib.INSTANCE.plan(mapFilename, mapResolution, robotRadius, start.getX(), start.getY(), start.getTheta(), goal.getX(), goal.getY(), goal.getTheta(), path, pathLength, numInterpolationPoints, turningRadius)) {
+		if (ReedsSheppCarPlannerLib.INSTANCE.plan(mapFilename, mapResolution, robotRadius, start.getX(), start.getY(), start.getTheta(), goal.getX(), goal.getY(), goal.getTheta(), path, pathLength, distanceBetweenPathPoints, turningRadius)) {
 			final Pointer pathVals = path.getValue();
 			final PathPose valsRef = new PathPose(pathVals);
 			valsRef.read();

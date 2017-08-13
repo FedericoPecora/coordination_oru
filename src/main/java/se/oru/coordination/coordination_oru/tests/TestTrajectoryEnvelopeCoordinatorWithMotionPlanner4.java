@@ -85,7 +85,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner4 {
 		rsp.setMapResolution(res);
 		rsp.setRobotRadius(1.1);
 		rsp.setTurningRadius(4.0);
-		rsp.setNumInterpolationPoints(100);
+		rsp.setDistanceBetweenPathPoints(0.5);
 		double deltaY = 3;
 		double height = deltaY/2;
 		double mapHeight = -1;

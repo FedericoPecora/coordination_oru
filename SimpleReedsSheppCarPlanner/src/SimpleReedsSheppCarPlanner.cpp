@@ -18,8 +18,10 @@ extern "C" void cleanupPath(PathPose* path) {
   free(path);
 }
 
-extern "C" bool plan(const char* mapFilename, double mapResolution, double robotRadius, double startX, double startY, double startTheta, double goalX, double goalY, double goalTheta, PathPose** path, int* pathLength, int numInterpolationPoints, double turningRadius) {
+extern "C" bool plan(const char* mapFilename, double mapResolution, double robotRadius, double startX, double startY, double startTheta, double goalX, double goalY, double goalTheta, PathPose** path, int* pathLength, double distanceBetweenPathPoints, double turningRadius) {
 
+  double pLen = 0.0;
+  int numInterpolationPoints = 0;
   ob::StateSpacePtr space(new ob::ReedsSheppStateSpace(turningRadius));
   
   COccupancyGridMap2D gridmap;
@@ -63,6 +65,8 @@ extern "C" bool plan(const char* mapFilename, double mapResolution, double robot
     std::cout << "Found solution:" << std::endl;
     ss.simplifySolution();
     og::PathGeometric pth = ss.getSolutionPath();
+    pLen = pth.length();
+    numInterpolationPoints = ((double)pLen)/distanceBetweenPathPoints;
     if (numInterpolationPoints > 0) pth.interpolate(numInterpolationPoints);
     
     std::vector<ob::State*> states = pth.getStates();

@@ -68,8 +68,8 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner10 {
 		rsp.setMapResolution(res);
 		rsp.setRobotRadius(1.1);
 		rsp.setTurningRadius(4.0);
-		rsp.setNumInterpolationPoints(1000);
-
+		rsp.setDistanceBetweenPathPoints(0.5);
+		
 		Integer[] robotIDs = new Integer[] {1,2,3,4};
 		for (Integer robotID : robotIDs) {
 			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getControlPeriod(), tec.getTemporalResolution()));	

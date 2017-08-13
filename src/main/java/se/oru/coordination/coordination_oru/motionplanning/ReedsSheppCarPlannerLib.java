@@ -14,7 +14,7 @@ public interface ReedsSheppCarPlannerLib extends Library {
 	
 	public ReedsSheppCarPlannerLib INSTANCE = Native.loadLibrary("simplereedssheppcarplanner", ReedsSheppCarPlannerLib.class);
 	
-	public boolean plan(String mapFilename, double mapResolution, double robotRadius, double startX, double startY, double startTheta, double goalX, double goalY, double goalTheta, PointerByReference path, IntByReference pathLength, int numInterpolationPoints, double turningRadius);
+	public boolean plan(String mapFilename, double mapResolution, double robotRadius, double startX, double startY, double startTheta, double goalX, double goalY, double goalTheta, PointerByReference path, IntByReference pathLength, double distanceBetweenPathPoints, double turningRadius);
 	
 	public void cleanupPath(Pointer p);
 	
