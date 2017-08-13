@@ -53,8 +53,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	public static String LICENSEE = null;
 	
 	public static String PUBLIC_LICENSE = "This program comes with ABSOLUTELY NO WARRANTY. "
-			+ "This is free software, and you are welcome to redistribute it "
-			+ "under certain conditions; see LICENSE for details.";
+			+ "This program is free software: you can redistribute it and/or modify it under the "
+			+ "terms of the GNU General Public License as published by the Free Software Foundation, "
+			+ "either version 3 of the License, or (at your option) any later version. see LICENSE for details.";
 	public static String PRIVATE_LICENSE = "This program comes with ABSOLUTELY NO WARRANTY. "
 			+ "This program has been licensed to " + LICENSEE + ". The licensee may "
 			+ "redistribute it under certain conditions; see LICENSE for details.";
