@@ -58,7 +58,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner6 {
 		ret[4] = new Coordinate(-0.18, -0.36);
 		ret[5] = new Coordinate(0.18, -0.36);
 		
-		tec.setFootprint(ret);
+		tec.setDefaultFootprint(ret);
 
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);

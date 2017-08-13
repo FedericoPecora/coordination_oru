@@ -87,10 +87,13 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	
 	protected ComparatorChain comparators = new ComparatorChain();
 	protected HashMap<Integer,ForwardModel> forwardModels = new HashMap<Integer, ForwardModel>();
-
+	
+	protected HashMap<Integer,Coordinate[]> footprints = new HashMap<Integer, Coordinate[]>();
+	protected HashMap<Integer,Double> maxFootprintDimensions = new HashMap<Integer, Double>();
+	
 	//Default footprint (same for all robots)
 	//NOTE: coordinates must be in CCW or CW order
-	protected Coordinate[] footprint = new Coordinate[] {
+	protected Coordinate[] defaultFootprint = new Coordinate[] {
 			new Coordinate(-1.7, 0.7),	//back left
 			new Coordinate(-1.7, -0.7),	//back right
 			new Coordinate(2.7, -0.7),	//front right
@@ -98,12 +101,64 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	};
 
 	//Reflects the default footprint
-	protected double maxFootprintDimension = 4.4;
+	protected double maxDefaultFootprintDimension = 4.4;
+
+	private double getMaxFootprintDimension(int robotID) {
+		if (this.footprints.containsKey(robotID)) return maxFootprintDimensions.get(robotID);
+		return maxDefaultFootprintDimension;
+	}
 	
+	/**
+	 * Get the {@link Coordinate}s defining the default footprint of robots.
+	 * @return The {@link Coordinate}s defining the default footprint of robots.
+	 */
+	public Coordinate[] getDefaultFootprint() {
+		return this.defaultFootprint;
+	}
+
+	/**
+	 * Get the {@link Coordinate}s defining the footprint of a given robot.
+	 * @param robotID the ID of the robot
+	 * @return The {@link Coordinate}s defining the footprint of a given robot.
+	 */
+	public Coordinate[] getFootprint(int robotID) {
+		if (this.footprints.containsKey(robotID)) return this.footprints.get(robotID);
+		return this.defaultFootprint;
+	}
+
+	/**
+	 * Get a {@link Geometry} representing the default footprint of robots.
+	 * @return A {@link Geometry} representing the default footprint of robots.
+	 */
+	public Geometry getDefaultFootprintPolygon() {
+		Geometry fpGeom = TrajectoryEnvelope.createFootprintPolygon(this.defaultFootprint);
+		return fpGeom;
+	}
+
+	/**
+	 * Get a {@link Geometry} representing the footprint of a given robot.
+	 * @param robotID the ID of the robot
+	 * @return A {@link Geometry} representing the footprint of a given robot.
+	 */
+	public Geometry getFootprintPolygon(int robotID) {
+		Geometry fpGeom = TrajectoryEnvelope.createFootprintPolygon(getFootprint(robotID));
+		return fpGeom;
+	}
+	
+	/**
+	 * Set the {@link ForwardModel} of a given robot.
+	 * @param robotID The ID of the robot.
+	 * @param fm The robot's {@link ForwardModel}.
+	 */
 	public void setForwardModel(int robotID, ForwardModel fm) {
 		this.forwardModels.put(robotID, fm);
 	}
 	
+	/**
+	 * Get the {@link ForwardModel} of a given robot.
+	 * @param robotID The ID of the robot.
+	 * @return The {@link ForwardModel} of the robot.
+	 */
 	public ForwardModel getForwardModel(int robotID) {
 		if (forwardModels.containsKey(robotID)) return forwardModels.get(robotID);
 		System.out.println("Returning default FM for " + robotID);
@@ -174,28 +229,52 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	public RobotReport getRobotReport(int robotID) {
 		return trackers.get(robotID).getRobotReport();
 	}
-	
+
 	/**
-	 * Set the footprint of this TrajectoryEnvelope, which is used for computing the spatial envelope.
+	 * Set the default footprint of robots, which is used for computing spatial envelopes.
 	 * Provide the bounding polygon of the machine assuming its reference point is in (0,0), and its
 	 * orientation is aligned with the x-axis. The coordinates must be in CW or CCW order.
 	 * @param coordinates The coordinates delimiting bounding polygon of the footprint.
 	 */
-	public void setFootprint(Coordinate ... coordinates) {
-		this.footprint = coordinates;
-		computemaxFootprintDimension();
+	public void setDefaultFootprint(Coordinate ... coordinates) {
+		this.defaultFootprint = coordinates;
+		maxDefaultFootprintDimension = computeMaxFootprintDimension(coordinates);
 	}
 	
-	private void computemaxFootprintDimension() {
+	/**
+	 * Set the default footprint of robots, which is used for computing spatial envelopes.
+	 * Provide the bounding polygon of the machine assuming its reference point is in (0,0), and its
+	 * orientation is aligned with the x-axis. The coordinates must be in CW or CCW order.
+	 * @param coordinates The coordinates delimiting bounding polygon of the footprint.
+	 */
+	@Deprecated
+	public void setFootprint(Coordinate ... coordinates) {
+		this.defaultFootprint = coordinates;
+		maxDefaultFootprintDimension = computeMaxFootprintDimension(coordinates);
+	}
+
+	/**
+	 * Set the footprint of a given robot, which is used for computing spatial envelopes.
+	 * Provide the bounding polygon of the machine assuming its reference point is in (0,0), and its
+	 * orientation is aligned with the x-axis. The coordinates must be in CW or CCW order.
+	 * @param robotID The ID of the robot.
+	 * @param coordinates The coordinates delimiting bounding polygon of the footprint.
+	 */
+	public void setFootprint(int robotID, Coordinate ... coordinates) {
+		this.footprints.put(robotID, coordinates);
+		maxFootprintDimensions.put(robotID,computeMaxFootprintDimension(coordinates));
+	}
+
+	private double computeMaxFootprintDimension(Coordinate[] coords) {
 		ArrayList<Double> fpX = new ArrayList<Double>();
 		ArrayList<Double> fpY = new ArrayList<Double>();
-		for (Coordinate coord : this.footprint) {
+		for (Coordinate coord : coords) {
 			fpX.add(coord.x);
 			fpY.add(coord.y);
 		}
 		Collections.sort(fpX);
 		Collections.sort(fpY);
-		maxFootprintDimension = Math.max(fpX.get(fpX.size()-1)-fpX.get(0), fpY.get(fpY.size()-1)-fpY.get(0));
+		return Math.max(fpX.get(fpX.size()-1)-fpX.get(0), fpY.get(fpY.size()-1)-fpY.get(0));
 	}
 	
 	/**
@@ -258,7 +337,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			long time = getCurrentTimeInMillis();
 			
 			//Can provide null parking or null currentPose, but not both
-			if (parking == null) parking = solver.createParkingEnvelope(robotID, PARKING_DURATION, currentPose, location, footprint);
+			if (parking == null) parking = solver.createParkingEnvelope(robotID, PARKING_DURATION, currentPose, location, getFootprint(robotID));
 			else currentPose = parking.getTrajectory().getPose()[0];
 			
 			AllenIntervalConstraint release = new AllenIntervalConstraint(AllenIntervalConstraint.Type.Release, new Bounds(time, time));
@@ -774,7 +853,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				for (int i = 1; i < gc.getNumGeometries(); i++) {
 					Geometry prev = gc.getGeometryN(i-1);
 					Geometry next = gc.getGeometryN(i);					
-					if (prev.distance(next) < maxFootprintDimension) {
+					if (prev.distance(next) < getMaxFootprintDimension(te1.getRobotID()) || prev.distance(next) < getMaxFootprintDimension(te2.getRobotID())) {
 						//System.out.println("MERGED! (maxdim is " + maxDim + ")");
 						allIntersections.add(prev.union(next).convexHull());
 					}
@@ -860,7 +939,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				TrajectoryEnvelopeTrackerDummy startParkingTracker = (TrajectoryEnvelopeTrackerDummy)trackers.get(te.getRobotID());
 				final TrajectoryEnvelope startParking = startParkingTracker.getTrajectoryEnvelope();
 				//Create end parking envelope
-				final TrajectoryEnvelope endParking = solver.createParkingEnvelope(te.getRobotID(), PARKING_DURATION, te.getTrajectory().getPose()[te.getTrajectory().getPose().length-1], "whatever", footprint);
+				final TrajectoryEnvelope endParking = solver.createParkingEnvelope(te.getRobotID(), PARKING_DURATION, te.getTrajectory().getPose()[te.getTrajectory().getPose().length-1], "whatever", getFootprint(te.getRobotID()));
 	
 				//Driving meets final parking
 				AllenIntervalConstraint meets1 = new AllenIntervalConstraint(AllenIntervalConstraint.Type.Meets);
@@ -996,8 +1075,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 				//Create a big overall driving envelope
 				TrajectoryEnvelope te = null;
-				if (pathFiles != null) te = solver.createEnvelopeNoParking(robotID, pathFiles.toArray(new String[pathFiles.size()]), "Driving", footprint);
-				else te = solver.createEnvelopeNoParking(robotID, overallPath.toArray(new PoseSteering[overallPath.size()]), "Driving", footprint);
+				if (pathFiles != null) te = solver.createEnvelopeNoParking(robotID, pathFiles.toArray(new String[pathFiles.size()]), "Driving", getFootprint(robotID));
+				else te = solver.createEnvelopeNoParking(robotID, overallPath.toArray(new PoseSteering[overallPath.size()]), "Driving", getFootprint(robotID));
 				
 				//Add destinations as stopping points
 				synchronized(stoppingPoints) {
@@ -1050,9 +1129,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	public void setupGUI(String mapYAMLFile) {
 		//Show everything in a GUI (vehicle positions are updated in real time by the trackers, see below)
 		panel = JTSDrawingPanel.makeEmpty("Current status of robots");
-		panel.setArrowHeadSizeInMeters(0.6*maxFootprintDimension);
-		panel.setTextSizeInMeters(0.8*maxFootprintDimension);
-		System.out.println("TEXT SIZE IN METERS IS " + 0.5*maxFootprintDimension);
+		panel.setArrowHeadSizeInMeters(0.6*getMaxFootprintDimension(1));
+		panel.setTextSizeInMeters(0.8*getMaxFootprintDimension(1));
+		//System.out.println("TEXT SIZE IN METERS IS " + 0.5*getMaxFootprintDimension(1));
 		if (mapYAMLFile != null) panel.setMap(mapYAMLFile);
 		panel.addKeyListener(new KeyListener() {
 			

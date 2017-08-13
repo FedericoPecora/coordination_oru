@@ -51,7 +51,7 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner10 {
 		Coordinate footprint2 = new Coordinate(1.0,0.5);
 		Coordinate footprint3 = new Coordinate(1.0,-0.5);
 		Coordinate footprint4 = new Coordinate(-1.0,-0.5);
-		tec.setFootprint(footprint1, footprint2, footprint3, footprint4);
+		tec.setDefaultFootprint(footprint1, footprint2, footprint3, footprint4);
 
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);

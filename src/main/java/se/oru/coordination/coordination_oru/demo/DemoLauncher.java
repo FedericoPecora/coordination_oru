@@ -2,6 +2,7 @@ package se.oru.coordination.coordination_oru.demo;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
@@ -21,8 +22,8 @@ public class DemoLauncher {
 
 	private static final String testsPackage = "se.oru.coordination.coordination_oru.tests";
 
-	private static void printUsage() {
-
+	private static void printLicense() {
+		
 		System.out.println("\n"+TrajectoryEnvelopeCoordinator.TITLE);
 		System.out.println(TrajectoryEnvelopeCoordinator.COPYRIGHT+"\n");
 		if (TrajectoryEnvelopeCoordinator.LICENSEE != null) {
@@ -33,8 +34,13 @@ public class DemoLauncher {
 			List<String> lic = StringUtils.fitWidth(TrajectoryEnvelopeCoordinator.PUBLIC_LICENSE, 72, 5);
 			for (String st : lic) System.out.println(st);
 		}
+		System.out.println();
+		
+	}
+	
+	private static void printUsage() {
 
-		System.out.println("\nUsage: ./gradlew run -Pdemo=<demo>\n\nAvailable options for <demo>");
+		System.out.println("Usage: ./gradlew run -Pdemo=<demo>\n\nAvailable options for <demo>");
 
 		List<ClassLoader> classLoadersList = new LinkedList<ClassLoader>();
 		classLoadersList.add(ClasspathHelper.contextClassLoader());
@@ -46,23 +52,21 @@ public class DemoLauncher {
 		    .filterInputsBy(new FilterBuilder().include(FilterBuilder.prefix(testsPackage))));
 		
 		Set<Class<?>> classes = reflections.getSubTypesOf(Object.class);
-		int length = 0;
+		TreeSet<String> sortedClasses = new TreeSet<String>();
+		HashMap<String,String> classDescriptions = new HashMap<String, String>();
 		for (Class<? extends Object> cl : classes) {
-			if (!cl.getSimpleName().equals("")) length = Math.max(length, cl.getSimpleName().length());
-		}
-		
-		for (Class<? extends Object> cl : classes) {
-			DemoDescription desc = cl.getAnnotation(DemoDescription.class);
 			if (!cl.getSimpleName().equals("")) {
-				System.out.println();				
+				sortedClasses.add(cl.getSimpleName());
 				String descString = "";
-				if (desc != null) {
-					descString = desc.desc();
-				}
-				List<String> descStrings = StringUtils.description("   "+cl.getSimpleName()+": ", descString, 72, 6);
-				for (String ds : descStrings) System.out.println(ds);
+				if (cl.getAnnotation(DemoDescription.class) != null) descString = cl.getAnnotation(DemoDescription.class).desc();
+				classDescriptions.put(cl.getSimpleName(),descString);
 			}
-		}			
+		}
+		for (String className : sortedClasses) {
+			System.out.println();				
+			List<String> descStrings = StringUtils.description("   "+className+": ", classDescriptions.get(className), 72, 6);
+			for (String ds : descStrings) System.out.println(ds);
+		}
 		
 		System.out.println();
 		String note = "Most examples require the ReedsSheppCarPlanner motion planner, which is provided via a"
@@ -70,9 +74,11 @@ public class DemoLauncher {
 				+ "and mrpt (http://www.mrpt.org/). See REAME.md for building instructions.";
 		List<String> formattedNote = StringUtils.description("NOTE: ", note, 72);
 		for (String line : formattedNote) System.out.println(line);
+		
 	}
 	
 	public static void main(String[] args) {
+		printLicense();
 		if (args.length != 1) printUsage();
 		else {
 			String className = args[0];
