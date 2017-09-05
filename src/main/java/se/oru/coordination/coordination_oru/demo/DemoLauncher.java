@@ -64,7 +64,7 @@ public class DemoLauncher {
 		}
 		for (String className : sortedClasses) {
 			System.out.println();				
-			List<String> descStrings = StringUtils.description("   "+className+": ", classDescriptions.get(className), 72, 6);
+			List<String> descStrings = StringUtils.description("   \u001B[1m\u001b[32m"+className+"\u001b[0m: ", classDescriptions.get(className), 72, 6);
 			for (String ds : descStrings) System.out.println(ds);
 		}
 		
