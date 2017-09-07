@@ -5,6 +5,7 @@ import java.awt.event.KeyListener;
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
@@ -70,6 +71,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected TrajectoryEnvelopeSolver solver = null;
 	protected JTSDrawingPanel panel = null;
 	protected ArrayList<TrajectoryEnvelope> envelopesToTrack = new ArrayList<TrajectoryEnvelope>();
+	protected ArrayList<TrajectoryEnvelope> newParkingEnvelopes = new ArrayList<TrajectoryEnvelope>();
 	protected HashMap<CriticalSection,Dependency> criticalSectionsToDeps = new HashMap<CriticalSection, Dependency>();
 	protected ArrayList<CriticalSection> allCriticalSections = new ArrayList<CriticalSection>();
 	protected HashMap<Integer,ArrayList<Integer>> stoppingPoints = new HashMap<Integer,ArrayList<Integer>>();
@@ -406,6 +408,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				public void onPositionUpdate() { }
 				
 			};
+			
+			synchronized (newParkingEnvelopes) {
+				newParkingEnvelopes.add(tracker.getTrajectoryEnvelope());				
+			}
 						
 			synchronized (trackers) {
 				trackers.put(robotID, tracker);
@@ -732,8 +738,43 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				AbstractTrajectoryEnvelopeTracker robotTracker2 = trackers.get(cs.getTe2().getRobotID());
 				RobotReport robotReport2 = robotTracker2.getRobotReport();
 				
+				if (robotTracker1 instanceof TrajectoryEnvelopeTrackerDummy) {
+					waitingTE = cs.getTe2();
+					drivingTE = cs.getTe1();
+					waitingRobotID = waitingTE.getRobotID();
+					drivingRobotID = drivingTE.getRobotID();
+					waitingTracker = trackers.get(waitingRobotID);
+					drivingTracker = trackers.get(drivingRobotID);
+				}
+				else if (robotTracker2 instanceof TrajectoryEnvelopeTrackerDummy) {
+					waitingTE = cs.getTe1();
+					drivingTE = cs.getTe2();
+					waitingRobotID = waitingTE.getRobotID();
+					drivingRobotID = drivingTE.getRobotID();
+					waitingTracker = trackers.get(waitingRobotID);
+					drivingTracker = trackers.get(drivingRobotID);
+				}
+				if (robotTracker1 instanceof TrajectoryEnvelopeTrackerDummy || robotTracker2 instanceof TrajectoryEnvelopeTrackerDummy) {
+					
+					if (robotReport1.getPathIndex() > cs.getTe1End() || robotReport2.getPathIndex() > cs.getTe2End()) {
+						toRemove.add(cs);
+						metaCSPLogger.finest("Obsolete critical section\n\t" + cs);
+						continue;
+					}
+				
+					int waitingPoint = getCriticalPoint(waitingRobotID, cs, drivingCurrentIndex);
+					//Make new dependency
+					int drivingCSEnd = -1;
+					if (waitingRobotID == cs.getTe1().getRobotID()) drivingCSEnd = cs.getTe2End();
+					else drivingCSEnd = cs.getTe1End();
+					Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd, waitingTracker, drivingTracker);
+					if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
+					currentDeps.get(waitingRobotID).add(dep);
+					criticalSectionsToDeps.put(cs, dep);
+				}
+				
 				//Both robots are driving, let's determine an ordering for them thru this critical section
-				if (!(robotTracker1 instanceof TrajectoryEnvelopeTrackerDummy) && !(robotTracker2 instanceof TrajectoryEnvelopeTrackerDummy)) {
+				else { //if (!(robotTracker1 instanceof TrajectoryEnvelopeTrackerDummy) && !(robotTracker2 instanceof TrajectoryEnvelopeTrackerDummy)) {
 					
 					//One or both robots past end of the critical section --> critical section is obsolete
 					if (robotReport1.getPathIndex() > cs.getTe1End() || robotReport2.getPathIndex() > cs.getTe2End()) {
@@ -875,7 +916,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			
 			//Compute critical sections between driving and new envelopes
 			for (int i = 0; i < tes.size(); i++) {
-				for (int j = 0; j < envelopesToTrack.size(); j++) {
+				for (int j = 0; j < envelopesToTrack.size(); j++) {	
 					for (CriticalSection cs : getCriticalSections(tes.get(i), envelopesToTrack.get(j))) {
 						this.allCriticalSections.add(cs);
 					}
@@ -889,6 +930,20 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						this.allCriticalSections.add(cs);
 					}
 				}
+			}
+			
+			//Compute critical sections between new parking envelopes and driving envelopes
+			synchronized(newParkingEnvelopes) {
+				for (int i = 0; i < tes.size(); i++) {
+					for (int j = 0; j < newParkingEnvelopes.size(); j++) {
+						if (tes.get(i).getRobotID() != newParkingEnvelopes.get(j).getRobotID()) {
+							for (CriticalSection cs : getCriticalSections(tes.get(i), newParkingEnvelopes.get(j))) {
+								this.allCriticalSections.add(cs);
+							}
+						}
+					}
+				}	
+				newParkingEnvelopes.clear();
 			}
 			
 			metaCSPLogger.info("There are now " + allCriticalSections.size() + " critical sections");
@@ -905,7 +960,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		if (shape1.intersects(shape2)) {
 			PoseSteering[] path1 = te1.getTrajectory().getPoseSteering();
 			PoseSteering[] path2 = te2.getTrajectory().getPoseSteering();
-			
+					
 			//Check that there is an "escape pose" along the paths 
 			boolean safe = false;
 			for (int j = 0; j < path1.length; j++) {
@@ -915,6 +970,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					break;
 				}
 			}
+			if (path1.length == 1 || path2.length == 1) safe = true;
 			if (!safe) throw new Error("Cannot coordinate as one envelope is completely overlapped by the other!");
 			
 			safe = false;
@@ -925,7 +981,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					break;
 				}
 			}
-			if (!safe) throw new Error("Cannot coordinate as one envelope is completely overlapped by the other!");			
+			if (path1.length == 1 || path2.length == 1) safe = true;
+			if (!safe) throw new Error("Cannot coordinate as one envelope is completely overlapped by the other!");
+			
 			
 			Geometry gc = shape1.intersection(shape2);
 			ArrayList<Geometry> allIntersections = new ArrayList<Geometry>();
@@ -991,6 +1049,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				}
 			}
 		}
+		
 		return css.toArray(new CriticalSection[css.size()]);
 	}
 
@@ -1097,7 +1156,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							}
 							for (Dependency dep : toRemove) disallowedDependencies.remove(dep);
 						}
-					
+						
+						//AAAAA
+						computeCriticalSections();
+						updateDependencies();
+											
 					}
 	
 				};
