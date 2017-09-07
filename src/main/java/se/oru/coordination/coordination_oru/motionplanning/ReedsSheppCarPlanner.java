@@ -32,7 +32,7 @@ public class ReedsSheppCarPlanner {
 	private double mapResolution = 1.0;
 	private double robotRadius = 1.0;
 	private Pose start = null;
-	private Pose goal = null;
+	private Pose[] goal = null;
 	private PointerByReference path = null;
 	private IntByReference pathLength = null;
 	private double distanceBetweenPathPoints = 0.5;
@@ -48,7 +48,12 @@ public class ReedsSheppCarPlanner {
 		this.start = p;
 	}
 
+	@Deprecated
 	public void setGoal(Pose p) {
+		this.goal = new Pose[] { p };
+	}
+	
+	public void setGoals(Pose ... p) {
 		this.goal = p;
 	}
 
@@ -115,22 +120,26 @@ public class ReedsSheppCarPlanner {
 	}
 
 	public boolean plan() {
-		path = new PointerByReference();
-		pathLength = new IntByReference();
-		if (ReedsSheppCarPlannerLib.INSTANCE.plan(mapFilename, mapResolution, robotRadius, start.getX(), start.getY(), start.getTheta(), goal.getX(), goal.getY(), goal.getTheta(), path, pathLength, distanceBetweenPathPoints, turningRadius)) {
+		ArrayList<PoseSteering> finalPath = new ArrayList<PoseSteering>();  
+		for (int i = 0; i < this.goal.length; i++) {
+			Pose start_ = null;
+			Pose goal_ = this.goal[i];
+			if (i == 0) start_ = this.start;
+			else start_ = this.goal[i-1];
+			path = new PointerByReference();
+			pathLength = new IntByReference();
+			if (!ReedsSheppCarPlannerLib.INSTANCE.plan(mapFilename, mapResolution, robotRadius, start_.getX(), start_.getY(), start_.getTheta(), goal_.getX(), goal_.getY(), goal_.getTheta(), path, pathLength, distanceBetweenPathPoints, turningRadius)) return false;
 			final Pointer pathVals = path.getValue();
 			final PathPose valsRef = new PathPose(pathVals);
 			valsRef.read();
 			int numVals = pathLength.getValue();
 			PathPose[] pathPoses = (PathPose[])valsRef.toArray(numVals);
-			pathPS = new PoseSteering[pathPoses.length];
-			for (int i = 0; i < pathPoses.length; i++) {
-				pathPS[i] = new PoseSteering(pathPoses[i].x, pathPoses[i].y, pathPoses[i].theta, 0.0);
-			}
+			if (i == 0) finalPath.add(new PoseSteering(pathPoses[0].x, pathPoses[0].y, pathPoses[0].theta, 0.0));
+			for (int j = 1; j < pathPoses.length; j++) finalPath.add(new PoseSteering(pathPoses[j].x, pathPoses[j].y, pathPoses[j].theta, 0.0));
 			ReedsSheppCarPlannerLib.INSTANCE.cleanupPath(pathVals);
-			return true;
 		}
-		return false;
+		this.pathPS = finalPath.toArray(new PoseSteering[finalPath.size()]);
+		return true;
 	}
 
 	public static boolean deleteDir(File dir) {

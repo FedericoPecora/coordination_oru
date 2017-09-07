@@ -13,8 +13,10 @@ import javax.imageio.ImageIO;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
+import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Geometry;
 
 import se.oru.coordination.coordination_oru.ConstantAccelerationForwardModel;
 import se.oru.coordination.coordination_oru.CriticalSection;
@@ -124,22 +126,16 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner4 {
 				posesRobot.add(new Pose(2.0,mapHeight-height*(index-1),Math.PI));
 			}
 			tec.placeRobot(robotID, posesRobot.get(0));
-			ArrayList<PoseSteering> pathsRobot = new ArrayList<PoseSteering>();
-			for (int i = 0; i < posesRobot.size()-1; i++) {
-				rsp.setStart(posesRobot.get(i));
-				rsp.setGoal(posesRobot.get(i+1));
-				rsp.clearObstacles();
-				if (!rsp.plan()) throw new Error ("No path between " + posesRobot.get(i) + " and " + posesRobot.get(i+1));			
-				PoseSteering[] path = rsp.getPath();
-				if (i == 0) pathsRobot.add(path[0]);
-				for (int j = 1; j < path.length; j++) pathsRobot.add(path[j]);
-			}
-			ArrayList<PoseSteering> pathsRobotInv = new ArrayList<PoseSteering>();
-			pathsRobotInv.addAll(pathsRobot);
-			Collections.reverse(pathsRobotInv);
-
-			Missions.putMission(new Mission(robotID, pathsRobot.toArray(new PoseSteering[pathsRobot.size()])));
-			Missions.putMission(new Mission(robotID, pathsRobotInv.toArray(new PoseSteering[pathsRobotInv.size()])));
+			
+			rsp.setStart(posesRobot.get(0));
+			rsp.setGoals(posesRobot.subList(1, posesRobot.size()).toArray(new Pose[posesRobot.size()-1]));
+			rsp.clearObstacles();
+			if (!rsp.plan()) throw new Error ("No path along goals " + posesRobot);			
+			PoseSteering[] robotPath = rsp.getPath();
+			PoseSteering[] robotPathInv = rsp.getPathInv();
+			
+			Missions.putMission(new Mission(robotID, robotPath));
+			Missions.putMission(new Mission(robotID, robotPathInv));
 		}
 
 		System.out.println("Added missions " + Missions.getMissions());

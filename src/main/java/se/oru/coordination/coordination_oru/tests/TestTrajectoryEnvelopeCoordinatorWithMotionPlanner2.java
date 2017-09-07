@@ -94,24 +94,24 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner2 {
 		tec.placeRobot(2, startPoseRobot2);
 
 		rsp.setStart(startPoseRobot1);
-		rsp.setGoal(goalPoseRobot1);
+		rsp.setGoals(goalPoseRobot1);
 		Geometry fpGeom = TrajectoryEnvelope.createFootprintPolygon(footprint1, footprint2, footprint3, footprint4);
 		rsp.addObstacles(fpGeom, startPoseRobot2, goalPoseRobot2);
 		if (!rsp.plan()) throw new Error ("No path between " + startPoseRobot1 + " and " + goalPoseRobot1);
 		PoseSteering[] pss1 = rsp.getPath();
 		rsp.setStart(goalPoseRobot1);
-		rsp.setGoal(startPoseRobot1);
+		rsp.setGoals(startPoseRobot1);
 		if (!rsp.plan()) throw new Error ("No path between " + goalPoseRobot1 + " and " + startPoseRobot1);
 		PoseSteering[] pss1Inv = rsp.getPath();
 
 		rsp.setStart(startPoseRobot2);
-		rsp.setGoal(goalPoseRobot2);
+		rsp.setGoals(goalPoseRobot2);
 		rsp.clearObstacles();
 		rsp.addObstacles(fpGeom, startPoseRobot1, goalPoseRobot1);
 		if (!rsp.plan()) throw new Error ("No path between " + startPoseRobot2 + " and " + goalPoseRobot2);
 		PoseSteering[] pss2 = rsp.getPath();
 		rsp.setStart(goalPoseRobot2);
-		rsp.setGoal(startPoseRobot2);
+		rsp.setGoals(startPoseRobot2);
 		if (!rsp.plan()) throw new Error ("No path between " + goalPoseRobot2 + " and " + startPoseRobot2);
 		PoseSteering[] pss2Inv = rsp.getPath();
 

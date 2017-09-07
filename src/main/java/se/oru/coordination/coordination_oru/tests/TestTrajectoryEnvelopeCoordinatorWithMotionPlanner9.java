@@ -104,39 +104,21 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner9 {
 		tec.placeRobot(1, startPoseRobot1);
 		tec.placeRobot(2, startPoseRobot2);
 
-		ArrayList<PoseSteering> pathRobot1 = new ArrayList<PoseSteering>();
-		ArrayList<PoseSteering> pathRobot2 = new ArrayList<PoseSteering>();
 		rsp.setStart(startPoseRobot1);
-		rsp.setGoal(goalPoseRobot11);
+		rsp.setGoals(goalPoseRobot11,goalPoseRobot12,goalPoseRobot13,goalPoseRobot14,goalPoseRobot15);
 		Geometry fpGeom = TrajectoryEnvelope.createFootprintPolygon(footprint1, footprint2, footprint3, footprint4);
 		rsp.addObstacles(fpGeom, startPoseRobot2, goalPoseRobot2);
-		if (!rsp.plan()) throw new Error ("No path between " + startPoseRobot1 + " and " + goalPoseRobot11);
-		for (PoseSteering ps : rsp.getPath()) pathRobot1.add(ps);
-		rsp.setStart(goalPoseRobot11);
-		rsp.setGoal(goalPoseRobot12);
-		if (!rsp.plan()) throw new Error ("No path between " + goalPoseRobot11 + " and " + goalPoseRobot12);
-		for (PoseSteering ps : rsp.getPath()) pathRobot1.add(ps);
-		rsp.setStart(goalPoseRobot12);
-		rsp.setGoal(goalPoseRobot13);
-		if (!rsp.plan()) throw new Error ("No path between " + goalPoseRobot12 + " and " + goalPoseRobot13);
-		for (PoseSteering ps : rsp.getPath()) pathRobot1.add(ps);
-		rsp.setStart(goalPoseRobot13);
-		rsp.setGoal(goalPoseRobot14);
-		if (!rsp.plan()) throw new Error ("No path between " + goalPoseRobot13 + " and " + goalPoseRobot14);
-		for (PoseSteering ps : rsp.getPath()) pathRobot1.add(ps);
-		rsp.setStart(goalPoseRobot14);
-		rsp.setGoal(goalPoseRobot15);
-		if (!rsp.plan()) throw new Error ("No path between " + goalPoseRobot14 + " and " + goalPoseRobot15);
-		for (PoseSteering ps : rsp.getPath()) pathRobot1.add(ps);
-
+		if (!rsp.plan()) throw new Error ("No path between " + startPoseRobot1 + " and " + goalPoseRobot15);
+		PoseSteering[] pathRobot1 = rsp.getPath();
+		
 		rsp.setStart(startPoseRobot2);
-		rsp.setGoal(goalPoseRobot2);
+		rsp.setGoals(goalPoseRobot2);
 		rsp.clearObstacles();
 		rsp.addObstacles(fpGeom, startPoseRobot1, goalPoseRobot15);
 		if (!rsp.plan()) throw new Error ("No path between " + startPoseRobot2 + " and " + goalPoseRobot2);
-		for (PoseSteering ps : rsp.getPath()) pathRobot2.add(ps);
-
-		tec.addMissions(new Mission(1, pathRobot1.toArray(new PoseSteering[pathRobot1.size()])), new Mission(2, pathRobot2.toArray(new PoseSteering[pathRobot2.size()])));
+		PoseSteering[] pathRobot2 = rsp.getPath();
+		
+		tec.addMissions(new Mission(1, pathRobot1), new Mission(2, pathRobot2));
 		tec.computeCriticalSections();
 		tec.startTrackingAddedMissions();
 

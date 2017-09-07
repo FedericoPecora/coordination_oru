@@ -75,19 +75,19 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner11 {
 		rsp.setDistanceBetweenPathPoints(0.5);
 		
 		rsp.setStart(Missions.getLocation("r1p"));
-		rsp.setGoal(Missions.getLocation("dest1"));
+		rsp.setGoals(Missions.getLocation("dest1"));
 		rsp.plan();
 		Missions.putMission(new Mission(1,rsp.getPath()));
 		Missions.putMission(new Mission(1,rsp.getPathInv()));
 		
 		rsp.setStart(Missions.getLocation("r2p"));
-		rsp.setGoal(Missions.getLocation("dest2"));
+		rsp.setGoals(Missions.getLocation("dest2"));
 		rsp.plan();
 		Missions.putMission(new Mission(2,rsp.getPath()));
 		Missions.putMission(new Mission(2,rsp.getPathInv()));
 		
 		rsp.setStart(Missions.getLocation("r3p"));
-		rsp.setGoal(Missions.getLocation("dest3"));
+		rsp.setGoals(Missions.getLocation("dest3"));
 		rsp.plan();
 		Missions.putMission(new Mission(3,rsp.getPath()));
 		Missions.putMission(new Mission(3,rsp.getPathInv()));

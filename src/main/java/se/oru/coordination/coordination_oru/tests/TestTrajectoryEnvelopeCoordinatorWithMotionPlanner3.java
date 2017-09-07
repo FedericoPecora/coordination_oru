@@ -120,42 +120,27 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner3 {
 		tec.placeRobot(1, posesRobot1.get(0));
 		tec.placeRobot(2, posesRobot2.get(0));
 
-		ArrayList<PoseSteering> pathsRobot1 = new ArrayList<PoseSteering>();
-		for (int i = 0; i < posesRobot1.size()-1; i++) {
-			rsp.setStart(posesRobot1.get(i));
-			rsp.setGoal(posesRobot1.get(i+1));
-			rsp.clearObstacles();
-			Geometry fpGeom = TrajectoryEnvelope.createFootprintPolygon(footprint1, footprint2, footprint3, footprint4);
-			rsp.addObstacles(fpGeom, posesRobot2.get(0), posesRobot2.get(posesRobot2.size()-1));
-			if (!rsp.plan()) throw new Error ("No path between " + posesRobot1.get(i) + " and " + posesRobot1.get(i+1));			
-			PoseSteering[] path = rsp.getPath();
-			if (i == 0) pathsRobot1.add(path[0]);
-			for (int j = 1; j < path.length; j++) pathsRobot1.add(path[j]);
-		}
-		ArrayList<PoseSteering> pathsRobot1Inv = new ArrayList<PoseSteering>();
-		pathsRobot1Inv.addAll(pathsRobot1);
-		Collections.reverse(pathsRobot1Inv);
+		rsp.setStart(posesRobot1.get(0));
+		rsp.setGoals(posesRobot1.subList(1, posesRobot1.size()).toArray(new Pose[posesRobot1.size()-1]));
+		rsp.clearObstacles();
+		Geometry fpGeom = TrajectoryEnvelope.createFootprintPolygon(footprint1, footprint2, footprint3, footprint4);
+		rsp.addObstacles(fpGeom, posesRobot2.get(0), posesRobot2.get(posesRobot2.size()-1));
+		if (!rsp.plan()) throw new Error ("No path along goals " + posesRobot1);			
+		PoseSteering[] robot1path = rsp.getPath();
+		PoseSteering[] robot1pathInv = rsp.getPathInv();
 
-		ArrayList<PoseSteering> pathsRobot2 = new ArrayList<PoseSteering>();
-		for (int i = 0; i < posesRobot2.size()-1; i++) {
-			rsp.setStart(posesRobot2.get(i));
-			rsp.setGoal(posesRobot2.get(i+1));
-			rsp.clearObstacles();
-			Geometry fpGeom = TrajectoryEnvelope.createFootprintPolygon(footprint1, footprint2, footprint3, footprint4);
-			rsp.addObstacles(fpGeom, posesRobot1.get(0), posesRobot1.get(posesRobot1.size()-1));
-			if (!rsp.plan()) throw new Error ("No path between " + posesRobot2.get(i) + " and " + posesRobot2.get(i+1));			
-			PoseSteering[] path = rsp.getPath();
-			if (i == 0) pathsRobot2.add(path[0]);
-			for (int j = 1; j < path.length; j++) pathsRobot2.add(path[j]);
-		}
-		ArrayList<PoseSteering> pathsRobot2Inv = new ArrayList<PoseSteering>();
-		pathsRobot2Inv.addAll(pathsRobot2);
-		Collections.reverse(pathsRobot2Inv);
+		rsp.setStart(posesRobot2.get(0));
+		rsp.setGoals(posesRobot2.subList(1, posesRobot2.size()).toArray(new Pose[posesRobot2.size()-1]));
+		rsp.clearObstacles();
+		rsp.addObstacles(fpGeom, posesRobot1.get(0), posesRobot1.get(posesRobot1.size()-1));
+		if (!rsp.plan()) throw new Error ("No path along goals " + posesRobot2);			
+		PoseSteering[] robot2path = rsp.getPath();
+		PoseSteering[] robot2pathInv = rsp.getPathInv();
 
-		Missions.putMission(new Mission(1, pathsRobot1.toArray(new PoseSteering[pathsRobot1.size()])));
-		Missions.putMission(new Mission(1, pathsRobot1Inv.toArray(new PoseSteering[pathsRobot1Inv.size()])));
-		Missions.putMission(new Mission(2, pathsRobot2.toArray(new PoseSteering[pathsRobot2.size()])));
-		Missions.putMission(new Mission(2, pathsRobot2Inv.toArray(new PoseSteering[pathsRobot2Inv.size()])));
+		Missions.putMission(new Mission(1, robot1path));
+		Missions.putMission(new Mission(1, robot1pathInv));
+		Missions.putMission(new Mission(2, robot2path));
+		Missions.putMission(new Mission(2, robot2pathInv));
 
 		System.out.println("Added missions " + Missions.getMissions());
 

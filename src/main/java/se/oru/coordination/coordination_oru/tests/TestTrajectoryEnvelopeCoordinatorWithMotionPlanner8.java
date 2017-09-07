@@ -97,17 +97,17 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner8 {
 		tec.placeRobot(3, startPoseRobot3);
 
 		rsp.setStart(startPoseRobot1);
-		rsp.setGoal(goalPoseRobot1);
+		rsp.setGoals(goalPoseRobot1);
 		if (!rsp.plan()) throw new Error ("No path between " + startPoseRobot1 + " and " + goalPoseRobot1);
 		PoseSteering[] pss1 = rsp.getPath();
 		
 		rsp.setStart(startPoseRobot2);
-		rsp.setGoal(goalPoseRobot2);
+		rsp.setGoals(goalPoseRobot2);
 		if (!rsp.plan()) throw new Error ("No path between " + startPoseRobot2 + " and " + goalPoseRobot2);
 		PoseSteering[] pss2 = rsp.getPath();
 		
 		rsp.setStart(startPoseRobot3);
-		rsp.setGoal(goalPoseRobot3);
+		rsp.setGoals(goalPoseRobot3);
 		if (!rsp.plan()) throw new Error ("No path between " + startPoseRobot3 + " and " + goalPoseRobot3);
 		PoseSteering[] pss3 = rsp.getPath();
 
