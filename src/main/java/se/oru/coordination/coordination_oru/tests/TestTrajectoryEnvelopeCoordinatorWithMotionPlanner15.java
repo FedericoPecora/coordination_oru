@@ -17,8 +17,8 @@ import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
 import se.oru.coordination.coordination_oru.util.Missions;
 
-@DemoDescription(desc = "Example showing that parking poses are considered in coordination.")
-public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner14 {
+@DemoDescription(desc = "Example showing that parked robots lead to critical sections.")
+public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner15 {
 
 	public static void main(String[] args) throws InterruptedException {
 
@@ -63,12 +63,11 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner14 {
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		tec.setupGUI(null);
 
-		Pose startRobot1 = new Pose(1.0,1.0,Math.PI/4);
-		Pose goalRobot1 = new Pose(10.0,10.0,Math.PI/4);
+		Pose startRobot1 = new Pose(5.0,5.0,Math.PI/4);
+		Pose goalRobot1 = new Pose(15.0,15.0,Math.PI/4);
 
-		Pose startRobot2 = new Pose(19.0,1.0,3*Math.PI/4);
-		Pose goalRobot2 = new Pose(10.0,10.0,3*Math.PI/4);
-		Pose goalRobot2Next = new Pose(19.0,10.0,Math.PI/2);
+		Pose startRobot2 = new Pose(10.0,1.0,3*Math.PI/4);
+		Pose goalRobot2 = new Pose(1.0,10.0,3*Math.PI/4);
 
 		//Place robots in their initial locations (looked up in the data file that was loaded above)
 		// -- creates a trajectory envelope for each location, representing the fact that the robot is parked
@@ -85,42 +84,30 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner14 {
 		rsp.setRobotRadius(1.1);
 		rsp.setTurningRadius(4.0);
 		rsp.setDistanceBetweenPathPoints(0.1);
-		
+
 		rsp.setStart(startRobot1);
 		rsp.setGoals(goalRobot1);
 		rsp.plan();
 		Missions.putMission(new Mission(1,rsp.getPath()));
-		
+
 		rsp.setStart(startRobot2);
 		rsp.setGoals(goalRobot2);
-		rsp.plan();
-		Missions.putMission(new Mission(2,rsp.getPath()));
-		Missions.putMission(new Mission(2,rsp.getPathInv()));
-		rsp.setStart(startRobot2);
-		rsp.setGoals(goalRobot2Next);
 		rsp.plan();
 		Missions.putMission(new Mission(2,rsp.getPath()));
 		
 		System.out.println("Added missions " + Missions.getMissions());
 
-		tec.addMissions(Missions.getMission(1, 0), Missions.getMission(2, 0));
+		tec.addMissions(Missions.getMission(2, 0));
 		tec.computeCriticalSections();
 		tec.startTrackingAddedMissions();
+
+		Thread.sleep(13000);
 		
-		Thread.sleep(20000);
-
-		tec.addMissions(Missions.getMission(2, 1));
-		tec.computeCriticalSections();
-		tec.startTrackingAddedMissions();
-
-		Thread.sleep(10000);
-
-		tec.addMissions(Missions.getMission(2, 2));
+		tec.addMissions(Missions.getMission(1, 0));
 		tec.computeCriticalSections();
 		tec.startTrackingAddedMissions();
 
 		
-
 	}
 
 }

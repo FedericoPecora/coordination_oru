@@ -17,7 +17,7 @@ import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
 import se.oru.coordination.coordination_oru.util.Missions;
 
-@DemoDescription(desc = "Three robots coordinating at high speed (paths obtained with the ReedsSheppCarPlanner).")
+@DemoDescription(desc = "Example that throws an error due to coordination being impossible.")
 public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner13 {
 
 	public static void main(String[] args) throws InterruptedException {

@@ -71,7 +71,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected TrajectoryEnvelopeSolver solver = null;
 	protected JTSDrawingPanel panel = null;
 	protected ArrayList<TrajectoryEnvelope> envelopesToTrack = new ArrayList<TrajectoryEnvelope>();
-	protected ArrayList<TrajectoryEnvelope> newParkingEnvelopes = new ArrayList<TrajectoryEnvelope>();
+	protected ArrayList<TrajectoryEnvelope> currentParkingEnvelopes = new ArrayList<TrajectoryEnvelope>();
 	protected HashMap<CriticalSection,Dependency> criticalSectionsToDeps = new HashMap<CriticalSection, Dependency>();
 	protected ArrayList<CriticalSection> allCriticalSections = new ArrayList<CriticalSection>();
 	protected HashMap<Integer,ArrayList<Integer>> stoppingPoints = new HashMap<Integer,ArrayList<Integer>>();
@@ -409,9 +409,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				
 			};
 			
-			synchronized (newParkingEnvelopes) {
-				newParkingEnvelopes.add(tracker.getTrajectoryEnvelope());				
-			}
+			currentParkingEnvelopes.add(tracker.getTrajectoryEnvelope());				
 						
 			synchronized (trackers) {
 				trackers.put(robotID, tracker);
@@ -907,17 +905,17 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		synchronized(allCriticalSections) {
 
 			//Collect all driving envelopes
-			ArrayList<TrajectoryEnvelope> tes = new ArrayList<TrajectoryEnvelope>();
+			ArrayList<TrajectoryEnvelope> drivingEnvelopes = new ArrayList<TrajectoryEnvelope>();
 			for (AbstractTrajectoryEnvelopeTracker atet : trackers.values()) {
 				if (!(atet instanceof TrajectoryEnvelopeTrackerDummy)) {
-					tes.add(atet.getTrajectoryEnvelope());
+					drivingEnvelopes.add(atet.getTrajectoryEnvelope());
 				}
 			}
 			
 			//Compute critical sections between driving and new envelopes
-			for (int i = 0; i < tes.size(); i++) {
+			for (int i = 0; i < drivingEnvelopes.size(); i++) {
 				for (int j = 0; j < envelopesToTrack.size(); j++) {	
-					for (CriticalSection cs : getCriticalSections(tes.get(i), envelopesToTrack.get(j))) {
+					for (CriticalSection cs : getCriticalSections(drivingEnvelopes.get(i), envelopesToTrack.get(j))) {
 						this.allCriticalSections.add(cs);
 					}
 				}
@@ -932,20 +930,28 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				}
 			}
 			
-			//Compute critical sections between new parking envelopes and driving envelopes
-			synchronized(newParkingEnvelopes) {
-				for (int i = 0; i < tes.size(); i++) {
-					for (int j = 0; j < newParkingEnvelopes.size(); j++) {
-						if (tes.get(i).getRobotID() != newParkingEnvelopes.get(j).getRobotID()) {
-							for (CriticalSection cs : getCriticalSections(tes.get(i), newParkingEnvelopes.get(j))) {
-								this.allCriticalSections.add(cs);
-							}
+			//Compute critical sections between driving envelopes and current parking envelopes	
+			for (int i = 0; i < drivingEnvelopes.size(); i++) {
+				for (int j = 0; j < currentParkingEnvelopes.size(); j++) {
+					if (drivingEnvelopes.get(i).getRobotID() != currentParkingEnvelopes.get(j).getRobotID()) {
+						for (CriticalSection cs : getCriticalSections(drivingEnvelopes.get(i), currentParkingEnvelopes.get(j))) {
+							this.allCriticalSections.add(cs);
 						}
 					}
-				}	
-				newParkingEnvelopes.clear();
+				}
 			}
-			
+
+			//Compute critical sections between new driving envelopes and current parking envelopes	
+			for (int i = 0; i < envelopesToTrack.size(); i++) {
+				for (int j = 0; j < currentParkingEnvelopes.size(); j++) {
+					if (envelopesToTrack.get(i).getRobotID() != currentParkingEnvelopes.get(j).getRobotID()) {
+						for (CriticalSection cs : getCriticalSections(envelopesToTrack.get(i), currentParkingEnvelopes.get(j))) {
+							this.allCriticalSections.add(cs);
+						}
+					}
+				}
+			}
+
 			metaCSPLogger.info("There are now " + allCriticalSections.size() + " critical sections");
 		}
 	}
@@ -1137,6 +1143,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						
 						//clean up the old parking envelope
 						cleanUp(startParking);
+						currentParkingEnvelopes.remove(startParking);
 						
 						//clean up this tracker's TE
 						cleanUp(te);
@@ -1157,7 +1164,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							for (Dependency dep : toRemove) disallowedDependencies.remove(dep);
 						}
 						
-						//AAAAA
 						computeCriticalSections();
 						updateDependencies();
 											
