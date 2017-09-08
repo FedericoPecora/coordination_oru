@@ -21,22 +21,6 @@ import se.oru.coordination.coordination_oru.util.StringUtils;
 public class DemoLauncher {
 
 	private static final String testsPackage = "se.oru.coordination.coordination_oru.tests";
-
-	private static void printLicense() {
-		
-		System.out.println("\n"+TrajectoryEnvelopeCoordinator.TITLE);
-		System.out.println(TrajectoryEnvelopeCoordinator.COPYRIGHT+"\n");
-		if (TrajectoryEnvelopeCoordinator.LICENSEE != null) {
-			List<String> lic = StringUtils.fitWidth(TrajectoryEnvelopeCoordinator.PRIVATE_LICENSE, 72, 5);
-			for (String st : lic) System.out.println(st);
-		}
-		else {
-			List<String> lic = StringUtils.fitWidth(TrajectoryEnvelopeCoordinator.PUBLIC_LICENSE, 72, 5);
-			for (String st : lic) System.out.println(st);
-		}
-		System.out.println();
-		
-	}
 	
 	private static void printUsage() {
 
@@ -77,8 +61,11 @@ public class DemoLauncher {
 		
 	}
 	
-	public static void main(String[] args) {
-		printLicense();
+	public static void main(String[] args) throws ClassNotFoundException {
+		
+		//Forces to loads the class so that license and (c) are printed even if no demo is invoked
+		Class.forName("se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator");
+		
 		if (args.length != 1) printUsage();
 		else {
 			String className = args[0];
