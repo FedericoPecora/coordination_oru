@@ -251,10 +251,15 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 * @param criticalPoint The index of the path pose beyond which the robot should not navigate.
 	 */
 	public void setCriticalPoint(int robotID, int criticalPoint) {
+		//If the robot is not muted
 		if (!muted.contains(robotID)) {
-			if (!communicatedCPs.containsKey(trackers.get(robotID)) || !communicatedCPs.get(trackers.get(robotID)).equals(criticalPoint) ) {
-				communicatedCPs.put(trackers.get(robotID), criticalPoint);
-				trackers.get(robotID).setCriticalPoint(criticalPoint);
+			//If not at the end of the trajectory (i.e., if the mission is not about to finish)
+			if (trackers.get(robotID).getRobotReport().getPathIndex() < trackers.get(robotID).getTrajectoryEnvelope().getSequenceNumberEnd()) {
+				//If I haven't communicated this CP already to the robot
+				if (!communicatedCPs.containsKey(trackers.get(robotID)) || !communicatedCPs.get(trackers.get(robotID)).equals(criticalPoint) ) {
+					communicatedCPs.put(trackers.get(robotID), criticalPoint);
+					trackers.get(robotID).setCriticalPoint(criticalPoint);
+				}
 			}
 		}
 	}

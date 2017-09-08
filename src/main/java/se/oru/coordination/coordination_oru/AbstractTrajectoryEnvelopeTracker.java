@@ -294,14 +294,14 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 									if (subEnv.getSequenceNumberEnd() < te.getSequenceNumberEnd()) fixDeadline(subEnv, 0);
 								}
 								else if (!finishedGroundEnvelopes.contains(subEnv) && currentSeqNumber > prevSeqNumber) {
-									prevSeqNumber = currentSeqNumber;
+									//prevSeqNumber = currentSeqNumber;
 									updateDeadline(subEnv, 0);
 								}
 							}							
 						}
 						
-						//Stop when there are no more ground envelopes to finish
-						if (te.getSequenceNumberEnd() == currentSeqNumber) {
+						//Stop when last path point reached (or we missed that report and the path point is now 0)
+						if (te.getSequenceNumberEnd() == currentSeqNumber || currentSeqNumber < prevSeqNumber) {
 							metaCSPLogger.info("At last path point of " + te + "...");
 							for (TrajectoryEnvelope toFinish : startedGroundEnvelopes) {
 								if (!finishedGroundEnvelopes.contains(toFinish)) {
@@ -311,6 +311,9 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 							}
 							break;
 						}
+						
+						//Update previous seq number
+						prevSeqNumber = currentSeqNumber;
 					}
 				
 					//Sleep a little...
