@@ -669,7 +669,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		if (robotTracker2.getCriticalPoint() <= cs.getTe2Start()) canStopRobot2 = true;
 		else canStopRobot2 = fm2.canStop(robotTracker2.getTrajectoryEnvelope(), robotReport2, cs.getTe2Start());
 
-		if (!canStopRobot1 && !canStopRobot2) throw new Error("Neither robot can stop at " + cs);
+		if (!canStopRobot1 && !canStopRobot2) {
+			metaCSPLogger.severe("** WARNING ** Neither robot can stop at " + cs);
+			//throw new Error("Neither robot can stop at " + cs);
+		}
 
 		//If both can stop, use ordering function (or closest if no ordering function)
 		if (canStopRobot1 && canStopRobot2) {
@@ -745,30 +748,32 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				AbstractTrajectoryEnvelopeTracker robotTracker2 = trackers.get(cs.getTe2().getRobotID());
 				RobotReport robotReport2 = robotTracker2.getRobotReport();
 
-				if (robotTracker1 instanceof TrajectoryEnvelopeTrackerDummy) {
-					waitingTE = cs.getTe2();
-					drivingTE = cs.getTe1();
-					waitingRobotID = waitingTE.getRobotID();
-					drivingRobotID = drivingTE.getRobotID();
-					waitingTracker = trackers.get(waitingRobotID);
-					drivingTracker = trackers.get(drivingRobotID);
-				}
-				else if (robotTracker2 instanceof TrajectoryEnvelopeTrackerDummy) {
-					waitingTE = cs.getTe1();
-					drivingTE = cs.getTe2();
-					waitingRobotID = waitingTE.getRobotID();
-					drivingRobotID = drivingTE.getRobotID();
-					waitingTracker = trackers.get(waitingRobotID);
-					drivingTracker = trackers.get(drivingRobotID);
-				}
+				//If one robot is parked, make the other wait
 				if (robotTracker1 instanceof TrajectoryEnvelopeTrackerDummy || robotTracker2 instanceof TrajectoryEnvelopeTrackerDummy) {
-
+					
+					if (robotTracker1 instanceof TrajectoryEnvelopeTrackerDummy) {
+						waitingTE = cs.getTe2();
+						drivingTE = cs.getTe1();
+						waitingRobotID = waitingTE.getRobotID();
+						drivingRobotID = drivingTE.getRobotID();
+						waitingTracker = trackers.get(waitingRobotID);
+						drivingTracker = trackers.get(drivingRobotID);
+					}
+					else if (robotTracker2 instanceof TrajectoryEnvelopeTrackerDummy) {
+						waitingTE = cs.getTe1();
+						drivingTE = cs.getTe2();
+						waitingRobotID = waitingTE.getRobotID();
+						drivingRobotID = drivingTE.getRobotID();
+						waitingTracker = trackers.get(waitingRobotID);
+						drivingTracker = trackers.get(drivingRobotID);
+					}
+					
 					if (robotReport1.getPathIndex() > cs.getTe1End() || robotReport2.getPathIndex() > cs.getTe2End()) {
 						toRemove.add(cs);
 						metaCSPLogger.finest("Obsolete critical section\n\t" + cs);
 						continue;
 					}
-
+					
 					int waitingPoint = getCriticalPoint(waitingRobotID, cs, drivingCurrentIndex);
 					//Make new dependency
 					int drivingCSEnd = -1;
@@ -781,7 +786,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				}
 
 				//Both robots are driving, let's determine an ordering for them thru this critical section
-				else { //if (!(robotTracker1 instanceof TrajectoryEnvelopeTrackerDummy) && !(robotTracker2 instanceof TrajectoryEnvelopeTrackerDummy)) {
+				else {
 
 					//One or both robots past end of the critical section --> critical section is obsolete
 					if (robotReport1.getPathIndex() > cs.getTe1End() || robotReport2.getPathIndex() > cs.getTe2End()) {
@@ -829,9 +834,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					else {
 						Dependency previousDep = criticalSectionsToDeps.get(cs);
 						//A previous dep must exist because we assume robots cannot start both within the same critical section
+						//If it does not, the robots WILL crash... throw an error and give up! 
 						if (previousDep == null) {
-							metaCSPLogger.severe("Could not coordinate at critical section " + cs);
-							throw new Error("Could not coordinate at critical section " + cs);
+							metaCSPLogger.severe("Could not coordinate, as both robots already in critical section " + cs);
+							throw new Error("Could not coordinate, as both robots already in critical section " + cs);
 						}
 						if (previousDep.getWaitingRobotID() == robotTracker1.getTrajectoryEnvelope().getRobotID()) {
 							drivingCurrentIndex = robotReport2.getPathIndex();
@@ -865,6 +871,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						criticalSectionsToDeps.put(cs, dep);
 					}
 					else {
+						//If robot is asked in an invalid path point, throw error and give up!
 						metaCSPLogger.severe("Waiting point < 0 for critical section " + cs);
 						throw new Error("Waiting point < 0 for critical section " + cs);
 					}
@@ -986,7 +993,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				}
 			}
 			if (path1.length == 1 || path2.length == 1) safe = true;
-			if (!safe) throw new Error("Cannot coordinate as one envelope is completely overlapped by the other!");
+			if (!safe) {
+				metaCSPLogger.severe("** WARNING ** Cannot coordinate as one envelope is completely overlapped by the other!");
+				//throw new Error("Cannot coordinate as one envelope is completely overlapped by the other!");
+			}
 
 			safe = false;
 			for (int j = 0; j < path2.length; j++) {
@@ -997,8 +1007,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				}
 			}
 			if (path1.length == 1 || path2.length == 1) safe = true;
-			if (!safe) throw new Error("Cannot coordinate as one envelope is completely overlapped by the other!");
-
+			if (!safe) {
+				metaCSPLogger.severe("** WARNING ** Cannot coordinate as one envelope is completely overlapped by the other!");
+				//throw new Error("Cannot coordinate as one envelope is completely overlapped by the other!");
+			}
 
 			Geometry gc = shape1.intersection(shape2);
 			ArrayList<Geometry> allIntersections = new ArrayList<Geometry>();
@@ -1010,7 +1022,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					Geometry prev = gc.getGeometryN(i-1);
 					Geometry next = gc.getGeometryN(i);					
 					if (prev.distance(next) < getMaxFootprintDimension(te1.getRobotID()) || prev.distance(next) < getMaxFootprintDimension(te2.getRobotID())) {
-						//System.out.println("MERGED! (maxdim is " + maxDim + ")");
 						allIntersections.add(prev.union(next).convexHull());
 					}
 					else {
