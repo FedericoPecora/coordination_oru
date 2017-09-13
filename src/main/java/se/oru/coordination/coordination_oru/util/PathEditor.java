@@ -16,61 +16,32 @@ import org.metacsp.utility.UI.JTSDrawingPanel;
 
 public class PathEditor {
 
-	private static boolean selectionInputListen = false;
-	private static String selectedPathPoint = "";
-	private static int selectedPathPointInt = -1;
-	private static PoseSteering[] path = null;
-	private static JTSDrawingPanel panel = null;
-	private static double deltaX = 0.1;
-	private static double deltaY = 0.1;
-	private static double deltaT = 0.1;
+	private String fileName = null;
+	private boolean selectionInputListen = false;
+	private String selectedPathPoint = "";
+	private int selectedPathPointInt = -1;
+	private PoseSteering[] path = null;
+	private JTSDrawingPanel panel = null;
+	private double deltaX = 0.1;
+	private double deltaY = 0.1;
+	private double deltaT = 0.1;
+	private String newFileSuffix = ".new";
 
-	private static void writePath(String fileName) {
-        try {
-            File file = new File(fileName);
-            PrintWriter writer = new PrintWriter(file);
-            for (PoseSteering ps : path) {
-            	writer.println(ps.getPose().getX() + " " + ps.getPose().getY() + " " + ps.getPose().getTheta() + " " + ps.getSteering());
-            }
-            writer.close();
-        }
-        catch (Exception e) { e.printStackTrace(); }
+	public PathEditor(String fileName, double deltaX, double deltaY, double deltaTheta, String newFileSuffix) {
+		this.fileName = fileName;
+		this.deltaX = deltaX;
+		this.deltaY = deltaY;
+		this.deltaT = deltaTheta;
+		this.newFileSuffix = newFileSuffix;
+		this.readPath(fileName);
+		this.setupGUI();
 	}
 	
-	private static PoseSteering[] readPath(String fileName) {
-		ArrayList<PoseSteering> ret = new ArrayList<PoseSteering>();
-		try {
-			Scanner in = new Scanner(new FileReader(fileName));
-			while (in.hasNextLine()) {
-				String line = in.nextLine().trim();
-				if (line.length() != 0) {
-					String[] oneline = line.split(" ");
-					PoseSteering ps = null;
-					if (oneline.length == 4) {
-						ps = new PoseSteering(
-								new Double(oneline[0]).doubleValue(),
-								new Double(oneline[1]).doubleValue(),
-								new Double(oneline[2]).doubleValue(),
-								new Double(oneline[3]).doubleValue());
-					}
-					else {
-						ps = new PoseSteering(
-								new Double(oneline[0]).doubleValue(),
-								new Double(oneline[1]).doubleValue(),
-								new Double(oneline[2]).doubleValue(),
-								0.0);					
-					}
-					ret.add(ps);
-				}
-			}
-			in.close();
-		}
-		catch (FileNotFoundException e) { e.printStackTrace(); }
-		return ret.toArray(new PoseSteering[ret.size()]);
+	public PathEditor(String fileName) {
+		this(fileName,0.1,0.1,0.1,".new");
 	}
-
-	public static void main(String[] args) {
-		final String fileName = "paths/path2.path";
+	
+	private void setupGUI() {
 		panel = JTSDrawingPanel.makeEmpty("Path Editor");
 		panel.addKeyListener(new KeyListener() {
 			@Override
@@ -140,7 +111,55 @@ public class PathEditor {
 			panel.addArrow(""+i, pose, Color.gray);
 		}
 		panel.updatePanel();
-		
+	}
+	
+	private void writePath(String fileName) {
+        try {
+            File file = new File(fileName);
+            PrintWriter writer = new PrintWriter(file);
+            for (PoseSteering ps : path) {
+            	writer.println(ps.getPose().getX() + " " + ps.getPose().getY() + " " + ps.getPose().getTheta() + " " + ps.getSteering());
+            }
+            writer.close();
+        }
+        catch (Exception e) { e.printStackTrace(); }
+	}
+	
+	private PoseSteering[] readPath(String fileName) {
+		ArrayList<PoseSteering> ret = new ArrayList<PoseSteering>();
+		try {
+			Scanner in = new Scanner(new FileReader(fileName));
+			while (in.hasNextLine()) {
+				String line = in.nextLine().trim();
+				if (line.length() != 0) {
+					String[] oneline = line.split(" ");
+					PoseSteering ps = null;
+					if (oneline.length == 4) {
+						ps = new PoseSteering(
+								new Double(oneline[0]).doubleValue(),
+								new Double(oneline[1]).doubleValue(),
+								new Double(oneline[2]).doubleValue(),
+								new Double(oneline[3]).doubleValue());
+					}
+					else {
+						ps = new PoseSteering(
+								new Double(oneline[0]).doubleValue(),
+								new Double(oneline[1]).doubleValue(),
+								new Double(oneline[2]).doubleValue(),
+								0.0);					
+					}
+					ret.add(ps);
+				}
+			}
+			in.close();
+		}
+		catch (FileNotFoundException e) { e.printStackTrace(); }
+		return ret.toArray(new PoseSteering[ret.size()]);
+	}
+
+	public static void main(String[] args) {
+		final String fileName = "paths/path2.path";
+		new PathEditor(fileName);
 	}
 
 }
