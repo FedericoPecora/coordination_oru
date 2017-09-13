@@ -100,6 +100,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected HashSet<Dependency> disallowedDependencies = new HashSet<Dependency>();
 
 	protected HashSet<Integer> muted = new HashSet<Integer>();
+	
+	protected boolean yieldIfParking = true;
+	protected boolean checkEscapePoses = true;
 
 
 	//Default footprint (same for all robots)
@@ -110,6 +113,22 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			new Coordinate(2.7, -0.7),	//front right
 			new Coordinate(2.7, 0.7)	//front left
 	};
+	
+	/**
+	 * Set whether robots that will park in a critical section should yield to other robots.
+	 * @param value <code>true</code> if robots that will park in a critical section should yield to other robots.
+	 */
+	public void setYieldIfParking(boolean value) {
+		this.yieldIfParking = value;
+	}
+
+	/**
+	 * Set whether completely overlapping paths should lead to failure.
+	 * @param value <code>true</code> if completely overlapping paths should lead to failure.
+	 */
+	public void setCheckEscapePoses(boolean value) {
+		this.checkEscapePoses = value;
+	}
 
 	//Reflects the default footprint
 	protected double maxDefaultFootprintDimension = 4.4;
@@ -630,7 +649,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	}
 
 	private boolean unsafePair(Dependency dep1, Dependency dep2) {
-		if (dep2.getWaitingPoint() < dep1.getReleasingPoint()) return true;
+		if (dep2.getWaitingPoint() <= dep1.getReleasingPoint()) return true;
 		return false;
 	}
 
@@ -651,13 +670,15 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			}
 		}
 
-		if (cs.getTe1End() == cs.getTe1().getPathLength()-1) {
-			metaCSPLogger.info("Robot" + cs.getTe1().getRobotID() + " will park in " + cs + ", letting Robot" + cs.getTe2().getRobotID() + " go first");
-			return false;
-		}
-		if (cs.getTe2End() == cs.getTe2().getPathLength()-1) {
-			metaCSPLogger.info("Robot" + cs.getTe2().getRobotID() + " will park in " + cs + ", letting Robot" + cs.getTe1().getRobotID() + " go first");
-			return true;
+		if (yieldIfParking) {
+			if (cs.getTe1End() == cs.getTe1().getPathLength()-1) {
+				metaCSPLogger.info("Robot" + cs.getTe1().getRobotID() + " will park in " + cs + ", letting Robot" + cs.getTe2().getRobotID() + " go first");
+				return false;
+			}
+			if (cs.getTe2End() == cs.getTe2().getPathLength()-1) {
+				metaCSPLogger.info("Robot" + cs.getTe2().getRobotID() + " will park in " + cs + ", letting Robot" + cs.getTe1().getRobotID() + " go first");
+				return true;
+			}
 		}
 
 		ForwardModel fm1 = getForwardModel(robotTracker1.getTrajectoryEnvelope().getRobotID());
@@ -983,33 +1004,35 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			PoseSteering[] path1 = te1.getTrajectory().getPoseSteering();
 			PoseSteering[] path2 = te2.getTrajectory().getPoseSteering();
 
-			//Check that there is an "escape pose" along the paths 
-			boolean safe = false;
-			for (int j = 0; j < path1.length; j++) {
-				Geometry placement1 = te1.makeFootprint(path1[j]);
-				if (!placement1.intersects(shape2)) {
-					safe = true;
-					break;
+			if (checkEscapePoses) {
+				//Check that there is an "escape pose" along the paths 
+				boolean safe = false;
+				for (int j = 0; j < path1.length; j++) {
+					Geometry placement1 = te1.makeFootprint(path1[j]);
+					if (!placement1.intersects(shape2)) {
+						safe = true;
+						break;
+					}
 				}
-			}
-			if (path1.length == 1 || path2.length == 1) safe = true;
-			if (!safe) {
-				metaCSPLogger.severe("** WARNING ** Cannot coordinate as one envelope is completely overlapped by the other!");
-				//throw new Error("Cannot coordinate as one envelope is completely overlapped by the other!");
-			}
-
-			safe = false;
-			for (int j = 0; j < path2.length; j++) {
-				Geometry placement2 = te2.makeFootprint(path2[j]);
-				if (!placement2.intersects(shape1)) {
-					safe = true;
-					break;
+				if (path1.length == 1 || path2.length == 1) safe = true;
+				if (!safe) {
+					metaCSPLogger.severe("** WARNING ** Cannot coordinate as one envelope is completely overlapped by the other!");
+					//throw new Error("Cannot coordinate as one envelope is completely overlapped by the other!");
 				}
-			}
-			if (path1.length == 1 || path2.length == 1) safe = true;
-			if (!safe) {
-				metaCSPLogger.severe("** WARNING ** Cannot coordinate as one envelope is completely overlapped by the other!");
-				//throw new Error("Cannot coordinate as one envelope is completely overlapped by the other!");
+	
+				safe = false;
+				for (int j = 0; j < path2.length; j++) {
+					Geometry placement2 = te2.makeFootprint(path2[j]);
+					if (!placement2.intersects(shape1)) {
+						safe = true;
+						break;
+					}
+				}
+				if (path1.length == 1 || path2.length == 1) safe = true;
+				if (!safe) {
+					metaCSPLogger.severe("** WARNING ** Cannot coordinate as one envelope is completely overlapped by the other!");
+					//throw new Error("Cannot coordinate as one envelope is completely overlapped by the other!");
+				}
 			}
 
 			Geometry gc = shape1.intersection(shape2);
