@@ -47,7 +47,7 @@ public class PathEditor {
 			@Override
 			public void keyTyped(KeyEvent e) {
 				if (e.getKeyChar()=='r' || e.getKeyChar()=='R') {
-					String newFileName = fileName+".new";
+					String newFileName = fileName+newFileSuffix;
 					writePath(newFileName);
 					System.out.println("Saved " + newFileName);
 				}
