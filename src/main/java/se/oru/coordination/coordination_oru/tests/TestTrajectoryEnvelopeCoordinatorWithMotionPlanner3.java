@@ -3,7 +3,6 @@ package se.oru.coordination.coordination_oru.tests;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.Random;
 

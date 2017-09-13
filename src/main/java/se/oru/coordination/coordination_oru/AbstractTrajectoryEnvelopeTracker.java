@@ -226,12 +226,12 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 	 */
 	public abstract void startTracking();
 	
-	private void printStartedGroundEnvelopes() {
-		metaCSPLogger.info("*** STARTED GTEs of Robot " + te.getRobotID());
-		for (TrajectoryEnvelope sse : startedGroundEnvelopes) {
-			metaCSPLogger.info("\t*** " + sse + " TV: " + sse.getTemporalVariable());
-		}
-	}
+//	private void printStartedGroundEnvelopes() {
+//		metaCSPLogger.info("*** STARTED GTEs of Robot " + te.getRobotID());
+//		for (TrajectoryEnvelope sse : startedGroundEnvelopes) {
+//			metaCSPLogger.info("\t*** " + sse + " TV: " + sse.getTemporalVariable());
+//		}
+//	}
 	
 	/**
 	 * Returns <code>true</code> iff tracking has started.
