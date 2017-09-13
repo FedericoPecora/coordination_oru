@@ -857,10 +857,24 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						//A previous dep must exist because we assume robots cannot start both within the same critical section
 						//If it does not, the robots WILL crash... throw an error and give up! 
 						if (previousDep == null) {
-							metaCSPLogger.severe("Could not coordinate, as both robots already in critical section " + cs);
-							throw new Error("Could not coordinate, as both robots already in critical section " + cs);
+							//TODO: add check that they are not going in opposing directions, and if they are throw error
+//							metaCSPLogger.severe("Could not coordinate, as both robots already in critical section " + cs);
+//							throw new Error("Could not coordinate, as both robots already in critical section " + cs);
+
+							//Robot 1 is ahead --> make robot 2 follow
+							if (robotReport1.getPathIndex()-cs.getTe1Start() > robotReport2.getPathIndex()-cs.getTe2Start()) {
+								drivingCurrentIndex = robotReport1.getPathIndex();
+								waitingTE = cs.getTe2();
+								drivingTE = cs.getTe1();
+							}
+							//Robot 2 is ahead --> make robot 1 follow
+							else {
+								drivingCurrentIndex = robotReport2.getPathIndex();
+								waitingTE = cs.getTe1();
+								drivingTE = cs.getTe2();
+							}
 						}
-						if (previousDep.getWaitingRobotID() == robotTracker1.getTrajectoryEnvelope().getRobotID()) {
+						else if (previousDep.getWaitingRobotID() == robotTracker1.getTrajectoryEnvelope().getRobotID()) {
 							drivingCurrentIndex = robotReport2.getPathIndex();
 							waitingTE = cs.getTe1();
 							drivingTE = cs.getTe2();
