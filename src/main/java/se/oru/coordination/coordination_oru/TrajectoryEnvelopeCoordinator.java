@@ -769,6 +769,14 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				AbstractTrajectoryEnvelopeTracker robotTracker2 = trackers.get(cs.getTe2().getRobotID());
 				RobotReport robotReport2 = robotTracker2.getRobotReport();
 
+				//One or both robots past end of the critical section --> critical section is obsolete
+				if (robotReport1.getPathIndex() > cs.getTe1End() || robotReport2.getPathIndex() > cs.getTe2End()) {
+					toRemove.add(cs);
+					metaCSPLogger.finest("Obsolete critical section\n\t" + cs);
+					continue;
+				}
+
+				
 				//If one robot is parked, make the other wait
 				if (robotTracker1 instanceof TrajectoryEnvelopeTrackerDummy || robotTracker2 instanceof TrajectoryEnvelopeTrackerDummy) {
 					
@@ -788,12 +796,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						waitingTracker = trackers.get(waitingRobotID);
 						drivingTracker = trackers.get(drivingRobotID);
 					}
-					
-					if (robotReport1.getPathIndex() > cs.getTe1End() || robotReport2.getPathIndex() > cs.getTe2End()) {
-						toRemove.add(cs);
-						metaCSPLogger.finest("Obsolete critical section\n\t" + cs);
-						continue;
-					}
+
+					metaCSPLogger.finest("Robot" + drivingRobotID + " is parked, so Robot" + waitingRobotID + " will have to wait");
 					
 					int waitingPoint = getCriticalPoint(waitingRobotID, cs, drivingCurrentIndex);
 					//Make new dependency
@@ -809,21 +813,15 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				//Both robots are driving, let's determine an ordering for them thru this critical section
 				else {
 
-					//One or both robots past end of the critical section --> critical section is obsolete
-					if (robotReport1.getPathIndex() > cs.getTe1End() || robotReport2.getPathIndex() > cs.getTe2End()) {
-						toRemove.add(cs);
-						metaCSPLogger.finest("Obsolete critical section\n\t" + cs);
-						continue;
-					}
-
 					//Neither robot has reached the critical section --> follow ordering heuristic if FW model allows it
-					else if (robotReport1.getPathIndex() < cs.getTe1Start() && robotReport2.getPathIndex() < cs.getTe2Start()) {
+					if (robotReport1.getPathIndex() < cs.getTe1Start() && robotReport2.getPathIndex() < cs.getTe2Start()) {
 
 						//If robot 1 has priority over robot 2
 						if (getOrder(robotTracker1, robotReport1, robotTracker2, robotReport2, cs)) {
 							drivingCurrentIndex = robotReport1.getPathIndex();
 							waitingTE = cs.getTe2();
 							drivingTE = cs.getTe1();
+							metaCSPLogger.finest("Both Out (1) and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID());
 						}
 
 						//If robot 2 has priority over robot 1
@@ -831,6 +829,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							drivingCurrentIndex = robotReport2.getPathIndex();
 							waitingTE = cs.getTe1();
 							drivingTE = cs.getTe2();
+							metaCSPLogger.finest("Both Out (2) and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID());
 						}
 
 					}
@@ -840,7 +839,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						drivingCurrentIndex = robotReport2.getPathIndex();
 						waitingTE = cs.getTe1();
 						drivingTE = cs.getTe2();
-						metaCSPLogger.finest("R1 (OUT) / R2 (IN) --> R2 > R1\n\t" + cs);
+						metaCSPLogger.finest("One-in-one-out (1) and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID());
 					}
 
 					//Robot 2 has not reached critical section, robot 1 in critical section --> robot 2 waits
@@ -848,43 +847,24 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						drivingCurrentIndex = robotReport1.getPathIndex();
 						waitingTE = cs.getTe2();
 						drivingTE = cs.getTe1();
-						metaCSPLogger.finest("R1 (IN) / R2 (OUT) --> R1 > R2\n\t" + cs);
+						metaCSPLogger.finest("One-in-one-out (2) and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID());
 					}
 
 					//Both robots in critical section --> re-impose previously decided dependency
 					else {
-						Dependency previousDep = criticalSectionsToDeps.get(cs);
-						//A previous dep must exist because we assume robots cannot start both within the same critical section
-						//If it does not, the robots WILL crash... throw an error and give up! 
-						if (previousDep == null) {
-							//TODO: add check that they are not going in opposing directions, and if they are throw error
-//							metaCSPLogger.severe("Could not coordinate, as both robots already in critical section " + cs);
-//							throw new Error("Could not coordinate, as both robots already in critical section " + cs);
-
-							//Robot 1 is ahead --> make robot 2 follow
-							if (robotReport1.getPathIndex()-cs.getTe1Start() > robotReport2.getPathIndex()-cs.getTe2Start()) {
-								drivingCurrentIndex = robotReport1.getPathIndex();
-								waitingTE = cs.getTe2();
-								drivingTE = cs.getTe1();
-							}
-							//Robot 2 is ahead --> make robot 1 follow
-							else {
-								drivingCurrentIndex = robotReport2.getPathIndex();
-								waitingTE = cs.getTe1();
-								drivingTE = cs.getTe2();
-							}
-						}
-						else if (previousDep.getWaitingRobotID() == robotTracker1.getTrajectoryEnvelope().getRobotID()) {
-							drivingCurrentIndex = robotReport2.getPathIndex();
-							waitingTE = cs.getTe1();
-							drivingTE = cs.getTe2();
-						}
-						else {
+						//Robot 1 is ahead --> make robot 2 follow
+						if (robotReport1.getPathIndex()-cs.getTe1Start() > robotReport2.getPathIndex()-cs.getTe2Start()) {
 							drivingCurrentIndex = robotReport1.getPathIndex();
 							waitingTE = cs.getTe2();
 							drivingTE = cs.getTe1();
 						}
-						metaCSPLogger.finest("R1 (IN) / R2 (IN) critical section: " + cs);
+						//Robot 2 is ahead --> make robot 1 follow
+						else {
+							drivingCurrentIndex = robotReport2.getPathIndex();
+							waitingTE = cs.getTe1();
+							drivingTE = cs.getTe2();
+						}
+						metaCSPLogger.finest("In CS at start and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID());
 					}
 
 					waitingRobotID = waitingTE.getRobotID();
