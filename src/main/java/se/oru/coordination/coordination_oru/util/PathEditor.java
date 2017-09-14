@@ -8,6 +8,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Scanner;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
@@ -19,8 +20,10 @@ public class PathEditor {
 	private String fileName = null;
 	private boolean selectionInputListen = false;
 	private String selectedPathPoint = "";
-	private int selectedPathPointInt = -1;
-	private PoseSteering[] path = null;
+	//private int selectedPathPointInt = -1;
+	private ArrayList<Integer> selectedPathPointInt = new ArrayList<Integer>();
+	private ArrayList<PoseSteering> path = null;
+	private ArrayList<ArrayList<PoseSteering>> oldPaths = new ArrayList<ArrayList<PoseSteering>>(); 
 	private JTSDrawingPanel panel = null;
 	private double deltaX = 0.1;
 	private double deltaY = 0.1;
@@ -33,8 +36,8 @@ public class PathEditor {
 		this.deltaY = deltaY;
 		this.deltaT = deltaTheta;
 		this.newFileSuffix = newFileSuffix;
-		this.readPath(fileName);
 		this.setupGUI();
+		this.readPath(fileName);
 	}
 	
 	public PathEditor(String fileName) {
@@ -45,72 +48,137 @@ public class PathEditor {
 		panel = JTSDrawingPanel.makeEmpty("Path Editor");
 		panel.addKeyListener(new KeyListener() {
 			@Override
-			public void keyTyped(KeyEvent e) {
-				if (e.getKeyChar()=='r' || e.getKeyChar()=='R') {
-					String newFileName = fileName+newFileSuffix;
-					writePath(newFileName);
-					System.out.println("Saved " + newFileName);
-				}
-				if (e.getKeyChar()=='s' || e.getKeyChar()=='S') {
-					if (!selectionInputListen) {
-						selectedPathPoint = "";
-						selectedPathPointInt = -1;
-						for (int i = 0; i < path.length; i++) panel.addArrow(""+i, path[i].getPose(), Color.gray);
-						panel.updatePanel();
-						System.out.println("Input selection: (press 's' again to set): " + selectedPathPoint);
-					}
-					else if (selectionInputListen) {
-						for (int i = 0; i < path.length; i++) panel.addArrow(""+i, path[i].getPose(), Color.gray);
-						try {
-							selectedPathPointInt = Integer.parseInt(selectedPathPoint);
-							if (selectedPathPointInt >= 0 && selectedPathPointInt < path.length) {
-								panel.addArrow(""+selectedPathPoint, path[selectedPathPointInt].getPose(), Color.red);
-								panel.updatePanel();
-							}
-							else {
-								selectedPathPoint = "";
-								selectedPathPointInt = -1;								
-							}
-						}
-						catch(NumberFormatException ex) { }
-					}
-					selectionInputListen = !selectionInputListen;
-				}
-				else if (selectionInputListen) {
-					selectedPathPoint += e.getKeyChar();
-					System.out.println("Input selection: (press 's' again to set): " + selectedPathPoint);
-				}
-				else if (!selectionInputListen && selectedPathPointInt != -1) {
-					double x = path[selectedPathPointInt].getPose().getX();
-					double y = path[selectedPathPointInt].getPose().getY();
-					double th = path[selectedPathPointInt].getPose().getTheta();
-					if (e.getKeyChar()=='x') x -= deltaX;
-					else if (e.getKeyChar()=='X') x += deltaX;
-					else if (e.getKeyChar()=='y') y -= deltaY;
-					else if (e.getKeyChar()=='Y') y += deltaY;
-					else if (e.getKeyChar()=='t') th -= deltaT;
-					else if (e.getKeyChar()=='T') th += deltaT;
-					PoseSteering newPoseSteering = new PoseSteering(x, y, th, path[selectedPathPointInt].getSteering());
-					path[selectedPathPointInt] = newPoseSteering;
-					panel.addArrow(""+selectedPathPoint, path[selectedPathPointInt].getPose(), Color.red);
-					panel.updatePanel();
-				}
-			}
+			public void keyTyped(KeyEvent e) { }
 			@Override
 			public void keyReleased(KeyEvent e) { }
 			@Override
-			public void keyPressed(KeyEvent e) { }
+			public void keyPressed(KeyEvent e) {
+				if (path != null && path.size() > 0) {
+					if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+						selectedPathPoint = "";
+						selectedPathPointInt.clear();
+						selectionInputListen = false;
+						for (int i = 0; i < path.size(); i++) panel.addArrow(""+i, path.get(i).getPose(), Color.gray);
+						panel.updatePanel();
+					}
+					else if (e.getKeyCode() == KeyEvent.VK_INSERT) {
+						if (!selectedPathPointInt.isEmpty()) {
+							ArrayList<PoseSteering> oldPath = new ArrayList<PoseSteering>(path);
+							oldPaths.add(oldPath);
+							HashMap<Integer,PoseSteering> toAdd = new HashMap<Integer, PoseSteering>();
+							for (int selectedPathPointOneInt : selectedPathPointInt) {
+								PoseSteering newPoseSteering = new PoseSteering(path.get(selectedPathPointOneInt).getPose().getX()+deltaX, path.get(selectedPathPointOneInt).getPose().getY()+deltaY, path.get(selectedPathPointOneInt).getPose().getTheta(), path.get(selectedPathPointOneInt).getSteering());
+								toAdd.put(selectedPathPointOneInt, newPoseSteering);
+							}
+							for (int selectedPathPointOneInt : selectedPathPointInt) {
+								path.add(selectedPathPointInt.get(0), toAdd.get(selectedPathPointOneInt));
+							}
+							for (int i = 0; i < path.size(); i++) panel.addArrow(""+i, path.get(i).getPose(), Color.gray);
+							for (int selectedPathPointOneInt : selectedPathPointInt) {
+								panel.addArrow(""+selectedPathPointOneInt, path.get(selectedPathPointOneInt).getPose(), Color.red);
+							}
+							panel.updatePanel();
+						}				
+					}
+					else if (e.getKeyCode() == KeyEvent.VK_Z && e.isControlDown()) {
+						if (!oldPaths.isEmpty()) {
+							path = oldPaths.get(oldPaths.size()-1);
+							oldPaths.remove(oldPaths.size()-1);
+							for (int i = 0; i < path.size(); i++) panel.addArrow(""+i, path.get(i).getPose(), Color.gray);
+							if (!selectedPathPointInt.isEmpty()) {
+								for (int selectedPathPointOneInt : selectedPathPointInt) {
+									panel.addArrow(""+selectedPathPointOneInt, path.get(selectedPathPointOneInt).getPose(), Color.red);
+								}
+							}
+							panel.updatePanel();
+						}
+					}
+					else if (e.getKeyCode() == KeyEvent.VK_S && e.isControlDown()) {
+						String newFileName = fileName+newFileSuffix;
+						writePath(newFileName);
+						System.out.println("Saved " + newFileName);
+					}
+					else if (e.getKeyCode() == KeyEvent.VK_S) {
+						if (!selectionInputListen) {
+							selectedPathPoint = "";
+							selectedPathPointInt.clear();;
+							for (int i = 0; i < path.size(); i++) panel.addArrow(""+i, path.get(i).getPose(), Color.gray);
+							panel.updatePanel();
+							System.out.println("Input selection: " + selectedPathPoint);
+						}
+						else if (selectionInputListen) {
+							for (int i = 0; i < path.size(); i++) panel.addArrow(""+i, path.get(i).getPose(), Color.gray);
+							try {
+								if (selectedPathPoint.contains("-")) {
+									int first = Integer.parseInt(selectedPathPoint.substring(0,selectedPathPoint.indexOf("-")));
+									int last = Integer.parseInt(selectedPathPoint.substring(selectedPathPoint.indexOf("-")+1));
+									for (int i = first; i <= last; i++) selectedPathPointInt.add(i);
+								}
+								else selectedPathPointInt.add(Integer.parseInt(selectedPathPoint));
+								for (int selectedPathPointOneInt : selectedPathPointInt) {
+									if (selectedPathPointOneInt >= 0 && selectedPathPointOneInt < path.size()) {
+										panel.addArrow(""+selectedPathPointOneInt, path.get(selectedPathPointOneInt).getPose(), Color.red);
+									}
+									else {
+										selectedPathPoint = "";
+										selectedPathPointInt.clear();			
+									}									
+								}
+								panel.updatePanel();
+								System.out.println("Current selection: " + selectedPathPointInt);
+							}
+							catch(NumberFormatException ex) { }
+						}
+						selectionInputListen = !selectionInputListen;
+					}
+					else if (selectionInputListen) {
+						selectedPathPoint += e.getKeyChar();
+						System.out.println("Input selection: (press 's' again to set): " + selectedPathPoint);
+					}
+					else if (!selectionInputListen && !selectedPathPointInt.isEmpty()) {
+						if (e.getKeyCode() == KeyEvent.VK_DELETE) {
+							ArrayList<PoseSteering> oldPath = new ArrayList<PoseSteering>(path);
+							oldPaths.add(oldPath);
+							ArrayList<PoseSteering> toRemove = new ArrayList<PoseSteering>();
+							for (int selectedPathPointOneInt : selectedPathPointInt) {
+								toRemove.add(path.get(selectedPathPointOneInt));								
+							}
+							path.removeAll(toRemove);
+							selectedPathPoint = "";
+							selectedPathPointInt.clear();
+							for (int i = 0; i < path.size(); i++) panel.addArrow(""+i, path.get(i).getPose(), Color.gray);
+							panel.updatePanel();
+						}
+						else {
+							ArrayList<PoseSteering> oldPath = new ArrayList<PoseSteering>(path);
+							oldPaths.add(oldPath);
+							for (int selectedPathPointOneInt : selectedPathPointInt) {
+								double x = path.get(selectedPathPointOneInt).getPose().getX();
+								double y = path.get(selectedPathPointOneInt).getPose().getY();
+								double th = path.get(selectedPathPointOneInt).getPose().getTheta();
+								if (e.getKeyCode() == KeyEvent.VK_LEFT) x -= deltaX;
+								else if (e.getKeyCode() == KeyEvent.VK_RIGHT) x += deltaX;
+								else if (e.getKeyCode() == KeyEvent.VK_DOWN) y -= deltaY;
+								else if (e.getKeyCode() == KeyEvent.VK_UP) y += deltaY;
+								else if (e.getKeyCode() == KeyEvent.VK_PAGE_DOWN) th -= deltaT;
+								else if (e.getKeyCode() == KeyEvent.VK_PAGE_UP) th += deltaT;
+								PoseSteering newPoseSteering = new PoseSteering(x, y, th, path.get(selectedPathPointOneInt).getSteering());
+								path.set(selectedPathPointOneInt, newPoseSteering);
+							}
+							for (int i = 0; i < path.size(); i++) panel.addArrow(""+i, path.get(i).getPose(), Color.gray);
+							for (int selectedPathPointOneInt : selectedPathPointInt) {
+								panel.addArrow(""+selectedPathPointOneInt, path.get(selectedPathPointOneInt).getPose(), Color.red);
+							}
+							panel.updatePanel();
+						}
+					}
+				}
+			}
 		});
 		
 		panel.setFocusable(true);
-		path = readPath(fileName);
 		panel.setArrowHeadSizeInMeters(9.0);
 		panel.setTextSizeInMeters(0.3);
-		for (int i = 0; i < path.length; i++) {
-			Pose pose = path[i].getPose();
-			panel.addArrow(""+i, pose, Color.gray);
-		}
-		panel.updatePanel();
 	}
 	
 	private void writePath(String fileName) {
@@ -125,7 +193,7 @@ public class PathEditor {
         catch (Exception e) { e.printStackTrace(); }
 	}
 	
-	private PoseSteering[] readPath(String fileName) {
+	private void readPath(String fileName) {
 		ArrayList<PoseSteering> ret = new ArrayList<PoseSteering>();
 		try {
 			Scanner in = new Scanner(new FileReader(fileName));
@@ -154,11 +222,17 @@ public class PathEditor {
 			in.close();
 		}
 		catch (FileNotFoundException e) { e.printStackTrace(); }
-		return ret.toArray(new PoseSteering[ret.size()]);
+		this.path = ret;
+		for (int i = 0; i < path.size(); i++) {
+			Pose pose = path.get(i).getPose();
+			panel.addArrow(""+i, pose, Color.gray);
+		}
+		panel.updatePanel();
 	}
 
 	public static void main(String[] args) {
-		final String fileName = "paths/path2.path";
+		//String fileName = "paths/path2.path";
+		String fileName = "/home/fpa/gitroot.gitlab/volvo_ce/coordination_oru_vce/paths/elsite_smooth_paths/elsite_paths_left.path0.path.new.new.new";
 		new PathEditor(fileName);
 	}
 
