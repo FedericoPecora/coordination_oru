@@ -22,6 +22,7 @@ import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.util.AffineTransformation;
 
 import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppCarPlannerLib.PathPose;
+import se.oru.coordination.coordination_oru.util.Missions;
 
 public class ReedsSheppCarPlanner {
 
@@ -45,16 +46,19 @@ public class ReedsSheppCarPlanner {
 	}
 
 	public void setStart(Pose p) {
-		this.start = p;
+		Pose newStart = new Pose(p.getX(),p.getY(),Missions.wrapAngle180(p.getTheta()));
+		this.start = newStart;
 	}
 
 	@Deprecated
 	public void setGoal(Pose p) {
-		this.goal = new Pose[] { p };
+		this.setGoals(p);
 	}
 	
 	public void setGoals(Pose ... p) {
-		this.goal = p;
+		ArrayList<Pose> newGoals = new ArrayList<Pose>();
+		for (Pose pose : p) newGoals.add(new Pose(pose.getX(),pose.getY(),Missions.wrapAngle180(pose.getTheta())));
+		this.goal = newGoals.toArray(new Pose[newGoals.size()]);
 	}
 
 	public void setMapFilename(String filename) {

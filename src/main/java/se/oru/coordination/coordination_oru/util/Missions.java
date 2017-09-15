@@ -61,7 +61,25 @@ public class Missions {
 	public static Mission getMission(int robotID, int missionNumber) {
 		return missions.get(robotID).get(missionNumber);
 	}
+	
+	/**
+	 * Normalize an angle to be within [-PI,PI).
+	 * @param th The angle to normalize
+	 * @return A value within [-PI,PI)
+	 */
+	public static double wrapAngle180(double th) {
+	    return Math.atan2(Math.sin(th), Math.cos(th));
+	}
 
+	/**
+	 * Normalize an angle to be within [0,PI].
+	 * @param th The angle to normalize
+	 * @return A value within [0,PI]
+	 */
+	public static double wrapAngle360(double th) {
+		return th-Math.PI*2.0*Math.floor(th/(Math.PI*2.0));
+	}
+	
 	/**
 	 * Load location and path data from a file
 	 * @param fileName The file to load the data from
