@@ -10,6 +10,11 @@ import java.util.HashMap;
 import java.util.Scanner;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
+import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
+import org.metacsp.multi.spatioTemporal.paths.Trajectory;
+import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
+
+import com.vividsolutions.jts.geom.Geometry;
 
 import se.oru.coordination.coordination_oru.Mission;
 
@@ -78,6 +83,24 @@ public class Missions {
 	 */
 	public static double wrapAngle360(double th) {
 		return th-Math.PI*2.0*Math.floor(th/(Math.PI*2.0));
+	}
+	
+	/**
+	 * Get the last placement along the {@link Trajectory} of a {@link TrajectoryEnvelope} that does
+	 * not overlap with the final pose of the robot.
+	 * @param te The trajectory envelope to search on
+	 * @return The last placement along the {@link Trajectory} of a {@link TrajectoryEnvelope} that does
+	 * not overlap with the final pose of the robot.
+	 */
+	public static Geometry getBackBlockingObstacle(TrajectoryEnvelope te) {
+		Trajectory traj = te.getTrajectory();
+		PoseSteering[] path = traj.getPoseSteering();
+		Geometry placementLast = te.makeFootprint(path[path.length-1]);
+		for (int i = path.length-2; i >= 0; i--) {
+			Geometry placement = te.makeFootprint(path[i]);
+			if (!placement.intersects(placementLast)) return placement;
+		}
+		return null;
 	}
 	
 	/**

@@ -3,8 +3,6 @@ package se.oru.coordination.coordination_oru.util;
 import java.awt.Color;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
-import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
@@ -16,22 +14,29 @@ import java.util.Scanner;
 import java.util.TreeMap;
 
 import javax.swing.AbstractAction;
-import javax.swing.Action;
+import javax.swing.JOptionPane;
 import javax.swing.KeyStroke;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 import org.metacsp.utility.UI.JTSDrawingPanel;
 
+import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.util.AffineTransformation;
+
 import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppCarPlanner;
 
 public class PathEditor {
 
 	private String fileName = null;
-	private boolean selectionInputListen = false;
-	private String selectedPathPoint = "";
-	//private int selectedPathPointInt = -1;
-	private ArrayList<Integer> selectedPathPointInt = new ArrayList<Integer>();
+	private boolean selectionPathPointInputListen = false;
+	private String selectionString = "";
+	private ArrayList<Integer> selectedPathPointsInt = new ArrayList<Integer>();
+	private boolean selectionObsInputListen = false;
+	private ArrayList<Integer> selectedObsInt = new ArrayList<Integer>();
+	private ArrayList<Geometry> obstacles = new ArrayList<Geometry>();
 	private ArrayList<PoseSteering> path = null;
 	private ArrayList<ArrayList<PoseSteering>> oldPaths = new ArrayList<ArrayList<PoseSteering>>(); 
 	private JTSDrawingPanel panel = null;
@@ -42,7 +47,9 @@ public class PathEditor {
 	private String newFileSuffix = ".new";
 	private double minDistance = 1.0;
 	private double maxTurningRadius = 4.0;
-
+	private String yamlFile = "maps/map-empty.yaml";
+	private static int obsCounter = 0;
+	
 	public PathEditor(String fileName, double deltaX, double deltaY, double deltaTheta, String newFileSuffix, double minDistance, double maxTurningRadius) {
 		this.fileName = fileName;
 		this.deltaX = deltaX;
@@ -84,7 +91,49 @@ public class PathEditor {
 		}
 		return ret;
 	}
-		
+	
+	private Geometry makeObstacle(Pose p) {
+		GeometryFactory gf = new GeometryFactory();
+		Geometry geom = gf.createPolygon(new Coordinate[] { new Coordinate(0.0,0.0), new Coordinate(0.0,1.0), new Coordinate(1.0,1.0), new Coordinate(1.0,0.0), new Coordinate(0.0,0.0) });
+		AffineTransformation at = new AffineTransformation();
+		at.rotate(p.getTheta());
+		at.translate(p.getX(), p.getY());
+		Geometry transGeom = at.transform(geom);
+		return transGeom;
+	}
+	
+	private void highlightPathPoints() {
+		for (int selectedPathPointOneInt : selectedPathPointsInt) {
+			if (selectedPathPointOneInt >= 0 && selectedPathPointOneInt < path.size()) {
+				panel.addArrow(""+selectedPathPointOneInt, path.get(selectedPathPointOneInt).getPose(), Color.red);
+			}
+		}
+		panel.updatePanel();
+	}
+	
+	private void highlightObstacles() {
+		for (int selectedObsOneInt : selectedObsInt) {
+			if (selectedObsOneInt >= 0 && selectedObsOneInt < obstacles.size()) {
+				panel.addGeometry("obs_"+selectedObsOneInt, obstacles.get(selectedObsOneInt), false, false, true, "#cc3300");
+			}
+		}
+		panel.updatePanel();
+	}
+	
+	private void clearObstacleSelection() {
+		selectionString = "";
+		selectedObsInt.clear();
+		for (int i = 0; i < obstacles.size(); i++) panel.addGeometry("obs_"+i, obstacles.get(i), false, false, true, "#666699");
+		panel.updatePanel();
+	}
+	
+	private void clearPathPointSelection() {
+		selectionString = "";
+		selectedPathPointsInt.clear();
+		for (int i = 0; i < path.size(); i++) panel.addArrow(""+i, path.get(i).getPose(), Color.gray);
+		panel.updatePanel();
+	}
+	
 	private void setupGUI() {
 		panel = JTSDrawingPanel.makeEmpty("Path Editor");
 
@@ -104,8 +153,8 @@ public class PathEditor {
 			private static final long serialVersionUID = -1398168416006978350L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				selectedPathPoint += e.getActionCommand();
-				System.out.println("Selection: " + selectedPathPoint);
+				selectionString += e.getActionCommand();
+				System.out.println("Selection: " + selectionString);
 			}
 		};
 		panel.getActionMap().put("Digit0",actInputSelection);
@@ -121,45 +170,62 @@ public class PathEditor {
 		panel.getActionMap().put("Digit-",actInputSelection);
 		panel.getActionMap().put("Digit,",actInputSelection);
 
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_O,0),"Add obstacle(s) near selected pose(s)");
+		AbstractAction actObs = new AbstractAction() {
+			private static final long serialVersionUID = -1398168416006978750L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (!selectedPathPointsInt.isEmpty()) {
+					for (int i = 0; i < obstacles.size(); i++) panel.addGeometry("obs_"+i, obstacles.get(i), false, false, true, "#666699");
+					selectedObsInt.clear();
+					for (int selectedPathPointOneInt : selectedPathPointsInt) {
+						Geometry obs = makeObstacle(path.get(selectedPathPointOneInt).getPose());
+						obstacles.add(obs);
+						int id = obstacles.size()-1;
+						panel.addGeometry("obs_"+id, obs, false, false, true, "#cc3300");
+						selectedObsInt.add(id);
+					}
+					clearPathPointSelection();
+					highlightObstacles();
+				}
+			}
+		};
+		panel.getActionMap().put("Add obstacle(s) near selected pose(s)",actObs);
+
 		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE,0),"Cancel selection");
 		AbstractAction actCancel = new AbstractAction() {
 			private static final long serialVersionUID = -1398168416006978350L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				selectedPathPoint = "";
-				selectedPathPointInt.clear();
-				selectionInputListen = false;
-				for (int i = 0; i < path.size(); i++) panel.addArrow(""+i, path.get(i).getPose(), Color.gray);
-				panel.updatePanel();
+				selectionPathPointInputListen = false;
+				clearObstacleSelection();
+				clearPathPointSelection();
 			}
 		};
 		panel.getActionMap().put("Cancel selection",actCancel);
 
-		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_INSERT,0),"Insert pose(s)");
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_P,0),"Add pose(s)");
 		AbstractAction actInsert = new AbstractAction() {
 			private static final long serialVersionUID = -8804517791543118334L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				if (!selectedPathPointInt.isEmpty()) {
+				if (!selectedPathPointsInt.isEmpty()) {
 					ArrayList<PoseSteering> oldPath = new ArrayList<PoseSteering>(path);
 					oldPaths.add(oldPath);
 					HashMap<Integer,PoseSteering> toAdd = new HashMap<Integer, PoseSteering>();
-					for (int selectedPathPointOneInt : selectedPathPointInt) {
+					for (int selectedPathPointOneInt : selectedPathPointsInt) {
 						PoseSteering newPoseSteering = new PoseSteering(path.get(selectedPathPointOneInt).getPose().getX()+deltaX, path.get(selectedPathPointOneInt).getPose().getY()+deltaY, path.get(selectedPathPointOneInt).getPose().getTheta(), path.get(selectedPathPointOneInt).getSteering());
 						toAdd.put(selectedPathPointOneInt, newPoseSteering);
 					}
-					for (int selectedPathPointOneInt : selectedPathPointInt) {
-						path.add(selectedPathPointInt.get(0), toAdd.get(selectedPathPointOneInt));
+					for (int selectedPathPointOneInt : selectedPathPointsInt) {
+						path.add(selectedPathPointsInt.get(0), toAdd.get(selectedPathPointOneInt));
 					}
-					for (int i = 0; i < path.size(); i++) panel.addArrow(""+i, path.get(i).getPose(), Color.gray);
-					for (int selectedPathPointOneInt : selectedPathPointInt) {
-						panel.addArrow(""+selectedPathPointOneInt, path.get(selectedPathPointOneInt).getPose(), Color.red);
-					}
-					panel.updatePanel();
+					clearPathPointSelection();
+					highlightPathPoints();
 				}
 			}
 		};
-		panel.getActionMap().put("Insert pose(s)",actInsert);
+		panel.getActionMap().put("Add pose(s)",actInsert);
 
 		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_Z,KeyEvent.CTRL_DOWN_MASK),"Undo");
 		AbstractAction actUndo = new AbstractAction() {
@@ -170,13 +236,7 @@ public class PathEditor {
 					for (int i = 0; i < path.size(); i++) panel.removeGeometry(""+i);
 					path = oldPaths.get(oldPaths.size()-1);
 					oldPaths.remove(oldPaths.size()-1);
-					for (int i = 0; i < path.size(); i++) panel.addArrow(""+i, path.get(i).getPose(), Color.gray);
-					if (!selectedPathPointInt.isEmpty()) {
-						for (int selectedPathPointOneInt : selectedPathPointInt) {
-							panel.addArrow(""+selectedPathPointOneInt, path.get(selectedPathPointOneInt).getPose(), Color.red);
-						}
-					}
-					panel.updatePanel();
+					clearPathPointSelection();
 				}
 			}
 		};
@@ -199,7 +259,8 @@ public class PathEditor {
 			private static final long serialVersionUID = 8788274388808789053L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				System.out.println(getHelp());
+				JOptionPane.showMessageDialog(panel,getHelp());
+//				System.out.println(getHelp());
 			}
 		};
 		panel.getActionMap().put("Help",actHelp);
@@ -209,98 +270,121 @@ public class PathEditor {
 			private static final long serialVersionUID = -4218195170958172222L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				if (!selectionInputListen) {
-					selectedPathPoint = "";
-					selectedPathPointInt.clear();;
-					for (int i = 0; i < path.size(); i++) panel.addArrow(""+i, path.get(i).getPose(), Color.gray);
-					panel.updatePanel();
-					System.out.println("Input selection: " + selectedPathPoint);
+				if (!selectionPathPointInputListen) {
+					clearPathPointSelection();
+					System.out.println("Input selection (poses): " + selectionString);
 				}
-				else if (selectionInputListen) {
+				else if (selectionPathPointInputListen) {
 					for (int i = 0; i < path.size(); i++) panel.addArrow(""+i, path.get(i).getPose(), Color.gray);
 					try {
-						if (selectedPathPoint.contains("-")) {
-							int first = Integer.parseInt(selectedPathPoint.substring(0,selectedPathPoint.indexOf("-")));
-							int last = Integer.parseInt(selectedPathPoint.substring(selectedPathPoint.indexOf("-")+1));
-							for (int i = first; i <= last; i++) selectedPathPointInt.add(i);
+						if (selectionString.contains("-")) {
+							int first = Integer.parseInt(selectionString.substring(0,selectionString.indexOf("-")));
+							int last = Integer.parseInt(selectionString.substring(selectionString.indexOf("-")+1));
+							for (int i = first; i <= last; i++) selectedPathPointsInt.add(i);
 						}
-						else if (selectedPathPoint.contains(",")) {
-							String[] points = selectedPathPoint.split(",");
-							for (String point : points) selectedPathPointInt.add(Integer.parseInt(point));
+						else if (selectionString.contains(",")) {
+							String[] points = selectionString.split(",");
+							for (String point : points) selectedPathPointsInt.add(Integer.parseInt(point));
 						}
-						else selectedPathPointInt.add(Integer.parseInt(selectedPathPoint));
-						boolean fail = false;
-						for (int selectedPathPointOneInt : selectedPathPointInt) {
-							if (selectedPathPointOneInt >= 0 && selectedPathPointOneInt < path.size()) {
-								panel.addArrow(""+selectedPathPointOneInt, path.get(selectedPathPointOneInt).getPose(), Color.red);
-							}
-							else {
-								fail = true;
-							}									
-						}
-						if (fail) {
-							selectedPathPoint = "";
-							selectedPathPointInt.clear();
-							for (int i = 0; i < path.size(); i++) panel.addArrow(""+i, path.get(i).getPose(), Color.gray);
-						}
-						panel.updatePanel();
-						System.out.println("Current selection: " + selectedPathPointInt);
+						else selectedPathPointsInt.add(Integer.parseInt(selectionString));
+						clearObstacleSelection();
+						highlightPathPoints();
+						System.out.println("Current selection (poses): " + selectedPathPointsInt);
 					}
 					catch(NumberFormatException ex) { }
 				}
-				selectionInputListen = !selectionInputListen;
+				selectionPathPointInputListen = !selectionPathPointInputListen;
 			}
 		};
 		panel.getActionMap().put("Select pose(s)",actSelect);
-		
-		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE,0),"Delete selected pose(s)");
+
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_G,0),"Select obstacle(s)");
+		AbstractAction actObsSelect = new AbstractAction() {
+			private static final long serialVersionUID = -4218195170858172222L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (!selectionObsInputListen) {
+					clearObstacleSelection();
+					System.out.println("Input selection (obstacles): " + selectionString);
+				}
+				else if (selectionObsInputListen) {
+					for (int i = 0; i < obstacles.size(); i++) panel.addGeometry("obs_"+i, obstacles.get(i), false, false, true, "#666699");
+					try {
+						if (selectionString.contains("-")) {
+							int first = Integer.parseInt(selectionString.substring(0,selectionString.indexOf("-")));
+							int last = Integer.parseInt(selectionString.substring(selectionString.indexOf("-")+1));
+							for (int i = first; i <= last; i++) selectedObsInt.add(i);
+						}
+						else if (selectionString.contains(",")) {
+							String[] obss = selectionString.split(",");
+							for (String obs : obss) selectedObsInt.add(Integer.parseInt(obs));
+						}
+						else selectedObsInt.add(Integer.parseInt(selectionString));
+						highlightObstacles();
+						System.out.println("Current selection (obstacles): " + selectedObsInt);
+						clearPathPointSelection();
+					}
+					catch(NumberFormatException ex) { }
+				}
+				selectionObsInputListen = !selectionObsInputListen;
+			}
+		};
+		panel.getActionMap().put("Select obstacle(s)",actObsSelect);
+
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE,0),"Delete selected pose(s) and obstacle(s)");
 		AbstractAction actDelete = new AbstractAction() {
 			private static final long serialVersionUID = 4455373738365388356L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				for (int i = 0; i < path.size(); i++) panel.removeGeometry(""+i);
-				ArrayList<PoseSteering> oldPath = new ArrayList<PoseSteering>(path);
-				oldPaths.add(oldPath);
-				ArrayList<PoseSteering> toRemove = new ArrayList<PoseSteering>();
-				for (int selectedPathPointOneInt : selectedPathPointInt) {
-					toRemove.add(path.get(selectedPathPointOneInt));
+				if (!selectedPathPointsInt.isEmpty()) {
+					for (int i = 0; i < path.size(); i++) panel.removeGeometry(""+i);
+					ArrayList<PoseSteering> oldPath = new ArrayList<PoseSteering>(path);
+					oldPaths.add(oldPath);
+					ArrayList<PoseSteering> toRemove = new ArrayList<PoseSteering>();
+					for (int selectedPathPointOneInt : selectedPathPointsInt) {
+						toRemove.add(path.get(selectedPathPointOneInt));
+					}
+					path.removeAll(toRemove);
+					clearPathPointSelection();
 				}
-				path.removeAll(toRemove);
-				selectedPathPoint = "";
-				selectedPathPointInt.clear();
-				for (int i = 0; i < path.size(); i++) panel.addArrow(""+i, path.get(i).getPose(), Color.gray);
+				if (!selectedObsInt.isEmpty()) {
+					ArrayList<Geometry> toRemove = new ArrayList<Geometry>();
+					for (int i = 0; i < obstacles.size(); i++) panel.removeGeometry("obs_"+i);
+					for (int selectedObsOneInt : selectedObsInt) {
+						toRemove.add(obstacles.get(selectedObsOneInt));
+					}
+					obstacles.removeAll(toRemove);
+					clearObstacleSelection();
+				}
 				panel.updatePanel();
 			}
 		};
-		panel.getActionMap().put("Delete selected pose(s)",actDelete);
+		panel.getActionMap().put("Delete selected pose(s) and obstacle(s)",actDelete);
 
 		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_P,KeyEvent.CTRL_DOWN_MASK),"Plan path between selected pair");
 		AbstractAction actPlan = new AbstractAction() {
 			private static final long serialVersionUID = -3238585469762752293L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				if (selectedPathPointInt.size() == 2) {
-					PoseSteering[] newSubPath = computePath(path.get(selectedPathPointInt.get(0)), path.get(selectedPathPointInt.get(1)));
+				if (selectedPathPointsInt.size() == 2) {
+					PoseSteering[] newSubPath = computePath(path.get(selectedPathPointsInt.get(0)), path.get(selectedPathPointsInt.get(1)));
 					if (newSubPath != null) {
 						ArrayList<PoseSteering> oldPath = new ArrayList<PoseSteering>(path);
 						oldPaths.add(oldPath);
 						TreeMap<Integer,PoseSteering> toAdd = new TreeMap<Integer, PoseSteering>();
-						int selectedStart = selectedPathPointInt.get(0)+1;
+						int selectedStart = selectedPathPointsInt.get(0)+1;
 						for (int i = 1; i < newSubPath.length-1; i++) {
 							PoseSteering newPoseSteering = new PoseSteering(newSubPath[i].getPose().getX(), newSubPath[i].getPose().getY(), newSubPath[i].getPose().getTheta(), newSubPath[i].getSteering());
 							toAdd.put(i+selectedStart-1, newPoseSteering);
 						}
-						selectedPathPointInt.clear();
 						for (Entry<Integer,PoseSteering> en : toAdd.entrySet()) {
 							path.add(en.getKey(), en.getValue());
-							selectedPathPointInt.add(en.getKey());
 						}
-						System.out.println("NEW INTS: " + selectedPathPointInt);
-						for (int i = 0; i < path.size(); i++) panel.addArrow(""+i, path.get(i).getPose(), Color.gray);
-						for (int selectedPathPointOneInt : selectedPathPointInt) {
-							panel.addArrow(""+selectedPathPointOneInt, path.get(selectedPathPointOneInt).getPose(), Color.red);
+						clearPathPointSelection();
+						for (Entry<Integer,PoseSteering> en : toAdd.entrySet()) {
+							selectedPathPointsInt.add(en.getKey());
 						}
-						panel.updatePanel();
+						highlightPathPoints();
 					}
 				}
 			}
@@ -312,21 +396,28 @@ public class PathEditor {
 			private static final long serialVersionUID = 1767256680398690970L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				ArrayList<PoseSteering> oldPath = new ArrayList<PoseSteering>(path);
-				oldPaths.add(oldPath);
-				for (int selectedPathPointOneInt : selectedPathPointInt) {
-					double x = path.get(selectedPathPointOneInt).getPose().getX();
-					double y = path.get(selectedPathPointOneInt).getPose().getY();
-					double th = path.get(selectedPathPointOneInt).getPose().getTheta();
-					x -= deltaX;
-					PoseSteering newPoseSteering = new PoseSteering(x, y, th, path.get(selectedPathPointOneInt).getSteering());
-					path.set(selectedPathPointOneInt, newPoseSteering);
+				if (!selectedPathPointsInt.isEmpty()) {
+					ArrayList<PoseSteering> oldPath = new ArrayList<PoseSteering>(path);
+					oldPaths.add(oldPath);
+					for (int selectedPathPointOneInt : selectedPathPointsInt) {
+						double x = path.get(selectedPathPointOneInt).getPose().getX();
+						double y = path.get(selectedPathPointOneInt).getPose().getY();
+						double th = path.get(selectedPathPointOneInt).getPose().getTheta();
+						x -= deltaX;
+						PoseSteering newPoseSteering = new PoseSteering(x, y, th, path.get(selectedPathPointOneInt).getSteering());
+						path.set(selectedPathPointOneInt, newPoseSteering);
+					}
 				}
-				for (int i = 0; i < path.size(); i++) panel.addArrow(""+i, path.get(i).getPose(), Color.gray);
-				for (int selectedPathPointOneInt : selectedPathPointInt) {
-					panel.addArrow(""+selectedPathPointOneInt, path.get(selectedPathPointOneInt).getPose(), Color.red);
+				if (!selectedObsInt.isEmpty()) {
+					for (int selectedObsOneInt : selectedObsInt) {
+						Geometry obs = obstacles.get(selectedObsOneInt);
+						AffineTransformation at = new AffineTransformation();
+						at.translate(-deltaX, 0);
+						obstacles.set(selectedObsOneInt,at.transform(obs));
+					}
 				}
-				panel.updatePanel();
+				highlightPathPoints();
+				highlightObstacles();
 			}
 		};
 		panel.getActionMap().put("Decrease X of selected pose(s)",actXMinus);
@@ -336,22 +427,28 @@ public class PathEditor {
 			private static final long serialVersionUID = 6900418766755234220L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				System.out.println(e.getActionCommand());
-				ArrayList<PoseSteering> oldPath = new ArrayList<PoseSteering>(path);
-				oldPaths.add(oldPath);
-				for (int selectedPathPointOneInt : selectedPathPointInt) {
-					double x = path.get(selectedPathPointOneInt).getPose().getX();
-					double y = path.get(selectedPathPointOneInt).getPose().getY();
-					double th = path.get(selectedPathPointOneInt).getPose().getTheta();
-					x += deltaX;
-					PoseSteering newPoseSteering = new PoseSteering(x, y, th, path.get(selectedPathPointOneInt).getSteering());
-					path.set(selectedPathPointOneInt, newPoseSteering);
+				if (!selectedPathPointsInt.isEmpty()) {
+					ArrayList<PoseSteering> oldPath = new ArrayList<PoseSteering>(path);
+					oldPaths.add(oldPath);
+					for (int selectedPathPointOneInt : selectedPathPointsInt) {
+						double x = path.get(selectedPathPointOneInt).getPose().getX();
+						double y = path.get(selectedPathPointOneInt).getPose().getY();
+						double th = path.get(selectedPathPointOneInt).getPose().getTheta();
+						x += deltaX;
+						PoseSteering newPoseSteering = new PoseSteering(x, y, th, path.get(selectedPathPointOneInt).getSteering());
+						path.set(selectedPathPointOneInt, newPoseSteering);
+					}
 				}
-				for (int i = 0; i < path.size(); i++) panel.addArrow(""+i, path.get(i).getPose(), Color.gray);
-				for (int selectedPathPointOneInt : selectedPathPointInt) {
-					panel.addArrow(""+selectedPathPointOneInt, path.get(selectedPathPointOneInt).getPose(), Color.red);
+				if (!selectedObsInt.isEmpty()) {
+					for (int selectedObsOneInt : selectedObsInt) {
+						Geometry obs = obstacles.get(selectedObsOneInt);
+						AffineTransformation at = new AffineTransformation();
+						at.translate(deltaX, 0);
+						obstacles.set(selectedObsOneInt,at.transform(obs));
+					}
 				}
-				panel.updatePanel();
+				highlightPathPoints();
+				highlightObstacles();
 			}
 		};
 		panel.getActionMap().put("Increase X of selected pose(s)",actXPlus);
@@ -361,22 +458,28 @@ public class PathEditor {
 			private static final long serialVersionUID = 2627197997139919535L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				ArrayList<PoseSteering> oldPath = new ArrayList<PoseSteering>(path);
-				oldPaths.add(oldPath);
-				for (int selectedPathPointOneInt : selectedPathPointInt) {
-					double x = path.get(selectedPathPointOneInt).getPose().getX();
-					double y = path.get(selectedPathPointOneInt).getPose().getY();
-					double th = path.get(selectedPathPointOneInt).getPose().getTheta();
-					y += deltaY;
-					PoseSteering newPoseSteering = new PoseSteering(x, y, th, path.get(selectedPathPointOneInt).getSteering());
-					path.set(selectedPathPointOneInt, newPoseSteering);
+				if (!selectedPathPointsInt.isEmpty()) {
+					ArrayList<PoseSteering> oldPath = new ArrayList<PoseSteering>(path);
+					oldPaths.add(oldPath);
+					for (int selectedPathPointOneInt : selectedPathPointsInt) {
+						double x = path.get(selectedPathPointOneInt).getPose().getX();
+						double y = path.get(selectedPathPointOneInt).getPose().getY();
+						double th = path.get(selectedPathPointOneInt).getPose().getTheta();
+						y += deltaY;
+						PoseSteering newPoseSteering = new PoseSteering(x, y, th, path.get(selectedPathPointOneInt).getSteering());
+						path.set(selectedPathPointOneInt, newPoseSteering);
+					}
 				}
-				for (int i = 0; i < path.size(); i++) panel.addArrow(""+i, path.get(i).getPose(), Color.gray);
-				for (int selectedPathPointOneInt : selectedPathPointInt) {
-					panel.addArrow(""+selectedPathPointOneInt, path.get(selectedPathPointOneInt).getPose(), Color.red);
+				if (!selectedObsInt.isEmpty()) {
+					for (int selectedObsOneInt : selectedObsInt) {
+						Geometry obs = obstacles.get(selectedObsOneInt);
+						AffineTransformation at = new AffineTransformation();
+						at.translate(0, deltaY);
+						obstacles.set(selectedObsOneInt,at.transform(obs));
+					}
 				}
-				panel.updatePanel();
-			
+				highlightPathPoints();
+				highlightObstacles();			
 			}
 		};
 		panel.getActionMap().put("Increase Y of selected pose(s)",actYPlus);
@@ -386,22 +489,28 @@ public class PathEditor {
 			private static final long serialVersionUID = 6487878455015786029L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				ArrayList<PoseSteering> oldPath = new ArrayList<PoseSteering>(path);
-				oldPaths.add(oldPath);
-				for (int selectedPathPointOneInt : selectedPathPointInt) {
-					double x = path.get(selectedPathPointOneInt).getPose().getX();
-					double y = path.get(selectedPathPointOneInt).getPose().getY();
-					double th = path.get(selectedPathPointOneInt).getPose().getTheta();
-					y -= deltaY;
-					PoseSteering newPoseSteering = new PoseSteering(x, y, th, path.get(selectedPathPointOneInt).getSteering());
-					path.set(selectedPathPointOneInt, newPoseSteering);
+				if (!selectedPathPointsInt.isEmpty()) {
+					ArrayList<PoseSteering> oldPath = new ArrayList<PoseSteering>(path);
+					oldPaths.add(oldPath);
+					for (int selectedPathPointOneInt : selectedPathPointsInt) {
+						double x = path.get(selectedPathPointOneInt).getPose().getX();
+						double y = path.get(selectedPathPointOneInt).getPose().getY();
+						double th = path.get(selectedPathPointOneInt).getPose().getTheta();
+						y -= deltaY;
+						PoseSteering newPoseSteering = new PoseSteering(x, y, th, path.get(selectedPathPointOneInt).getSteering());
+						path.set(selectedPathPointOneInt, newPoseSteering);
+					}
 				}
-				for (int i = 0; i < path.size(); i++) panel.addArrow(""+i, path.get(i).getPose(), Color.gray);
-				for (int selectedPathPointOneInt : selectedPathPointInt) {
-					panel.addArrow(""+selectedPathPointOneInt, path.get(selectedPathPointOneInt).getPose(), Color.red);
+				if (!selectedObsInt.isEmpty()) {
+					for (int selectedObsOneInt : selectedObsInt) {
+						Geometry obs = obstacles.get(selectedObsOneInt);
+						AffineTransformation at = new AffineTransformation();
+						at.translate(0, -deltaY);
+						obstacles.set(selectedObsOneInt,at.transform(obs));
+					}
 				}
-				panel.updatePanel();
-			
+				highlightPathPoints();
+				highlightObstacles();			
 			}
 		};
 		panel.getActionMap().put("Decrease Y of selected pose(s)",actYMinus);
@@ -411,23 +520,33 @@ public class PathEditor {
 			private static final long serialVersionUID = -7391970411254721019L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				ArrayList<PoseSteering> oldPath = new ArrayList<PoseSteering>(path);
-				oldPaths.add(oldPath);
-				for (int selectedPathPointOneInt : selectedPathPointInt) {
-					double x = path.get(selectedPathPointOneInt).getPose().getX();
-					double y = path.get(selectedPathPointOneInt).getPose().getY();
-					double th = path.get(selectedPathPointOneInt).getPose().getTheta();
-					th -= deltaT;
-					th = Missions.wrapAngle360(th);
-					PoseSteering newPoseSteering = new PoseSteering(x, y, th, path.get(selectedPathPointOneInt).getSteering());
-					path.set(selectedPathPointOneInt, newPoseSteering);
+				if (!selectedPathPointsInt.isEmpty()) {
+					ArrayList<PoseSteering> oldPath = new ArrayList<PoseSteering>(path);
+					oldPaths.add(oldPath);
+					for (int selectedPathPointOneInt : selectedPathPointsInt) {
+						double x = path.get(selectedPathPointOneInt).getPose().getX();
+						double y = path.get(selectedPathPointOneInt).getPose().getY();
+						double th = path.get(selectedPathPointOneInt).getPose().getTheta();
+						th -= deltaT;
+						th = Missions.wrapAngle360(th);
+						PoseSteering newPoseSteering = new PoseSteering(x, y, th, path.get(selectedPathPointOneInt).getSteering());
+						path.set(selectedPathPointOneInt, newPoseSteering);
+					}
 				}
-				for (int i = 0; i < path.size(); i++) panel.addArrow(""+i, path.get(i).getPose(), Color.gray);
-				for (int selectedPathPointOneInt : selectedPathPointInt) {
-					panel.addArrow(""+selectedPathPointOneInt, path.get(selectedPathPointOneInt).getPose(), Color.red);
+				if (!selectedObsInt.isEmpty()) {
+					for (int selectedObsOneInt : selectedObsInt) {
+						Geometry obs = obstacles.get(selectedObsOneInt);
+						AffineTransformation at = new AffineTransformation();
+						double toOriginX = obs.getCentroid().getX();
+						double toOriginY = obs.getCentroid().getY();
+						at.translate(-toOriginX,-toOriginY);
+						at.rotate(-deltaT);
+						at.translate(toOriginX,toOriginY);
+						obstacles.set(selectedObsOneInt,at.transform(obs));
+					}
 				}
-				panel.updatePanel();
-			
+				highlightPathPoints();
+				highlightObstacles();			
 			}
 		};
 		panel.getActionMap().put("Decrease theta of selected pose(s)",actTMinus);
@@ -437,27 +556,50 @@ public class PathEditor {
 			private static final long serialVersionUID = 8414380724212398117L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				ArrayList<PoseSteering> oldPath = new ArrayList<PoseSteering>(path);
-				oldPaths.add(oldPath);
-				for (int selectedPathPointOneInt : selectedPathPointInt) {
-					double x = path.get(selectedPathPointOneInt).getPose().getX();
-					double y = path.get(selectedPathPointOneInt).getPose().getY();
-					double th = path.get(selectedPathPointOneInt).getPose().getTheta();
-					th += deltaT;
-					th = Missions.wrapAngle360(th);
-					PoseSteering newPoseSteering = new PoseSteering(x, y, th, path.get(selectedPathPointOneInt).getSteering());
-					path.set(selectedPathPointOneInt, newPoseSteering);
+				if (!selectedPathPointsInt.isEmpty()) {
+					ArrayList<PoseSteering> oldPath = new ArrayList<PoseSteering>(path);
+					oldPaths.add(oldPath);
+					for (int selectedPathPointOneInt : selectedPathPointsInt) {
+						double x = path.get(selectedPathPointOneInt).getPose().getX();
+						double y = path.get(selectedPathPointOneInt).getPose().getY();
+						double th = path.get(selectedPathPointOneInt).getPose().getTheta();
+						th += deltaT;
+						th = Missions.wrapAngle360(th);
+						PoseSteering newPoseSteering = new PoseSteering(x, y, th, path.get(selectedPathPointOneInt).getSteering());
+						path.set(selectedPathPointOneInt, newPoseSteering);
+					}
 				}
-				for (int i = 0; i < path.size(); i++) panel.addArrow(""+i, path.get(i).getPose(), Color.gray);
-				for (int selectedPathPointOneInt : selectedPathPointInt) {
-					panel.addArrow(""+selectedPathPointOneInt, path.get(selectedPathPointOneInt).getPose(), Color.red);
+				if (!selectedObsInt.isEmpty()) {
+					for (int selectedObsOneInt : selectedObsInt) {
+						Geometry obs = obstacles.get(selectedObsOneInt);
+						AffineTransformation at = new AffineTransformation();
+						double toOriginX = obs.getCentroid().getX();
+						double toOriginY = obs.getCentroid().getY();
+						at.translate(-toOriginX,-toOriginY);
+						at.rotate(deltaT);
+						at.translate(toOriginX,toOriginY);
+						obstacles.set(selectedObsOneInt,at.transform(obs));
+					}
 				}
-				panel.updatePanel();
-			
+				highlightPathPoints();
+				highlightObstacles();			
 			}
 		};
 		panel.getActionMap().put("Increase theta of selected pose(s)",actTPlus);
 
+
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_I,0),"Info");
+		AbstractAction actInfo = new AbstractAction() {
+			private static final long serialVersionUID = 8424380724212398117L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				String obs = "Obstacles:";
+				for (int i = 0; i < obstacles.size(); i++) obs += ("\n   obs_" + i + ": " + obstacles.get(i).getCentroid().getCoordinate());
+				System.out.println(obs);
+			}
+		};
+		panel.getActionMap().put("Info",actInfo);
+		
 		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_LESS,KeyEvent.SHIFT_DOWN_MASK),"Increase maximum turning radius");
 		AbstractAction actTRPlus = new AbstractAction() {
 			private static final long serialVersionUID = 8414380724212398117L;
@@ -536,34 +678,24 @@ public class PathEditor {
 	}
 	
 	private PoseSteering[] computePath(PoseSteering from, PoseSteering to) {
-		double middle = 20.0;
-		double minX = Math.min(from.getPose().getX(), to.getPose().getX());
-		double minY = Math.min(from.getPose().getY(), to.getPose().getY());
-		PoseSteering newFrom = new PoseSteering(from.getPose().getX()-minX+middle,from.getPose().getY()-minY+middle,from.getPose().getTheta(), from.getSteering());
-		PoseSteering newTo = new PoseSteering(to.getPose().getX()-minX+middle,to.getPose().getY()-minY+middle,to.getPose().getTheta(), to.getSteering());
-		System.out.println("Coords are now " + newFrom.getPose() + " and " + newTo.getPose());
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-		String yamlFile = "maps/map-empty.yaml";
 		rsp.setMapFilename("maps"+File.separator+Missions.getProperty("image", yamlFile));
 		double res = Double.parseDouble(Missions.getProperty("resolution", yamlFile));
-		rsp.setMapResolution(res*10);
-		rsp.setRobotRadius(0.1);
+		rsp.setMapResolution(res);
+		rsp.setRobotRadius(1.0);
 		rsp.setTurningRadius(maxTurningRadius);
 		rsp.setDistanceBetweenPathPoints(minDistance);
-		rsp.setStart(newFrom.getPose());
-		rsp.setGoals(newTo.getPose());
+		rsp.setStart(from.getPose());
+		rsp.setGoals(to.getPose());
+		rsp.addObstacles(obstacles.toArray(new Geometry[obstacles.size()]));
 		if (!rsp.plan()) return null;
 		PoseSteering[] ret = rsp.getPath();
-		for (int i = 0; i < ret.length; i++) {
-			PoseSteering newPose = new PoseSteering(ret[i].getPose().getX()+minX-middle, ret[i].getPose().getY()+minY-middle, ret[i].getPose().getTheta(), ret[i].getSteering());
-			ret[i] = newPose;
-		}
 		return ret;
 	}
 
 	public static void main(String[] args) {
-		//String fileName = "paths/path2.path";
-		String fileName = "/home/fpa/gitroot.gitlab/volvo_ce/coordination_oru_vce/paths/elsite_smooth_paths/elsite_paths_left.path0.path.new.new";
+		String fileName = "paths/path2.path";
+		//String fileName = "/home/fpa/gitroot.gitlab/volvo_ce/coordination_oru_vce/paths/elsite_smooth_paths/elsite_paths_left.path0.path.new.new";
 		new PathEditor(fileName);
 	}
 

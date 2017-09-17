@@ -27,7 +27,7 @@ import se.oru.coordination.coordination_oru.util.Missions;
 public class ReedsSheppCarPlanner {
 
 	private static String TEMP_MAP_DIR = ".tempMaps";
-	private static int numObstacles = 0;
+	private int numObstacles = 0;
 	private String mapFilename = null;
 	private String mapFilenameBAK = null;
 	private double mapResolution = 1.0;
@@ -80,6 +80,30 @@ public class ReedsSheppCarPlanner {
 
 	public void setTurningRadius(double rad) {
 		this.turningRadius = rad;
+	}
+
+	public void addObstacles(Geometry ... geom) {
+		if (this.mapFilename == null) throw new Error("Please set a map file first!");
+		BufferedImage img = null;
+		try {
+			img = ImageIO.read(new File(mapFilename)); 
+			Graphics2D g2 = img.createGraphics();
+			ShapeWriter writer = new ShapeWriter();
+			g2.setPaint(Color.black);
+			for (Geometry g : geom) {
+				AffineTransformation at = new AffineTransformation();
+				at.scale(1.0/mapResolution, -1.0/mapResolution);
+				at.translate(0, img.getHeight());
+				Geometry scaledGeom = at.transform(g);
+				Shape shape = writer.toShape(scaledGeom);
+				System.out.println("Shape: " + shape.getBounds2D());
+				g2.fill(shape);
+			}
+			File outputfile = new File(TEMP_MAP_DIR + File.separator + "tempMap" + (numObstacles++) + ".png");
+			ImageIO.write(img, "png", outputfile);
+			this.mapFilename = outputfile.getAbsolutePath();
+		}
+		catch (IOException e) { e.printStackTrace(); }		
 	}
 
 	public void addObstacles(Geometry geom, Pose ... poses) {
