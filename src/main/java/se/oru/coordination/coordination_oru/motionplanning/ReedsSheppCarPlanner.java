@@ -87,6 +87,7 @@ public class ReedsSheppCarPlanner {
 		BufferedImage img = null;
 		try {
 			img = ImageIO.read(new File(mapFilename)); 
+			System.out.println("IMGTYPE: " + img.getType());
 			Graphics2D g2 = img.createGraphics();
 			ShapeWriter writer = new ShapeWriter();
 			g2.setPaint(Color.black);
