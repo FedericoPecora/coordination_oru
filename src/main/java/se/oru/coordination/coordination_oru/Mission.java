@@ -11,15 +11,15 @@ import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
  *
  */
 public class Mission implements Comparable<Mission> {
-	private static int NUMMISSIONS = 0;
-	private int robotID;
-	private String pathFile;
-	private PoseSteering[] path;
-	private int order = NUMMISSIONS++;
-	private String fromLocation = null;
-	private String toLocation = null;
-	private Pose fromPose = null;
-	private Pose toPose = null;
+	protected static int NUMMISSIONS = 0;
+	protected int robotID;
+	protected String pathFile;
+	protected PoseSteering[] path;
+	protected int order = NUMMISSIONS++;
+	protected String fromLocation = null;
+	protected String toLocation = null;
+	protected Pose fromPose = null;
+	protected Pose toPose = null;
 	
 
 	/**
