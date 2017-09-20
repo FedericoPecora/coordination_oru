@@ -26,10 +26,10 @@ import se.oru.coordination.coordination_oru.Mission;
  */
 public class Missions {
 
-	private static HashMap<String,Pose> locations = new HashMap<String, Pose>();
-	private static HashMap<String,String> paths = new HashMap<String, String>();
+	protected static HashMap<String,Pose> locations = new HashMap<String, Pose>();
+	protected static HashMap<String,String> paths = new HashMap<String, String>();
 	//private static Logger metaCSPLogger = MetaCSPLogging.getLogger(TestTrajectoryEnvelopeCoordinatorThreeRobots.class);
-	private static HashMap<Integer,ArrayList<Mission>> missions = new HashMap<Integer, ArrayList<Mission>>();
+	protected static HashMap<Integer,ArrayList<Mission>> missions = new HashMap<Integer, ArrayList<Mission>>();
 
 	/**
 	 * Get all the {@link Mission}s currently known for one robot

@@ -1507,7 +1507,12 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 */
 	public abstract AbstractTrajectoryEnvelopeTracker getNewTracker(TrajectoryEnvelope te, TrackingCallback cb);
 
-	protected boolean isFree(int robotID) {
+	/**
+	 * Determine if a robot is free to accept a new mission (that is, the robot is in state WAITING_FOR_TASK).
+	 * @param robotID The ID of the robot.
+	 * @return <code>true</code> iff the robot is free to accept a new mission (that is, the robot is in state WAITING_FOR_TASK).
+	 */
+	public boolean isFree(int robotID) {
 		if (muted.contains(robotID)) return false;
 		for (TrajectoryEnvelope te : envelopesToTrack) if (te.getRobotID() == robotID) return false;
 		AbstractTrajectoryEnvelopeTracker tracker = trackers.get(robotID);
