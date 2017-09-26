@@ -322,12 +322,14 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 
 				}
 
-				if (cb != null) cb.beforeTrackingFinished();
+				
 
 				synchronized(solver) { 
+					if (cb != null) cb.beforeTrackingFinished();
 					finishTracking();
+					if (cb != null) cb.onTrackingFinished();
 				}
-				if (cb != null) cb.onTrackingFinished();
+				
 			}
 		};
 		
