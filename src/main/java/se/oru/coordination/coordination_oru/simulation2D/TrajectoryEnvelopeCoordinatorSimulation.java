@@ -40,7 +40,20 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	public TrajectoryEnvelopeCoordinatorSimulation() {
 		this(1000, 1000, 10.0, 1.0, 30);
 	}
-	
+
+	/**
+	 * Create a new {@link TrajectoryEnvelopeCoordinatorSimulation} with the following default values:
+	 * <ul>
+	 * <li><code>CONTROL_PERIOD</code> = 1000</li>
+	 * <li><code>TEMPORAL_RESOLUTION</code> = 1000</li>
+	 * <li><code>trackingPeriodInMillis</code> = 30</li>
+	 * <li><code>PARKING_DURATION</code> = 3000</li>
+	 * </ul>
+	 */
+	public TrajectoryEnvelopeCoordinatorSimulation(int CONTROL_PERIOD, double TEMPORAL_RESOLUTION, double MAX_VELOCITY, double MAX_ACCELERATION) {
+		this(CONTROL_PERIOD, TEMPORAL_RESOLUTION, MAX_VELOCITY, MAX_ACCELERATION, 30);
+	}
+
 	/**
 	 * Create a new {@link TrajectoryEnvelopeCoordinatorSimulation} with the following default values:
 	 * <ul>

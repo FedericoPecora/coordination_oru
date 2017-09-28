@@ -470,13 +470,19 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 		int leadingRobotStart = -1;
 		int yieldingRobotStart = -1;
+		int leadingRobotEnd = -1;
+		int yieldingRobotEnd = -1;
 		if (cs.getTe1().getRobotID() == yieldingRobotID) {
 			leadingRobotStart = cs.getTe2Start();
 			yieldingRobotStart = cs.getTe1Start();
+			leadingRobotEnd = cs.getTe2End();
+			yieldingRobotEnd = cs.getTe1End();
 		}
 		else {
 			leadingRobotStart = cs.getTe1Start();
 			yieldingRobotStart = cs.getTe2Start();
+			leadingRobotEnd = cs.getTe1End();
+			yieldingRobotEnd = cs.getTe2End();
 		}
 
 		TrajectoryEnvelope leadingRobotTE = null;
@@ -500,24 +506,26 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		Pose leadingRobotPose = leadingRobotTE.getTrajectory().getPose()[leadingRobotCurrentPathIndex];
 		Geometry leadingRobotInPose = TrajectoryEnvelope.getFootprint(leadingRobotTE.getFootprint(), leadingRobotPose.getX(), leadingRobotPose.getY(), leadingRobotPose.getTheta());
 		for (int i = 1; leadingRobotCurrentPathIndex+i < LOOKAHEAD && leadingRobotCurrentPathIndex+i < leadingRobotTE.getTrajectory().getPose().length; i++) {
-			Pose robot1NextPose = leadingRobotTE.getTrajectory().getPose()[leadingRobotCurrentPathIndex+i];
-			leadingRobotInPose = leadingRobotInPose.union(TrajectoryEnvelope.getFootprint(leadingRobotTE.getFootprint(), robot1NextPose.getX(), robot1NextPose.getY(), robot1NextPose.getTheta()));			
+			Pose leadingRobotNextPose = leadingRobotTE.getTrajectory().getPose()[leadingRobotCurrentPathIndex+i];
+			leadingRobotInPose = leadingRobotInPose.union(TrajectoryEnvelope.getFootprint(leadingRobotTE.getFootprint(), leadingRobotNextPose.getX(), leadingRobotNextPose.getY(), leadingRobotNextPose.getTheta()));			
 		}
 
 		//Starting from the same depth into the critical section as that of robot 1,
 		//and decreasing the pose index backwards down to te2Start,
 		//return the pose index as soon as robot 2's footprint does not intersect with robot 1's sweep
-		for (int i = Math.min(yieldingRobotTE.getTrajectory().getPose().length-1, yieldingRobotStart+leadingRobotDepth); i > yieldingRobotStart-1; i--) {
+		//for (int i = Math.min(yieldingRobotTE.getTrajectory().getPose().length-1, yieldingRobotStart+leadingRobotDepth); i > yieldingRobotStart-1; i--) {
+		int ret = yieldingRobotStart;
+		for (int i = yieldingRobotStart; i < yieldingRobotEnd; i++) {
 			Pose yieldingRobotPose = yieldingRobotTE.getTrajectory().getPose()[i];
 			Geometry yieldingRobotInPose = TrajectoryEnvelope.getFootprint(yieldingRobotTE.getFootprint(), yieldingRobotPose.getX(), yieldingRobotPose.getY(), yieldingRobotPose.getTheta());
-			if (!leadingRobotInPose.intersects(yieldingRobotInPose)) {
-				return Math.max(0, i-TRAILING_PATH_POINTS);
-			}
+			if (leadingRobotInPose.intersects(yieldingRobotInPose)) return Math.max(0, ret-TRAILING_PATH_POINTS);
+			ret++;
 		}
 
 		//The only situation where the above has not returned is when robot 2 should
 		//stay "parked", therefore wait at index 0
-		return Math.max(0, yieldingRobotStart-TRAILING_PATH_POINTS);
+		//return Math.max(0, yieldingRobotStart-TRAILING_PATH_POINTS);
+		return Math.max(0, ret-TRAILING_PATH_POINTS);
 
 	}
 
