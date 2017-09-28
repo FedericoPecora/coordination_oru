@@ -301,7 +301,7 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 						}
 						
 						//Stop when last path point reached (or we missed that report and the path point is now 0)
-						if (te.getSequenceNumberEnd() == currentSeqNumber || currentSeqNumber < prevSeqNumber) {
+						if (te.getSequenceNumberEnd() == currentSeqNumber || (currentSeqNumber < prevSeqNumber && currentSeqNumber <= 0)) {
 							metaCSPLogger.info("At last path point (current: " + currentSeqNumber + ", prev: " + prevSeqNumber + ") of " + te + "...");
 							for (TrajectoryEnvelope toFinish : startedGroundEnvelopes) {
 								if (!finishedGroundEnvelopes.contains(toFinish)) {
