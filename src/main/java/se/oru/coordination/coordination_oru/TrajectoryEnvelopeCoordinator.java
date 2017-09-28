@@ -505,15 +505,12 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		//Compute sweep of robot 1's footprint from current position to LOOKAHEAD
 		Pose leadingRobotPose = leadingRobotTE.getTrajectory().getPose()[leadingRobotCurrentPathIndex];
 		Geometry leadingRobotInPose = TrajectoryEnvelope.getFootprint(leadingRobotTE.getFootprint(), leadingRobotPose.getX(), leadingRobotPose.getY(), leadingRobotPose.getTheta());
-		for (int i = 1; leadingRobotCurrentPathIndex+i < LOOKAHEAD && leadingRobotCurrentPathIndex+i < leadingRobotTE.getTrajectory().getPose().length; i++) {
+		for (int i = 1; leadingRobotCurrentPathIndex+i <= LOOKAHEAD && leadingRobotCurrentPathIndex+i < leadingRobotTE.getTrajectory().getPose().length; i++) {
 			Pose leadingRobotNextPose = leadingRobotTE.getTrajectory().getPose()[leadingRobotCurrentPathIndex+i];
 			leadingRobotInPose = leadingRobotInPose.union(TrajectoryEnvelope.getFootprint(leadingRobotTE.getFootprint(), leadingRobotNextPose.getX(), leadingRobotNextPose.getY(), leadingRobotNextPose.getTheta()));			
 		}
 
-		//Starting from the same depth into the critical section as that of robot 1,
-		//and decreasing the pose index backwards down to te2Start,
-		//return the pose index as soon as robot 2's footprint does not intersect with robot 1's sweep
-		//for (int i = Math.min(yieldingRobotTE.getTrajectory().getPose().length-1, yieldingRobotStart+leadingRobotDepth); i > yieldingRobotStart-1; i--) {
+		//Return pose at which yielding robot should stop given driving robot's projected sweep
 		int ret = yieldingRobotStart;
 		for (int i = yieldingRobotStart; i < yieldingRobotEnd; i++) {
 			Pose yieldingRobotPose = yieldingRobotTE.getTrajectory().getPose()[i];
@@ -524,7 +521,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 		//The only situation where the above has not returned is when robot 2 should
 		//stay "parked", therefore wait at index 0
-		//return Math.max(0, yieldingRobotStart-TRAILING_PATH_POINTS);
 		return Math.max(0, ret-TRAILING_PATH_POINTS);
 
 	}
