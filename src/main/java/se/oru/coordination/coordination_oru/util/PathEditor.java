@@ -803,7 +803,7 @@ public class PathEditor {
 
 	public static void main(String[] args) {
 		String fileName = "paths/path2.path";
-		//String fileName = "/home/fpa/gitroot.gitlab/volvo_ce/coordination_oru_vce/paths/elsite_smooth_paths/elsite_paths_left.path0.path.new.new";
+		//String fileName = "/home/fpa/gitroot.gitlab/volvo_ce/coordination_oru_vce/paths/elsite_smooth_paths/elsite_paths_left.path1_and_2_and_3.path";
 		new PathEditor(fileName);
 	}
 
