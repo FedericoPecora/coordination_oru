@@ -21,6 +21,24 @@ public class Mission implements Comparable<Mission> {
 	protected Pose fromPose = null;
 	protected Pose toPose = null;
 	
+	/**
+	 * Instantiates a {@link Mission} for a given robot to navigate between two locations, but where the path
+	 * is not given and should be computed subsequently (before adding the mission to the {@link TrajectoryEnvelopeCoordinator}).
+	 * @param robotID The ID of the robot.
+	 * @param fromLocation The identifier of the source location.
+	 * @param toLocation The identifier of the destination location.
+	 * @param fromPose The pose of the source location.
+	 * @param toPose The pose of the destination location.
+	 */
+	public Mission(int robotID, String fromLocation, String toLocation, Pose fromPose, Pose toPose) {
+		this.robotID = robotID;
+		this.pathFile = null;
+		this.path = null;
+		this.fromLocation = fromLocation;
+		this.toLocation = toLocation;
+		this.fromPose = fromPose;
+		this.toPose = toPose;		
+	}
 
 	/**
 	 * Instantiates a {@link Mission} for a given robot to navigate between two locations via a given path.
@@ -103,6 +121,14 @@ public class Mission implements Comparable<Mission> {
 	 */
 	public PoseSteering[] getPath() {
 		return this.path;
+	}
+	
+	/**
+	 * Set the path of this mission.
+	 * @param path The path of this mission.
+	 */
+	public void setPath(PoseSteering[] path) {
+		this.path = path;
 	}
 	
 	/**

@@ -32,6 +32,7 @@ public class Missions {
 	//private static Logger metaCSPLogger = MetaCSPLogging.getLogger(TestTrajectoryEnvelopeCoordinatorThreeRobots.class);
 	protected static HashMap<Integer,ArrayList<Mission>> missions = new HashMap<Integer, ArrayList<Mission>>();
 	protected static HashMap<Integer,Boolean> missionDispatcherFlags = new HashMap<Integer,Boolean>();
+	protected static HashMap<Integer,MissionDispatchingCallback> mdcs = new HashMap<Integer, MissionDispatchingCallback>();
 	
 	/**
 	 * Get all the {@link Mission}s currently known for one robot
@@ -192,7 +193,14 @@ public class Missions {
 	 * @param robotIDs The robots for which the dispatching thread should be killed.
 	 */
 	public static void stopMissionDispatchers(int ... robotIDs) {
-		for (int robotID : robotIDs) missionDispatcherFlags.put(robotID, false);
+		for (int robotID : robotIDs) {
+			missionDispatcherFlags.put(robotID, false);
+			mdcs.remove(robotID);
+		}
+	}
+	
+	public static void addMissionDispatchingCallback(int robotID, MissionDispatchingCallback cb) {
+		mdcs.put(robotID, cb);
 	}
 	
 	/**
@@ -217,11 +225,14 @@ public class Missions {
 							continue;
 						}
 						synchronized(tec) {
+							//if addMission will work, then compute the path if it's missing
+							if (tec.isFree(m.getRobotID()) && mdcs.containsKey(robotID)) mdcs.get(robotID).beforeMissionDispatch(m);
 							//addMission returns true iff the robot was free to accept a new mission
 							if (tec.addMissions(m)) {
 								tec.computeCriticalSections();
 								tec.startTrackingAddedMissions();
 								iteration++;
+								if (mdcs.containsKey(robotID)) mdcs.get(robotID).afterMissionDispatch(m);
 							}
 						}
 						//Sleep for a little (2 sec)
