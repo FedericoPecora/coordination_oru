@@ -17,6 +17,7 @@ import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 import com.vividsolutions.jts.geom.Geometry;
 
 import se.oru.coordination.coordination_oru.Mission;
+import se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator;
 
 /**
  * This class collects utility methods for storing missions and extracting information from YAML files.
@@ -30,7 +31,8 @@ public class Missions {
 	protected static HashMap<String,String> paths = new HashMap<String, String>();
 	//private static Logger metaCSPLogger = MetaCSPLogging.getLogger(TestTrajectoryEnvelopeCoordinatorThreeRobots.class);
 	protected static HashMap<Integer,ArrayList<Mission>> missions = new HashMap<Integer, ArrayList<Mission>>();
-
+	protected static HashMap<Integer,Boolean> missionDispatcherFlags = new HashMap<Integer,Boolean>();
+	
 	/**
 	 * Get all the {@link Mission}s currently known for one robot
 	 * @param robotID A robot identifier
@@ -66,14 +68,14 @@ public class Missions {
 	public static Mission getMission(int robotID, int missionNumber) {
 		return missions.get(robotID).get(missionNumber);
 	}
-	
+
 	/**
 	 * Normalize an angle to be within [-PI,PI).
 	 * @param th The angle to normalize
 	 * @return A value within [-PI,PI)
 	 */
 	public static double wrapAngle180(double th) {
-	    return Math.atan2(Math.sin(th), Math.cos(th));
+		return Math.atan2(Math.sin(th), Math.cos(th));
 	}
 
 	/**
@@ -84,7 +86,7 @@ public class Missions {
 	public static double wrapAngle360(double th) {
 		return th-Math.PI*2.0*Math.floor(th/(Math.PI*2.0));
 	}
-	
+
 	/**
 	 * Get the last placement along the {@link Trajectory} of a {@link TrajectoryEnvelope} that does
 	 * not overlap with the final pose of the robot.
@@ -102,7 +104,7 @@ public class Missions {
 		}
 		return null;
 	}
-	
+
 	/**
 	 * Load location and path data from a file
 	 * @param fileName The file to load the data from
@@ -183,6 +185,56 @@ public class Missions {
 		}
 		catch (IOException e) { e.printStackTrace(); }
 		return ret;
+	}
+
+	/**
+	 * Kill the dispatching threads for a given set of robots.
+	 * @param robotIDs The robots for which the dispatching thread should be killed.
+	 */
+	public static void stopMissionDispatchers(int ... robotIDs) {
+		for (int robotID : robotIDs) missionDispatcherFlags.put(robotID, false);
+	}
+	
+	/**
+	 * Start a thread for each robot that cycles through the known missions for that
+	 * robot and dispatches them when the robot is free.
+	 * @param tec The {@link TrajectoryEnvelopeCoordinator} that coordinates the missions.
+	 * @param robotIDs The robot IDs for which a dispatching thread should be started.
+	 */
+	public static void startMissionDispatchers(final TrajectoryEnvelopeCoordinator tec, int ... robotIDs) {
+		//Start a mission dispatching thread for each robot, which will run forever
+		for (final int robotID : robotIDs) {
+			//For each robot, create a thread that dispatches the "next" mission when the robot is free 
+			Thread t = new Thread() {
+				int iteration = 0;
+				@Override
+				public void run() {
+					while (missionDispatcherFlags.get(robotID)) {
+						//Mission to dispatch alternates between (rip -> desti) and (desti -> rip)
+						Mission m = Missions.getMission(robotID, iteration%Missions.getMissions(robotID).size());
+						if (iteration > 0 && iteration%Missions.getMissions(robotID).size() == 0) {
+							iteration++;
+							continue;
+						}
+						synchronized(tec) {
+							//addMission returns true iff the robot was free to accept a new mission
+							if (tec.addMissions(m)) {
+								tec.computeCriticalSections();
+								tec.startTrackingAddedMissions();
+								iteration++;
+							}
+						}
+						//Sleep for a little (2 sec)
+						try { Thread.sleep(2000); }
+						catch (InterruptedException e) { e.printStackTrace(); }
+					}
+					missionDispatcherFlags.remove(robotID);
+				}
+			};
+			missionDispatcherFlags.put(robotID, true);
+			//Start the thread!
+			t.start();
+		}
 	}
 
 }
