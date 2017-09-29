@@ -115,6 +115,14 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	};
 	
 	/**
+	 * Get the {@link JTSDrawingPanel} of this coordinator's GUI.
+	 * @return The {@link JTSDrawingPanel} of this coordinator's GUI.
+	 */
+	public JTSDrawingPanel getPanel() {
+		return this.panel;
+	}
+	
+	/**
 	 * Set whether robots that will park in a critical section should yield to other robots.
 	 * @param value <code>true</code> if robots that will park in a critical section should yield to other robots.
 	 */
@@ -462,12 +470,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		//Number of additional path points robot 2 should stay behind robot 1
 		int TRAILING_PATH_POINTS = 3;
 
-		//How far ahead in robot 1's trajectory should we look ahead for collisions
-		//(all the way to end of critical section if robots can drive in opposing directions)
-		int LOOKAHEAD = -1;
-		if (cs.getTe1().getRobotID() == yieldingRobotID) LOOKAHEAD = cs.getTe2End();
-		else LOOKAHEAD = cs.getTe1End();
-
 		int leadingRobotStart = -1;
 		int yieldingRobotStart = -1;
 		int leadingRobotEnd = -1;
@@ -496,17 +498,13 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			yieldingRobotTE = cs.getTe2();			
 		}
 
-		//How far into the critical section has robot 1 reached 
-		int leadingRobotDepth = leadingRobotCurrentPathIndex-leadingRobotStart;
-
-		//If robot 1 not in critical section yet, return critical section start as waiting point for robot 2
-		if (leadingRobotDepth < 0) return Math.max(0, yieldingRobotStart-TRAILING_PATH_POINTS);	
-
+		if (leadingRobotCurrentPathIndex <= leadingRobotStart) return Math.max(0, yieldingRobotStart-TRAILING_PATH_POINTS);
+		
 		//Compute sweep of robot 1's footprint from current position to LOOKAHEAD
 		Pose leadingRobotPose = leadingRobotTE.getTrajectory().getPose()[leadingRobotCurrentPathIndex];
 		Geometry leadingRobotInPose = TrajectoryEnvelope.getFootprint(leadingRobotTE.getFootprint(), leadingRobotPose.getX(), leadingRobotPose.getY(), leadingRobotPose.getTheta());
-		for (int i = 1; leadingRobotCurrentPathIndex+i <= LOOKAHEAD && leadingRobotCurrentPathIndex+i < leadingRobotTE.getTrajectory().getPose().length; i++) {
-			Pose leadingRobotNextPose = leadingRobotTE.getTrajectory().getPose()[leadingRobotCurrentPathIndex+i];
+		for (int i = leadingRobotCurrentPathIndex+1; i <= leadingRobotEnd; i++) {
+			Pose leadingRobotNextPose = leadingRobotTE.getTrajectory().getPose()[i];
 			leadingRobotInPose = leadingRobotInPose.union(TrajectoryEnvelope.getFootprint(leadingRobotTE.getFootprint(), leadingRobotNextPose.getX(), leadingRobotNextPose.getY(), leadingRobotNextPose.getTheta()));			
 		}
 
@@ -521,7 +519,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 		//The only situation where the above has not returned is when robot 2 should
 		//stay "parked", therefore wait at index 0
-		return Math.max(0, ret-TRAILING_PATH_POINTS);
+		return Math.max(0, yieldingRobotStart-TRAILING_PATH_POINTS);
 
 	}
 
