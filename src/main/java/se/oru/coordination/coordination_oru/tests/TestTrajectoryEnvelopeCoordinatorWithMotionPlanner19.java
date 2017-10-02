@@ -4,7 +4,6 @@ import java.io.File;
 import java.util.Comparator;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
-import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 
 import com.vividsolutions.jts.geom.Coordinate;
 
@@ -18,7 +17,7 @@ import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
 import se.oru.coordination.coordination_oru.util.Missions;
 
-@DemoDescription(desc = "One-shot navigation of 3 robots coordinating on paths obtained with the ReedsSheppCarPlanner.")
+@DemoDescription(desc = "Example showing hazard of deadlock breaking in combination with yielding-for-parking policy.")
 public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner19 {
 	
 	public static void main(String[] args) throws InterruptedException {
