@@ -48,7 +48,7 @@ public class Dependency implements Comparable<Dependency> {
 	@Override
 	public int compareTo(Dependency other) {
 		if (this.waitingPoint != other.waitingPoint) return this.waitingPoint-other.waitingPoint;
-		else return this.thresholdPoint-other.thresholdPoint;
+		return this.thresholdPoint-other.thresholdPoint;
 	}
 	
 	@Override

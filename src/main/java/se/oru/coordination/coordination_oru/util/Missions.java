@@ -6,6 +6,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Scanner;
 
@@ -33,6 +34,7 @@ public class Missions {
 	protected static HashMap<Integer,ArrayList<Mission>> missions = new HashMap<Integer, ArrayList<Mission>>();
 	protected static HashMap<Integer,Boolean> missionDispatcherFlags = new HashMap<Integer,Boolean>();
 	protected static HashMap<Integer,MissionDispatchingCallback> mdcs = new HashMap<Integer, MissionDispatchingCallback>();
+	protected static HashMap<Mission,ArrayList<Mission>> concatenatedMissions = new HashMap<Mission, ArrayList<Mission>>();
 	
 	/**
 	 * Get all the {@link Mission}s currently known for one robot
@@ -199,6 +201,17 @@ public class Missions {
 		}
 	}
 	
+	public static void concatenateMissions(Mission ... m) {
+		ArrayList<Mission> toAdd = new ArrayList<Mission>();
+		for (Mission oneM : m) toAdd.add(oneM);
+		concatenatedMissions.put(m[0], toAdd);
+	}
+		
+	/**
+	 * Add a {@link MissionDispatchingCallback} which defines methods to be called before and after mission dispatching.
+	 * @param robotID The callback functions will be invoked whenever a mission for this robot is dispatched. 
+	 * @param cb The {@link MissionDispatchingCallback} to attach.
+	 */
 	public static void addMissionDispatchingCallback(int robotID, MissionDispatchingCallback cb) {
 		mdcs.put(robotID, cb);
 	}
@@ -225,13 +238,33 @@ public class Missions {
 							continue;
 						}
 						synchronized(tec) {
-							//if addMission will work, then compute the path if it's missing
-							if (tec.isFree(m.getRobotID()) && mdcs.containsKey(robotID)) mdcs.get(robotID).beforeMissionDispatch(m);
+							int numCats = 1;
+							if (tec.isFree(m.getRobotID())) {
+								//cat with future missions if necessary
+								if (concatenatedMissions.containsKey(m)) {
+									ArrayList<Mission> catMissions = concatenatedMissions.get(m);
+									numCats = catMissions.size();
+									m = new Mission(m.getRobotID(), m.getFromLocation(), catMissions.get(catMissions.size()-1).getToLocation(), m.getFromPose(), catMissions.get(catMissions.size()-1).getToPose());
+									ArrayList<PoseSteering> path = new ArrayList<PoseSteering>();
+									for (int i = 0; i < catMissions.size(); i++) {
+										Mission oneMission = catMissions.get(i);
+										if (mdcs.containsKey(robotID)) mdcs.get(robotID).beforeMissionDispatch(oneMission);
+										if (i == 0) path.add(oneMission.getPath()[0]);
+										for (int j = 1; j < oneMission.getPath().length-1; j++) {
+											path.add(oneMission.getPath()[j]);
+										}
+										if (i == catMissions.size()-1) path.add(oneMission.getPath()[oneMission.getPath().length-1]);
+									}
+									m.setPath(path.toArray(new PoseSteering[path.size()]));
+								}
+								else if (mdcs.containsKey(robotID)) mdcs.get(robotID).beforeMissionDispatch(m);							
+							}
+
 							//addMission returns true iff the robot was free to accept a new mission
 							if (tec.addMissions(m)) {
 								tec.computeCriticalSections();
 								tec.startTrackingAddedMissions();
-								iteration++;
+								iteration = iteration + numCats;
 								if (mdcs.containsKey(robotID)) mdcs.get(robotID).afterMissionDispatch(m);
 							}
 						}
@@ -246,6 +279,43 @@ public class Missions {
 			//Start the thread!
 			t.start();
 		}
+	}
+	
+	/**
+	 * Read a path from a file.
+	 * @param fileName The name of the file containing the path
+	 * @return The path read from the file
+	 */
+	public static PoseSteering[] loadPathFromFile(String fileName) {
+		ArrayList<PoseSteering> ret = new ArrayList<PoseSteering>();
+		try {
+			Scanner in = new Scanner(new FileReader(fileName));
+			while (in.hasNextLine()) {
+				String line = in.nextLine().trim();
+				if (line.length() != 0) {
+					String[] oneline = line.split(" ");
+					PoseSteering ps = null;
+					if (oneline.length == 4) {
+					ps = new PoseSteering(
+							new Double(oneline[0]).doubleValue(),
+							new Double(oneline[1]).doubleValue(),
+							new Double(oneline[2]).doubleValue(),
+							new Double(oneline[3]).doubleValue());
+					}
+					else {
+						ps = new PoseSteering(
+								new Double(oneline[0]).doubleValue(),
+								new Double(oneline[1]).doubleValue(),
+								new Double(oneline[2]).doubleValue(),
+								0.0);					
+					}
+					ret.add(ps);
+				}
+			}
+			in.close();
+		}
+		catch (FileNotFoundException e) { e.printStackTrace(); }
+		return ret.toArray(new PoseSteering[ret.size()]);
 	}
 
 }

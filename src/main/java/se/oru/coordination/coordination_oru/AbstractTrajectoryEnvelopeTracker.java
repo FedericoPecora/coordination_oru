@@ -322,8 +322,6 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 
 				}
 
-				
-
 				synchronized(solver) { 
 					if (cb != null) cb.beforeTrackingFinished();
 					finishTracking();

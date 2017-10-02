@@ -3,6 +3,8 @@ package se.oru.coordination.coordination_oru;
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 
+import se.oru.coordination.coordination_oru.util.Missions;
+
 /**
  * The {@link Mission} data structure represents a goal for a robot, to be reached via a given
  * path connecting two location poses. 
@@ -13,7 +15,6 @@ import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 public class Mission implements Comparable<Mission> {
 	protected static int NUMMISSIONS = 0;
 	protected int robotID;
-	protected String pathFile;
 	protected PoseSteering[] path;
 	protected int order = NUMMISSIONS++;
 	protected String fromLocation = null;
@@ -32,7 +33,6 @@ public class Mission implements Comparable<Mission> {
 	 */
 	public Mission(int robotID, String fromLocation, String toLocation, Pose fromPose, Pose toPose) {
 		this.robotID = robotID;
-		this.pathFile = null;
 		this.path = null;
 		this.fromLocation = fromLocation;
 		this.toLocation = toLocation;
@@ -62,7 +62,6 @@ public class Mission implements Comparable<Mission> {
 	 */
 	public Mission(int robotID, PoseSteering[] path, String fromLocation, String toLocation, Pose fromPose, Pose toPose) {
 		this.robotID = robotID;
-		this.pathFile = null;
 		this.path = path;
 		this.fromLocation = fromLocation;
 		this.toLocation = toLocation;
@@ -94,8 +93,7 @@ public class Mission implements Comparable<Mission> {
 	 */
 	public Mission(int robotID, String pathFile, String fromLocation, String toLocation, Pose fromPose, Pose toPose) {
 		this.robotID = robotID;
-		this.pathFile = pathFile;
-		this.path = null;
+		this.path = Missions.loadPathFromFile(pathFile);
 		this.fromLocation = fromLocation;
 		this.toLocation = toLocation;
 		this.fromPose = fromPose;
@@ -130,15 +128,7 @@ public class Mission implements Comparable<Mission> {
 	public void setPath(PoseSteering[] path) {
 		this.path = path;
 	}
-	
-	/**
-	 * Get the name of the file containing the path of this {@link Mission}.
-	 * @return The name of the file containing the path of this {@link Mission}.
-	 */
-	public String getPathFile() {
-		return this.pathFile;
-	}
-	
+		
 	/**
 	 * Get the name of the source location of this {@link Mission}.
 	 * @return The name of the source location of this {@link Mission}.
@@ -157,7 +147,7 @@ public class Mission implements Comparable<Mission> {
 
 	@Override
 	public String toString() {
-		return "Robot" + this.getRobotID() + ": " + fromLocation + " --> " + toLocation + (pathFile != null ? " (path: " + pathFile + ")" : "");
+		return "Robot" + this.getRobotID() + ": " + fromLocation + " --> " + toLocation + (path != null ? " (path length: " + path.length + ")" : "");
 	}
 
 	/**

@@ -178,6 +178,24 @@ public class PathEditor {
 		panel.updatePanel();
 	}
 	
+	private void backupPath() {
+		ArrayList<PoseSteering> backup = new ArrayList<PoseSteering>();
+		for (PoseSteering ps : this.path) {
+			PoseSteering newPS = new PoseSteering(ps.getX(), ps.getY(), ps.getTheta(), ps.getSteering());
+			backup.add(newPS);
+		}
+		oldPaths.add(backup);
+	}
+	
+	private void restorePath() {
+		if (!oldPaths.isEmpty()) {
+			for (int i = 0; i < path.size(); i++) panel.removeGeometry(""+i);
+			path = oldPaths.get(oldPaths.size()-1);
+			oldPaths.remove(oldPaths.size()-1);
+			clearPathPointSelection();
+		}
+	}
+	
 	private void setupGUI() {
 		panel = JTSDrawingPanel.makeEmpty("Path Editor");
 
@@ -254,8 +272,7 @@ public class PathEditor {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				if (!selectedPathPointsInt.isEmpty()) {
-					ArrayList<PoseSteering> oldPath = new ArrayList<PoseSteering>(path);
-					oldPaths.add(oldPath);
+					backupPath();
 					HashMap<Integer,PoseSteering> toAdd = new HashMap<Integer, PoseSteering>();
 					for (int selectedPathPointOneInt : selectedPathPointsInt) {
 						PoseSteering newPoseSteering = new PoseSteering(path.get(selectedPathPointOneInt).getPose().getX()+deltaX, path.get(selectedPathPointOneInt).getPose().getY()+deltaY, path.get(selectedPathPointOneInt).getPose().getTheta(), path.get(selectedPathPointOneInt).getSteering());
@@ -276,12 +293,7 @@ public class PathEditor {
 			private static final long serialVersionUID = 5597593272769688561L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				if (!oldPaths.isEmpty()) {
-					for (int i = 0; i < path.size(); i++) panel.removeGeometry(""+i);
-					path = oldPaths.get(oldPaths.size()-1);
-					oldPaths.remove(oldPaths.size()-1);
-					clearPathPointSelection();
-				}
+				restorePath();
 			}
 		};
 		panel.getActionMap().put("Undo",actUndo);
@@ -382,8 +394,7 @@ public class PathEditor {
 			public void actionPerformed(ActionEvent e) {
 				if (!selectedPathPointsInt.isEmpty()) {
 					for (int i = 0; i < path.size(); i++) panel.removeGeometry(""+i);
-					ArrayList<PoseSteering> oldPath = new ArrayList<PoseSteering>(path);
-					oldPaths.add(oldPath);
+					backupPath();
 					ArrayList<PoseSteering> toRemove = new ArrayList<PoseSteering>();
 					for (int selectedPathPointOneInt : selectedPathPointsInt) {
 						toRemove.add(path.get(selectedPathPointOneInt));
@@ -414,12 +425,11 @@ public class PathEditor {
 					PoseSteering startPose = path.get(selectedPathPointsInt.get(0));
 					PoseSteering[] goalPoses = new PoseSteering[selectedPathPointsInt.size()-1];
 					for (int i = 0; i < goalPoses.length; i++) {
-						goalPoses[i] = path.get(selectedPathPointsInt.get(i));
+						goalPoses[i] = path.get(selectedPathPointsInt.get(i+1));
 					}
 					PoseSteering[] newSubPath = computePath(startPose,goalPoses);
 					if (newSubPath != null) {
-						ArrayList<PoseSteering> oldPath = new ArrayList<PoseSteering>(path);
-						oldPaths.add(oldPath);
+						backupPath();
 						TreeMap<Integer,PoseSteering> toAdd = new TreeMap<Integer, PoseSteering>();
 						ArrayList<PoseSteering> toRemove = new ArrayList<PoseSteering>();
 						for (int i = 1; i < selectedPathPointsInt.size()-1; i++) toRemove.add(path.get(selectedPathPointsInt.get(i)));
@@ -449,8 +459,7 @@ public class PathEditor {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				if (!selectedPathPointsInt.isEmpty()) {
-					ArrayList<PoseSteering> oldPath = new ArrayList<PoseSteering>(path);
-					oldPaths.add(oldPath);
+					backupPath();
 					for (int selectedPathPointOneInt : selectedPathPointsInt) {
 						double x = path.get(selectedPathPointOneInt).getPose().getX();
 						double y = path.get(selectedPathPointOneInt).getPose().getY();
@@ -480,8 +489,7 @@ public class PathEditor {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				if (!selectedPathPointsInt.isEmpty()) {
-					ArrayList<PoseSteering> oldPath = new ArrayList<PoseSteering>(path);
-					oldPaths.add(oldPath);
+					backupPath();
 					for (int selectedPathPointOneInt : selectedPathPointsInt) {
 						double x = path.get(selectedPathPointOneInt).getPose().getX();
 						double y = path.get(selectedPathPointOneInt).getPose().getY();
@@ -511,8 +519,7 @@ public class PathEditor {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				if (!selectedPathPointsInt.isEmpty()) {
-					ArrayList<PoseSteering> oldPath = new ArrayList<PoseSteering>(path);
-					oldPaths.add(oldPath);
+					backupPath();
 					for (int selectedPathPointOneInt : selectedPathPointsInt) {
 						double x = path.get(selectedPathPointOneInt).getPose().getX();
 						double y = path.get(selectedPathPointOneInt).getPose().getY();
@@ -542,8 +549,7 @@ public class PathEditor {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				if (!selectedPathPointsInt.isEmpty()) {
-					ArrayList<PoseSteering> oldPath = new ArrayList<PoseSteering>(path);
-					oldPaths.add(oldPath);
+					backupPath();
 					for (int selectedPathPointOneInt : selectedPathPointsInt) {
 						double x = path.get(selectedPathPointOneInt).getPose().getX();
 						double y = path.get(selectedPathPointOneInt).getPose().getY();
@@ -573,8 +579,7 @@ public class PathEditor {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				if (!selectedPathPointsInt.isEmpty()) {
-					ArrayList<PoseSteering> oldPath = new ArrayList<PoseSteering>(path);
-					oldPaths.add(oldPath);
+					backupPath();
 					for (int selectedPathPointOneInt : selectedPathPointsInt) {
 						double x = path.get(selectedPathPointOneInt).getPose().getX();
 						double y = path.get(selectedPathPointOneInt).getPose().getY();
@@ -609,8 +614,7 @@ public class PathEditor {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				if (!selectedPathPointsInt.isEmpty()) {
-					ArrayList<PoseSteering> oldPath = new ArrayList<PoseSteering>(path);
-					oldPaths.add(oldPath);
+					backupPath();
 					for (int selectedPathPointOneInt : selectedPathPointsInt) {
 						double x = path.get(selectedPathPointOneInt).getPose().getX();
 						double y = path.get(selectedPathPointOneInt).getPose().getY();
