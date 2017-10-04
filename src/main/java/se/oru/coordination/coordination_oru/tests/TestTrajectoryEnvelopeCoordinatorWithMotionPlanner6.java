@@ -49,6 +49,8 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner6 {
 		tec.setForwardModel(1, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getControlPeriod(), tec.getTemporalResolution()));
 		tec.setForwardModel(2, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getControlPeriod(), tec.getTemporalResolution()));
 		tec.setForwardModel(3, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getControlPeriod(), tec.getTemporalResolution()));
+		//comment out following (or set to true) to make the coordinator attempt to break the deadlock
+		tec.setBreakDeadlocks(false);
 		
 		Coordinate[] ret = new Coordinate[6];		
 		ret[0] = new Coordinate(0.36, 0.0);
@@ -68,7 +70,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner6 {
 		tec.setupGUI(yamlFile);
 		//tec.setupGUI(null);
 		
-		tec.setUseInternalCriticalPoints(false);
+		//tec.setUseInternalCriticalPoints(false);
 		
 		//MetaCSPLogging.setLevel(tec.getClass().getSuperclass(), Level.FINEST);
 

@@ -452,7 +452,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				}
 
 				@Override
-				public void onPositionUpdate() { }
+				public void onPositionUpdate() {
+					if (panel != null) {
+						panel.addGeometry("R" + te.getRobotID(), TrajectoryEnvelope.getFootprint(te.getFootprint(), te.getTrajectory().getPose()[0].getX(), te.getTrajectory().getPose()[0].getY(), te.getTrajectory().getPose()[0].getTheta()), false, true, false, "#4286F4");
+					}
+				}
 
 			};
 

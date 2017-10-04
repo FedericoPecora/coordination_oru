@@ -71,13 +71,16 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner19 {
 		
 		//MetaCSPLogging.setLevel(tec.getClass().getSuperclass(), Level.FINEST);
 
-		Pose startRobot1 = new Pose(5.0,5.0,0.0);
-		Pose finalRobot1 = new Pose(25.0,5.0,0.0);
-
-		Pose startRobot21 = new Pose(5.0,15.0,-Math.PI/2.0);
-		Pose finalRobot21 = new Pose(10.0,5.0,0.0);
+		Pose startRobot11 = new Pose(0.0,15.0,-Math.PI/2.0);
+		Pose finalRobot11 = new Pose(5.0,5.0,0.0);
 		
-		Pose startRobot22 = new Pose(10.0,5.0,0.0);
+		Pose startRobot12 = new Pose(5.0,5.0,0.0);
+		Pose finalRobot12 = new Pose(25.0,5.0,0.0);
+
+		Pose startRobot21 = new Pose(7.0,15.0,-Math.PI/2.0);
+		Pose finalRobot21 = new Pose(12.0,5.0,0.0);
+		
+		Pose startRobot22 = new Pose(12.0,5.0,0.0);
 		Pose finalRobot22 = new Pose(35.0,5.0,0.0);
 
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
@@ -88,8 +91,13 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner19 {
 		rsp.setTurningRadius(4.0);
 		rsp.setDistanceBetweenPathPoints(0.3);
 
-		rsp.setStart(startRobot1);
-		rsp.setGoals(finalRobot1);
+		rsp.setStart(startRobot11);
+		rsp.setGoals(finalRobot11);
+		rsp.plan();
+		Missions.putMission(new Mission(1,rsp.getPath()));
+
+		rsp.setStart(startRobot12);
+		rsp.setGoals(finalRobot12);
 		rsp.plan();
 		Missions.putMission(new Mission(1,rsp.getPath()));
 
@@ -103,27 +111,32 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner19 {
 		rsp.plan();
 		Missions.putMission(new Mission(2,rsp.getPath()));
 
-		tec.placeRobot(1, startRobot1);
+		tec.placeRobot(1, startRobot11);
 		tec.placeRobot(2, startRobot21);
 
-		tec.addMissions(Missions.getMission(2, 0));
-		tec.computeCriticalSections();
-		tec.startTrackingAddedMissions();
-
-		Thread.sleep(5000);
-		
-		tec.addMissions(Missions.getMission(1, 0));
-		tec.computeCriticalSections();
-		tec.startTrackingAddedMissions();
-		
-		//Thread.sleep(10000);
-		
-		while (!tec.isFree(2)) { Thread.sleep(100); }
-		
-		tec.addMissions(Missions.getMission(2, 1));
-		tec.computeCriticalSections();
-		tec.startTrackingAddedMissions();
-		
+		for (int i = 1; i <= 2; i++) {
+			final int rid = i;
+			Thread dispatch = new Thread() {
+				private int missionCounter = 0;
+				public void run() {
+					while (true) {
+						if (tec.isFree(rid)) {
+							if (rid == 2 && missionCounter == 0) {
+								try { Thread.sleep(5500); }
+								catch (InterruptedException e) { e.printStackTrace(); }
+							}
+							tec.addMissions(Missions.getMission(rid, missionCounter++));
+							tec.computeCriticalSections();
+							tec.startTrackingAddedMissions();
+							if (missionCounter == 2) break;
+						}
+						try { Thread.sleep(200); }
+						catch (InterruptedException e) { e.printStackTrace(); }
+					}
+				}
+			};
+			dispatch.start();
+		}
 				
 	}
 	

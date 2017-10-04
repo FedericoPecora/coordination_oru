@@ -91,6 +91,7 @@ public abstract class TrajectoryEnvelopeTrackerDummy extends AbstractTrajectoryE
 		//Just do prolong the earliest end time until finished by external call to finishParking()
 		while (!parkingFinished) {
 			updateDeadline(this.te, DELTA_FUTURE);
+			onPositionUpdate();
 			try { Thread.sleep(trackingPeriodInMillis); }
 			catch (InterruptedException e) { e.printStackTrace(); }
 		}

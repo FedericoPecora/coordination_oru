@@ -230,7 +230,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 					this.positionToSlowDown = positionToSlowDownBKP;
 				}
 				else {
-					metaCSPLogger.info("Set critical point (" + te.getComponent() + "): " + criticalPointToSet + ", currently at distance " + state.getPosition() + ", will slow down at distance " + this.positionToSlowDown);
+					metaCSPLogger.info("Set critical point (" + te.getComponent() + "): " + criticalPointToSet + ", currently at point " + this.getRobotReport().getPathIndex() + ", distance " + state.getPosition() + ", will slow down at distance " + this.positionToSlowDown);
 				}
 			}
 
