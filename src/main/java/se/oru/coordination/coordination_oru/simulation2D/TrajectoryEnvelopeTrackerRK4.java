@@ -81,6 +81,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 		this.slowDownProfile = this.getSlowdownProfile();
 		this.positionToSlowDown = this.computePositionToSlowDown();
 		this.th = new Thread(this, "RK4 tracker " + te.getComponent());
+		this.th.setPriority(Thread.MAX_PRIORITY);
 	}
 	
 	@Override

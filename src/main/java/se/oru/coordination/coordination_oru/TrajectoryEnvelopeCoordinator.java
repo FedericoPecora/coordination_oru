@@ -3,6 +3,7 @@ package se.oru.coordination.coordination_oru;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.io.File;
+import java.lang.reflect.InvocationTargetException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -16,6 +17,8 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.logging.Logger;
+
+import javax.swing.SwingUtilities;
 
 import org.apache.commons.collections.comparators.ComparatorChain;
 import org.jgrapht.alg.cycle.JohnsonSimpleCycles;
@@ -1148,6 +1151,13 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	public TrajectoryEnvelope getCurrentSuperEnvelope(int robotID) {
 		return trackers.get(robotID).getTrajectoryEnvelope();
 	}
+	
+	public void computeCriticalSectionsAndStartTrackingAddedMission() {
+		synchronized(solver) {
+			computeCriticalSections();
+			startTrackingAddedMissions();
+		}
+	}
 
 	/**
 	 * Start the trackers associated to the last batch of {@link Mission}s that has been added.
@@ -1348,6 +1358,23 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		this.setupGUI(null);
 	}
 
+	private void setPriorityOfEDT(final int prio) {
+		try {
+		SwingUtilities.invokeAndWait(new Runnable() {
+		    public void run() {
+		        Thread.currentThread().setPriority(prio);
+		    }});
+		}
+		catch (InvocationTargetException e2) {
+			// TODO Auto-generated catch block
+			e2.printStackTrace();
+		}
+		catch (InterruptedException e2) {
+			// TODO Auto-generated catch block
+			e2.printStackTrace();
+		}		
+	}
+	
 	/**
 	 * Sets up a GUI which shows the current status of robots, overlayed on a given map .
 	 * @param mapYAMLFile A map file to overlay onto the GUI.
@@ -1355,6 +1382,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	public void setupGUI(String mapYAMLFile) {
 		//Show everything in a GUI (vehicle positions are updated in real time by the trackers, see below)
 		panel = JTSDrawingPanel.makeEmpty("Current status of robots");
+		//setPriorityOfEDT(Thread.MIN_PRIORITY);
+		//setPriorityOfEDT(Thread.MAX_PRIORITY);
 		panel.setSmoothTransitions(true);
 		panel.setArrowHeadSizeInMeters(0.6*getMaxFootprintDimension(1));
 		panel.setTextSizeInMeters(0.8*getMaxFootprintDimension(1));
@@ -1439,18 +1468,13 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 	//Update viz (keep geoms alive)
 	protected void updateVisualization() {
-		for (TrajectoryEnvelope te : solver.getRootTrajectoryEnvelopes()) {
-			GeometricShapeDomain dom = (GeometricShapeDomain)te.getEnvelopeVariable().getDomain();
-			panel.addGeometry("_"+te.getID(), dom.getGeometry(), true, false);
-			//			for (Variable gteV : te.getRecursivelyDependentVariables()) {
-			//				TrajectoryEnvelope gte = (TrajectoryEnvelope)gteV;
-			//				if (!gte.hasSubEnvelopes()) {
-			//					GeometricShapeDomain gdom = (GeometricShapeDomain)gte.getEnvelopeVariable().getDomain();
-			//					panel.addGeometry(""+gte.getID(), gdom.getGeometry(), false, false);						
-			//				}
-			//			}//CME
-			panel.removeOldGeometries(CONTROL_PERIOD*2);
-			panel.updatePanel();
+		if (panel != null) {
+			for (TrajectoryEnvelope te : solver.getRootTrajectoryEnvelopes()) {
+				GeometricShapeDomain dom = (GeometricShapeDomain)te.getEnvelopeVariable().getDomain();
+				panel.addGeometry("_"+te.getID(), dom.getGeometry(), true, false);
+				panel.removeOldGeometries(CONTROL_PERIOD*2);
+				panel.updatePanel();
+			}
 		}
 	}
 
@@ -1521,6 +1545,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				}
 			}
 		};
+		inference.setPriority(Thread.MAX_PRIORITY);
 		inference.start();
 	}
 

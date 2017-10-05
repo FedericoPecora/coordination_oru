@@ -122,38 +122,40 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 			@Override
 			public void onPositionUpdate() {
 			
-				long timeNow = -1;
-				if (DELTA_UPDATE != -1) timeNow = Calendar.getInstance().getTimeInMillis();
-				if (DELTA_UPDATE == -1 || timeNow-lastUpdate > DELTA_UPDATE) {
-					lastUpdate = timeNow;
-					//Update the position of the robot in the GUI
-					RobotReport rr = getRobotReport();
-					double x = rr.getPose().getX();
-					double y = rr.getPose().getY();
-					double theta = rr.getPose().getTheta();
-					panel.addGeometry("R" + te.getRobotID(), TrajectoryEnvelope.getFootprint(te.getFootprint(), x, y, theta), false, true, false, "#FF0000");
-					
-					//Draw an arrow if there is a critical point
-					RobotReport rrWaiting = getRobotReport();
-					synchronized (currentDependencies) {
-						for (Dependency dep : currentDependencies) {
-							if (dep.getWaitingTracker().equals(this)) {
-								if (dep.getDrivingTracker() != null) {
-									RobotReport rrDriving = dep.getDrivingTracker().getRobotReport();
-									String arrowIdentifier = "_"+dep.getWaitingRobotID()+"-"+dep.getDrivingRobotID();
-									panel.addArrow(arrowIdentifier, rrWaiting.getPose(), rrDriving.getPose());
-									//panel.addArrow(arrowIdentifier, dep.getWaitingPose(), dep.getReleasingPose());
+				if (panel != null) {
+					long timeNow = -1;
+					if (DELTA_UPDATE != -1) timeNow = Calendar.getInstance().getTimeInMillis();
+					if (DELTA_UPDATE == -1 || timeNow-lastUpdate > DELTA_UPDATE) {
+						lastUpdate = timeNow;
+						//Update the position of the robot in the GUI
+						RobotReport rr = getRobotReport();
+						double x = rr.getPose().getX();
+						double y = rr.getPose().getY();
+						double theta = rr.getPose().getTheta();
+						panel.addGeometry("R" + te.getRobotID(), TrajectoryEnvelope.getFootprint(te.getFootprint(), x, y, theta), false, true, false, "#FF0000");
+						
+						//Draw an arrow if there is a critical point
+						RobotReport rrWaiting = getRobotReport();
+						synchronized (currentDependencies) {
+							for (Dependency dep : currentDependencies) {
+								if (dep.getWaitingTracker().equals(this)) {
+									if (dep.getDrivingTracker() != null) {
+										RobotReport rrDriving = dep.getDrivingTracker().getRobotReport();
+										String arrowIdentifier = "_"+dep.getWaitingRobotID()+"-"+dep.getDrivingRobotID();
+										panel.addArrow(arrowIdentifier, rrWaiting.getPose(), rrDriving.getPose());
+										//panel.addArrow(arrowIdentifier, dep.getWaitingPose(), dep.getReleasingPose());
+									}
+	//								else {
+	//									String arrowIdentifier = "_"+dep.getWaitingRobotID()+"-"+dep.getDrivingRobotID();
+	//									panel.addArrow(arrowIdentifier, rrWaiting.getPose(), traj.getPose()[rrWaiting.getCriticalPoint()]);										
+	//								}
 								}
-//								else {
-//									String arrowIdentifier = "_"+dep.getWaitingRobotID()+"-"+dep.getDrivingRobotID();
-//									panel.addArrow(arrowIdentifier, rrWaiting.getPose(), traj.getPose()[rrWaiting.getCriticalPoint()]);										
-//								}
-							}
-						}							
+							}							
+						}
+		
+						//Refresh the GUI
+						panel.updatePanel();
 					}
-	
-					//Refresh the GUI
-					panel.updatePanel();
 				}
 			}
 
