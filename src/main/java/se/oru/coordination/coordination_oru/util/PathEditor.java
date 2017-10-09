@@ -28,6 +28,7 @@ import org.metacsp.utility.UI.JTSDrawingPanel;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.Point;
 import com.vividsolutions.jts.geom.util.AffineTransformation;
 
 import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppCarPlanner;
@@ -38,7 +39,8 @@ public class PathEditor {
 	private static double OBSTACLE_SIZE = 2.0;
 	private static double MAX_TURNING_RADIUS = 4.0;
 	private static double MIN_DISTANCE_BETWEEN_PATH_POINTS = 0.4;
-	private String fileName = null;
+	private String pathFileName = null;
+	private String mapFileName = null;
 	private boolean selectionPathPointInputListen = false;
 	private String selectionString = "";
 	private ArrayList<Integer> selectedPathPointsInt = new ArrayList<Integer>();
@@ -53,17 +55,31 @@ public class PathEditor {
 	private double deltaT = 0.1;
 	private double deltaTR = 0.1;
 	private String newFileSuffix = ".new";
+	private Coordinate[] obstacleFootprint = null;
+	private ArrayList<Point> obstacleCenters = new ArrayList<Point>();
+	private ArrayList<Double> obstacleThetas = new ArrayList<Double>();
 	
 	private static String TEMP_MAP_DIR = ".tempMapsPathEditor";
 	
-	public PathEditor(String fileName, double deltaX, double deltaY, double deltaTheta, String newFileSuffix) {
-		this.fileName = fileName;
+	public void setObstacleFootprint(Coordinate[] footprint) {
+		this.obstacleFootprint = new Coordinate[footprint.length+1];
+		for (int i = 0; i < footprint.length; i++) {
+			obstacleFootprint[i] = footprint[i];
+		}
+		obstacleFootprint[footprint.length] = footprint[0];
+	}
+	
+	public PathEditor(String pathFileName, String mapFileName, double deltaX, double deltaY, double deltaTheta, String newFileSuffix) {
+		this.pathFileName = pathFileName;
+		this.mapFileName = mapFileName;
 		this.deltaX = deltaX;
 		this.deltaY = deltaY;
 		this.deltaT = deltaTheta;
 		this.newFileSuffix = newFileSuffix;
 		this.setupGUI();
-		this.readPath(fileName);
+		if (pathFileName != null) this.readPath(pathFileName);
+		if (mapFileName != null) panel.setMap(mapFileName);
+		panel.updatePanel();
 		this.deleteDir(new File(TEMP_MAP_DIR));
 		new File(TEMP_MAP_DIR).mkdir();
 	}
@@ -81,10 +97,14 @@ public class PathEditor {
 	    return dir.delete();
 	}
 	
-	public PathEditor(String fileName) {
-		this(fileName,0.1,0.1,0.1,".new");
+	public PathEditor(String pathFileName) {
+		this(pathFileName,null,0.1,0.1,0.1,".new");
 	}
-	
+
+	public PathEditor(String pathFileName, String mapFileName) {
+		this(pathFileName,mapFileName,0.1,0.1,0.1,".new");
+	}
+
 	private double[] getMinXYMaxXY() {
 		double maxX = -Double.MAX_VALUE;
 		double maxY = -Double.MAX_VALUE;
@@ -138,11 +158,24 @@ public class PathEditor {
 	
 	private Geometry makeObstacle(Pose p) {
 		GeometryFactory gf = new GeometryFactory();
-		Geometry geom = gf.createPolygon(new Coordinate[] { new Coordinate(0.0,0.0), new Coordinate(0.0,OBSTACLE_SIZE), new Coordinate(OBSTACLE_SIZE,OBSTACLE_SIZE), new Coordinate(OBSTACLE_SIZE,0.0), new Coordinate(0.0,0.0) });
+		Geometry geom = null;
+		Point center = null;
+		if (obstacleFootprint == null) {
+			geom = gf.createPolygon(new Coordinate[] { new Coordinate(0.0,0.0), new Coordinate(0.0,OBSTACLE_SIZE), new Coordinate(OBSTACLE_SIZE,OBSTACLE_SIZE), new Coordinate(OBSTACLE_SIZE,0.0), new Coordinate(0.0,0.0) });
+			center = gf.createPoint(geom.getCentroid().getCoordinate());
+		}
+		else {
+			geom = gf.createPolygon(obstacleFootprint);
+			center = gf.createPoint(new Coordinate(0.0,0.0));
+		}		
 		AffineTransformation at = new AffineTransformation();
 		at.rotate(p.getTheta());
 		at.translate(p.getX(), p.getY());
 		Geometry transGeom = at.transform(geom);
+		Point transCenter = (Point)at.transform(center);
+		obstacles.add(transGeom);
+		obstacleCenters.add(transCenter);
+		obstacleThetas.add(p.getTheta());
 		return transGeom;
 	}
 	
@@ -242,7 +275,6 @@ public class PathEditor {
 					selectedObsInt.clear();
 					for (int selectedPathPointOneInt : selectedPathPointsInt) {
 						Geometry obs = makeObstacle(path.get(selectedPathPointOneInt).getPose());
-						obstacles.add(obs);
 						int id = obstacles.size()-1;
 						panel.addGeometry("obs_"+id, obs, false, false, true, "#cc3300");
 						selectedObsInt.add(id);
@@ -303,7 +335,7 @@ public class PathEditor {
 			private static final long serialVersionUID = 8788274388808789051L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				String newFileName = fileName+newFileSuffix;
+				String newFileName = pathFileName+newFileSuffix;
 				writePath(newFileName);
 				System.out.println("Saved " + newFileName);
 			}
@@ -404,11 +436,14 @@ public class PathEditor {
 				}
 				if (!selectedObsInt.isEmpty()) {
 					ArrayList<Geometry> toRemove = new ArrayList<Geometry>();
+					ArrayList<Geometry> toRemoveCenters = new ArrayList<Geometry>();
 					for (int i = 0; i < obstacles.size(); i++) panel.removeGeometry("obs_"+i);
 					for (int selectedObsOneInt : selectedObsInt) {
 						toRemove.add(obstacles.get(selectedObsOneInt));
+						toRemoveCenters.add(obstacleCenters.get(selectedObsOneInt));
 					}
 					obstacles.removeAll(toRemove);
+					obstacleCenters.removeAll(toRemoveCenters);
 					clearObstacleSelection();
 				}
 				panel.updatePanel();
@@ -472,9 +507,11 @@ public class PathEditor {
 				if (!selectedObsInt.isEmpty()) {
 					for (int selectedObsOneInt : selectedObsInt) {
 						Geometry obs = obstacles.get(selectedObsOneInt);
+						Point center = obstacleCenters.get(selectedObsOneInt);
 						AffineTransformation at = new AffineTransformation();
 						at.translate(-deltaX, 0);
 						obstacles.set(selectedObsOneInt,at.transform(obs));
+						obstacleCenters.set(selectedObsOneInt,(Point)at.transform(center));
 					}
 				}
 				highlightPathPoints();
@@ -502,9 +539,11 @@ public class PathEditor {
 				if (!selectedObsInt.isEmpty()) {
 					for (int selectedObsOneInt : selectedObsInt) {
 						Geometry obs = obstacles.get(selectedObsOneInt);
+						Point center = obstacleCenters.get(selectedObsOneInt);
 						AffineTransformation at = new AffineTransformation();
 						at.translate(deltaX, 0);
 						obstacles.set(selectedObsOneInt,at.transform(obs));
+						obstacleCenters.set(selectedObsOneInt,(Point)at.transform(center));
 					}
 				}
 				highlightPathPoints();
@@ -532,9 +571,11 @@ public class PathEditor {
 				if (!selectedObsInt.isEmpty()) {
 					for (int selectedObsOneInt : selectedObsInt) {
 						Geometry obs = obstacles.get(selectedObsOneInt);
+						Point center = obstacleCenters.get(selectedObsOneInt);
 						AffineTransformation at = new AffineTransformation();
 						at.translate(0, deltaY);
 						obstacles.set(selectedObsOneInt,at.transform(obs));
+						obstacleCenters.set(selectedObsOneInt,(Point)at.transform(center));
 					}
 				}
 				highlightPathPoints();
@@ -562,9 +603,11 @@ public class PathEditor {
 				if (!selectedObsInt.isEmpty()) {
 					for (int selectedObsOneInt : selectedObsInt) {
 						Geometry obs = obstacles.get(selectedObsOneInt);
+						Point center = obstacleCenters.get(selectedObsOneInt);
 						AffineTransformation at = new AffineTransformation();
 						at.translate(0, -deltaY);
 						obstacles.set(selectedObsOneInt,at.transform(obs));
+						obstacleCenters.set(selectedObsOneInt,(Point)at.transform(center));
 					}
 				}
 				highlightPathPoints();
@@ -594,12 +637,13 @@ public class PathEditor {
 					for (int selectedObsOneInt : selectedObsInt) {
 						Geometry obs = obstacles.get(selectedObsOneInt);
 						AffineTransformation at = new AffineTransformation();
-						double toOriginX = obs.getCentroid().getX();
-						double toOriginY = obs.getCentroid().getY();
+						double toOriginX = obstacleCenters.get(selectedObsOneInt).getX();
+						double toOriginY = obstacleCenters.get(selectedObsOneInt).getY();
 						at.translate(-toOriginX,-toOriginY);
 						at.rotate(-deltaT);
 						at.translate(toOriginX,toOriginY);
 						obstacles.set(selectedObsOneInt,at.transform(obs));
+						obstacleThetas.set(selectedObsOneInt,obstacleThetas.get(selectedObsOneInt)-deltaT);
 					}
 				}
 				highlightPathPoints();
@@ -629,12 +673,13 @@ public class PathEditor {
 					for (int selectedObsOneInt : selectedObsInt) {
 						Geometry obs = obstacles.get(selectedObsOneInt);
 						AffineTransformation at = new AffineTransformation();
-						double toOriginX = obs.getCentroid().getX();
-						double toOriginY = obs.getCentroid().getY();
+						double toOriginX = obstacleCenters.get(selectedObsOneInt).getX();
+						double toOriginY = obstacleCenters.get(selectedObsOneInt).getY();
 						at.translate(-toOriginX,-toOriginY);
 						at.rotate(deltaT);
 						at.translate(toOriginX,toOriginY);
 						obstacles.set(selectedObsOneInt,at.transform(obs));
+						obstacleThetas.set(selectedObsOneInt,obstacleThetas.get(selectedObsOneInt)+deltaT);
 					}
 				}
 				highlightPathPoints();
@@ -650,7 +695,7 @@ public class PathEditor {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				String obs = "Obstacles:";
-				for (int i = 0; i < obstacles.size(); i++) obs += ("\n   obs_" + i + ": " + obstacles.get(i).getCentroid().getCoordinate());
+				for (int i = 0; i < obstacles.size(); i++) obs += ("\n   obs_" + i + " pose (x,y,theta): (" + obstacleCenters.get(i).getCoordinate().x + "," + obstacleCenters.get(i).getCoordinate().y + "," + obstacleThetas.get(i) + ")");
 				System.out.println(obs);
 			}
 		};
@@ -792,7 +837,7 @@ public class PathEditor {
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();		
 		rsp.setMapFilename(makeEmptyMapMap());
 		rsp.setMapResolution(1.0);
-		rsp.setRobotRadius(1.0);
+		rsp.setRadius(1.0);
 		rsp.setTurningRadius(MAX_TURNING_RADIUS);
 		rsp.setDistanceBetweenPathPoints(MIN_DISTANCE_BETWEEN_PATH_POINTS);
 		rsp.setStart(from.getPose());
@@ -806,9 +851,10 @@ public class PathEditor {
 	}
 
 	public static void main(String[] args) {
-		String fileName = "paths/path2.path";
-		//String fileName = "/home/fpa/gitroot.gitlab/volvo_ce/coordination_oru_vce/paths/elsite_smooth_paths/elsite_paths_left.path1_and_2_and_3.path";
-		new PathEditor(fileName);
+		String pathFileName = "paths/path2.path";
+		//String pathFileName = "/home/fpa/gitroot.gitlab/volvo_ce/coordination_oru_vce/paths/elsite_smooth_paths/elsite_paths_left.path1_and_2_and_3.path";
+		new PathEditor(pathFileName);
+		
 	}
 
 }
