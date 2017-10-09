@@ -14,6 +14,7 @@ import javax.imageio.ImageIO;
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 
+import com.sun.jna.Native;
 import com.sun.jna.NativeLibrary;
 import com.sun.jna.Pointer;
 import com.sun.jna.ptr.IntByReference;
@@ -46,9 +47,11 @@ public class ReedsSheppCarPlanner {
 	private double turningRadius = 1.0;
 	private PoseSteering[] pathPS = null;
 	private Coordinate[] collisionCircleCenters = null;
-
+	
+	public static ReedsSheppCarPlannerLib INSTANCE = null;
 	static {
 		NativeLibrary.addSearchPath("simplereedssheppcarplanner", "SimpleReedsSheppCarPlanner");
+		INSTANCE = Native.loadLibrary("simplereedssheppcarplanner", ReedsSheppCarPlannerLib.class);
 	}
 	
 	public void setFootprint(Coordinate ... coords) {
@@ -205,7 +208,7 @@ public class ReedsSheppCarPlanner {
 			path = new PointerByReference();
 			pathLength = new IntByReference();
 			if (collisionCircleCenters == null) {
-				if (!ReedsSheppCarPlannerLib.INSTANCE.plan(mapFilename, mapResolution, robotRadius, start_.getX(), start_.getY(), start_.getTheta(), goal_.getX(), goal_.getY(), goal_.getTheta(), path, pathLength, distanceBetweenPathPoints, turningRadius)) return false;
+				if (!INSTANCE.plan(mapFilename, mapResolution, robotRadius, start_.getX(), start_.getY(), start_.getTheta(), goal_.getX(), goal_.getY(), goal_.getTheta(), path, pathLength, distanceBetweenPathPoints, turningRadius)) return false;
 			}
 			else {
 				double[] xCoords = new double[collisionCircleCenters.length];
@@ -216,7 +219,7 @@ public class ReedsSheppCarPlanner {
 					yCoords[j] = collisionCircleCenters[j].y;
 				}
 				System.out.println("Path planning with " + collisionCircleCenters.length + " circle positions");
-				if (!ReedsSheppCarPlannerLib.INSTANCE.plan_multiple_circles(mapFilename, mapResolution, robotRadius, xCoords, yCoords, numCoords, start_.getX(), start_.getY(), start_.getTheta(), goal_.getX(), goal_.getY(), goal_.getTheta(), path, pathLength, distanceBetweenPathPoints, turningRadius)) return false;
+				if (!INSTANCE.plan_multiple_circles(mapFilename, mapResolution, robotRadius, xCoords, yCoords, numCoords, start_.getX(), start_.getY(), start_.getTheta(), goal_.getX(), goal_.getY(), goal_.getTheta(), path, pathLength, distanceBetweenPathPoints, turningRadius)) return false;
 			}
 			final Pointer pathVals = path.getValue();
 			final PathPose valsRef = new PathPose(pathVals);
@@ -225,7 +228,7 @@ public class ReedsSheppCarPlanner {
 			PathPose[] pathPoses = (PathPose[])valsRef.toArray(numVals);
 			if (i == 0) finalPath.add(new PoseSteering(pathPoses[0].x, pathPoses[0].y, pathPoses[0].theta, 0.0));
 			for (int j = 1; j < pathPoses.length; j++) finalPath.add(new PoseSteering(pathPoses[j].x, pathPoses[j].y, pathPoses[j].theta, 0.0));
-			ReedsSheppCarPlannerLib.INSTANCE.cleanupPath(pathVals);
+			INSTANCE.cleanupPath(pathVals);
 		}
 		this.pathPS = finalPath.toArray(new PoseSteering[finalPath.size()]);
 		return true;
