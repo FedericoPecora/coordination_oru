@@ -78,7 +78,9 @@ public class Missions {
 	 * @return A value within [-PI,PI)
 	 */
 	public static double wrapAngle180(double th) {
-		return Math.atan2(Math.sin(th), Math.cos(th));
+		double ret = Math.atan2(Math.sin(th), Math.cos(th));
+		if (Math.abs(ret-Math.PI) < 0.00001) return -Math.PI;
+		return ret;
 	}
 
 	/**

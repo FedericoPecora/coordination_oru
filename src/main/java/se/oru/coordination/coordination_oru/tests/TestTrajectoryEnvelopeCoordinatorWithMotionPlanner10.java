@@ -61,12 +61,14 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner10 {
 		tec.setupGUI(yamlFile);
 
 		tec.setUseInternalCriticalPoints(false);
+		tec.setBreakDeadlocks(true);
 
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
 		rsp.setMapFilename("maps"+File.separator+Missions.getProperty("image", yamlFile));
 		double res = Double.parseDouble(Missions.getProperty("resolution", yamlFile));
 		rsp.setMapResolution(res);
-		rsp.setRobotRadius(1.1);
+		rsp.setRadius(0.2);
+		rsp.setFootprint(footprint1, footprint2, footprint3, footprint4);
 		rsp.setTurningRadius(4.0);
 		rsp.setDistanceBetweenPathPoints(0.5);
 		

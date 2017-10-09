@@ -75,7 +75,7 @@ public abstract class TrajectoryEnvelopeTrackerDummy extends AbstractTrajectoryE
 				//All the befores that involve the next driving
 				if (before.getTo().equals(drivingFirstSubEnv)) {
 					//Someone depends on when this parking finishes, so cannot interrupt!
-					metaCSPLogger.finest("Robot " + te.getRobotID() + " should wait to end parking: " + before);
+					metaCSPLogger.info("Robot " + te.getRobotID() + " should wait to end parking: " + before);
 					return false;
 				}
 			}
@@ -87,7 +87,7 @@ public abstract class TrajectoryEnvelopeTrackerDummy extends AbstractTrajectoryE
 	
 	@Override
 	public void run() {
-				
+
 		//Just do prolong the earliest end time until finished by external call to finishParking()
 		while (!parkingFinished) {
 			updateDeadline(this.te, DELTA_FUTURE);
@@ -96,20 +96,21 @@ public abstract class TrajectoryEnvelopeTrackerDummy extends AbstractTrajectoryE
 			catch (InterruptedException e) { e.printStackTrace(); }
 		}
 		
-		//Now wait until earliest end time (as there could be some driving envelope after this which should not start)
-		while (this.te.getTemporalVariable().getEET() > getCurrentTimeInMillis()) {
-			
-			//Find out if nobody is waiting, in which case break early!			
-			synchronized(solver) {
-				if (canInterrupt()) {
-					fixDeadline(te, 0);
-					break;
-				}
-			}
-			
-			try { Thread.sleep(trackingPeriodInMillis); }
-			catch (InterruptedException e) { e.printStackTrace(); }
-		}
+		fixDeadline(te, 0);
+//		//Now wait until earliest end time (as there could be some driving envelope after this which should not start)
+//		while (this.te.getTemporalVariable().getEET() > getCurrentTimeInMillis()) {
+//			
+//			//Find out if nobody is waiting, in which case break early!			
+//			synchronized(solver) {
+//				if (canInterrupt()) {
+//					fixDeadline(te, 0);
+//					break;
+//				}
+//			}
+//			
+//			try { Thread.sleep(trackingPeriodInMillis); }
+//			catch (InterruptedException e) { e.printStackTrace(); }
+//		}
 		
 		//Deadline will now be fixed (by superclass) so it is decided that this parking cannot be prolonged
 		//(and thus scheduling will not be able to move FW any driving envelopes that are met by this parking)

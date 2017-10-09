@@ -72,6 +72,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected static final long STOPPING_TIME = 5000;
 	protected int CONTROL_PERIOD;
 	protected double TEMPORAL_RESOLUTION;
+	
+	public static int EFFECTIVE_CONTROL_PERIOD = 0;
 
 	protected boolean overlay = false;
 
@@ -516,7 +518,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			yieldingRobotTE = cs.getTe2();			
 		}
 
-		if (leadingRobotCurrentPathIndex <= leadingRobotStart) return Math.max(0, yieldingRobotStart-TRAILING_PATH_POINTS);
+		if (leadingRobotCurrentPathIndex <= leadingRobotStart) {
+			return Math.max(0, yieldingRobotStart-TRAILING_PATH_POINTS);
+		}
 		
 		//Compute sweep of robot 1's footprint from current position to LOOKAHEAD
 		Pose leadingRobotPose = leadingRobotTE.getTrajectory().getPose()[leadingRobotCurrentPathIndex];
@@ -527,12 +531,12 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		}
 
 		//Return pose at which yielding robot should stop given driving robot's projected sweep
-		int ret = yieldingRobotStart;
 		for (int i = yieldingRobotStart; i < yieldingRobotEnd; i++) {
 			Pose yieldingRobotPose = yieldingRobotTE.getTrajectory().getPose()[i];
 			Geometry yieldingRobotInPose = TrajectoryEnvelope.getFootprint(yieldingRobotTE.getFootprint(), yieldingRobotPose.getX(), yieldingRobotPose.getY(), yieldingRobotPose.getTheta());
-			if (leadingRobotInPose.intersects(yieldingRobotInPose)) return Math.max(0, ret-TRAILING_PATH_POINTS);
-			ret++;
+			if (leadingRobotInPose.intersects(yieldingRobotInPose)) {
+				return Math.max(0, i-TRAILING_PATH_POINTS);
+			}
 		}
 
 		//The only situation where the above has not returned is when robot 2 should
@@ -746,6 +750,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	//Update and set the critical points
 	protected void updateDependencies() {
 
+		//System.out.println("Caller of updateDependencies(): " + Thread.currentThread().getStackTrace()[2]);
+		
 		HashMap<Integer,TreeSet<Dependency>> currentDeps = new HashMap<Integer,TreeSet<Dependency>>();
 
 		//Make deps from un-reached stopping points
@@ -825,8 +831,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					}
 					
 					int waitingPoint = getCriticalPoint(waitingRobotID, cs, drivingCurrentIndex);
-					if (waitingPoint >= waitingCurrentIndex) {
-						metaCSPLogger.finest("Robot" + drivingRobotID + " is parked, so Robot" + waitingRobotID + " will have to wait");	
+					//System.out.println("Robot" + drivingRobotID + " is parked, so Robot" + waitingRobotID + " SHOULD wait");
+					boolean alreadyCommunicated = (communicatedCPs.containsKey(waitingTracker) && communicatedCPs.get(waitingTracker) == waitingPoint); 
+					if (alreadyCommunicated || waitingPoint >= waitingCurrentIndex) {
+						metaCSPLogger.info("Robot" + drivingRobotID + " is parked, so Robot" + waitingRobotID + " will have to wait");	
 						//Make new dependency
 						int drivingCSEnd = -1;
 						if (waitingRobotID == cs.getTe1().getRobotID()) drivingCSEnd = cs.getTe2End();
@@ -837,7 +845,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						criticalSectionsToDeps.put(cs, dep);
 					}
 					else {
-						System.out.println("** Warning ** Robot" + waitingRobotID + " cannot stop at " + waitingPoint + " for Robot" + drivingRobotID + " (which is parked) because it is already at " + waitingCurrentIndex);
+						metaCSPLogger.severe("** Warning ** Robot" + waitingRobotID + " cannot stop at " + waitingPoint + " for Robot" + drivingRobotID + " (which is parked) because it is already at " + waitingCurrentIndex);
 					}
 				}
 
@@ -950,7 +958,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				}
 			}
 			findCycles();
-		}
+		}		
 	}
 
 
@@ -1155,6 +1163,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	public void computeCriticalSectionsAndStartTrackingAddedMission() {
 		synchronized(solver) {
 			computeCriticalSections();
+			updateDependencies();
 			startTrackingAddedMissions();
 		}
 	}
@@ -1177,8 +1186,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				meets1.setTo(endParking);
 
 				if (!solver.addConstraints(meets1)) {
-					metaCSPLogger.severe("ERROR: Could not add constriants " + meets1);
-					throw new Error("Could not add constriants " + meets1);		
+					metaCSPLogger.severe("ERROR: Could not add constraints " + meets1);
+					throw new Error("Could not add constraints " + meets1);		
 				}
 
 				//Add onStart call back that cleans up parking tracker
@@ -1245,8 +1254,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							for (Dependency dep : toRemove) disallowedDependencies.remove(dep);
 						}
 
-						computeCriticalSections();
-						updateDependencies();
+						synchronized (solver) {
+							computeCriticalSections();
+							updateDependencies();							
+						}
 
 					}
 
@@ -1487,6 +1498,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			int numCon = solver.getConstraintNetwork().getConstraints().length;
 			ret.add("Status @ "  + getCurrentTimeInMillis() + " ms");
 
+			ret.add(CONNECTOR_BRANCH + "Eff period ..... " + EFFECTIVE_CONTROL_PERIOD + " ms");
 			ret.add(CONNECTOR_BRANCH + "Network ........ " + numVar + " variables, " + numCon + " constriants");
 			HashSet<Integer> allRobots = new HashSet<Integer>();
 			for (Integer robotID : trackers.keySet()) {
@@ -1529,6 +1541,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected void setupInferenceCallback() {
 
 		Thread inference = new Thread("Coordinator inference") {
+			private long threadLastUpdate = Calendar.getInstance().getTimeInMillis();
 			@Override
 			public void run() {
 				while (true) {
@@ -1542,6 +1555,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					//Sleep a little...
 					try { Thread.sleep(CONTROL_PERIOD); }
 					catch (InterruptedException e) { e.printStackTrace(); }
+					
+					long threadCurrentUpdate = Calendar.getInstance().getTimeInMillis();
+					EFFECTIVE_CONTROL_PERIOD = (int)(threadCurrentUpdate-threadLastUpdate);
+					threadLastUpdate = threadCurrentUpdate;
 				}
 			}
 		};

@@ -61,8 +61,9 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner16 {
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
 
+		String yamlFile = "maps/map-empty.yaml";
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
-		tec.setupGUI(null);
+		tec.setupGUI(yamlFile);
 
 		Pose startRobot1 = new Pose(25.0,5.0,0.0);
 		Pose goalRobot11 = new Pose(20.0,7.0,0.0);
@@ -81,12 +82,13 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner16 {
 		tec.placeRobot(1, startRobot1);
 		tec.placeRobot(2, startRobot2);
 
-		String yamlFile = "maps/map-empty.yaml";
+		
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
 		rsp.setMapFilename("maps"+File.separator+Missions.getProperty("image", yamlFile));
 		double res = 0.2;// Double.parseDouble(getProperty("resolution", yamlFile));
 		rsp.setMapResolution(res);
-		rsp.setRobotRadius(1.1);
+		rsp.setRadius(0.2);
+		rsp.setFootprint(footprint1, footprint2, footprint3, footprint4);
 		rsp.setTurningRadius(4.0);
 		rsp.setDistanceBetweenPathPoints(0.1);
 

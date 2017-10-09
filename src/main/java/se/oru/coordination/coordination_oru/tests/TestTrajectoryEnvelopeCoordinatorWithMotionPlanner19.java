@@ -71,23 +71,24 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner19 {
 		
 		//MetaCSPLogging.setLevel(tec.getClass().getSuperclass(), Level.FINEST);
 
-		Pose startRobot11 = new Pose(0.0,15.0,-Math.PI/2.0);
-		Pose finalRobot11 = new Pose(5.0,5.0,0.0);
+		Pose startRobot11 = new Pose(3.0,15.0,-Math.PI/2.0);
+		Pose finalRobot11 = new Pose(8.0,5.0,0.0);
 		
-		Pose startRobot12 = new Pose(5.0,5.0,0.0);
-		Pose finalRobot12 = new Pose(25.0,5.0,0.0);
+		Pose startRobot12 = new Pose(8.0,5.0,0.0);
+		Pose finalRobot12 = new Pose(28.0,5.0,0.0);
 
-		Pose startRobot21 = new Pose(7.0,15.0,-Math.PI/2.0);
-		Pose finalRobot21 = new Pose(12.0,5.0,0.0);
+		Pose startRobot21 = new Pose(10.0,15.0,-Math.PI/2.0);
+		Pose finalRobot21 = new Pose(15.0,5.0,0.0);
 		
-		Pose startRobot22 = new Pose(12.0,5.0,0.0);
-		Pose finalRobot22 = new Pose(35.0,5.0,0.0);
+		Pose startRobot22 = new Pose(15.0,5.0,0.0);
+		Pose finalRobot22 = new Pose(40.0,5.0,0.0);
 
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
 		rsp.setMapFilename("maps"+File.separator+Missions.getProperty("image", yamlFile));
 		double res = 0.2;// Double.parseDouble(getProperty("resolution", yamlFile));
 		rsp.setMapResolution(res);
-		rsp.setRobotRadius(1.1);
+		rsp.setRadius(0.2);
+		rsp.setFootprint(footprint1,footprint2,footprint3,footprint4);
 		rsp.setTurningRadius(4.0);
 		rsp.setDistanceBetweenPathPoints(0.3);
 

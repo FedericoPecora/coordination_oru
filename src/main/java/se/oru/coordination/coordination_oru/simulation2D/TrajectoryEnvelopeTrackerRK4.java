@@ -150,6 +150,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 		//Compute where to slow down (can do forward here for both states...)
 		while (tempStateBW.getVelocity() < MAX_VELOCITY*1.1) {
 			double dampeningBW = getCurvatureDampening(getRobotReport(tempStateBW).getPathIndex(), true);
+			//Use slightly conservative max deceleration (which is positive acceleration since we simulate FW dynamics)
 			integrateRK4(tempStateBW, time, deltaTime, false, MAX_VELOCITY*1.1, dampeningBW, MAX_ACCELERATION);
 			time += deltaTime;
 			ret.put(tempStateBW.getVelocity(), tempStateBW.getPosition());
@@ -208,7 +209,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 			
 	@Override
 	public void setCriticalPoint(int criticalPointToSet) {
-
+		
 		if (this.criticalPoint != criticalPointToSet) {
 			
 			//A new intermediate index to stop at has been given
@@ -359,7 +360,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 								
 				//Vel < 0 hence we are at CP, thus we need to skip integration
 				if (!atCP /*&& getRobotReport().getPathIndex() == criticalPoint*/) {
-					metaCSPLogger.info("At critical point (" + te.getComponent() + "): " + criticalPoint);
+					metaCSPLogger.info("At critical point (" + te.getComponent() + "): " + criticalPoint + " (" + getRobotReport().getPathIndex() + ")");
 					atCP = true;
 				}
 				

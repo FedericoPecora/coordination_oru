@@ -54,10 +54,10 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner {
 		tec.setForwardModel(1, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getControlPeriod(), tec.getTemporalResolution()));
 		tec.setForwardModel(2, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getControlPeriod(), tec.getTemporalResolution()));
 
-		Coordinate footprint1 = new Coordinate(-1.0,0.5);
-		Coordinate footprint2 = new Coordinate(1.0,0.5);
-		Coordinate footprint3 = new Coordinate(1.0,-0.5);
-		Coordinate footprint4 = new Coordinate(-1.0,-0.5);
+		Coordinate footprint1 = new Coordinate(-2.0,0.5);
+		Coordinate footprint2 = new Coordinate(2.0,0.5);
+		Coordinate footprint3 = new Coordinate(2.0,-0.5);
+		Coordinate footprint4 = new Coordinate(-2.0,-0.5);
 		tec.setDefaultFootprint(footprint1, footprint2, footprint3, footprint4);
 
 		//Need to setup infrastructure that maintains the representation
@@ -69,6 +69,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner {
 		//tec.setupGUI(null);
 
 		tec.setUseInternalCriticalPoints(false);
+		tec.setBreakDeadlocks(true);
 
 		//MetaCSPLogging.setLevel(tec.getClass().getSuperclass(), Level.FINEST);
 
@@ -77,14 +78,18 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner {
 		rsp.setMapFilename("maps"+File.separator+Missions.getProperty("image", yamlFile));
 		double res = Double.parseDouble(Missions.getProperty("resolution", yamlFile));
 		rsp.setMapResolution(res);
-		rsp.setRobotRadius(1.1);
 		rsp.setTurningRadius(4.0);
-		rsp.setDistanceBetweenPathPoints(0.5);
+		rsp.setDistanceBetweenPathPoints(0.05);
+		//rsp.setRobotRadius(0.5);
+		//rsp.setCirclePositions(new Coordinate(-1.5,0.0), new Coordinate(0.0,0.0), new Coordinate(1.5,0.0));
+		rsp.setRadius(0.5);
+		rsp.setFootprint(footprint1, footprint2, footprint3, footprint4);
+		//rsp.setCirclePositions(footprint1, footprint2, footprint3, footprint4);
 
 		Pose startPoseRobot1 = new Pose(2.0,28.0,0.0);
-		Pose goalPoseRobot1 = new Pose(1.0,1.0,0.0);
+		Pose goalPoseRobot1 = new Pose(5.0,1.0,0.0);
 		Pose startPoseRobot2 = new Pose(2.0,38.0,0.0);
-		Pose goalPoseRobot2 = new Pose(2.0,3.0,0.0);
+		Pose goalPoseRobot2 = new Pose(2.5,3.0,0.0);
 
 		//Place robots in their initial locations (looked up in the data file that was loaded above)
 		// -- creates a trajectory envelope for each location, representing the fact that the robot is parked

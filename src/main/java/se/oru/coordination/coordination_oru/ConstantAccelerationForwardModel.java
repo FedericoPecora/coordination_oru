@@ -36,7 +36,7 @@ public class ConstantAccelerationForwardModel implements ForwardModel {
 		double time = 0.0;
 		double deltaTime = 0.0001;
 		if (CONTROL_PERIOD != -1) {
-			while (time*TEMPORAL_RESOLUTION < CONTROL_PERIOD*numControlPeriodsFreeRun) {
+			while (time*TEMPORAL_RESOLUTION < Math.max(CONTROL_PERIOD*numControlPeriodsFreeRun,TrajectoryEnvelopeCoordinator.EFFECTIVE_CONTROL_PERIOD)) {
 				se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeTrackerRK4.integrateRK4(state, time, deltaTime, false, maxVel, 1.0, maxAccel*1.1);
 				time += deltaTime;
 			}

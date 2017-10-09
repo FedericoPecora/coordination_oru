@@ -82,7 +82,8 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner4 {
 		rsp.setMapFilename(mapFile);
 		double res = Double.parseDouble(Missions.getProperty("resolution", yamlFile));
 		rsp.setMapResolution(res);
-		rsp.setRobotRadius(1.1);
+		rsp.setRadius(0.2);
+		rsp.setFootprint(footprint1, footprint2, footprint3, footprint4);
 		rsp.setTurningRadius(4.0);
 		rsp.setDistanceBetweenPathPoints(0.5);
 		double deltaY = 3;

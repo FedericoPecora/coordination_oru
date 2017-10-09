@@ -14,14 +14,20 @@ import javax.imageio.ImageIO;
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 
+import com.sun.jna.NativeLibrary;
 import com.sun.jna.Pointer;
 import com.sun.jna.ptr.IntByReference;
 import com.sun.jna.ptr.PointerByReference;
 import com.vividsolutions.jts.awt.ShapeWriter;
+import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.Polygon;
 import com.vividsolutions.jts.geom.util.AffineTransformation;
 
 import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppCarPlannerLib.PathPose;
+import se.oru.coordination.coordination_oru.util.GeometrySmoother;
+import se.oru.coordination.coordination_oru.util.GeometrySmoother.SmootherControl;
 import se.oru.coordination.coordination_oru.util.Missions;
 
 public class ReedsSheppCarPlanner {
@@ -39,7 +45,39 @@ public class ReedsSheppCarPlanner {
 	private double distanceBetweenPathPoints = 0.5;
 	private double turningRadius = 1.0;
 	private PoseSteering[] pathPS = null;
+	private Coordinate[] collisionCircleCenters = null;
 
+	static {
+		NativeLibrary.addSearchPath("simplereedssheppcarplanner", "SimpleReedsSheppCarPlanner");
+	}
+	
+	public void setFootprint(Coordinate ... coords) {
+		GeometryFactory gf = new GeometryFactory();
+		Coordinate[] newCoords = new Coordinate[coords.length+1];
+		for (int i = 0; i < coords.length; i++) {
+			newCoords[i] = coords[i];
+		}
+		newCoords[newCoords.length-1] = coords[0];
+		Polygon footprint = gf.createPolygon(newCoords);
+		GeometrySmoother gs = new GeometrySmoother(gf);
+		SmootherControl sc = new SmootherControl() {
+	        public double getMinLength() {
+	            return robotRadius;
+	        }
+	        
+	        public int getNumVertices(double length) {
+	            return (int)(length/(2*robotRadius))+2;
+	        }
+	    };
+	    gs.setControl(sc);
+	    Polygon smoothFootprint = gs.smooth(footprint, 1.0);
+		collisionCircleCenters = smoothFootprint.getCoordinates();
+	}
+	
+	public Coordinate[] getCollisionCircleCenters() {
+		return collisionCircleCenters;
+	}
+	
 	public ReedsSheppCarPlanner() {
 		deleteDir(new File(TEMP_MAP_DIR));
 		new File(TEMP_MAP_DIR).mkdir();
@@ -60,6 +98,10 @@ public class ReedsSheppCarPlanner {
 		for (Pose pose : p) newGoals.add(new Pose(pose.getX(),pose.getY(),Missions.wrapAngle180(pose.getTheta())));
 		this.goal = newGoals.toArray(new Pose[newGoals.size()]);
 	}
+	
+	public void setCirclePositions(Coordinate ... circlePositions) {
+		this.collisionCircleCenters = circlePositions;
+	}
 
 	public void setMapFilename(String filename) {
 		this.mapFilename = filename;
@@ -70,7 +112,12 @@ public class ReedsSheppCarPlanner {
 		this.mapResolution = res;
 	}
 
+	@Deprecated
 	public void setRobotRadius(double rad) {
+		this.robotRadius = rad;
+	}
+
+	public void setRadius(double rad) {
 		this.robotRadius = rad;
 	}
 
@@ -157,7 +204,20 @@ public class ReedsSheppCarPlanner {
 			else start_ = this.goal[i-1];
 			path = new PointerByReference();
 			pathLength = new IntByReference();
-			if (!ReedsSheppCarPlannerLib.INSTANCE.plan(mapFilename, mapResolution, robotRadius, start_.getX(), start_.getY(), start_.getTheta(), goal_.getX(), goal_.getY(), goal_.getTheta(), path, pathLength, distanceBetweenPathPoints, turningRadius)) return false;
+			if (collisionCircleCenters == null) {
+				if (!ReedsSheppCarPlannerLib.INSTANCE.plan(mapFilename, mapResolution, robotRadius, start_.getX(), start_.getY(), start_.getTheta(), goal_.getX(), goal_.getY(), goal_.getTheta(), path, pathLength, distanceBetweenPathPoints, turningRadius)) return false;
+			}
+			else {
+				double[] xCoords = new double[collisionCircleCenters.length];
+				double[] yCoords = new double[collisionCircleCenters.length];
+				int numCoords = collisionCircleCenters.length;
+				for (int j = 0; j < collisionCircleCenters.length; j++) {
+					xCoords[j] = collisionCircleCenters[j].x;
+					yCoords[j] = collisionCircleCenters[j].y;
+				}
+				System.out.println("Path planning with " + collisionCircleCenters.length + " circle positions");
+				if (!ReedsSheppCarPlannerLib.INSTANCE.plan_multiple_circles(mapFilename, mapResolution, robotRadius, xCoords, yCoords, numCoords, start_.getX(), start_.getY(), start_.getTheta(), goal_.getX(), goal_.getY(), goal_.getTheta(), path, pathLength, distanceBetweenPathPoints, turningRadius)) return false;
+			}
 			final Pointer pathVals = path.getValue();
 			final PathPose valsRef = new PathPose(pathVals);
 			valsRef.read();

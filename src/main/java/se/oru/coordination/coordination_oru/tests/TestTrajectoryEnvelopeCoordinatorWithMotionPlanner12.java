@@ -96,7 +96,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner12 {
 		rsp.setMapFilename(mapFile);
 		double res = Double.parseDouble(Missions.getProperty("resolution", yamlFile));
 		rsp.setMapResolution(res);
-		rsp.setRobotRadius(1.1);
+		rsp.setRadius(0.2);
 		rsp.setTurningRadius(4.0);
 		rsp.setDistanceBetweenPathPoints(0.5);
 
@@ -115,16 +115,19 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner12 {
 		tec.placeRobot(2, startPoseRobot2);
 		tec.placeRobot(3, startPoseRobot3);
 
+		rsp.setFootprint(fp1);
 		rsp.setStart(startPoseRobot1);
 		rsp.setGoals(goalPoseRobot1);
 		if (!rsp.plan()) throw new Error ("No path between " + startPoseRobot1 + " and " + goalPoseRobot1);
 		PoseSteering[] pss1 = rsp.getPath();
 
+		rsp.setFootprint(fp2);
 		rsp.setStart(startPoseRobot2);
 		rsp.setGoals(goalPoseRobot2);
 		if (!rsp.plan()) throw new Error ("No path between " + startPoseRobot2 + " and " + goalPoseRobot2);
 		PoseSteering[] pss2 = rsp.getPath();
 
+		rsp.setFootprint(fp3);
 		rsp.setStart(startPoseRobot3);
 		rsp.setGoals(goalPoseRobot3);
 		if (!rsp.plan()) throw new Error ("No path between " + startPoseRobot3 + " and " + goalPoseRobot3);

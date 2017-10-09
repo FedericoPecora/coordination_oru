@@ -59,6 +59,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner13 {
 
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
+		tec.setCheckEscapePoses(true);
 
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		tec.setupGUI(null);
@@ -81,7 +82,8 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner13 {
 		rsp.setMapFilename("maps"+File.separator+Missions.getProperty("image", yamlFile));
 		double res = 0.2;// Double.parseDouble(getProperty("resolution", yamlFile));
 		rsp.setMapResolution(res);
-		rsp.setRobotRadius(1.1);
+		rsp.setRadius(0.2);
+		rsp.setFootprint(footprint1,footprint2,footprint3,footprint4);
 		rsp.setTurningRadius(4.0);
 		rsp.setDistanceBetweenPathPoints(0.1);
 		
