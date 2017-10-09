@@ -229,6 +229,11 @@ public class PathEditor {
 		}
 	}
 	
+	public void addAbstractAction(AbstractAction aa, int keyEvent, int modifiers, String description) {
+		panel.getInputMap().put(KeyStroke.getKeyStroke(keyEvent,modifiers),description);
+		panel.getActionMap().put(description,aa);
+	}
+	
 	private void setupGUI() {
 		panel = JTSDrawingPanel.makeEmpty("Path Editor");
 
@@ -628,7 +633,7 @@ public class PathEditor {
 						double y = path.get(selectedPathPointOneInt).getPose().getY();
 						double th = path.get(selectedPathPointOneInt).getPose().getTheta();
 						th -= deltaT;
-						th = Missions.wrapAngle360(th);
+						th = Missions.wrapAngle180(th);
 						PoseSteering newPoseSteering = new PoseSteering(x, y, th, path.get(selectedPathPointOneInt).getSteering());
 						path.set(selectedPathPointOneInt, newPoseSteering);
 					}
@@ -643,7 +648,7 @@ public class PathEditor {
 						at.rotate(-deltaT);
 						at.translate(toOriginX,toOriginY);
 						obstacles.set(selectedObsOneInt,at.transform(obs));
-						obstacleThetas.set(selectedObsOneInt,obstacleThetas.get(selectedObsOneInt)-deltaT);
+						obstacleThetas.set(selectedObsOneInt,Missions.wrapAngle180(obstacleThetas.get(selectedObsOneInt)-deltaT));
 					}
 				}
 				highlightPathPoints();
@@ -664,7 +669,7 @@ public class PathEditor {
 						double y = path.get(selectedPathPointOneInt).getPose().getY();
 						double th = path.get(selectedPathPointOneInt).getPose().getTheta();
 						th += deltaT;
-						th = Missions.wrapAngle360(th);
+						th = Missions.wrapAngle180(th);
 						PoseSteering newPoseSteering = new PoseSteering(x, y, th, path.get(selectedPathPointOneInt).getSteering());
 						path.set(selectedPathPointOneInt, newPoseSteering);
 					}
@@ -679,7 +684,7 @@ public class PathEditor {
 						at.rotate(deltaT);
 						at.translate(toOriginX,toOriginY);
 						obstacles.set(selectedObsOneInt,at.transform(obs));
-						obstacleThetas.set(selectedObsOneInt,obstacleThetas.get(selectedObsOneInt)+deltaT);
+						obstacleThetas.set(selectedObsOneInt,Missions.wrapAngle180(obstacleThetas.get(selectedObsOneInt)+deltaT));
 					}
 				}
 				highlightPathPoints();
