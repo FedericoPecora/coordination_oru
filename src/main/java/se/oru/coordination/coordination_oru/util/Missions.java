@@ -71,6 +71,20 @@ public class Missions {
 	public static Mission getMission(int robotID, int missionNumber) {
 		return missions.get(robotID).get(missionNumber);
 	}
+	
+	/**
+	 * Pop the first mission from the queue of a given robot. 
+	 * @param robotID The ID of the robot.
+	 * @return The first mission from the queue of a given robot.
+	 */
+	public static Mission popMission(int robotID) {
+		if (!missions.get(robotID).isEmpty()) {
+			Mission m = missions.get(robotID).get(0);
+			missions.get(robotID).remove(0);
+			return m;
+		}
+		return null;
+	}
 
 	/**
 	 * Normalize an angle to be within [-PI,PI).

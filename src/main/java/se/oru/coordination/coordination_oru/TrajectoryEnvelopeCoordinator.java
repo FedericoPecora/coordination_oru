@@ -38,6 +38,7 @@ import org.metacsp.utility.logging.MetaCSPLogging;
 
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryFactory;
 
 import se.oru.coordination.coordination_oru.util.StringUtils;
 
@@ -1384,6 +1385,29 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			// TODO Auto-generated catch block
 			e2.printStackTrace();
 		}		
+	}
+	
+	public void setGUIFrame(double minX, double minY, double maxX, double maxY) {
+		GeometryFactory gf = new GeometryFactory();
+		final Geometry frame = gf.createPolygon(new Coordinate[] {
+				new Coordinate(minX,minY),
+				new Coordinate(minX,maxY),
+				new Coordinate(maxX,maxY),
+				new Coordinate(maxX,minY),
+				new Coordinate(minX,minY)
+		});
+		
+		Thread frameThread = new Thread() {
+			public void run() {
+				while (true) {
+					panel.addGeometry("_frame", frame, true, false, true, "#000000");
+					try { Thread.sleep(200); }
+					catch (InterruptedException e) { e.printStackTrace(); }
+				}
+			}
+		};
+		frameThread.start();
+		
 	}
 	
 	/**

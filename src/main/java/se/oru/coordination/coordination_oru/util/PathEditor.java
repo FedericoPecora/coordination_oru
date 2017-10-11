@@ -41,6 +41,7 @@ public class PathEditor {
 	private static double MIN_DISTANCE_BETWEEN_PATH_POINTS = 0.4;
 	private String pathFileName = null;
 	private String mapFileName = null;
+	private String posesFileName = null;
 	private boolean selectionPathPointInputListen = false;
 	private String selectionString = "";
 	private ArrayList<Integer> selectedPathPointsInt = new ArrayList<Integer>();
@@ -56,8 +57,8 @@ public class PathEditor {
 	private double deltaTR = 0.1;
 	private String newFileSuffix = ".new";
 	private Coordinate[] obstacleFootprint = null;
-	private ArrayList<Point> obstacleCenters = new ArrayList<Point>();
-	private ArrayList<Double> obstacleThetas = new ArrayList<Double>();
+	private ArrayList<Pose> obstacleCenters = new ArrayList<Pose>();
+	private ArrayList<String> obstacleNames = new ArrayList<String>();
 	
 	private static String TEMP_MAP_DIR = ".tempMapsPathEditor";
 	
@@ -69,16 +70,58 @@ public class PathEditor {
 		obstacleFootprint[footprint.length] = footprint[0];
 	}
 	
-	public PathEditor(String pathFileName, String mapFileName, double deltaX, double deltaY, double deltaTheta, String newFileSuffix) {
+	public void saveObstaclesToPoses(String fileName) {
+        try {
+            File file = new File(fileName);
+            PrintWriter writer = new PrintWriter(file);
+            for (int i = 0; i < obstacleCenters.size(); i++) {
+            	writer.println(obstacleNames.get(i) + " " + obstacleCenters.get(i).getX() + " " + obstacleCenters.get(i).getY() + " " + obstacleCenters.get(i).getTheta());
+            }
+            writer.close();
+        }
+        catch (Exception e) { e.printStackTrace(); }
+		
+	}
+	
+	public void loadObstaclesFromPoses() {
+		try {
+			Scanner in = new Scanner(new FileReader(posesFileName));
+			while (in.hasNextLine()) {
+				String line = in.nextLine().trim();
+				if (line.length() != 0 && !line.startsWith("#")) {
+					String[] oneline = line.split(" |\t");
+					Pose ps = null;
+					String obsName = oneline[0];
+					obstacleNames.add(obsName);
+					ps = new Pose(
+							new Double(oneline[1]).doubleValue(),
+							new Double(oneline[2]).doubleValue(),
+							new Double(oneline[3]).doubleValue());
+					Geometry obs = makeObstacle(ps);
+					int id = obstacles.size()-1;
+					panel.addGeometry("obs_"+id, obs, false, false, true, "#cc3300");
+					selectedObsInt.add(id);
+				}
+			}
+			in.close();
+			clearPathPointSelection();
+			highlightObstacles();
+		}
+		catch (FileNotFoundException e) { e.printStackTrace(); }
+	}
+	
+	public PathEditor(String pathFileName, String mapFileName, String posesFileName, double deltaX, double deltaY, double deltaTheta, String newFileSuffix) {
 		this.pathFileName = pathFileName;
 		this.mapFileName = mapFileName;
+		this.posesFileName = posesFileName;
 		this.deltaX = deltaX;
 		this.deltaY = deltaY;
 		this.deltaT = deltaTheta;
 		this.newFileSuffix = newFileSuffix;
 		this.setupGUI();
-		if (pathFileName != null) this.readPath(pathFileName);
-		if (mapFileName != null) panel.setMap(mapFileName);
+		if (pathFileName != null) this.readPath();
+		if (mapFileName != null) panel.setMap(this.mapFileName);
+		//if (posesFileName != null) this.loadObstaclesFromPoses();
 		panel.updatePanel();
 		this.deleteDir(new File(TEMP_MAP_DIR));
 		new File(TEMP_MAP_DIR).mkdir();
@@ -98,11 +141,15 @@ public class PathEditor {
 	}
 	
 	public PathEditor(String pathFileName) {
-		this(pathFileName,null,0.1,0.1,0.1,".new");
+		this(pathFileName,null,null,0.1,0.1,0.1,".new");
 	}
 
 	public PathEditor(String pathFileName, String mapFileName) {
-		this(pathFileName,mapFileName,0.1,0.1,0.1,".new");
+		this(pathFileName,mapFileName,null,0.1,0.1,0.1,".new");
+	}
+
+	public PathEditor(String pathFileName, String mapFileName, String posesFileName) {
+		this(pathFileName,mapFileName,posesFileName,0.1,0.1,0.1,".new");
 	}
 
 	private double[] getMinXYMaxXY() {
@@ -159,23 +206,19 @@ public class PathEditor {
 	private Geometry makeObstacle(Pose p) {
 		GeometryFactory gf = new GeometryFactory();
 		Geometry geom = null;
-		Point center = null;
 		if (obstacleFootprint == null) {
 			geom = gf.createPolygon(new Coordinate[] { new Coordinate(0.0,0.0), new Coordinate(0.0,OBSTACLE_SIZE), new Coordinate(OBSTACLE_SIZE,OBSTACLE_SIZE), new Coordinate(OBSTACLE_SIZE,0.0), new Coordinate(0.0,0.0) });
-			center = gf.createPoint(geom.getCentroid().getCoordinate());
 		}
 		else {
 			geom = gf.createPolygon(obstacleFootprint);
-			center = gf.createPoint(new Coordinate(0.0,0.0));
 		}		
 		AffineTransformation at = new AffineTransformation();
 		at.rotate(p.getTheta());
 		at.translate(p.getX(), p.getY());
 		Geometry transGeom = at.transform(geom);
-		Point transCenter = (Point)at.transform(center);
+		Pose center = new Pose(p.getX(), p.getY(), p.getTheta());
 		obstacles.add(transGeom);
-		obstacleCenters.add(transCenter);
-		obstacleThetas.add(p.getTheta());
+		obstacleCenters.add(center);
 		return transGeom;
 	}
 	
@@ -283,6 +326,7 @@ public class PathEditor {
 						int id = obstacles.size()-1;
 						panel.addGeometry("obs_"+id, obs, false, false, true, "#cc3300");
 						selectedObsInt.add(id);
+						obstacleNames.add("obs_"+id);
 					}
 					clearPathPointSelection();
 					highlightObstacles();
@@ -335,7 +379,7 @@ public class PathEditor {
 		};
 		panel.getActionMap().put("Undo",actUndo);
 
-		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_S,KeyEvent.CTRL_DOWN_MASK),"Save");
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_S,KeyEvent.CTRL_DOWN_MASK),"Save path");
 		AbstractAction actSave = new AbstractAction() {
 			private static final long serialVersionUID = 8788274388808789051L;
 			@Override
@@ -345,7 +389,32 @@ public class PathEditor {
 				System.out.println("Saved " + newFileName);
 			}
 		};
-		panel.getActionMap().put("Save",actSave);
+		panel.getActionMap().put("Save path",actSave);
+
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_S,KeyEvent.SHIFT_DOWN_MASK),"Save obstacle poses");
+		AbstractAction actSaveO = new AbstractAction() {
+			private static final long serialVersionUID = 8788274388808783351L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				String newFileName = posesFileName+newFileSuffix;
+				saveObstaclesToPoses(newFileName);
+				System.out.println("Saved obstacle poses to " + newFileName);
+			}
+		};
+		panel.getActionMap().put("Save obstacle poses",actSaveO);
+
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_L,KeyEvent.SHIFT_DOWN_MASK),"Load obstacle poses");
+		AbstractAction actLoadO = new AbstractAction() {
+			private static final long serialVersionUID = 8788274388808983351L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (posesFileName != null) {
+					loadObstaclesFromPoses();
+				}
+				System.out.println("Loaded obstacle poses from " + posesFileName);
+			}
+		};
+		panel.getActionMap().put("Load obstacle poses",actLoadO);
 
 		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_H,0),"Help");
 		AbstractAction actHelp = new AbstractAction() {
@@ -441,14 +510,17 @@ public class PathEditor {
 				}
 				if (!selectedObsInt.isEmpty()) {
 					ArrayList<Geometry> toRemove = new ArrayList<Geometry>();
-					ArrayList<Geometry> toRemoveCenters = new ArrayList<Geometry>();
+					ArrayList<Pose> toRemoveCenters = new ArrayList<Pose>();
+					ArrayList<String> toRemoveNames = new ArrayList<String>();
 					for (int i = 0; i < obstacles.size(); i++) panel.removeGeometry("obs_"+i);
 					for (int selectedObsOneInt : selectedObsInt) {
 						toRemove.add(obstacles.get(selectedObsOneInt));
 						toRemoveCenters.add(obstacleCenters.get(selectedObsOneInt));
+						toRemoveNames.add(obstacleNames.get(selectedObsOneInt));
 					}
 					obstacles.removeAll(toRemove);
 					obstacleCenters.removeAll(toRemoveCenters);
+					obstacleNames.removeAll(toRemoveNames);
 					clearObstacleSelection();
 				}
 				panel.updatePanel();
@@ -512,11 +584,11 @@ public class PathEditor {
 				if (!selectedObsInt.isEmpty()) {
 					for (int selectedObsOneInt : selectedObsInt) {
 						Geometry obs = obstacles.get(selectedObsOneInt);
-						Point center = obstacleCenters.get(selectedObsOneInt);
+						Pose center = obstacleCenters.get(selectedObsOneInt);
 						AffineTransformation at = new AffineTransformation();
 						at.translate(-deltaX, 0);
 						obstacles.set(selectedObsOneInt,at.transform(obs));
-						obstacleCenters.set(selectedObsOneInt,(Point)at.transform(center));
+						obstacleCenters.set(selectedObsOneInt,new Pose(center.getX()-deltaX, center.getY(), center.getTheta()));
 					}
 				}
 				highlightPathPoints();
@@ -544,11 +616,11 @@ public class PathEditor {
 				if (!selectedObsInt.isEmpty()) {
 					for (int selectedObsOneInt : selectedObsInt) {
 						Geometry obs = obstacles.get(selectedObsOneInt);
-						Point center = obstacleCenters.get(selectedObsOneInt);
+						Pose center = obstacleCenters.get(selectedObsOneInt);
 						AffineTransformation at = new AffineTransformation();
 						at.translate(deltaX, 0);
 						obstacles.set(selectedObsOneInt,at.transform(obs));
-						obstacleCenters.set(selectedObsOneInt,(Point)at.transform(center));
+						obstacleCenters.set(selectedObsOneInt,new Pose(center.getX()+deltaX, center.getY(), center.getTheta()));
 					}
 				}
 				highlightPathPoints();
@@ -576,11 +648,11 @@ public class PathEditor {
 				if (!selectedObsInt.isEmpty()) {
 					for (int selectedObsOneInt : selectedObsInt) {
 						Geometry obs = obstacles.get(selectedObsOneInt);
-						Point center = obstacleCenters.get(selectedObsOneInt);
+						Pose center = obstacleCenters.get(selectedObsOneInt);
 						AffineTransformation at = new AffineTransformation();
 						at.translate(0, deltaY);
 						obstacles.set(selectedObsOneInt,at.transform(obs));
-						obstacleCenters.set(selectedObsOneInt,(Point)at.transform(center));
+						obstacleCenters.set(selectedObsOneInt,new Pose(center.getX(), center.getY()+deltaY, center.getTheta()));
 					}
 				}
 				highlightPathPoints();
@@ -608,11 +680,11 @@ public class PathEditor {
 				if (!selectedObsInt.isEmpty()) {
 					for (int selectedObsOneInt : selectedObsInt) {
 						Geometry obs = obstacles.get(selectedObsOneInt);
-						Point center = obstacleCenters.get(selectedObsOneInt);
+						Pose center = obstacleCenters.get(selectedObsOneInt);
 						AffineTransformation at = new AffineTransformation();
 						at.translate(0, -deltaY);
 						obstacles.set(selectedObsOneInt,at.transform(obs));
-						obstacleCenters.set(selectedObsOneInt,(Point)at.transform(center));
+						obstacleCenters.set(selectedObsOneInt,new Pose(center.getX(), center.getY()-deltaY, center.getTheta()));
 					}
 				}
 				highlightPathPoints();
@@ -648,7 +720,8 @@ public class PathEditor {
 						at.rotate(-deltaT);
 						at.translate(toOriginX,toOriginY);
 						obstacles.set(selectedObsOneInt,at.transform(obs));
-						obstacleThetas.set(selectedObsOneInt,Missions.wrapAngle180(obstacleThetas.get(selectedObsOneInt)-deltaT));
+						Pose center = obstacleCenters.get(selectedObsOneInt);
+						obstacleCenters.set(selectedObsOneInt, new Pose(center.getX(), center.getY(), center.getTheta()-deltaT));
 					}
 				}
 				highlightPathPoints();
@@ -656,7 +729,44 @@ public class PathEditor {
 			}
 		};
 		panel.getActionMap().put("Decrease theta of selected pose(s)",actTMinus);
-		
+
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_PAGE_DOWN,KeyEvent.SHIFT_DOWN_MASK),"Speed decrease theta of selected pose(s)");
+		AbstractAction actTMinusS = new AbstractAction() {
+			private static final long serialVersionUID = -7391970411254721019L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (!selectedPathPointsInt.isEmpty()) {
+					backupPath();
+					for (int selectedPathPointOneInt : selectedPathPointsInt) {
+						double x = path.get(selectedPathPointOneInt).getPose().getX();
+						double y = path.get(selectedPathPointOneInt).getPose().getY();
+						double th = path.get(selectedPathPointOneInt).getPose().getTheta();
+						th -= (10*deltaT);
+						th = Missions.wrapAngle180(th);
+						PoseSteering newPoseSteering = new PoseSteering(x, y, th, path.get(selectedPathPointOneInt).getSteering());
+						path.set(selectedPathPointOneInt, newPoseSteering);
+					}
+				}
+				if (!selectedObsInt.isEmpty()) {
+					for (int selectedObsOneInt : selectedObsInt) {
+						Geometry obs = obstacles.get(selectedObsOneInt);
+						AffineTransformation at = new AffineTransformation();
+						double toOriginX = obstacleCenters.get(selectedObsOneInt).getX();
+						double toOriginY = obstacleCenters.get(selectedObsOneInt).getY();
+						at.translate(-toOriginX,-toOriginY);
+						at.rotate(-10*deltaT);
+						at.translate(toOriginX,toOriginY);
+						obstacles.set(selectedObsOneInt,at.transform(obs));
+						Pose center = obstacleCenters.get(selectedObsOneInt);
+						obstacleCenters.set(selectedObsOneInt, new Pose(center.getX(), center.getY(), center.getTheta()-10*deltaT));
+					}
+				}
+				highlightPathPoints();
+				highlightObstacles();			
+			}
+		};
+		panel.getActionMap().put("Speed decrease theta of selected pose(s)",actTMinusS);
+
 		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_PAGE_UP,0),"Increase theta of selected pose(s)");
 		AbstractAction actTPlus = new AbstractAction() {
 			private static final long serialVersionUID = 8414380724212398117L;
@@ -684,7 +794,8 @@ public class PathEditor {
 						at.rotate(deltaT);
 						at.translate(toOriginX,toOriginY);
 						obstacles.set(selectedObsOneInt,at.transform(obs));
-						obstacleThetas.set(selectedObsOneInt,Missions.wrapAngle180(obstacleThetas.get(selectedObsOneInt)+deltaT));
+						Pose center = obstacleCenters.get(selectedObsOneInt);
+						obstacleCenters.set(selectedObsOneInt, new Pose(center.getX(), center.getY(), center.getTheta()+deltaT));
 					}
 				}
 				highlightPathPoints();
@@ -693,6 +804,42 @@ public class PathEditor {
 		};
 		panel.getActionMap().put("Increase theta of selected pose(s)",actTPlus);
 
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_PAGE_UP,KeyEvent.SHIFT_DOWN_MASK),"Speed increase theta of selected pose(s)");
+		AbstractAction actTPlusS = new AbstractAction() {
+			private static final long serialVersionUID = 8414380724212398117L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (!selectedPathPointsInt.isEmpty()) {
+					backupPath();
+					for (int selectedPathPointOneInt : selectedPathPointsInt) {
+						double x = path.get(selectedPathPointOneInt).getPose().getX();
+						double y = path.get(selectedPathPointOneInt).getPose().getY();
+						double th = path.get(selectedPathPointOneInt).getPose().getTheta();
+						th += (10*deltaT);
+						th = Missions.wrapAngle180(th);
+						PoseSteering newPoseSteering = new PoseSteering(x, y, th, path.get(selectedPathPointOneInt).getSteering());
+						path.set(selectedPathPointOneInt, newPoseSteering);
+					}
+				}
+				if (!selectedObsInt.isEmpty()) {
+					for (int selectedObsOneInt : selectedObsInt) {
+						Geometry obs = obstacles.get(selectedObsOneInt);
+						AffineTransformation at = new AffineTransformation();
+						double toOriginX = obstacleCenters.get(selectedObsOneInt).getX();
+						double toOriginY = obstacleCenters.get(selectedObsOneInt).getY();
+						at.translate(-toOriginX,-toOriginY);
+						at.rotate(10*deltaT);
+						at.translate(toOriginX,toOriginY);
+						obstacles.set(selectedObsOneInt,at.transform(obs));
+						Pose center = obstacleCenters.get(selectedObsOneInt);
+						obstacleCenters.set(selectedObsOneInt, new Pose(center.getX(), center.getY(), center.getTheta()+10*deltaT));
+					}
+				}
+				highlightPathPoints();
+				highlightObstacles();			
+			}
+		};
+		panel.getActionMap().put("Speed increase theta of selected pose(s)",actTPlusS);
 
 		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_I,0),"Info");
 		AbstractAction actInfo = new AbstractAction() {
@@ -700,7 +847,7 @@ public class PathEditor {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				String obs = "Obstacles:";
-				for (int i = 0; i < obstacles.size(); i++) obs += ("\n   obs_" + i + " pose (x,y,theta): (" + obstacleCenters.get(i).getCoordinate().x + "," + obstacleCenters.get(i).getCoordinate().y + "," + obstacleThetas.get(i) + ")");
+				for (int i = 0; i < obstacles.size(); i++) obs += ("\n   obs_" + i + " pose (x,y,theta): " + obstacleCenters.get(i));
 				System.out.println(obs);
 			}
 		};
@@ -790,10 +937,10 @@ public class PathEditor {
         catch (Exception e) { e.printStackTrace(); }
 	}
 	
-	private void readPath(String fileName) {
+	private void readPath() {
 		ArrayList<PoseSteering> ret = new ArrayList<PoseSteering>();
 		try {
-			Scanner in = new Scanner(new FileReader(fileName));
+			Scanner in = new Scanner(new FileReader(pathFileName));
 			while (in.hasNextLine()) {
 				String line = in.nextLine().trim();
 				if (line.length() != 0) {
