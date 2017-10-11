@@ -1411,6 +1411,15 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	}
 	
 	/**
+	 * Get the current {@link TrajectoryEnvelope} of a robot.
+	 * @param robotID The robotID.
+	 * @return The current {@link TrajectoryEnvelope} of a robot.
+	 */
+	public TrajectoryEnvelope getCurrentTrajectoryEnvelope(int robotID) {
+		return trackers.get(robotID).getTrajectoryEnvelope();
+	}
+	
+	/**
 	 * Sets up a GUI which shows the current status of robots, overlayed on a given map .
 	 * @param mapYAMLFile A map file to overlay onto the GUI.
 	 */

@@ -247,7 +247,6 @@ public class Missions {
 				@Override
 				public void run() {
 					while (missionDispatcherFlags.get(robotID)) {
-						//Mission to dispatch alternates between (rip -> desti) and (desti -> rip)
 						Mission m = Missions.getMission(robotID, iteration%Missions.getMissions(robotID).size());
 						if (iteration > 0 && iteration%Missions.getMissions(robotID).size() == 0) {
 							iteration++;
@@ -297,7 +296,8 @@ public class Missions {
 			t.start();
 		}
 	}
-	
+
+
 	/**
 	 * Read a path from a file.
 	 * @param fileName The name of the file containing the path
