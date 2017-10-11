@@ -1,10 +1,22 @@
 #include "MultipleCircleStateValidityChecker.h"
+#include <ompl/geometric/planners/rrt/RRTConnect.h>
+#include <ompl/geometric/planners/rrt/RRTstar.h>
+#include <ompl/geometric/planners/rrt/TRRT.h>
+#include <ompl/geometric/planners/sst/SST.h>
+#include <ompl/geometric/planners/rrt/LBTRRT.h>
+#include <ompl/geometric/planners/rrt/pRRT.h>
+#include <ompl/geometric/planners/rrt/LazyRRT.h>
+#include <ompl/geometric/planners/prm/PRMstar.h>
+#include <ompl/geometric/planners/prm/SPARS.h>
+#include <ompl/control/planners/kpiece/KPIECE1.h>
+#include <boost/math/constants/constants.hpp>
 
 using namespace mrpt::maps;
 using namespace std;
 
 namespace ob = ompl::base;
 namespace og = ompl::geometric;
+namespace oc = ompl::control;
 
 typedef struct PathPose {
   double x;
@@ -33,10 +45,22 @@ extern "C" bool plan_multiple_circles(const char* mapFilename, double mapResolut
   
   // define a simple setup class
   og::SimpleSetup ss(space);
-  
+
   // set state validity checking for this space
   ob::SpaceInformationPtr si(ss.getSpaceInformation());
   si->setStateValidityChecker(ob::StateValidityCheckerPtr(new MultipleCircleStateValidityChecker(si, mapFilename, mapResolution, robotRadius, xCoords, yCoords, numCoords)));
+
+  ob::PlannerPtr planner(new og::RRTConnect(si));
+  //ob::PlannerPtr planner(new og::RRTstar(si));
+  //ob::PlannerPtr planner(new og::TRRT(si));
+  //ob::PlannerPtr planner(new og::SST(si));
+  //ob::PlannerPtr planner(new og::LBTRRT(si));
+  //ob::PlannerPtr planner(new og::PRMstar(si));
+  //ob::PlannerPtr planner(new og::SPARS(si));
+  //ob::PlannerPtr planner(new og::pRRT(si));
+  //ob::PlannerPtr planner(new og::LazyRRT(si));
+  ss.setPlanner(planner);
+
   
   // set the start and goal states
   start[0] = startX;
