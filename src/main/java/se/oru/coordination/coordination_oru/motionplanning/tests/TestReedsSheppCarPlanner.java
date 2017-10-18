@@ -13,7 +13,7 @@ public class TestReedsSheppCarPlanner {
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
 		rsp.setMapFilename("maps/map-partial.png");
 		rsp.setMapResolution(0.1);
-		rsp.setRobotRadius(0.5);
+		rsp.setRadius(0.5);
 		rsp.setStart(new Pose(2.0,2.0,0.0));
 		rsp.setGoals(new Pose(2.0,38.0,0.0));
 		rsp.setDistanceBetweenPathPoints(distanceBetweenPathPoints);

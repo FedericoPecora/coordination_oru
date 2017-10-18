@@ -124,11 +124,31 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 	 * @return A {@link RobotReport}, describing the current state of the robot.
 	 */
 	public abstract RobotReport getRobotReport();
-		
-	/**
-	 * Defines what should happen when the robot reaches a new pose along the reference trajectory.
-	 */
-	public abstract void onPositionUpdate();
+
+	protected void onPositionUpdate() {
+	
+		if (tec.getVisualization() != null) {
+			//Update the position of the robot in the GUI
+			RobotReport rr = getRobotReport();
+			tec.getVisualization().displayRobotState(te, rr);
+			
+			//Draw an arrow if there is a critical point
+			RobotReport rrWaiting = getRobotReport();
+			synchronized (tec.getCurrentDependencies()) {
+				for (Dependency dep : tec.getCurrentDependencies()) {
+					if (dep.getWaitingTracker().equals(this)) {
+						if (dep.getDrivingTracker() != null) {
+							RobotReport rrDriving = dep.getDrivingTracker().getRobotReport();
+							String arrowIdentifier = "_"+dep.getWaitingRobotID()+"-"+dep.getDrivingRobotID();
+							tec.getVisualization().displayDependency(rrWaiting, rrDriving, arrowIdentifier);
+						}
+					}
+				}							
+			}
+
+			tec.getVisualization().updateVisualization();
+		}
+	}
 	
 	/**
 	 * Should return the current time in milliseconds.

@@ -331,32 +331,6 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 		return new RobotReport(te.getRobotID(), pose, currentPathIndex, auxState.getVelocity(), auxState.getPosition(), -1);
 	}
 
-	@Override
-	public void onPositionUpdate() {
-	
-		if (tec.getVisualization() != null) {
-			//Update the position of the robot in the GUI
-			RobotReport rr = getRobotReport();
-			tec.getVisualization().displayRobotState(te, rr);
-			
-			//Draw an arrow if there is a critical point
-			RobotReport rrWaiting = getRobotReport();
-			synchronized (tec.getCurrentDependencies()) {
-				for (Dependency dep : tec.getCurrentDependencies()) {
-					if (dep.getWaitingTracker().equals(this)) {
-						if (dep.getDrivingTracker() != null) {
-							RobotReport rrDriving = dep.getDrivingTracker().getRobotReport();
-							String arrowIdentifier = "_"+dep.getWaitingRobotID()+"-"+dep.getDrivingRobotID();
-							tec.getVisualization().displayDependency(rrWaiting, rrDriving, arrowIdentifier);
-						}
-					}
-				}							
-			}
-
-			tec.getVisualization().updateVisualization();
-		}
-	}
-
 	public void delayIntegrationThread(int maxDelayInmillis) {
 		this.maxDelayInMilis = maxDelayInmillis;
 	}
