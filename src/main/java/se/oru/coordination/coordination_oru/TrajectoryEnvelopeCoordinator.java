@@ -40,6 +40,8 @@ import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
 
+import se.oru.coordination.coordination_oru.util.FleetVisualization;
+import se.oru.coordination.coordination_oru.util.JTSDrawingPanelVisualization;
 import se.oru.coordination.coordination_oru.util.StringUtils;
 
 /**
@@ -79,7 +81,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected boolean overlay = false;
 
 	protected TrajectoryEnvelopeSolver solver = null;
-	protected JTSDrawingPanel panel = null;
+	//protected JTSDrawingPanel panel = null;
+	protected FleetVisualization viz = null;
 	protected ArrayList<TrajectoryEnvelope> envelopesToTrack = new ArrayList<TrajectoryEnvelope>();
 	protected ArrayList<TrajectoryEnvelope> currentParkingEnvelopes = new ArrayList<TrajectoryEnvelope>();
 	protected HashMap<CriticalSection,Dependency> criticalSectionsToDeps = new HashMap<CriticalSection, Dependency>();
@@ -122,6 +125,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	};
 	
 	
+	public int getControlPeriod() {
+		return this.CONTROL_PERIOD;
+	}
+	
 	/**
 	 * Set whether the coordinator should try to break deadlocks by disallowing an arbitrary
 	 * ordering involved in a loop in the dependency multigraph.
@@ -130,15 +137,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	public void setBreakDeadlocks(boolean value) {
 		this.breakDeadlocks = value;
 	}
-	
-	/**
-	 * Get the {@link JTSDrawingPanel} of this coordinator's GUI.
-	 * @return The {@link JTSDrawingPanel} of this coordinator's GUI.
-	 */
-	public JTSDrawingPanel getPanel() {
-		return this.panel;
-	}
-	
+		
 	/**
 	 * Set whether robots that will park in a critical section should yield to other robots.
 	 * @param value <code>true</code> if robots that will park in a critical section should yield to other robots.
@@ -162,7 +161,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 * Toggle mute/unmute communication with a given robot. 
 	 * @param robotID The robot to toggle mute/unmute communication with.
 	 */
-	protected void toggleMute(int robotID) {
+	public void toggleMute(int robotID) {
 		if (muted.contains(robotID)) muted.remove(robotID);
 		else muted.add(robotID);
 	}
@@ -171,19 +170,30 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 * Mute communication with a given robot. 
 	 * @param robotID The robot to mute communication with.
 	 */
-	protected void mute(int robotID) {
+	public void mute(int robotID) {
 		muted.add(robotID);
+	}
+	
+	/**
+	 * Get the IDs of robots that are muted.
+	 * @return The IDs of robots that are muted.
+	 */
+	public int[] getMuted() {
+		int[] ret = new int[muted.size()];
+		int counter = 0;
+		for (Integer m : muted) ret[counter++] = m; 
+		return ret;
 	}
 
 	/**
 	 * Unmute communication with a given robot. 
 	 * @param robotID The robot to unmute communication with.
 	 */
-	protected void unMute(int robotID) {
+	public void unMute(int robotID) {
 		muted.remove(robotID);
 	}
 
-	private double getMaxFootprintDimension(int robotID) {
+	public double getMaxFootprintDimension(int robotID) {
 		if (this.footprints.containsKey(robotID)) return maxFootprintDimensions.get(robotID);
 		return maxDefaultFootprintDimension;
 	}
@@ -328,6 +338,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		maxDefaultFootprintDimension = computeMaxFootprintDimension(coordinates);
 	}
 
+
 	/**
 	 * Set the default footprint of robots, which is used for computing spatial envelopes.
 	 * Provide the bounding polygon of the machine assuming its reference point is in (0,0), and its
@@ -451,21 +462,18 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 			//Now start the tracker for this parking (will be ended by call to addMissions for this robot)
 			final TrajectoryEnvelopeCoordinator tec = this;
-			final TrajectoryEnvelopeTrackerDummy tracker = new TrajectoryEnvelopeTrackerDummy(parking, 300, TEMPORAL_RESOLUTION, solver, cb) {
+			final TrajectoryEnvelopeTrackerDummy tracker = new TrajectoryEnvelopeTrackerDummy(parking, 300, TEMPORAL_RESOLUTION, this, cb) {
 				@Override
 				public long getCurrentTimeInMillis() {
 					return tec.getCurrentTimeInMillis();
 				}
 
-				@Override
-				public void onPositionUpdate() {
-					if (panel != null) {
-						panel.addGeometry("R" + te.getRobotID(), TrajectoryEnvelope.getFootprint(te.getFootprint(), te.getTrajectory().getPose()[0].getX(), te.getTrajectory().getPose()[0].getY(), te.getTrajectory().getPose()[0].getTheta()), false, true, false, "#4286F4");
-					}
-				}
-
+//				@Override
+//				public void onPositionUpdate() {
+//					if (viz != null) viz.displayRobotState(te, getRobotReport());
+//				}
 			};
-
+			
 			currentParkingEnvelopes.add(tracker.getTrajectoryEnvelope());				
 
 			synchronized (trackers) {
@@ -474,7 +482,14 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 		}
 	}
-
+	
+	public FleetVisualization getVisualization() {
+		return this.viz;
+	}
+	
+	public HashSet<Dependency> getCurrentDependencies() {
+		return this.currentDependencies;
+	}
 
 	/**
 	 * Get the path index beyond which a robot should not navigate, given the {@link TrajectoryEnvelope} of another robot.  
@@ -727,9 +742,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			metaCSPLogger.finest("Both robots can stop at " + cs);
 			RobotAtCriticalSection r1atcs = new RobotAtCriticalSection(robotTracker1, cs);
 			RobotAtCriticalSection r2atcs = new RobotAtCriticalSection(robotTracker2, cs);
-			/*
-			 * 
-			 */
 			boolean ret = false;
 			if (this.comparators.size() > 0) ret = (this.comparators.compare(r1atcs,r2atcs) < 0);
 			//No ordering function, decide an ordering based on distance (closest goes first)
@@ -1204,7 +1216,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					}
 
 					@Override
-					public void onTrackingStart() { }
+					public void onTrackingStart() {
+						if (viz != null) viz.addEnvelope(te);
+					}
 
 					@Override
 					public void onNewGroundEnvelope() { }
@@ -1216,6 +1230,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					public void onTrackingFinished() {
 
 						metaCSPLogger.info("Tracking finished for " + te);
+
+						if (viz != null) viz.removeEnvelope(te);
 
 						//reset stopping points
 						synchronized(stoppingPoints) {
@@ -1364,12 +1380,12 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	}
 
 	/**
-	 * Sets up a GUI which shows the current status of robots, overlayed on a given map .
+	 * Sets up a GUI which shows the current status of robots.
 	 */
-	public void setupGUI() {
-		this.setupGUI(null);
+	public void setVisualization(FleetVisualization viz) {
+		this.viz = viz;
 	}
-
+	
 	private void setPriorityOfEDT(final int prio) {
 		try {
 		SwingUtilities.invokeAndWait(new Runnable() {
@@ -1387,28 +1403,28 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		}		
 	}
 	
-	public void setGUIFrame(double minX, double minY, double maxX, double maxY) {
-		GeometryFactory gf = new GeometryFactory();
-		final Geometry frame = gf.createPolygon(new Coordinate[] {
-				new Coordinate(minX,minY),
-				new Coordinate(minX,maxY),
-				new Coordinate(maxX,maxY),
-				new Coordinate(maxX,minY),
-				new Coordinate(minX,minY)
-		});
-		
-		Thread frameThread = new Thread() {
-			public void run() {
-				while (true) {
-					panel.addGeometry("_frame", frame, true, false, true, "#000000");
-					try { Thread.sleep(200); }
-					catch (InterruptedException e) { e.printStackTrace(); }
-				}
-			}
-		};
-		frameThread.start();
-		
-	}
+//	public void setGUIFrame(double minX, double minY, double maxX, double maxY) {
+//		GeometryFactory gf = new GeometryFactory();
+//		final Geometry frame = gf.createPolygon(new Coordinate[] {
+//				new Coordinate(minX,minY),
+//				new Coordinate(minX,maxY),
+//				new Coordinate(maxX,maxY),
+//				new Coordinate(maxX,minY),
+//				new Coordinate(minX,minY)
+//		});
+//		
+//		Thread frameThread = new Thread() {
+//			public void run() {
+//				while (true) {
+//					panel.addGeometry("_frame", frame, true, false, true, "#000000");
+//					try { Thread.sleep(200); }
+//					catch (InterruptedException e) { e.printStackTrace(); }
+//				}
+//			}
+//		};
+//		frameThread.start();
+//		
+//	}
 	
 	/**
 	 * Get the current {@link TrajectoryEnvelope} of a robot.
@@ -1419,109 +1435,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		return trackers.get(robotID).getTrajectoryEnvelope();
 	}
 	
-	/**
-	 * Sets up a GUI which shows the current status of robots, overlayed on a given map .
-	 * @param mapYAMLFile A map file to overlay onto the GUI.
-	 */
-	public void setupGUI(String mapYAMLFile) {
-		//Show everything in a GUI (vehicle positions are updated in real time by the trackers, see below)
-		panel = JTSDrawingPanel.makeEmpty("Current status of robots");
-		//setPriorityOfEDT(Thread.MIN_PRIORITY);
-		//setPriorityOfEDT(Thread.MAX_PRIORITY);
-		panel.setSmoothTransitions(true);
-		panel.setArrowHeadSizeInMeters(0.6*getMaxFootprintDimension(1));
-		panel.setTextSizeInMeters(0.8*getMaxFootprintDimension(1));
-		//System.out.println("TEXT SIZE IN METERS IS " + 0.5*getMaxFootprintDimension(1));
-		if (mapYAMLFile != null) panel.setMap(mapYAMLFile);
-		panel.addKeyListener(new KeyListener() {
-
-			@Override
-			public void keyTyped(KeyEvent e) {
-				String fileName = new SimpleDateFormat("yyyy-MM-dd-HH:mm:ss:SSS").format(new Date());
-				if (e.getKeyChar() == 's') {
-					fileName += ".svg";
-					dumpSVG(fileName);
-					System.out.println("Saved screenshot " + fileName);
-				}
-				else if (e.getKeyChar() == 'p') {
-					fileName += ".pdf";
-					dumpPDF(fileName);
-					System.out.println("Saved screenshot " + fileName);
-				}
-				else if (e.getKeyChar() == 'e') {
-					fileName += ".eps";
-					dumpEPS(fileName);
-					System.out.println("Saved screenshot " + fileName);
-				}
-				else if (e.getKeyChar() == 'm') {
-					System.out.println("Muted robots: " + muted);
-				}
-				else {
-					try {
-						int robotID = Integer.parseInt(""+e.getKeyChar());
-						toggleMute(robotID);
-					}
-					catch(NumberFormatException e1) {}
-				}
-
-			}
-
-			@Override
-			public void keyReleased(KeyEvent e) { }
-
-			@Override
-			public void keyPressed(KeyEvent e) { }
-		});
-		panel.setFocusable(true);
-	}
-
-	/**
-	 * Dump a vector graphics file with the contents of the GUI. Note: this operation is slow, so this method
-	 * should not be called within the control loop.
-	 * @param fileName Name of the PDF file to write to.
-	 */
-	public void dumpPDF(String fileName) {
-		panel.writePDF(fileName);
-	}
-
-	/**
-	 * Dump a vector graphics file with the contents of the GUI. Note: this operation is slow, so this method
-	 * should not be called within the control loop.
-	 * @param fileName Name of the SVG file to write to.
-	 */
-	public void dumpSVG(String fileName) {
-		panel.writeSVG(fileName);
-	}
-
-	/**
-	 * Dump a vector graphics file with the contents of the GUI. Note: this operation is slow, so this method
-	 * should not be called within the control loop.
-	 * @param fileName Name of the EPS file to write to.
-	 */
-	public void dumpEPS(String fileName) {
-		panel.writeEPS(fileName);
-	}
-
-	/**
-	 * Scale and translate the view of the GUI to include all geometries. 
-	 */
-	public void centerView() {
-		//		this.panel.centerView();
-		this.panel.reinitVisualization();
-	}
-
-	//Update viz (keep geoms alive)
-	protected void updateVisualization() {
-		if (panel != null) {
-			for (TrajectoryEnvelope te : solver.getRootTrajectoryEnvelopes()) {
-				GeometricShapeDomain dom = (GeometricShapeDomain)te.getEnvelopeVariable().getDomain();
-				panel.addGeometry("_"+te.getID(), dom.getGeometry(), true, false);
-				panel.removeOldGeometries(CONTROL_PERIOD*2);
-				panel.updatePanel();
-			}
-		}
-	}
-
 	protected String[] getStatistics() {
 		synchronized (trackers) {
 			String CONNECTOR_BRANCH = (char)0x251C + "" + (char)0x2500 + " ";
@@ -1579,7 +1492,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			public void run() {
 				while (true) {
 					synchronized(solver) {						
-						updateVisualization();
 						printStatistics();
 						if (overlay) overlayStatistics();
 						updateDependencies();

@@ -10,11 +10,12 @@ import java.util.TreeMap;
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.Trajectory;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
-import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelopeSolver;
 
 import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeTracker;
+import se.oru.coordination.coordination_oru.Dependency;
 import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.TrackingCallback;
+import se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator;
 
 public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnvelopeTracker implements Runnable {
 
@@ -40,8 +41,8 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 		this.useInternalCPs = value;
 	}
 	
-	public TrajectoryEnvelopeTrackerRK4(TrajectoryEnvelope te, int timeStep, double temporalResolution, TrajectoryEnvelopeSolver solver, TrackingCallback cb) {
-		this(te, timeStep, temporalResolution, 1.0, 0.1, solver, cb);
+	public TrajectoryEnvelopeTrackerRK4(TrajectoryEnvelope te, int timeStep, double temporalResolution, TrajectoryEnvelopeCoordinator tec, TrackingCallback cb) {
+		this(te, timeStep, temporalResolution, 1.0, 0.1, tec, cb);
 	}
 	
 	private void computeInternalCriticalPoints() {
@@ -67,8 +68,8 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 		return curvatureDampening[this.traj.getPose().length-1-index];
 	}
 	
-	public TrajectoryEnvelopeTrackerRK4(TrajectoryEnvelope te, int timeStep, double temporalResolution, double maxVelocity, double maxAcceleration, TrajectoryEnvelopeSolver solver, TrackingCallback cb) {
-		super(te, temporalResolution, solver, timeStep, cb);
+	public TrajectoryEnvelopeTrackerRK4(TrajectoryEnvelope te, int timeStep, double temporalResolution, double maxVelocity, double maxAcceleration, TrajectoryEnvelopeCoordinator tec, TrackingCallback cb) {
+		super(te, temporalResolution, tec, timeStep, cb);
 		this.MAX_VELOCITY = maxVelocity;
 		this.MAX_ACCELERATION = maxAcceleration;
 		this.te = te;
@@ -260,7 +261,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 	@Override
 	public RobotReport getRobotReport() {
 		if (state == null) return null;
-		if (!this.th.isAlive()) return new RobotReport(traj.getPose()[0], -1, 0.0, 0.0, -1);
+		if (!this.th.isAlive()) return new RobotReport(te.getRobotID(), traj.getPose()[0], -1, 0.0, 0.0, -1);
 		synchronized(state) {
 			Pose pose = null;
 			int currentPathIndex = -1;
@@ -280,7 +281,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 				currentPathIndex = poses.length-1;
 				pose = poses[currentPathIndex];
 			}
-			return new RobotReport(pose, currentPathIndex, state.getVelocity(), state.getPosition(), this.criticalPoint);
+			return new RobotReport(te.getRobotID(), pose, currentPathIndex, state.getVelocity(), state.getPosition(), this.criticalPoint);
 		}
 	}
 
@@ -304,7 +305,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 			currentPathIndex = poses.length-1;
 			pose = poses[currentPathIndex];
 		}
-		return new RobotReport(pose, currentPathIndex, auxState.getVelocity(), auxState.getPosition(), -1);
+		return new RobotReport(-1, pose, currentPathIndex, auxState.getVelocity(), auxState.getPosition(), -1);
 	}
 
 	public RobotReport getRobotReport(State auxState) {
@@ -327,11 +328,34 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 			currentPathIndex = poses.length-1;
 			pose = poses[currentPathIndex];
 		}
-		return new RobotReport(pose, currentPathIndex, auxState.getVelocity(), auxState.getPosition(), -1);
+		return new RobotReport(te.getRobotID(), pose, currentPathIndex, auxState.getVelocity(), auxState.getPosition(), -1);
 	}
 
 	@Override
-	public abstract void onPositionUpdate();
+	public void onPositionUpdate() {
+	
+		if (tec.getVisualization() != null) {
+			//Update the position of the robot in the GUI
+			RobotReport rr = getRobotReport();
+			tec.getVisualization().displayRobotState(te, rr);
+			
+			//Draw an arrow if there is a critical point
+			RobotReport rrWaiting = getRobotReport();
+			synchronized (tec.getCurrentDependencies()) {
+				for (Dependency dep : tec.getCurrentDependencies()) {
+					if (dep.getWaitingTracker().equals(this)) {
+						if (dep.getDrivingTracker() != null) {
+							RobotReport rrDriving = dep.getDrivingTracker().getRobotReport();
+							String arrowIdentifier = "_"+dep.getWaitingRobotID()+"-"+dep.getDrivingRobotID();
+							tec.getVisualization().displayDependency(rrWaiting, rrDriving, arrowIdentifier);
+						}
+					}
+				}							
+			}
+
+			tec.getVisualization().updateVisualization();
+		}
+	}
 
 	public void delayIntegrationThread(int maxDelayInmillis) {
 		this.maxDelayInMilis = maxDelayInmillis;

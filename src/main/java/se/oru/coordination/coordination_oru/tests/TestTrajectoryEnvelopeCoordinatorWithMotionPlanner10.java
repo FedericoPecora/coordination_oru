@@ -13,6 +13,7 @@ import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
+import se.oru.coordination.coordination_oru.util.JTSDrawingPanelVisualization;
 import se.oru.coordination.coordination_oru.util.Missions;
 
 @DemoDescription(desc = "Four robots cycling through rooms in a large environment (paths obtained with the ReedsSheppCarPlanner).")
@@ -58,7 +59,8 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner10 {
 
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		String yamlFile = "maps/map1.yaml";
-		tec.setupGUI(yamlFile);
+		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization(tec,yamlFile);
+		tec.setVisualization(viz);
 
 		tec.setUseInternalCriticalPoints(false);
 		tec.setBreakDeadlocks(true);
@@ -74,7 +76,7 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner10 {
 		
 		Integer[] robotIDs = new Integer[] {1,2,3,4};
 		for (Integer robotID : robotIDs) {
-			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getControlPeriod(), tec.getTemporalResolution()));	
+			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTrackingPeriod(), tec.getTemporalResolution()));	
 			tec.placeRobot(robotID, Missions.getLocation("a"+robotID));
 			
 			rsp.setStart(Missions.getLocation("a"+robotID));

@@ -11,6 +11,7 @@ import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
+import se.oru.coordination.coordination_oru.util.JTSDrawingPanelVisualization;
 import se.oru.coordination.coordination_oru.util.Missions;
 
 @DemoDescription(desc = "Three robots coordinating at high speed (paths obtained with the ReedsSheppCarPlanner).")
@@ -44,15 +45,16 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner11 {
 		
 		//You probably also want to provide a non-trivial forward model
 		//(the default assumes that robots can always stop)
-		tec.setForwardModel(1, new ConstantAccelerationForwardModel(MAX_ACCEL*0.9, MAX_VEL, tec.getControlPeriod(), tec.getTemporalResolution()));
-		tec.setForwardModel(2, new ConstantAccelerationForwardModel(MAX_ACCEL*0.9, MAX_VEL, tec.getControlPeriod(), tec.getTemporalResolution()));
-		tec.setForwardModel(3, new ConstantAccelerationForwardModel(MAX_ACCEL*0.9, MAX_VEL, tec.getControlPeriod(), tec.getTemporalResolution()));
+		tec.setForwardModel(1, new ConstantAccelerationForwardModel(MAX_ACCEL*0.9, MAX_VEL, tec.getTrackingPeriod(), tec.getTemporalResolution()));
+		tec.setForwardModel(2, new ConstantAccelerationForwardModel(MAX_ACCEL*0.9, MAX_VEL, tec.getTrackingPeriod(), tec.getTemporalResolution()));
+		tec.setForwardModel(3, new ConstantAccelerationForwardModel(MAX_ACCEL*0.9, MAX_VEL, tec.getTrackingPeriod(), tec.getTemporalResolution()));
 
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
 
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
-		tec.setupGUI(null);
+		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization(tec);
+		tec.setVisualization(viz);
 
 		//Load data file with locations and pointers to files containing paths between locations
 		Missions.loadLocationAndPathData("paths/test_poses2.txt");

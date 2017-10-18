@@ -5,8 +5,6 @@ import java.util.Calendar;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 
 import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeTracker;
-import se.oru.coordination.coordination_oru.Dependency;
-import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.TrackingCallback;
 import se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator;
 
@@ -17,14 +15,9 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	protected double MAX_ACCELERATION;
 	protected int trackingPeriodInMillis;
 	protected boolean useInternalCPs = true;
-	protected int DELTA_UPDATE = -1;
 	
-	public int getControlPeriod() {
+	public int getTrackingPeriod() {
 		return trackingPeriodInMillis;
-	}
-	
-	public void setGUIUpdatePeriod(int deltaBetweenUpdates) {
-		DELTA_UPDATE = deltaBetweenUpdates;
 	}
 	
 	public double getTemporalResolution() {
@@ -112,53 +105,9 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 
 	@Override
 	public AbstractTrajectoryEnvelopeTracker getNewTracker(TrajectoryEnvelope te, TrackingCallback cb) {
-		
-		TrajectoryEnvelopeTrackerRK4 ret = new TrajectoryEnvelopeTrackerRK4(te, trackingPeriodInMillis, TEMPORAL_RESOLUTION, MAX_VELOCITY, MAX_ACCELERATION, getSolver(), cb) {
-			
-			private long lastUpdate = Calendar.getInstance().getTimeInMillis();
-
-			//What should happen when a robot reaches a new pose along the path
-			//In this implementation, simply update the GUI
-			@Override
-			public void onPositionUpdate() {
-			
-				if (panel != null) {
-					long timeNow = -1;
-					if (DELTA_UPDATE != -1) timeNow = Calendar.getInstance().getTimeInMillis();
-					if (DELTA_UPDATE == -1 || timeNow-lastUpdate > DELTA_UPDATE) {
-						lastUpdate = timeNow;
-						//Update the position of the robot in the GUI
-						RobotReport rr = getRobotReport();
-						double x = rr.getPose().getX();
-						double y = rr.getPose().getY();
-						double theta = rr.getPose().getTheta();
-						panel.addGeometry("R" + te.getRobotID(), TrajectoryEnvelope.getFootprint(te.getFootprint(), x, y, theta), false, true, false, "#FF0000");
+				
+		TrajectoryEnvelopeTrackerRK4 ret = new TrajectoryEnvelopeTrackerRK4(te, trackingPeriodInMillis, TEMPORAL_RESOLUTION, MAX_VELOCITY, MAX_ACCELERATION, this, cb) {
 						
-						//Draw an arrow if there is a critical point
-						RobotReport rrWaiting = getRobotReport();
-						synchronized (currentDependencies) {
-							for (Dependency dep : currentDependencies) {
-								if (dep.getWaitingTracker().equals(this)) {
-									if (dep.getDrivingTracker() != null) {
-										RobotReport rrDriving = dep.getDrivingTracker().getRobotReport();
-										String arrowIdentifier = "_"+dep.getWaitingRobotID()+"-"+dep.getDrivingRobotID();
-										panel.addArrow(arrowIdentifier, rrWaiting.getPose(), rrDriving.getPose());
-										//panel.addArrow(arrowIdentifier, dep.getWaitingPose(), dep.getReleasingPose());
-									}
-	//								else {
-	//									String arrowIdentifier = "_"+dep.getWaitingRobotID()+"-"+dep.getDrivingRobotID();
-	//									panel.addArrow(arrowIdentifier, rrWaiting.getPose(), traj.getPose()[rrWaiting.getCriticalPoint()]);										
-	//								}
-								}
-							}							
-						}
-		
-						//Refresh the GUI
-						panel.updatePanel();
-					}
-				}
-			}
-
 			//Method for measuring time in the trajectory envelope tracker
 			@Override
 			public long getCurrentTimeInMillis() {

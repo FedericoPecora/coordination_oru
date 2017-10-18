@@ -29,6 +29,7 @@ import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeTrack
  */
 public abstract class AbstractTrajectoryEnvelopeTracker {
 
+	protected TrajectoryEnvelopeCoordinator tec = null;
 	protected TrajectoryEnvelope te = null;
 	protected Trajectory traj = null;
 	protected double temporalResolution = 0.0;
@@ -56,12 +57,13 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 	 * @param trackingPeriodInMillis The tracking period.
 	 * @param cb An optional callback function.
 	 */
-	public AbstractTrajectoryEnvelopeTracker(TrajectoryEnvelope te, double temporalResolution, TrajectoryEnvelopeSolver solver, int trackingPeriodInMillis, TrackingCallback cb) {
+	public AbstractTrajectoryEnvelopeTracker(TrajectoryEnvelope te, double temporalResolution, TrajectoryEnvelopeCoordinator tec, int trackingPeriodInMillis, TrackingCallback cb) {
 		this.te = te;
 		this.traj = te.getTrajectory();
 		this.criticalPoint = -1;
 		this.temporalResolution = temporalResolution;
-		this.solver = solver;
+		this.tec = tec;
+		this.solver = tec.getSolver();
 		this.trackingPeriodInMillis = trackingPeriodInMillis;
 		this.cb = cb;
 		startMonitoringThread();

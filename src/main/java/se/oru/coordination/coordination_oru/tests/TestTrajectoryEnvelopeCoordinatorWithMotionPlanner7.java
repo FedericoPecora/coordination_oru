@@ -17,6 +17,7 @@ import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
+import se.oru.coordination.coordination_oru.util.JTSDrawingPanelVisualization;
 import se.oru.coordination.coordination_oru.util.Missions;
 
 @DemoDescription(desc = "Coordination with heuristic that eliminates deadlock (paths obtained with the ReedsSheppCarPlanner).")
@@ -50,9 +51,9 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner7 {
 
 		//You probably also want to provide a non-trivial forward model
 		//(the default assumes that robots can always stop)
-		tec.setForwardModel(1, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getControlPeriod(), tec.getTemporalResolution()));
-		tec.setForwardModel(2, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getControlPeriod(), tec.getTemporalResolution()));
-		tec.setForwardModel(3, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getControlPeriod(), tec.getTemporalResolution()));
+		tec.setForwardModel(1, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTrackingPeriod(), tec.getTemporalResolution()));
+		tec.setForwardModel(2, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTrackingPeriod(), tec.getTemporalResolution()));
+		tec.setForwardModel(3, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTrackingPeriod(), tec.getTemporalResolution()));
 		
 		Coordinate[] ret = new Coordinate[6];		
 		ret[0] = new Coordinate(0.36, 0.0);
@@ -69,8 +70,8 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner7 {
 		
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		String yamlFile = "maps/map-empty.yaml";
-		tec.setupGUI(yamlFile);
-		//tec.setupGUI(null);
+		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization(tec,yamlFile);
+		tec.setVisualization(viz);
 		
 		tec.setUseInternalCriticalPoints(false);
 		

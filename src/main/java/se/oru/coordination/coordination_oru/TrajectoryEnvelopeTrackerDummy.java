@@ -27,8 +27,8 @@ public abstract class TrajectoryEnvelopeTrackerDummy extends AbstractTrajectoryE
 	 * @param solver The {@link TrajectoryEnvelopeSolver} that maintains the parking {@link TrajectoryEnvelope}.
 	 * @param cb An optional callback that will be called during tracking.
 	 */
-	public TrajectoryEnvelopeTrackerDummy(TrajectoryEnvelope te, int timeStep, double temporalResolution, TrajectoryEnvelopeSolver solver, TrackingCallback cb) {
-		super(te, temporalResolution, solver, timeStep, cb);
+	public TrajectoryEnvelopeTrackerDummy(TrajectoryEnvelope te, int timeStep, double temporalResolution, TrajectoryEnvelopeCoordinator tec, TrackingCallback cb) {
+		super(te, temporalResolution, tec, timeStep, cb);
 		this.te = te;
 		this.traj = te.getTrajectory();
 		this.temporalResolution = temporalResolution;
@@ -44,11 +44,11 @@ public abstract class TrajectoryEnvelopeTrackerDummy extends AbstractTrajectoryE
 	
 	@Override
 	public RobotReport getRobotReport() {
-		return new RobotReport(traj.getPose()[0], currentIndex, 0.0, 0.0, -1);
+		return new RobotReport(te.getRobotID(), traj.getPose()[0], currentIndex, 0.0, 0.0, -1);
 	}
 
-	@Override
-	public abstract void onPositionUpdate();
+//	@Override
+//	public abstract void onPositionUpdate();
 	
 	/**
 	 * Instructs the {@link TrajectoryEnvelopeSolver} that the robot has ceased to be parked here.
@@ -118,6 +118,11 @@ public abstract class TrajectoryEnvelopeTrackerDummy extends AbstractTrajectoryE
 		//Signals thread in abstract tracker to stop
 		currentIndex++;
 		
+	}
+	
+	@Override
+	public void onPositionUpdate() {
+		if (tec.getVisualization() != null) tec.getVisualization().displayRobotState(te, getRobotReport());
 	}
 
 	
