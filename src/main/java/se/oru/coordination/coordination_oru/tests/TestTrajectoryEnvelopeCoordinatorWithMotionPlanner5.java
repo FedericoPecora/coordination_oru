@@ -67,7 +67,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner5 {
 
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		String yamlFile = "maps/map-empty.yaml";
-		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization(tec,yamlFile);
+		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization(yamlFile);
 		tec.setVisualization(viz);
 
 		tec.setUseInternalCriticalPoints(false);

@@ -64,7 +64,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner16 {
 
 		String yamlFile = "maps/map-empty.yaml";
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
-		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization(tec,yamlFile);
+		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization(yamlFile);
 		tec.setVisualization(viz);
 
 		Pose startRobot1 = new Pose(25.0,5.0,0.0);

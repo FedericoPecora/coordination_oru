@@ -70,7 +70,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner4 {
 
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		String yamlFile = "maps/map-empty.yaml";
-		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization(tec,yamlFile);
+		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization(yamlFile);
 		tec.setVisualization(viz);
 
 		tec.setUseInternalCriticalPoints(false);
@@ -98,7 +98,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner4 {
 		catch (IOException e) { e.printStackTrace(); }
 
 
-		int[] robotIDs = new int[] {1,2,3,4};
+		int[] robotIDs = new int[] {1,2,3,4,5,6,7,8};
 		for (int index = 0; index < robotIDs.length; index++) {
 			int robotID = robotIDs[index];
 			//You probably also want to provide a non-trivial forward model

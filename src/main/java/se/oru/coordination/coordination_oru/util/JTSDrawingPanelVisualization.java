@@ -16,14 +16,21 @@ import se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator;
 public class JTSDrawingPanelVisualization implements FleetVisualization {
 	
 	private JTSDrawingPanel panel = null;
-	private TrajectoryEnvelopeCoordinator tec = null;
+//	private TrajectoryEnvelopeCoordinator tec = null;
 		
-	public JTSDrawingPanelVisualization(TrajectoryEnvelopeCoordinator tec) {
-		this(tec,null);
+//	public JTSDrawingPanelVisualization(TrajectoryEnvelopeCoordinator tec) {
+//		this(tec,null);
+//	}
+	public JTSDrawingPanelVisualization() {
+		this(null);
 	}
+
 	
-	public JTSDrawingPanelVisualization(TrajectoryEnvelopeCoordinator tec, String mapYAMLFile) {
-		this.tec = tec;
+//	public JTSDrawingPanelVisualization(TrajectoryEnvelopeCoordinator tec, String mapYAMLFile) {
+//		this.tec = tec;
+//		this.setupGUI(mapYAMLFile);
+//	}
+	public JTSDrawingPanelVisualization(String mapYAMLFile) {
 		this.setupGUI(mapYAMLFile);
 	}
 	
@@ -51,8 +58,8 @@ public class JTSDrawingPanelVisualization implements FleetVisualization {
 		//setPriorityOfEDT(Thread.MIN_PRIORITY);
 		//setPriorityOfEDT(Thread.MAX_PRIORITY);
 		panel.setSmoothTransitions(true);
-		panel.setArrowHeadSizeInMeters(0.6*tec.getMaxFootprintDimension(1));
-		panel.setTextSizeInMeters(0.8*tec.getMaxFootprintDimension(1));
+		panel.setArrowHeadSizeInMeters(0.6*TrajectoryEnvelopeCoordinator.MAX_DEFAULT_FOOTPRINT_DIMENSION);
+		panel.setTextSizeInMeters(0.8*TrajectoryEnvelopeCoordinator.MAX_DEFAULT_FOOTPRINT_DIMENSION);
 		//System.out.println("TEXT SIZE IN METERS IS " + 0.5*getMaxFootprintDimension(1));
 		if (mapYAMLFile != null) panel.setMap(mapYAMLFile);
 		panel.addKeyListener(new KeyListener() {
@@ -75,16 +82,16 @@ public class JTSDrawingPanelVisualization implements FleetVisualization {
 					dumpEPS(fileName);
 					System.out.println("Saved screenshot " + fileName);
 				}
-				else if (e.getKeyChar() == 'm') {
-					System.out.println("Muted robots: " + Arrays.toString(tec.getMuted()));
-				}
-				else {
-					try {
-						int robotID = Integer.parseInt(""+e.getKeyChar());
-						tec.toggleMute(robotID);
-					}
-					catch(NumberFormatException e1) {}
-				}
+//				else if (e.getKeyChar() == 'm') {
+//					System.out.println("Muted robots: " + Arrays.toString(tec.getMuted()));
+//				}
+//				else {
+//					try {
+//						int robotID = Integer.parseInt(""+e.getKeyChar());
+//						tec.toggleMute(robotID);
+//					}
+//					catch(NumberFormatException e1) {}
+//				}
 
 			}
 

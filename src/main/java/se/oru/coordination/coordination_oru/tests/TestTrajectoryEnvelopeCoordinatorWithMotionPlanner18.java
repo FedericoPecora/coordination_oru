@@ -61,7 +61,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner18 {
 		tec.setupSolver(0, 100000000);
 		
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
-		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization(tec);
+		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
 		tec.setVisualization(viz);
 		
 		tec.setUseInternalCriticalPoints(false);

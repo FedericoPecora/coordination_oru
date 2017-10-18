@@ -117,13 +117,15 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 	//Default footprint (same for all robots)
 	//NOTE: coordinates must be in CCW or CW order
-	protected Coordinate[] defaultFootprint = new Coordinate[] {
+	public static Coordinate[] DEFAULT_FOOTPRINT = new Coordinate[] {
 			new Coordinate(-1.7, 0.7),	//back left
 			new Coordinate(-1.7, -0.7),	//back right
 			new Coordinate(2.7, -0.7),	//front right
 			new Coordinate(2.7, 0.7)	//front left
 	};
 	
+	//Reflects the default footprint
+	public static double MAX_DEFAULT_FOOTPRINT_DIMENSION = 4.4;
 	
 	public int getControlPeriod() {
 		return this.CONTROL_PERIOD;
@@ -153,9 +155,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	public void setCheckEscapePoses(boolean value) {
 		this.checkEscapePoses = value;
 	}
-
-	//Reflects the default footprint
-	protected double maxDefaultFootprintDimension = 4.4;
 
 	/**
 	 * Toggle mute/unmute communication with a given robot. 
@@ -195,7 +194,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 	public double getMaxFootprintDimension(int robotID) {
 		if (this.footprints.containsKey(robotID)) return maxFootprintDimensions.get(robotID);
-		return maxDefaultFootprintDimension;
+		return MAX_DEFAULT_FOOTPRINT_DIMENSION;
 	}
 
 	/**
@@ -203,7 +202,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 * @return The {@link Coordinate}s defining the default footprint of robots.
 	 */
 	public Coordinate[] getDefaultFootprint() {
-		return this.defaultFootprint;
+		return DEFAULT_FOOTPRINT;
 	}
 
 	/**
@@ -213,7 +212,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 */
 	public Coordinate[] getFootprint(int robotID) {
 		if (this.footprints.containsKey(robotID)) return this.footprints.get(robotID);
-		return this.defaultFootprint;
+		return DEFAULT_FOOTPRINT;
 	}
 
 	/**
@@ -221,7 +220,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 * @return A {@link Geometry} representing the default footprint of robots.
 	 */
 	public Geometry getDefaultFootprintPolygon() {
-		Geometry fpGeom = TrajectoryEnvelope.createFootprintPolygon(this.defaultFootprint);
+		Geometry fpGeom = TrajectoryEnvelope.createFootprintPolygon(DEFAULT_FOOTPRINT);
 		return fpGeom;
 	}
 
@@ -334,8 +333,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 * @param coordinates The coordinates delimiting bounding polygon of the footprint.
 	 */
 	public void setDefaultFootprint(Coordinate ... coordinates) {
-		this.defaultFootprint = coordinates;
-		maxDefaultFootprintDimension = computeMaxFootprintDimension(coordinates);
+		DEFAULT_FOOTPRINT = coordinates;
+		MAX_DEFAULT_FOOTPRINT_DIMENSION = computeMaxFootprintDimension(coordinates);
 	}
 
 
@@ -347,8 +346,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 */
 	@Deprecated
 	public void setFootprint(Coordinate ... coordinates) {
-		this.defaultFootprint = coordinates;
-		maxDefaultFootprintDimension = computeMaxFootprintDimension(coordinates);
+		DEFAULT_FOOTPRINT = coordinates;
+		MAX_DEFAULT_FOOTPRINT_DIMENSION = computeMaxFootprintDimension(coordinates);
 	}
 
 	/**
