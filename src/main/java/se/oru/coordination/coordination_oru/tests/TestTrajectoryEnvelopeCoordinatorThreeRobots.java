@@ -53,7 +53,7 @@ public class TestTrajectoryEnvelopeCoordinatorThreeRobots {
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
 		tec.setVisualization(viz);
-
+		
 		//Load data file with locations and pointers to files containing paths between locations
 		Missions.loadLocationAndPathData("paths/test_poses_and_path_data.txt");
 

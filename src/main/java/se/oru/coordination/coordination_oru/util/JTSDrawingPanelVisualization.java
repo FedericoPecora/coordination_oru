@@ -9,27 +9,21 @@ import org.metacsp.multi.spatial.DE9IM.GeometricShapeDomain;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 import org.metacsp.utility.UI.JTSDrawingPanel;
 
-import cern.colt.Arrays;
+import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryFactory;
+
 import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator;
 
 public class JTSDrawingPanelVisualization implements FleetVisualization {
-	
+
 	private JTSDrawingPanel panel = null;
-//	private TrajectoryEnvelopeCoordinator tec = null;
-		
-//	public JTSDrawingPanelVisualization(TrajectoryEnvelopeCoordinator tec) {
-//		this(tec,null);
-//	}
+
 	public JTSDrawingPanelVisualization() {
 		this(null);
 	}
-
 	
-//	public JTSDrawingPanelVisualization(TrajectoryEnvelopeCoordinator tec, String mapYAMLFile) {
-//		this.tec = tec;
-//		this.setupGUI(mapYAMLFile);
-//	}
 	public JTSDrawingPanelVisualization(String mapYAMLFile) {
 		this.setupGUI(mapYAMLFile);
 	}
@@ -157,6 +151,19 @@ public class JTSDrawingPanelVisualization implements FleetVisualization {
 	public void removeEnvelope(TrajectoryEnvelope te) {
 		panel.removeGeometry("_"+te.getID());
 	}
-
+	
+	public void setMinimumVisibleFrame(double minX, double minY, double maxX, double maxY) {
+		GeometryFactory gf = new GeometryFactory();
+		Geometry frame = gf.createPolygon(new Coordinate[] {
+				new Coordinate(minX,minY),
+				new Coordinate(minX,maxY),
+				new Coordinate(maxX,maxY),
+				new Coordinate(maxX,minY),
+				new Coordinate(minX,minY)
+		});	
+		panel.removeGeometry("_frame");
+		panel.addGeometry("_frame", frame, true, false, true, "#000000");
+		panel.setPermanent("_frame");
+	}
 
 }

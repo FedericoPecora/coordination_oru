@@ -1,15 +1,11 @@
 package se.oru.coordination.coordination_oru;
 
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -33,15 +29,12 @@ import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelopeSolver;
 import org.metacsp.time.Bounds;
-import org.metacsp.utility.UI.JTSDrawingPanel;
 import org.metacsp.utility.logging.MetaCSPLogging;
 
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.GeometryFactory;
 
 import se.oru.coordination.coordination_oru.util.FleetVisualization;
-import se.oru.coordination.coordination_oru.util.JTSDrawingPanelVisualization;
 import se.oru.coordination.coordination_oru.util.StringUtils;
 
 /**
@@ -113,7 +106,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected boolean yieldIfParking = true;
 	protected boolean checkEscapePoses = true;
 	protected boolean breakDeadlocks = true;
-
 
 	//Default footprint (same for all robots)
 	//NOTE: coordinates must be in CCW or CW order
@@ -460,17 +452,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			};
 
 			//Now start the tracker for this parking (will be ended by call to addMissions for this robot)
-			final TrajectoryEnvelopeCoordinator tec = this;
 			final TrajectoryEnvelopeTrackerDummy tracker = new TrajectoryEnvelopeTrackerDummy(parking, 300, TEMPORAL_RESOLUTION, this, cb) {
 				@Override
 				public long getCurrentTimeInMillis() {
 					return tec.getCurrentTimeInMillis();
 				}
-
-//				@Override
-//				public void onPositionUpdate() {
-//					if (viz != null) viz.displayRobotState(te, getRobotReport());
-//				}
 			};
 			
 			currentParkingEnvelopes.add(tracker.getTrajectoryEnvelope());				
@@ -1384,7 +1370,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	public void setVisualization(FleetVisualization viz) {
 		this.viz = viz;
 	}
-	
+
 	private void setPriorityOfEDT(final int prio) {
 		try {
 		SwingUtilities.invokeAndWait(new Runnable() {
@@ -1401,30 +1387,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			e2.printStackTrace();
 		}		
 	}
-	
-//	public void setGUIFrame(double minX, double minY, double maxX, double maxY) {
-//		GeometryFactory gf = new GeometryFactory();
-//		final Geometry frame = gf.createPolygon(new Coordinate[] {
-//				new Coordinate(minX,minY),
-//				new Coordinate(minX,maxY),
-//				new Coordinate(maxX,maxY),
-//				new Coordinate(maxX,minY),
-//				new Coordinate(minX,minY)
-//		});
-//		
-//		Thread frameThread = new Thread() {
-//			public void run() {
-//				while (true) {
-//					panel.addGeometry("_frame", frame, true, false, true, "#000000");
-//					try { Thread.sleep(200); }
-//					catch (InterruptedException e) { e.printStackTrace(); }
-//				}
-//			}
-//		};
-//		frameThread.start();
-//		
-//	}
-	
+		
 	/**
 	 * Get the current {@link TrajectoryEnvelope} of a robot.
 	 * @param robotID The robotID.
