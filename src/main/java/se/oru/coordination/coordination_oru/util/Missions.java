@@ -43,7 +43,16 @@ public class Missions {
 	public static ArrayList<Mission> getMissions(int robotID) {
 		return missions.get(robotID);
 	}
-
+	
+	/**
+	 * Set the pose of a location.
+	 * @param locationName The name of the location.
+	 * @param p The pose of the location.
+	 */
+	public static void setLocation(String locationName, Pose p) {
+		locations.put(locationName, p);
+	}
+	
 	/**
 	 * Get all the {@link Mission}s currently currently known
 	 * @return All the {@link Mission}s currently currently known
@@ -124,6 +133,14 @@ public class Missions {
 	}
 
 	/**
+	 * Get the known locations and their poses.
+	 * @return All known locations and their poses.
+	 */
+	public static HashMap<String,Pose> getLocations() {
+		return locations;
+	}
+	
+	/**
 	 * Load location and path data from a file
 	 * @param fileName The file to load the data from
 	 */
@@ -137,7 +154,7 @@ public class Missions {
 					Pose ps = null;
 					if (line.contains("->")) {
 						paths.put(oneline[0]+oneline[1]+oneline[2], oneline[3]);
-						System.out.println("Added to paths paths: " + oneline[0]+oneline[1]+oneline[2] + " --> " + oneline[3]);
+						System.out.println("Added to paths: " + oneline[0]+oneline[1]+oneline[2] + " --> " + oneline[3]);
 					}
 					else {
 						String locationName = oneline[0];
@@ -154,6 +171,14 @@ public class Missions {
 		catch (FileNotFoundException e) { e.printStackTrace(); }
 	}
 
+	/**
+	 * Remove a location.
+	 * @param locationName The name of the location to remove.
+	 */
+	public static void removeLocation(String locationName) {
+		locations.remove(locationName);
+	}
+	
 	/**
 	 * Get locations from the data loaded by method loadLocationAndPathData()
 	 * @param name The name of the location to get
@@ -309,7 +334,7 @@ public class Missions {
 			while (in.hasNextLine()) {
 				String line = in.nextLine().trim();
 				if (line.length() != 0) {
-					String[] oneline = line.split(" ");
+					String[] oneline = line.split(" |\t");
 					PoseSteering ps = null;
 					if (oneline.length == 4) {
 					ps = new PoseSteering(

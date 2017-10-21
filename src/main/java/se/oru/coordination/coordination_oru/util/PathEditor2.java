@@ -1,0 +1,990 @@
+package se.oru.coordination.coordination_oru.util;
+
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Scanner;
+import java.util.Map.Entry;
+import java.util.TreeMap;
+
+import javax.imageio.ImageIO;
+import javax.swing.AbstractAction;
+import javax.swing.JOptionPane;
+import javax.swing.KeyStroke;
+
+import org.metacsp.multi.spatioTemporal.paths.Pose;
+import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
+import org.metacsp.utility.UI.JTSDrawingPanel;
+
+import com.vividsolutions.jts.geom.Coordinate;
+
+import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppCarPlanner;
+import se.oru.coordination.coordination_oru.util.splines.Spline3D;
+import se.oru.coordination.coordination_oru.util.splines.SplineFactory;
+
+public class PathEditor2 {
+
+	private static int newLocationCounter = 0;
+	private String selectionsFile = null;
+	private static String NEW_SUFFIX = ".new";
+	private static String PREFIX = null;
+	private static int EMPTY_MAP_DIM = 10000;
+	private static double MAX_TURNING_RADIUS = 5.0;
+	private static double SPLINE_DISTANCE = 20.0;
+	private static double DISTANCE_BETWEEN_PATH_POINTS = 1.5;
+	private String locationsAndPathsFilename = null;
+	private String mapFilename = null;
+	private String mapImgFilename = null;
+	private double mapRes = 1.0;
+	private boolean selectionInputListen = false;
+	private ArrayList<String> selectionStrings = null;
+	private ArrayList<ArrayList<Integer>> selectedLocationsInts = null;
+	private String selectionString = "";
+	private ArrayList<Integer> selectedLocationsInt = new ArrayList<Integer>();
+	private ArrayList<String> locationIDs = new ArrayList<String>();
+	private HashMap<String,ArrayList<PoseSteering>> allPaths = null;
+	private HashMap<String,ArrayList<ArrayList<PoseSteering>>> oldPaths = new HashMap<String,ArrayList<ArrayList<PoseSteering>>>(); 
+	private JTSDrawingPanel panel = null;
+	private double deltaX = 0.1;
+	private double deltaY = 0.1;
+	private double deltaT = 0.01;
+	private double deltaTR = 0.1;
+	
+	private static String TEMP_MAP_DIR = ".tempMapsPathEditor";
+
+	public PathEditor2(String posesAndPaths, String mapFilename) {
+		this(posesAndPaths, mapFilename, null, 0.1, 0.1, 0.01);
+	}
+
+	public PathEditor2(String posesAndPaths, String mapFilename, String selectionsFile) {
+		this(posesAndPaths, mapFilename, selectionsFile, 0.1, 0.1, 0.01);
+	}
+			
+	public PathEditor2(String posesAndPaths, String mapFN, String selectionsF, double deltaX, double deltaY, double deltaTheta) {
+		this.deltaX = deltaX;
+		this.deltaY = deltaY;
+		this.deltaT = deltaTheta;
+		this.mapFilename = PREFIX+File.separator+mapFN;
+		if (this.mapFilename != null) {
+			String path = this.mapFilename.substring(0, this.mapFilename.lastIndexOf(File.separator)+1);
+			this.mapImgFilename = path+Missions.getProperty("image", this.mapFilename);
+			this.mapRes = Double.parseDouble(Missions.getProperty("resolution", this.mapFilename));
+			System.out.println("MAP YAML: " + this.mapFilename);
+			System.out.println("MAP IMG : " + this.mapImgFilename);
+			System.out.println("MAP RES : " + this.mapRes);
+		}
+		this.setupGUI();
+		if (this.mapFilename != null) {
+			panel.setMap(this.mapFilename);
+		}
+		this.deleteDir(new File(TEMP_MAP_DIR));
+		new File(TEMP_MAP_DIR).mkdir();
+		
+		if (posesAndPaths != null) {
+			this.locationsAndPathsFilename = PREFIX+File.separator+posesAndPaths;
+			String pathURI = this.locationsAndPathsFilename.substring(0, this.locationsAndPathsFilename.lastIndexOf(File.separator)+1);
+			allPaths = new HashMap<String, ArrayList<PoseSteering>>();
+			Missions.loadLocationAndPathData(this.locationsAndPathsFilename);
+			addAllKnownLocations();
+			HashMap<String,Pose> locations = Missions.getLocations();
+			for (Entry<String,Pose> entry : locations.entrySet()) {
+				//System.out.println("Added location " + entry.getKey() + ": " + entry.getValue());
+				for (Entry<String,Pose> entry1 : locations.entrySet()) {
+					if (!entry1.equals(entry)) {
+						try {
+							String pathFile = Missions.getPathFile(entry.getKey(), entry1.getKey());
+							PoseSteering[] path = Missions.loadPathFromFile(pathURI+pathFile);
+							ArrayList<PoseSteering> pathAL = new ArrayList<PoseSteering>();
+							for (PoseSteering ps : path) pathAL.add(ps);
+							allPaths.put(entry.getKey()+"->"+entry1.getKey(), pathAL);							
+						}
+						catch(Error e) {
+							//System.out.println("No path for " + entry.getKey()+"->"+entry1.getKey());
+						}
+						try {
+							String pathFile = Missions.getPathFile(entry1.getKey(), entry.getKey());
+							PoseSteering[] path = Missions.loadPathFromFile(pathURI+pathFile);
+							ArrayList<PoseSteering> pathAL = new ArrayList<PoseSteering>();
+							for (PoseSteering ps : path) pathAL.add(ps);
+							allPaths.put(entry1.getKey()+"->"+entry.getKey(), pathAL);
+						}
+						catch(Error e) {
+							//System.out.println("No path for " + entry1.getKey()+"->"+entry.getKey());
+						}
+					}
+				}
+			}
+			for (Entry<String,ArrayList<PoseSteering>> onePath : allPaths.entrySet()) {
+				String pathName = onePath.getKey();
+				ArrayList<PoseSteering> path = onePath.getValue();
+				for (int i = 0; i < path.size(); i++) {
+					panel.addArrow(pathName+"."+i, path.get(i).getPose(), Color.blue);
+				}
+			}
+			panel.updatePanel();
+		}
+		
+		if (selectionsF != null) {
+			this.selectionsFile = PREFIX+File.separator+selectionsF;
+			loadSelectionsFile();
+		}
+
+
+	}
+	
+	public void loadSelectionsFile() {
+		try {
+			Scanner in = new Scanner(new FileReader(selectionsFile));
+			while (in.hasNextLine()) {
+				String line = in.nextLine().trim();
+				if (line.length() != 0 && !line.startsWith("#")) {
+					String[] oneline = line.split(" |\t");
+					ArrayList<Integer> oneSelection = new ArrayList<Integer>();
+					String str = "";
+					for (int i = 0; i < oneline.length; i++) {
+						for (int j = 0; j < locationIDs.size(); j++) {
+							if (locationIDs.get(j).equals(oneline[i])) {
+								oneSelection.add(j);
+								str+=(""+j);
+								if (i != oneline.length-1) str+=",";
+								break;
+							}
+						}
+						
+					}
+					if (selectedLocationsInts == null) selectedLocationsInts = new ArrayList<ArrayList<Integer>>();
+					if (selectionStrings == null) selectionStrings = new ArrayList<String>();
+					selectedLocationsInts.add(oneSelection);
+					selectionStrings.add(str);
+				}
+			}
+			in.close();
+		}
+		catch (FileNotFoundException e) { e.printStackTrace(); }
+	}
+	
+	public void updatePaths() {
+		for (Entry<String,ArrayList<PoseSteering>> onePath : allPaths.entrySet()) {
+			String pathName = onePath.getKey();
+			ArrayList<PoseSteering> path = onePath.getValue();
+			for (int i = 0; i < path.size(); i++) {
+				panel.addArrow(pathName+"."+i, path.get(i).getPose(), Color.blue);
+			}
+		}
+		panel.updatePanel();
+	}
+
+	public void removeAllKnownLocations() {
+		for (int i = 0; i < locationIDs.size(); i++) {
+			panel.removeGeometry(i+":"+locationIDs.get(i));
+		}
+	}
+	
+	public void addAllKnownLocations() {
+		locationIDs = new ArrayList<String>();
+		for (Entry<String,Pose> entry : Missions.getLocations().entrySet()) {
+			if (entry.getKey().startsWith("AUX_")) newLocationCounter++;
+			panel.addArrow((locationIDs.size())+":"+entry.getKey(), entry.getValue(), Color.green);
+			locationIDs.add(entry.getKey());
+		}
+	}
+	
+	public boolean deleteDir(File dir) {
+	    if (dir.isDirectory()) {
+	        String[] children = dir.list();
+	        for (int i=0; i<children.length; i++) {
+	            boolean success = deleteDir(new File(dir, children[i]));
+	            if (!success) {
+	                return false;
+	            }
+	        }
+	    }
+	    return dir.delete();
+	}
+		
+	private String getHelp() {
+		String ret = "";
+		TreeMap<String,String> helpText = new TreeMap<String, String>();
+		for (KeyStroke key : panel.getInputMap().allKeys()) {
+			if (key.equals(KeyStroke.getKeyStroke(KeyEvent.VK_0,0)) ||
+					key.equals(KeyStroke.getKeyStroke(KeyEvent.VK_1,0)) ||
+					key.equals(KeyStroke.getKeyStroke(KeyEvent.VK_2,0)) ||
+					key.equals(KeyStroke.getKeyStroke(KeyEvent.VK_3,0)) ||
+					key.equals(KeyStroke.getKeyStroke(KeyEvent.VK_4,0)) ||
+					key.equals(KeyStroke.getKeyStroke(KeyEvent.VK_5,0)) ||
+					key.equals(KeyStroke.getKeyStroke(KeyEvent.VK_6,0)) ||
+					key.equals(KeyStroke.getKeyStroke(KeyEvent.VK_7,0)) ||
+					key.equals(KeyStroke.getKeyStroke(KeyEvent.VK_8,0)) ||
+					key.equals(KeyStroke.getKeyStroke(KeyEvent.VK_9,0)) ||
+					key.equals(KeyStroke.getKeyStroke(KeyEvent.VK_MINUS,0)) ||
+					key.equals(KeyStroke.getKeyStroke(KeyEvent.VK_COMMA,0)))
+				continue;
+			if (key.getModifiers() != 0) helpText.put(key.toString().replaceAll("pressed ", "").replaceAll(" ", "-"), panel.getInputMap().get(key).toString());
+			else helpText.put(key.toString().replaceAll("pressed ", ""), panel.getInputMap().get(key).toString());
+		}
+		for (Entry<String,String> en : helpText.entrySet()) {
+			ret += en.getKey() + ": " + en.getValue() + "\n";
+		}
+		return ret;
+	}
+	
+	private void highlightSelectedLocations() {
+		clearLocations();
+		for (int selectedPathPointOneInt : selectedLocationsInt) {
+			if (selectedPathPointOneInt >= 0 && selectedPathPointOneInt < locationIDs.size()) {
+				panel.addArrow(selectedPathPointOneInt+":"+locationIDs.get(selectedPathPointOneInt), Missions.getLocation(locationIDs.get(selectedPathPointOneInt)), Color.red);
+			}
+		}
+		panel.updatePanel();
+	}
+		
+	private void clearLocations() {
+		for (int i = 0; i < locationIDs.size(); i++) {
+			panel.addArrow(i+":"+locationIDs.get(i), Missions.getLocation(locationIDs.get(i)), Color.green);
+		}
+		panel.updatePanel();
+	}
+	
+//	private void backupPath() {
+//		ArrayList<PoseSteering> backup = new ArrayList<PoseSteering>();
+//		for (PoseSteering ps : this.currentPath) {
+//			PoseSteering newPS = new PoseSteering(ps.getX(), ps.getY(), ps.getTheta(), ps.getSteering());
+//			backup.add(newPS);
+//		}
+//		oldCurrentPaths.add(backup);
+//	}
+//	
+//	private void restorePath() {
+//		if (!oldCurrentPaths.isEmpty()) {
+//			for (int i = 0; i < currentPath.size(); i++) panel.removeGeometry(""+i);
+//			currentPath = oldCurrentPaths.get(oldCurrentPaths.size()-1);
+//			oldCurrentPaths.remove(oldCurrentPaths.size()-1);
+//			clearPathPointSelection();
+//		}
+//	}
+	
+	public void addAbstractAction(AbstractAction aa, int keyEvent, int modifiers, String description) {
+		panel.getInputMap().put(KeyStroke.getKeyStroke(keyEvent,modifiers),description);
+		panel.getActionMap().put(description,aa);
+	}
+		
+	private void setupGUI() {
+		panel = JTSDrawingPanel.makeEmpty("Path Editor");
+
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_0,0),"Digit0");
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_1,0),"Digit1");
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_2,0),"Digit2");
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_3,0),"Digit3");
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_4,0),"Digit4");
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_5,0),"Digit5");
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_6,0),"Digit6");
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_7,0),"Digit7");
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_8,0),"Digit8");
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_9,0),"Digit9");
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_MINUS,0),"Digit-");
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_COMMA,0),"Digit,");
+		AbstractAction actInputSelection = new AbstractAction() {
+			private static final long serialVersionUID = -1398168416006978350L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				selectionString += e.getActionCommand();
+				System.out.println("Selection: " + selectionString);
+			}
+		};
+		panel.getActionMap().put("Digit0",actInputSelection);
+		panel.getActionMap().put("Digit1",actInputSelection);
+		panel.getActionMap().put("Digit2",actInputSelection);
+		panel.getActionMap().put("Digit3",actInputSelection);
+		panel.getActionMap().put("Digit4",actInputSelection);
+		panel.getActionMap().put("Digit5",actInputSelection);
+		panel.getActionMap().put("Digit6",actInputSelection);
+		panel.getActionMap().put("Digit7",actInputSelection);
+		panel.getActionMap().put("Digit8",actInputSelection);
+		panel.getActionMap().put("Digit9",actInputSelection);
+		panel.getActionMap().put("Digit-",actInputSelection);
+		panel.getActionMap().put("Digit,",actInputSelection);
+
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE,0),"Cancel selection");
+		AbstractAction actCancel = new AbstractAction() {
+			private static final long serialVersionUID = -1398168416006978350L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				selectionInputListen = false;
+				selectedLocationsInt = new ArrayList<Integer>();
+				selectionString = "";
+				clearLocations();
+			}
+		};
+		panel.getActionMap().put("Cancel selection",actCancel);
+
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_S,0),"Select a selection preset");
+		AbstractAction actSelectSS = new AbstractAction() {
+			private static final long serialVersionUID = -8804517791543118334L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (!selectionInputListen) {
+					selectedLocationsInt = new ArrayList<Integer>();
+					selectionString = "";
+					clearLocations();
+					System.out.println("Input one path index in [0.." + (selectionStrings.size()-1) + "]: " + selectionString);
+				}
+				else if (selectionInputListen) {
+					clearLocations();
+					try {
+						int ssNumber = Integer.parseInt(selectionString);
+						selectionString = selectionStrings.get(ssNumber);
+						selectedLocationsInt = selectedLocationsInts.get(ssNumber);
+						highlightSelectedLocations();
+						System.out.println("Current selection (locations): " + selectedLocationsInt);
+					}
+					catch(NumberFormatException ex) { }
+				}
+				selectionInputListen = !selectionInputListen;
+			}
+		};
+		panel.getActionMap().put("Select a selection preset",actSelectSS);
+		
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_P,0),"Select path");
+		AbstractAction actSelectPath = new AbstractAction() {
+			private static final long serialVersionUID = -8804517791543118334L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (!selectionInputListen) {
+					selectedLocationsInt = new ArrayList<Integer>();
+					selectionString = "";
+					clearLocations();
+					System.out.println("Input one path index in [0.." + (allPaths.size()-1) + "]: " + selectionString);
+				}
+				else if (selectionInputListen) {
+					clearLocations();
+					try {
+						int pathNumber = Integer.parseInt(selectionString);
+						ArrayList<Entry<String,ArrayList<PoseSteering>>> allEntries = new ArrayList<Entry<String,ArrayList<PoseSteering>>>(allPaths.entrySet());
+						if (allEntries.size() > pathNumber) {
+							Entry<String,ArrayList<PoseSteering>> toSelect = allEntries.get(pathNumber);
+							int first = -1;
+							int last = -1;
+							String fromLoc = toSelect.getKey().substring(0,toSelect.getKey().indexOf("->"));
+							String toLoc = toSelect.getKey().substring(toSelect.getKey().indexOf("->")+2);
+							for (int i = 0; i < locationIDs.size(); i++) {
+								if (locationIDs.get(i).equals(fromLoc)) first = i;
+								else if (locationIDs.get(i).equals(toLoc)) last = i;
+							}
+							selectionString = first + "," + last;
+							selectedLocationsInt = new ArrayList<Integer>();
+							selectedLocationsInt.add(first);
+							selectedLocationsInt.add(last);
+							highlightSelectedLocations();
+						}
+					}
+					catch(NumberFormatException ex) { }
+				}
+				selectionInputListen = !selectionInputListen;
+			}
+		};
+		panel.getActionMap().put("Select path",actSelectPath);
+
+//		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_Z,KeyEvent.CTRL_DOWN_MASK),"Undo");
+//		AbstractAction actUndo = new AbstractAction() {
+//			private static final long serialVersionUID = 5597593272769688561L;
+//			@Override
+//			public void actionPerformed(ActionEvent e) {
+//				restorePath();
+//			}
+//		};
+//		panel.getActionMap().put("Undo",actUndo);
+
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_S,KeyEvent.CTRL_DOWN_MASK),"Save locations and paths");
+		AbstractAction actSave = new AbstractAction() {
+			private static final long serialVersionUID = 8788274388808789051L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				String st = "#Locations\n";
+				for (String locationName : locationIDs) {
+					Pose locPose = Missions.getLocation(locationName);
+					st += locationName + "\t" + locPose.getX() + "\t" + locPose.getY() + "\t" + locPose.getTheta() + "\n";
+				}
+				st+="\n#Paths\n";
+				for (Entry<String,ArrayList<PoseSteering>> entry : allPaths.entrySet()) {
+					String pathFilename = entry.getKey().replaceAll("->", "-")+".path";
+					st += entry.getKey().replaceAll("->", " -> ") + "\t" + pathFilename + "\n";
+					String path = locationsAndPathsFilename.substring(0, locationsAndPathsFilename.lastIndexOf(File.separator)+1);
+					writePath(path+pathFilename, entry.getValue());
+				}
+		        try {
+		            File file = new File(locationsAndPathsFilename+NEW_SUFFIX);
+		            PrintWriter writer = new PrintWriter(file);
+		            writer.write(st);
+		            writer.close();
+		            System.out.println("Saved locations and paths file: " + locationsAndPathsFilename+NEW_SUFFIX);
+		        }
+		        catch (Exception ex) { ex.printStackTrace(); }
+			}
+		};
+		panel.getActionMap().put("Save locations and paths",actSave);
+
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_H,0),"Help");
+		AbstractAction actHelp = new AbstractAction() {
+			private static final long serialVersionUID = 8788274388808789053L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				JOptionPane.showMessageDialog(panel,getHelp());
+			}
+		};
+		panel.getActionMap().put("Help",actHelp);
+
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_L,0),"Select location(s)");
+		AbstractAction actSelectLocations = new AbstractAction() {
+			private static final long serialVersionUID = -4218195170958172222L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (!selectionInputListen) {
+					selectedLocationsInt = new ArrayList<Integer>();
+					selectionString = "";
+					clearLocations();
+					System.out.println("Input list or range of locations ('x' or 'x,y,..,z' or 'x-z'): " + selectionString);
+				}
+				else if (selectionInputListen) {
+					clearLocations();
+					try {
+						if (selectionString.contains("-")) {
+							int first = Math.min(locationIDs.size()-1,Integer.parseInt(selectionString.substring(0,selectionString.indexOf("-"))));
+							int last = Math.min(locationIDs.size()-1,Integer.parseInt(selectionString.substring(selectionString.indexOf("-")+1)));
+							for (int i = first; i <= last; i++) selectedLocationsInt.add(i);
+						}
+						else if (selectionString.contains(",")) {
+							String[] points = selectionString.split(",");
+							for (String point : points) selectedLocationsInt.add(Math.min(locationIDs.size()-1,Integer.parseInt(point)));
+						}
+						else selectedLocationsInt.add(Math.min(locationIDs.size()-1,Integer.parseInt(selectionString)));
+						highlightSelectedLocations();
+						System.out.println("Current selection (locations): " + selectedLocationsInt);
+					}
+					catch(NumberFormatException ex) { }
+				}
+				selectionInputListen = !selectionInputListen;
+			}
+		};
+		panel.getActionMap().put("Select location(s)",actSelectLocations);
+		
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE,0),"Delete path between selected locations");
+		AbstractAction actDelete = new AbstractAction() {
+			private static final long serialVersionUID = 4455373738365388356L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (selectedLocationsInt.size() == 2) {
+					String pathName = locationIDs.get(selectedLocationsInt.get(0)) + "->" + locationIDs.get(selectedLocationsInt.get(1));
+					ArrayList<PoseSteering> pathToRemove = allPaths.get(pathName);
+					if (pathToRemove != null) {
+						for (int i = 0; i < pathToRemove.size(); i++) panel.removeGeometry(pathName+"."+i);
+						allPaths.remove(pathName);
+						System.out.println("Removed path " + pathName);
+						updatePaths();
+					}
+				}
+			}
+		};
+		panel.getActionMap().put("Delete path between selected locations",actDelete);
+		
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_BACK_SPACE,0),"Delete selected location(s)");
+		AbstractAction actDeleteLoc = new AbstractAction() {
+			private static final long serialVersionUID = 4455173731365388356L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				for (int selectedLocationOneInt : selectedLocationsInt) {
+					String locationName = locationIDs.get(selectedLocationOneInt);
+					Missions.removeLocation(locationName);
+				}
+				removeAllKnownLocations();
+				addAllKnownLocations();
+				selectedLocationsInt = new ArrayList<Integer>();
+				selectionString = "";
+				panel.updatePanel();
+			}
+		};
+		panel.getActionMap().put("Delete selected location(s)",actDeleteLoc);
+		
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_INSERT,0),"Add locations(s)");
+		AbstractAction actInsert = new AbstractAction() {
+			private static final long serialVersionUID = -8804517791543118334L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (!selectedLocationsInt.isEmpty()) {
+					ArrayList<Integer> newSelection = new ArrayList<Integer>();
+					selectionString = locationIDs.size() + "-" + (locationIDs.size()+selectedLocationsInt.size()-1);
+					for (int selectedLocationOneInt : selectedLocationsInt) {
+						Pose pOld = Missions.getLocation(locationIDs.get(selectedLocationOneInt));
+						Pose pNew = new Pose(pOld.getX()+10*deltaX, pOld.getY()+10*deltaY, pOld.getTheta());
+						String newPoseName = "AUX_"+newLocationCounter++;
+						Missions.setLocation(newPoseName, pNew);
+						locationIDs.add(newPoseName);
+						newSelection.add(locationIDs.size()-1);
+						panel.addArrow((locationIDs.size()-1)+":"+newPoseName, pNew, Color.green);
+					}
+					clearLocations();
+					selectedLocationsInt = newSelection;
+					System.out.println("Inserted new locations " + selectedLocationsInt);
+					highlightSelectedLocations();
+				}
+			}
+		};
+		panel.getActionMap().put("Add locations(s)",actInsert);
+
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_S,KeyEvent.ALT_DOWN_MASK),"Compute spline selected pair of locations");
+		AbstractAction actSpline = new AbstractAction() {
+			private static final long serialVersionUID = -3238585469762752293L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				ArrayList<PoseSteering> overallPath = new ArrayList<PoseSteering>();
+				for (int i = 0; i < selectedLocationsInt.size()-1; i++) {
+					Pose startPose = Missions.getLocation(locationIDs.get(selectedLocationsInt.get(i)));
+					Pose goalPose = Missions.getLocation(locationIDs.get(selectedLocationsInt.get(i+1)));
+					PoseSteering[] path = computeSpline(startPose, goalPose);
+					if (i == 0) overallPath.add(path[0]);
+					for (int j = 1; j < path.length; j++) overallPath.add(path[j]);
+				}
+				String pathName = locationIDs.get(selectedLocationsInt.get(0))+"->"+locationIDs.get(selectedLocationsInt.get(selectedLocationsInt.size()-1));
+				allPaths.put(pathName, overallPath);
+				updatePaths();
+			}
+		};
+		panel.getActionMap().put("Compute spline selected pair of locations",actSpline);
+		
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_P,KeyEvent.ALT_DOWN_MASK),"Plan path between selected locations");
+		AbstractAction actPlan = new AbstractAction() {
+			private static final long serialVersionUID = -3238585469762752293L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (selectedLocationsInt.size() >= 2) {
+					Pose startPose = Missions.getLocation(locationIDs.get(selectedLocationsInt.get(0)));
+					Pose[] goalPoses = new Pose[selectedLocationsInt.size()-1];
+					for (int i = 0; i < goalPoses.length; i++) {
+						goalPoses[i] = Missions.getLocation(locationIDs.get(selectedLocationsInt.get(i+1)));
+					}
+					PoseSteering[] newPath = computePath(startPose,goalPoses);
+					if (newPath != null) {
+						String pathName = locationIDs.get(selectedLocationsInt.get(0))+"->"+locationIDs.get(selectedLocationsInt.get(selectedLocationsInt.size()-1));
+						ArrayList<PoseSteering> newPathAL = new ArrayList<PoseSteering>();
+						for (PoseSteering ps : newPath) newPathAL.add(ps);
+						allPaths.put(pathName,newPathAL);
+						updatePaths();
+					}
+				}
+			}
+		};
+		panel.getActionMap().put("Plan path between selected locations",actPlan);
+
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT,0),"Decrease X of selected pose(s)");
+		AbstractAction actXMinus = new AbstractAction() {
+			private static final long serialVersionUID = 1767256680398690970L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (!selectedLocationsInt.isEmpty()) {
+					for (int selectedLocationOneInt : selectedLocationsInt) {
+						String locationName = locationIDs.get(selectedLocationOneInt);
+						double x = Missions.getLocation(locationName).getX();
+						double y = Missions.getLocation(locationName).getY();
+						double th = Missions.getLocation(locationName).getTheta();
+						x -= deltaX;
+						Pose newPose = new Pose(x,y,th);
+						Missions.setLocation(locationName, newPose);
+						panel.addArrow(selectedLocationOneInt+":"+locationName, newPose, Color.green);
+						highlightSelectedLocations();
+					}
+				}
+			}
+		};
+		panel.getActionMap().put("Decrease X of selected pose(s)",actXMinus);
+		
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT,KeyEvent.SHIFT_DOWN_MASK),"Speed decrease X of selected pose(s)");
+		AbstractAction actXMinusFast = new AbstractAction() {
+			private static final long serialVersionUID = 1767256680448690970L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (!selectedLocationsInt.isEmpty()) {
+					for (int selectedPathPointOneInt : selectedLocationsInt) {
+						String locationName = locationIDs.get(selectedPathPointOneInt);
+						double x = Missions.getLocation(locationName).getX();
+						double y = Missions.getLocation(locationName).getY();
+						double th = Missions.getLocation(locationName).getTheta();
+						x -= (10*deltaX);
+						Pose newPose = new Pose(x,y,th);
+						Missions.setLocation(locationName, newPose);
+						panel.addArrow(selectedPathPointOneInt+":"+locationName, newPose, Color.green);
+						highlightSelectedLocations();
+					}
+				}
+			}
+		};
+		panel.getActionMap().put("Speed decrease X of selected pose(s)",actXMinusFast);
+
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT,0),"Increase X of selected pose(s)");
+		AbstractAction actXPlus = new AbstractAction() {
+			private static final long serialVersionUID = 6900418766755234220L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (!selectedLocationsInt.isEmpty()) {
+					for (int selectedPathPointOneInt : selectedLocationsInt) {
+						String locationName = locationIDs.get(selectedPathPointOneInt);
+						double x = Missions.getLocation(locationName).getX();
+						double y = Missions.getLocation(locationName).getY();
+						double th = Missions.getLocation(locationName).getTheta();
+						x += deltaX;
+						Pose newPose = new Pose(x,y,th);
+						Missions.setLocation(locationName, newPose);
+						panel.addArrow(selectedPathPointOneInt+":"+locationName, newPose, Color.green);
+						highlightSelectedLocations();
+					}
+				}
+			}
+		};
+		panel.getActionMap().put("Increase X of selected pose(s)",actXPlus);
+
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT,KeyEvent.SHIFT_DOWN_MASK),"Speed increase X of selected pose(s)");
+		AbstractAction actXPlusFast = new AbstractAction() {
+			private static final long serialVersionUID = 6980418766755234220L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (!selectedLocationsInt.isEmpty()) {
+					for (int selectedPathPointOneInt : selectedLocationsInt) {
+						String locationName = locationIDs.get(selectedPathPointOneInt);
+						double x = Missions.getLocation(locationName).getX();
+						double y = Missions.getLocation(locationName).getY();
+						double th = Missions.getLocation(locationName).getTheta();
+						x += (10*deltaX);
+						Pose newPose = new Pose(x,y,th);
+						Missions.setLocation(locationName, newPose);
+						panel.addArrow(selectedPathPointOneInt+":"+locationName, newPose, Color.green);
+						highlightSelectedLocations();
+					}
+				}
+			}
+		};
+		panel.getActionMap().put("Speed increase X of selected pose(s)",actXPlusFast);
+
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_UP,0),"Increase Y of selected pose(s)");
+		AbstractAction actYPlus = new AbstractAction() {
+			private static final long serialVersionUID = 2627197997139919535L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (!selectedLocationsInt.isEmpty()) {
+					for (int selectedPathPointOneInt : selectedLocationsInt) {
+						String locationName = locationIDs.get(selectedPathPointOneInt);
+						double x = Missions.getLocation(locationName).getX();
+						double y = Missions.getLocation(locationName).getY();
+						double th = Missions.getLocation(locationName).getTheta();
+						y += deltaY;
+						Pose newPose = new Pose(x,y,th);
+						Missions.setLocation(locationName, newPose);
+						panel.addArrow(selectedPathPointOneInt+":"+locationName, newPose, Color.green);
+						highlightSelectedLocations();
+					}
+				}
+			}
+		};
+		panel.getActionMap().put("Increase Y of selected pose(s)",actYPlus);
+		
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_UP,KeyEvent.SHIFT_DOWN_MASK),"Speed increase Y of selected pose(s)");
+		AbstractAction actYPlusFast = new AbstractAction() {
+			private static final long serialVersionUID = 2627197997139919525L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (!selectedLocationsInt.isEmpty()) {
+					for (int selectedPathPointOneInt : selectedLocationsInt) {
+						String locationName = locationIDs.get(selectedPathPointOneInt);
+						double x = Missions.getLocation(locationName).getX();
+						double y = Missions.getLocation(locationName).getY();
+						double th = Missions.getLocation(locationName).getTheta();
+						y += (10*deltaY);
+						Pose newPose = new Pose(x,y,th);
+						Missions.setLocation(locationName, newPose);
+						panel.addArrow(selectedPathPointOneInt+":"+locationName, newPose, Color.green);
+						highlightSelectedLocations();
+					}
+				}
+			}
+		};
+		panel.getActionMap().put("Speed increase Y of selected pose(s)",actYPlusFast);
+
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_DOWN,0),"Decrease Y of selected pose(s)");
+		AbstractAction actYMinus = new AbstractAction() {
+			private static final long serialVersionUID = 6487878455015786029L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (!selectedLocationsInt.isEmpty()) {
+					for (int selectedPathPointOneInt : selectedLocationsInt) {
+						String locationName = locationIDs.get(selectedPathPointOneInt);
+						double x = Missions.getLocation(locationName).getX();
+						double y = Missions.getLocation(locationName).getY();
+						double th = Missions.getLocation(locationName).getTheta();
+						y -= deltaY;
+						Pose newPose = new Pose(x,y,th);
+						Missions.setLocation(locationName, newPose);
+						panel.addArrow(selectedPathPointOneInt+":"+locationName, newPose, Color.green);
+						highlightSelectedLocations();
+					}
+				}
+			}
+		};
+		panel.getActionMap().put("Decrease Y of selected pose(s)",actYMinus);
+		
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_DOWN,KeyEvent.SHIFT_DOWN_MASK),"Speed decrease Y of selected pose(s)");
+		AbstractAction actYMinusFast = new AbstractAction() {
+			private static final long serialVersionUID = 6487878415015786029L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (!selectedLocationsInt.isEmpty()) {
+					for (int selectedPathPointOneInt : selectedLocationsInt) {
+						String locationName = locationIDs.get(selectedPathPointOneInt);
+						double x = Missions.getLocation(locationName).getX();
+						double y = Missions.getLocation(locationName).getY();
+						double th = Missions.getLocation(locationName).getTheta();
+						y -= (10*deltaY);
+						Pose newPose = new Pose(x,y,th);
+						Missions.setLocation(locationName, newPose);
+						panel.addArrow(selectedPathPointOneInt+":"+locationName, newPose, Color.green);
+						highlightSelectedLocations();
+					}
+				}
+			}
+		};
+		panel.getActionMap().put("Speed decrease Y of selected pose(s)",actYMinusFast);
+		
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_PAGE_DOWN,0),"Decrease theta of selected pose(s)");
+		AbstractAction actTMinus = new AbstractAction() {
+			private static final long serialVersionUID = -7391970411254721019L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (!selectedLocationsInt.isEmpty()) {
+					for (int selectedPathPointOneInt : selectedLocationsInt) {
+						String locationName = locationIDs.get(selectedPathPointOneInt);
+						double x = Missions.getLocation(locationName).getX();
+						double y = Missions.getLocation(locationName).getY();
+						double th = Missions.getLocation(locationName).getTheta();
+						th -= deltaT;
+						Pose newPose = new Pose(x,y,th);
+						Missions.setLocation(locationName, newPose);
+						panel.addArrow(selectedPathPointOneInt+":"+locationName, newPose, Color.green);
+						highlightSelectedLocations();
+					}
+				}
+			}
+		};
+		panel.getActionMap().put("Decrease theta of selected pose(s)",actTMinus);
+
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_PAGE_DOWN,KeyEvent.SHIFT_DOWN_MASK),"Speed decrease theta of selected pose(s)");
+		AbstractAction actTMinusS = new AbstractAction() {
+			private static final long serialVersionUID = -7391970411254721019L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (!selectedLocationsInt.isEmpty()) {
+					for (int selectedPathPointOneInt : selectedLocationsInt) {
+						String locationName = locationIDs.get(selectedPathPointOneInt);
+						double x = Missions.getLocation(locationName).getX();
+						double y = Missions.getLocation(locationName).getY();
+						double th = Missions.getLocation(locationName).getTheta();
+						th -= (10*deltaT);
+						Pose newPose = new Pose(x,y,th);
+						Missions.setLocation(locationName, newPose);
+						panel.addArrow(selectedPathPointOneInt+":"+locationName, newPose, Color.green);
+						highlightSelectedLocations();
+					}
+				}
+			}
+		};
+		panel.getActionMap().put("Speed decrease theta of selected pose(s)",actTMinusS);
+
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_PAGE_UP,0),"Increase theta of selected pose(s)");
+		AbstractAction actTPlus = new AbstractAction() {
+			private static final long serialVersionUID = 8414380724212398117L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (!selectedLocationsInt.isEmpty()) {
+					for (int selectedPathPointOneInt : selectedLocationsInt) {
+						String locationName = locationIDs.get(selectedPathPointOneInt);
+						double x = Missions.getLocation(locationName).getX();
+						double y = Missions.getLocation(locationName).getY();
+						double th = Missions.getLocation(locationName).getTheta();
+						th += deltaT;
+						Pose newPose = new Pose(x,y,th);
+						Missions.setLocation(locationName, newPose);
+						panel.addArrow(selectedPathPointOneInt+":"+locationName, newPose, Color.green);
+						highlightSelectedLocations();
+					}
+				}
+			}
+		};
+		panel.getActionMap().put("Increase theta of selected pose(s)",actTPlus);
+
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_PAGE_UP,KeyEvent.SHIFT_DOWN_MASK),"Speed increase theta of selected pose(s)");
+		AbstractAction actTPlusS = new AbstractAction() {
+			private static final long serialVersionUID = 8414380724212398117L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (!selectedLocationsInt.isEmpty()) {
+					for (int selectedPathPointOneInt : selectedLocationsInt) {
+						String locationName = locationIDs.get(selectedPathPointOneInt);
+						double x = Missions.getLocation(locationName).getX();
+						double y = Missions.getLocation(locationName).getY();
+						double th = Missions.getLocation(locationName).getTheta();
+						th += (10*deltaT);
+						Pose newPose = new Pose(x,y,th);
+						Missions.setLocation(locationName, newPose);
+						panel.addArrow(selectedPathPointOneInt+":"+locationName, newPose, Color.green);
+						highlightSelectedLocations();
+					}
+				}
+			}
+		};
+		panel.getActionMap().put("Speed increase theta of selected pose(s)",actTPlusS);
+
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_I,0),"Info");
+		AbstractAction actInfo = new AbstractAction() {
+			private static final long serialVersionUID = 8424380724212398117L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				System.out.println("Locations:");
+				for (int i = 0; i < locationIDs.size(); i++) System.out.println("   " + i + ": " + locationIDs.get(i));
+				if (selectionStrings != null) {
+					System.out.println("Selections:");
+					//for (int i = 0; i < selectionStrings.size(); i++) System.out.println("   " + i + ":" + selectionStrings.get(i));
+					for (int i = 0; i < selectedLocationsInts.size(); i++) System.out.println("   " + i + ":" + selectedLocationsInts.get(i));
+				}
+			}
+		};
+		panel.getActionMap().put("Info",actInfo);
+
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_M,KeyEvent.SHIFT_DOWN_MASK),"Increase minimum distance between path points for path planning");
+		AbstractAction actMDPlus = new AbstractAction() {
+			private static final long serialVersionUID = 8414380724212398117L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				DISTANCE_BETWEEN_PATH_POINTS += deltaX;
+				System.out.println("Minimum distance between path points (>): " + DISTANCE_BETWEEN_PATH_POINTS);
+			}
+		};
+		panel.getActionMap().put("Increase minimum distance between path points for path planning",actMDPlus);
+
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_M,0),"Decrease minimum distance between path points for path planning");
+		AbstractAction actMDMinus = new AbstractAction() {
+			private static final long serialVersionUID = 8414380724212398117L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (DISTANCE_BETWEEN_PATH_POINTS-deltaX >= 0) DISTANCE_BETWEEN_PATH_POINTS -= deltaX;
+				System.out.println("Minimum distance between path points (<): " + DISTANCE_BETWEEN_PATH_POINTS);
+			}
+		};
+		panel.getActionMap().put("Decrease minimum distance between path points for path planning",actMDMinus);
+		
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_LESS,KeyEvent.SHIFT_DOWN_MASK),"Increase maximum turning radius");
+		AbstractAction actTRPlus = new AbstractAction() {
+			private static final long serialVersionUID = 8414380724212398117L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				MAX_TURNING_RADIUS += deltaTR;
+				System.out.println("Turning radius (>): " + MAX_TURNING_RADIUS);
+			}
+		};
+		panel.getActionMap().put("Increase maximum turning radius",actTRPlus);
+
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_LESS,0),"Decrease maximum turning radius");
+		AbstractAction actTRMinus = new AbstractAction() {
+			private static final long serialVersionUID = 8414380724212398117L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (MAX_TURNING_RADIUS-deltaTR >= 0) MAX_TURNING_RADIUS -= deltaTR;
+				System.out.println("Turning radius (<): " + MAX_TURNING_RADIUS);
+			}
+		};
+		panel.getActionMap().put("Decrease maximum turning radius",actTRMinus);
+
+		panel.setFocusable(true);
+		panel.setArrowHeadSizeInMeters(0.9);
+		panel.setTextSizeInMeters(5.3);
+	}
+	
+	
+	private void writePath(String fileName, ArrayList<PoseSteering> path) {
+        try {
+            File file = new File(fileName);
+            System.out.println("Saved path file: " + file.getAbsolutePath());
+            PrintWriter writer = new PrintWriter(file);
+            for (PoseSteering ps : path) {
+            	writer.println(ps.getPose().getX() + "\t" + ps.getPose().getY() + "\t" + ps.getPose().getTheta() + "\t" + ps.getSteering());
+            }
+            writer.close();
+        }
+        catch (Exception e) { e.printStackTrace(); }
+	}
+		
+	private String makeEmptyMapMap() {
+		BufferedImage img = new BufferedImage(EMPTY_MAP_DIM, EMPTY_MAP_DIM, BufferedImage.TYPE_INT_RGB);
+		Graphics2D g2 = img.createGraphics();
+		g2.setColor(Color.white);
+		g2.fillRect(0, 0, EMPTY_MAP_DIM, EMPTY_MAP_DIM);
+		File outputfile = new File(TEMP_MAP_DIR+File.separator+"tempMapEmpty.png");
+		try { ImageIO.write(img, "png", outputfile); }
+		catch (IOException e) { e.printStackTrace(); }
+		return outputfile.getAbsolutePath();
+	}
+
+	private PoseSteering[] computeSpline(Pose from, Pose to) {
+		Coordinate[] controlPoints = new Coordinate[4];
+		controlPoints[0] = new Coordinate(from.getX(),from.getY(),0.0);
+		controlPoints[1] = new Coordinate(from.getX()+SPLINE_DISTANCE*Math.cos(from.getTheta()), from.getY()+SPLINE_DISTANCE*Math.sin(from.getTheta()), 0.0);
+		controlPoints[2] = new Coordinate(to.getX()-SPLINE_DISTANCE*Math.cos(to.getTheta()), to.getY()-SPLINE_DISTANCE*Math.sin(to.getTheta()), 0.0);
+		controlPoints[3] = new Coordinate(to.getX(),to.getY(),0.0);
+		Spline3D spline1 = SplineFactory.createBezier(controlPoints, DISTANCE_BETWEEN_PATH_POINTS);
+		return spline1.asPoseSteerings();
+	}
+
+	private PoseSteering[] computePath(Pose from, Pose ... to) {
+		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
+		if (this.mapFilename == null) {
+			rsp.setMapFilename(makeEmptyMapMap());
+			rsp.setMapResolution(1.0);
+		}
+		else {
+			rsp.setMapFilename(mapImgFilename);
+			rsp.setMapResolution(mapRes);
+		}
+		rsp.setRadius(3.0);
+		rsp.setTurningRadius(MAX_TURNING_RADIUS);
+		rsp.setDistanceBetweenPathPoints(DISTANCE_BETWEEN_PATH_POINTS);
+		rsp.setStart(from);
+		Pose[] goalPoses = new Pose[to.length];
+		for (int i = 0; i < goalPoses.length; i++) goalPoses[i] = to[i];
+		rsp.setGoals(goalPoses);
+//		rsp.addObstacles(obstacles.toArray(new Geometry[obstacles.size()]));
+		if (!rsp.plan()) return null;
+		PoseSteering[] ret = rsp.getPath();
+		return ret;
+	}
+
+	public static void main(String[] args) {
+		PREFIX = "/home/fpa/gitroot.gitlab/volvo_ce/coordination_oru_vce";
+		String locAndPathFilename = "paths/elsite_locations.bare.txt";
+		String selectionsFile = "paths/selections.txt";
+		String mapFilename = "maps/elsite_1m.yaml";
+		//new PathEditor2(locAndPathFilename,mapFilename);
+		new PathEditor2(locAndPathFilename,mapFilename,selectionsFile);
+		
+		//PREFIX = "/home/fpa/gitroot.gitlab/volvo_ce/coordination_oru_vce";
+		//String pathFileName = PREFIX+File.separator+"paths/poses.txt";
+		//String pathFileName = PREFIX+File.separator+"paths/elsite_smooth_paths/elsite_paths_left.path1_and_2_and_3.path.new";
+		//String mapFileName = PREFIX+File.separator+"maps/elsite_1m.yaml";
+		//String posesFileName = null;// PREFIX+File.separator+"paths/poses.txt";
+		//new PathEditor(pathFileName,mapFileName,posesFileName);
+		
+	}
+
+}

@@ -31,15 +31,20 @@ import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.util.AffineTransformation;
 
 import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppCarPlanner;
+import se.oru.coordination.coordination_oru.util.splines.Spline3D;
+import se.oru.coordination.coordination_oru.util.splines.SplineFactory;
 
 public class PathEditor {
 
+	private static String PREFIX = null;
 	private static int EMPTY_MAP_DIM = 10000;
 	private static double OBSTACLE_SIZE = 2.0;
-	private static double MAX_TURNING_RADIUS = 4.0;
+	private static double MAX_TURNING_RADIUS = 5.0;
 	private static double MIN_DISTANCE_BETWEEN_PATH_POINTS = 0.4;
 	private String pathFileName = null;
 	private String mapFileName = null;
+	private String mapImgFileName = null;
+	private double mapRes = 1.0;
 	private String posesFileName = null;
 	private boolean selectionPathPointInputListen = false;
 	private String selectionString = "";
@@ -58,6 +63,7 @@ public class PathEditor {
 	private Coordinate[] obstacleFootprint = null;
 	private ArrayList<Pose> obstacleCenters = new ArrayList<Pose>();
 	private ArrayList<String> obstacleNames = new ArrayList<String>();
+	private static boolean USE_MP = false; 
 	
 	private static String TEMP_MAP_DIR = ".tempMapsPathEditor";
 	
@@ -89,17 +95,19 @@ public class PathEditor {
 				String line = in.nextLine().trim();
 				if (line.length() != 0 && !line.startsWith("#")) {
 					String[] oneline = line.split(" |\t");
-					Pose ps = null;
-					String obsName = oneline[0];
-					obstacleNames.add(obsName);
-					ps = new Pose(
-							new Double(oneline[1]).doubleValue(),
-							new Double(oneline[2]).doubleValue(),
-							new Double(oneline[3]).doubleValue());
-					Geometry obs = makeObstacle(ps);
-					int id = obstacles.size()-1;
-					panel.addGeometry("obs_"+id, obs, false, false, true, "#cc3300");
-					selectedObsInt.add(id);
+					if (oneline.length == 4) {
+						Pose ps = null;
+						String obsName = oneline[0];
+						obstacleNames.add(obsName);
+						ps = new Pose(
+								new Double(oneline[1]).doubleValue(),
+								new Double(oneline[2]).doubleValue(),
+								new Double(oneline[3]).doubleValue());
+						Geometry obs = makeObstacle(ps);
+						int id = obstacles.size()-1;
+						panel.addGeometry("obs_"+id, obs, false, false, true, "#cc3300");
+						selectedObsInt.add(id);
+					}
 				}
 			}
 			in.close();
@@ -117,6 +125,10 @@ public class PathEditor {
 		this.deltaY = deltaY;
 		this.deltaT = deltaTheta;
 		this.newFileSuffix = newFileSuffix;
+		if (mapFileName != null) {
+			this.mapImgFileName = PREFIX+File.separator+"maps"+File.separator+Missions.getProperty("image", this.mapFileName);
+			this.mapRes = Double.parseDouble(Missions.getProperty("resolution", this.mapFileName));
+		}
 		this.setupGUI();
 		if (pathFileName != null) this.readPath();
 		if (mapFileName != null) panel.setMap(this.mapFileName);
@@ -247,10 +259,12 @@ public class PathEditor {
 	}
 	
 	private void clearPathPointSelection() {
-		selectionString = "";
-		selectedPathPointsInt.clear();
-		for (int i = 0; i < path.size(); i++) panel.addArrow(""+i, path.get(i).getPose(), Color.gray);
-		panel.updatePanel();
+		if (path != null) {
+			selectionString = "";
+			selectedPathPointsInt.clear();
+			for (int i = 0; i < path.size(); i++) panel.addArrow(""+i, path.get(i).getPose(), Color.gray);
+			panel.updatePanel();
+		}
 	}
 	
 	private void backupPath() {
@@ -440,7 +454,7 @@ public class PathEditor {
 					try {
 						if (selectionString.contains("-")) {
 							int first = Integer.parseInt(selectionString.substring(0,selectionString.indexOf("-")));
-							int last = Integer.parseInt(selectionString.substring(selectionString.indexOf("-")+1));
+							int last = Math.min(path.size()-1,Integer.parseInt(selectionString.substring(selectionString.indexOf("-")+1)));
 							for (int i = first; i <= last; i++) selectedPathPointsInt.add(i);
 						}
 						else if (selectionString.contains(",")) {
@@ -942,8 +956,8 @@ public class PathEditor {
 			Scanner in = new Scanner(new FileReader(pathFileName));
 			while (in.hasNextLine()) {
 				String line = in.nextLine().trim();
-				if (line.length() != 0) {
-					String[] oneline = line.split(" ");
+				if (line.length() != 0 && !line.trim().startsWith("#")) {
+					String[] oneline = line.split(" |\t");
 					PoseSteering ps = null;
 					if (oneline.length == 4) {
 						ps = new PoseSteering(
@@ -985,26 +999,49 @@ public class PathEditor {
 	}
 	
 	private PoseSteering[] computePath(PoseSteering from, PoseSteering ... to) {
-		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();		
-		rsp.setMapFilename(makeEmptyMapMap());
-		rsp.setMapResolution(1.0);
-		rsp.setRadius(1.0);
-		rsp.setTurningRadius(MAX_TURNING_RADIUS);
-		rsp.setDistanceBetweenPathPoints(MIN_DISTANCE_BETWEEN_PATH_POINTS);
-		rsp.setStart(from.getPose());
-		Pose[] goalPoses = new Pose[to.length];
-		for (int i = 0; i < goalPoses.length; i++) goalPoses[i] = to[i].getPose();
-		rsp.setGoals(goalPoses);
-		rsp.addObstacles(obstacles.toArray(new Geometry[obstacles.size()]));
-		if (!rsp.plan()) return null;
-		PoseSteering[] ret = rsp.getPath();
-		return ret;
+		if (USE_MP) {
+			ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
+			if (this.mapFileName == null) {
+				rsp.setMapFilename(makeEmptyMapMap());
+				rsp.setMapResolution(1.0);
+			}
+			else {
+				rsp.setMapFilename(mapImgFileName);
+				rsp.setMapResolution(mapRes);
+			}
+			rsp.setRadius(3.0);
+			rsp.setTurningRadius(MAX_TURNING_RADIUS);
+			rsp.setDistanceBetweenPathPoints(MIN_DISTANCE_BETWEEN_PATH_POINTS);
+			rsp.setStart(from.getPose());
+			Pose[] goalPoses = new Pose[to.length];
+			for (int i = 0; i < goalPoses.length; i++) goalPoses[i] = to[i].getPose();
+			rsp.setGoals(goalPoses);
+			rsp.addObstacles(obstacles.toArray(new Geometry[obstacles.size()]));
+			if (!rsp.plan()) return null;
+			PoseSteering[] ret = rsp.getPath();
+			return ret;
+		}
+		Coordinate[] controlPoints = new Coordinate[4];
+		controlPoints[0] = new Coordinate(from.getX(),from.getY(),0.0);
+		double d = MAX_TURNING_RADIUS;
+		controlPoints[1] = new Coordinate(from.getX()+d*Math.cos(from.getTheta()), from.getY()+d*Math.sin(from.getTheta()), 0.0);
+		controlPoints[2] = new Coordinate(to[to.length-1].getX()-d*Math.cos(to[to.length-1].getTheta()), to[to.length-1].getY()-d*Math.sin(to[to.length-1].getTheta()), 0.0);
+		controlPoints[3] = new Coordinate(to[to.length-1].getX(),to[to.length-1].getY(),0.0);
+		Spline3D spline1 = SplineFactory.createBezier(controlPoints, 0.5);
+		return spline1.asPoseSteerings();
 	}
 
 	public static void main(String[] args) {
+		PREFIX = "";
 		String pathFileName = "paths/path2.path";
-		//String pathFileName = "/home/fpa/gitroot.gitlab/volvo_ce/coordination_oru_vce/paths/elsite_smooth_paths/elsite_paths_left.path1_and_2_and_3.path";
 		new PathEditor(pathFileName);
+		
+		//PREFIX = "/home/fpa/gitroot.gitlab/volvo_ce/coordination_oru_vce";
+		//String pathFileName = PREFIX+File.separator+"paths/poses.txt";
+		//String pathFileName = PREFIX+File.separator+"paths/elsite_smooth_paths/elsite_paths_left.path1_and_2_and_3.path.new";
+		//String mapFileName = PREFIX+File.separator+"maps/elsite_1m.yaml";
+		//String posesFileName = null;// PREFIX+File.separator+"paths/poses.txt";
+		//new PathEditor(pathFileName,mapFileName,posesFileName);
 		
 	}
 
