@@ -46,6 +46,7 @@ public class PathEditor2 {
 	private String mapImgFilename = null;
 	private double mapRes = 1.0;
 	private boolean selectionInputListen = false;
+	private ArrayList<String> selectionStringsNames = null;
 	private ArrayList<String> selectionStrings = null;
 	private ArrayList<ArrayList<Integer>> selectedLocationsInts = null;
 	private String selectionString = "";
@@ -147,6 +148,8 @@ public class PathEditor2 {
 			while (in.hasNextLine()) {
 				String line = in.nextLine().trim();
 				if (line.length() != 0 && !line.startsWith("#")) {
+					if (selectionStringsNames == null) selectionStringsNames = new ArrayList<String>();
+					selectionStringsNames.add(line);
 					String[] oneline = line.split(" |\t");
 					ArrayList<Integer> oneSelection = new ArrayList<Integer>();
 					String str = "";
@@ -539,7 +542,7 @@ public class PathEditor2 {
 		};
 		panel.getActionMap().put("Add locations(s)",actInsert);
 
-		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_S,KeyEvent.ALT_DOWN_MASK),"Compute spline selected pair of locations");
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_S,KeyEvent.ALT_DOWN_MASK),"Compute spline between selected locations");
 		AbstractAction actSpline = new AbstractAction() {
 			private static final long serialVersionUID = -3238585469762752293L;
 			@Override
@@ -557,7 +560,29 @@ public class PathEditor2 {
 				updatePaths();
 			}
 		};
-		panel.getActionMap().put("Compute spline selected pair of locations",actSpline);
+		panel.getActionMap().put("Compute spline between selected locations",actSpline);
+		
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_S,KeyEvent.ALT_DOWN_MASK|KeyEvent.SHIFT_DOWN_MASK),"Compute spline for all preset selections");
+		AbstractAction actSplineAll = new AbstractAction() {
+			private static final long serialVersionUID = -3238585469762752293L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				for (ArrayList<Integer> onePreset : selectedLocationsInts) {
+					ArrayList<PoseSteering> overallPath = new ArrayList<PoseSteering>();
+					for (int i = 0; i < onePreset.size()-1; i++) {
+						Pose startPose = Missions.getLocation(locationIDs.get(onePreset.get(i)));
+						Pose goalPose = Missions.getLocation(locationIDs.get(onePreset.get(i+1)));
+						PoseSteering[] path = computeSpline(startPose, goalPose);
+						if (i == 0) overallPath.add(path[0]);
+						for (int j = 1; j < path.length; j++) overallPath.add(path[j]);
+					}
+					String pathName = locationIDs.get(onePreset.get(0))+"->"+locationIDs.get(onePreset.get(onePreset.size()-1));
+					allPaths.put(pathName, overallPath);	
+				}
+				updatePaths();
+			}
+		};
+		panel.getActionMap().put("Compute spline for all preset selections",actSplineAll);
 		
 		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_P,KeyEvent.ALT_DOWN_MASK),"Plan path between selected locations");
 		AbstractAction actPlan = new AbstractAction() {
@@ -582,8 +607,34 @@ public class PathEditor2 {
 			}
 		};
 		panel.getActionMap().put("Plan path between selected locations",actPlan);
+		
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_P,KeyEvent.ALT_DOWN_MASK|KeyEvent.SHIFT_DOWN_MASK),"Plan path for all selection presets");
+		AbstractAction actPlanAll = new AbstractAction() {
+			private static final long serialVersionUID = -3238585469762752293L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				for (ArrayList<Integer> onePreset : selectedLocationsInts) {
+					if (onePreset.size() >= 2) {
+						Pose startPose = Missions.getLocation(locationIDs.get(onePreset.get(0)));
+						Pose[] goalPoses = new Pose[onePreset.size()-1];
+						for (int i = 0; i < goalPoses.length; i++) {
+							goalPoses[i] = Missions.getLocation(locationIDs.get(onePreset.get(i+1)));
+						}
+						PoseSteering[] newPath = computePath(startPose,goalPoses);
+						if (newPath != null) {
+							String pathName = locationIDs.get(onePreset.get(0))+"->"+locationIDs.get(onePreset.get(onePreset.size()-1));
+							ArrayList<PoseSteering> newPathAL = new ArrayList<PoseSteering>();
+							for (PoseSteering ps : newPath) newPathAL.add(ps);
+							allPaths.put(pathName,newPathAL);
+						}
+					}	
+					updatePaths();
+				}
+			}
+		};
+		panel.getActionMap().put("Plan path for all selection presets",actPlanAll);
 
-		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT,0),"Decrease X of selected pose(s)");
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT,0),"Decrease X of selected location(s)");
 		AbstractAction actXMinus = new AbstractAction() {
 			private static final long serialVersionUID = 1767256680398690970L;
 			@Override
@@ -603,9 +654,9 @@ public class PathEditor2 {
 				}
 			}
 		};
-		panel.getActionMap().put("Decrease X of selected pose(s)",actXMinus);
+		panel.getActionMap().put("Decrease X of selected location(s)",actXMinus);
 		
-		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT,KeyEvent.SHIFT_DOWN_MASK),"Speed decrease X of selected pose(s)");
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT,KeyEvent.SHIFT_DOWN_MASK),"Speed decrease X of selected location(s)");
 		AbstractAction actXMinusFast = new AbstractAction() {
 			private static final long serialVersionUID = 1767256680448690970L;
 			@Override
@@ -625,9 +676,9 @@ public class PathEditor2 {
 				}
 			}
 		};
-		panel.getActionMap().put("Speed decrease X of selected pose(s)",actXMinusFast);
+		panel.getActionMap().put("Speed decrease X of selected location(s)",actXMinusFast);
 
-		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT,0),"Increase X of selected pose(s)");
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT,0),"Increase X of selected location(s)");
 		AbstractAction actXPlus = new AbstractAction() {
 			private static final long serialVersionUID = 6900418766755234220L;
 			@Override
@@ -647,9 +698,9 @@ public class PathEditor2 {
 				}
 			}
 		};
-		panel.getActionMap().put("Increase X of selected pose(s)",actXPlus);
+		panel.getActionMap().put("Increase X of selected location(s)",actXPlus);
 
-		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT,KeyEvent.SHIFT_DOWN_MASK),"Speed increase X of selected pose(s)");
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT,KeyEvent.SHIFT_DOWN_MASK),"Speed increase X of selected location(s)");
 		AbstractAction actXPlusFast = new AbstractAction() {
 			private static final long serialVersionUID = 6980418766755234220L;
 			@Override
@@ -669,9 +720,9 @@ public class PathEditor2 {
 				}
 			}
 		};
-		panel.getActionMap().put("Speed increase X of selected pose(s)",actXPlusFast);
+		panel.getActionMap().put("Speed increase X of selected location(s)",actXPlusFast);
 
-		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_UP,0),"Increase Y of selected pose(s)");
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_UP,0),"Increase Y of selected location(s)");
 		AbstractAction actYPlus = new AbstractAction() {
 			private static final long serialVersionUID = 2627197997139919535L;
 			@Override
@@ -691,9 +742,9 @@ public class PathEditor2 {
 				}
 			}
 		};
-		panel.getActionMap().put("Increase Y of selected pose(s)",actYPlus);
+		panel.getActionMap().put("Increase Y of selected location(s)",actYPlus);
 		
-		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_UP,KeyEvent.SHIFT_DOWN_MASK),"Speed increase Y of selected pose(s)");
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_UP,KeyEvent.SHIFT_DOWN_MASK),"Speed increase Y of selected location(s)");
 		AbstractAction actYPlusFast = new AbstractAction() {
 			private static final long serialVersionUID = 2627197997139919525L;
 			@Override
@@ -713,9 +764,9 @@ public class PathEditor2 {
 				}
 			}
 		};
-		panel.getActionMap().put("Speed increase Y of selected pose(s)",actYPlusFast);
+		panel.getActionMap().put("Speed increase Y of selected location(s)",actYPlusFast);
 
-		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_DOWN,0),"Decrease Y of selected pose(s)");
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_DOWN,0),"Decrease Y of selected location(s)");
 		AbstractAction actYMinus = new AbstractAction() {
 			private static final long serialVersionUID = 6487878455015786029L;
 			@Override
@@ -735,9 +786,9 @@ public class PathEditor2 {
 				}
 			}
 		};
-		panel.getActionMap().put("Decrease Y of selected pose(s)",actYMinus);
+		panel.getActionMap().put("Decrease Y of selected location(s)",actYMinus);
 		
-		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_DOWN,KeyEvent.SHIFT_DOWN_MASK),"Speed decrease Y of selected pose(s)");
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_DOWN,KeyEvent.SHIFT_DOWN_MASK),"Speed decrease Y of selected location(s)");
 		AbstractAction actYMinusFast = new AbstractAction() {
 			private static final long serialVersionUID = 6487878415015786029L;
 			@Override
@@ -757,9 +808,9 @@ public class PathEditor2 {
 				}
 			}
 		};
-		panel.getActionMap().put("Speed decrease Y of selected pose(s)",actYMinusFast);
+		panel.getActionMap().put("Speed decrease Y of selected location(s)",actYMinusFast);
 		
-		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_PAGE_DOWN,0),"Decrease theta of selected pose(s)");
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_PAGE_DOWN,0),"Decrease theta of selected location(s)");
 		AbstractAction actTMinus = new AbstractAction() {
 			private static final long serialVersionUID = -7391970411254721019L;
 			@Override
@@ -779,9 +830,9 @@ public class PathEditor2 {
 				}
 			}
 		};
-		panel.getActionMap().put("Decrease theta of selected pose(s)",actTMinus);
+		panel.getActionMap().put("Decrease theta of selected location(s)",actTMinus);
 
-		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_PAGE_DOWN,KeyEvent.SHIFT_DOWN_MASK),"Speed decrease theta of selected pose(s)");
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_PAGE_DOWN,KeyEvent.SHIFT_DOWN_MASK),"Speed decrease theta of selected location(s)");
 		AbstractAction actTMinusS = new AbstractAction() {
 			private static final long serialVersionUID = -7391970411254721019L;
 			@Override
@@ -801,9 +852,9 @@ public class PathEditor2 {
 				}
 			}
 		};
-		panel.getActionMap().put("Speed decrease theta of selected pose(s)",actTMinusS);
+		panel.getActionMap().put("Speed decrease theta of selected location(s)",actTMinusS);
 
-		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_PAGE_UP,0),"Increase theta of selected pose(s)");
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_PAGE_UP,0),"Increase theta of selected location(s)");
 		AbstractAction actTPlus = new AbstractAction() {
 			private static final long serialVersionUID = 8414380724212398117L;
 			@Override
@@ -823,9 +874,9 @@ public class PathEditor2 {
 				}
 			}
 		};
-		panel.getActionMap().put("Increase theta of selected pose(s)",actTPlus);
+		panel.getActionMap().put("Increase theta of selected location(s)",actTPlus);
 
-		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_PAGE_UP,KeyEvent.SHIFT_DOWN_MASK),"Speed increase theta of selected pose(s)");
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_PAGE_UP,KeyEvent.SHIFT_DOWN_MASK),"Speed increase theta of selected location(s)");
 		AbstractAction actTPlusS = new AbstractAction() {
 			private static final long serialVersionUID = 8414380724212398117L;
 			@Override
@@ -845,7 +896,7 @@ public class PathEditor2 {
 				}
 			}
 		};
-		panel.getActionMap().put("Speed increase theta of selected pose(s)",actTPlusS);
+		panel.getActionMap().put("Speed increase theta of selected location(s)",actTPlusS);
 
 		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_I,0),"Info");
 		AbstractAction actInfo = new AbstractAction() {
@@ -855,9 +906,11 @@ public class PathEditor2 {
 				System.out.println("Locations:");
 				for (int i = 0; i < locationIDs.size(); i++) System.out.println("   " + i + ": " + locationIDs.get(i));
 				if (selectionStrings != null) {
-					System.out.println("Selections:");
+					System.out.println("Selection presets:");
 					//for (int i = 0; i < selectionStrings.size(); i++) System.out.println("   " + i + ":" + selectionStrings.get(i));
-					for (int i = 0; i < selectedLocationsInts.size(); i++) System.out.println("   " + i + ":" + selectedLocationsInts.get(i));
+					for (int i = 0; i < selectedLocationsInts.size(); i++) {
+						System.out.println("   " + i + ": " + selectionStringsNames.get(i) + " " + selectedLocationsInts.get(i));
+					}
 				}
 			}
 		};
