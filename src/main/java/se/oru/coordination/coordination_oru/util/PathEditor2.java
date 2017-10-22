@@ -35,6 +35,7 @@ public class PathEditor2 {
 
 	private static int newLocationCounter = 0;
 	private String selectionsFile = null;
+	private String outputDir = null;
 	private static String NEW_SUFFIX = ".new";
 	private static String PREFIX = null;
 	private static int EMPTY_MAP_DIM = 10000;
@@ -59,6 +60,7 @@ public class PathEditor2 {
 	private double deltaY = 0.1;
 	private double deltaT = 0.01;
 	private double deltaTR = 0.1;
+	private double deltaSD = 0.5;
 	
 	private static String TEMP_MAP_DIR = ".tempMapsPathEditor";
 
@@ -89,7 +91,11 @@ public class PathEditor2 {
 		}
 		this.deleteDir(new File(TEMP_MAP_DIR));
 		new File(TEMP_MAP_DIR).mkdir();
-		
+
+		this.outputDir = PREFIX+File.separator+"output";
+		this.deleteDir(new File(this.outputDir));
+		new File(outputDir).mkdir();
+
 		if (posesAndPaths != null) {
 			this.locationsAndPathsFilename = PREFIX+File.separator+posesAndPaths;
 			String pathURI = this.locationsAndPathsFilename.substring(0, this.locationsAndPathsFilename.lastIndexOf(File.separator)+1);
@@ -420,15 +426,15 @@ public class PathEditor2 {
 				for (Entry<String,ArrayList<PoseSteering>> entry : allPaths.entrySet()) {
 					String pathFilename = entry.getKey().replaceAll("->", "-")+".path";
 					st += entry.getKey().replaceAll("->", " -> ") + "\t" + pathFilename + "\n";
-					String path = locationsAndPathsFilename.substring(0, locationsAndPathsFilename.lastIndexOf(File.separator)+1);
-					writePath(path+pathFilename, entry.getValue());
+					writePath(outputDir+File.separator+pathFilename, entry.getValue());
 				}
 		        try {
-		            File file = new File(locationsAndPathsFilename+NEW_SUFFIX);
+		        	String newFilename = outputDir+File.separator+"locations_and_paths.txt";
+		            File file = new File(newFilename);
 		            PrintWriter writer = new PrintWriter(file);
 		            writer.write(st);
 		            writer.close();
-		            System.out.println("Saved locations and paths file: " + locationsAndPathsFilename+NEW_SUFFIX);
+		            System.out.println("Saved locations and paths file: " + newFilename);
 		        }
 		        catch (Exception ex) { ex.printStackTrace(); }
 			}
@@ -568,16 +574,20 @@ public class PathEditor2 {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				for (ArrayList<Integer> onePreset : selectedLocationsInts) {
-					ArrayList<PoseSteering> overallPath = new ArrayList<PoseSteering>();
-					for (int i = 0; i < onePreset.size()-1; i++) {
-						Pose startPose = Missions.getLocation(locationIDs.get(onePreset.get(i)));
-						Pose goalPose = Missions.getLocation(locationIDs.get(onePreset.get(i+1)));
-						PoseSteering[] path = computeSpline(startPose, goalPose);
-						if (i == 0) overallPath.add(path[0]);
-						for (int j = 1; j < path.length; j++) overallPath.add(path[j]);
+					if (onePreset.size() >= 2) {
+						ArrayList<PoseSteering> overallPath = new ArrayList<PoseSteering>();
+						String pathName = locationIDs.get(onePreset.get(0))+"->"+locationIDs.get(onePreset.get(onePreset.size()-1));
+						if (!allPaths.containsKey(pathName)) {
+							for (int i = 0; i < onePreset.size()-1; i++) {
+								Pose startPose = Missions.getLocation(locationIDs.get(onePreset.get(i)));
+								Pose goalPose = Missions.getLocation(locationIDs.get(onePreset.get(i+1)));
+								PoseSteering[] path = computeSpline(startPose, goalPose);
+								if (i == 0) overallPath.add(path[0]);
+								for (int j = 1; j < path.length; j++) overallPath.add(path[j]);
+							}
+							allPaths.put(pathName, overallPath);
+						}
 					}
-					String pathName = locationIDs.get(onePreset.get(0))+"->"+locationIDs.get(onePreset.get(onePreset.size()-1));
-					allPaths.put(pathName, overallPath);	
 				}
 				updatePaths();
 			}
@@ -615,19 +625,21 @@ public class PathEditor2 {
 			public void actionPerformed(ActionEvent e) {
 				for (ArrayList<Integer> onePreset : selectedLocationsInts) {
 					if (onePreset.size() >= 2) {
-						Pose startPose = Missions.getLocation(locationIDs.get(onePreset.get(0)));
-						Pose[] goalPoses = new Pose[onePreset.size()-1];
-						for (int i = 0; i < goalPoses.length; i++) {
-							goalPoses[i] = Missions.getLocation(locationIDs.get(onePreset.get(i+1)));
+						String pathName = locationIDs.get(onePreset.get(0))+"->"+locationIDs.get(onePreset.get(onePreset.size()-1));
+						if (!allPaths.containsKey(pathName)) {
+							Pose startPose = Missions.getLocation(locationIDs.get(onePreset.get(0)));
+							Pose[] goalPoses = new Pose[onePreset.size()-1];
+							for (int i = 0; i < goalPoses.length; i++) {
+								goalPoses[i] = Missions.getLocation(locationIDs.get(onePreset.get(i+1)));
+							}
+							PoseSteering[] newPath = computePath(startPose,goalPoses);
+							if (newPath != null) {
+								ArrayList<PoseSteering> newPathAL = new ArrayList<PoseSteering>();
+								for (PoseSteering ps : newPath) newPathAL.add(ps);
+								allPaths.put(pathName,newPathAL);
+							}
 						}
-						PoseSteering[] newPath = computePath(startPose,goalPoses);
-						if (newPath != null) {
-							String pathName = locationIDs.get(onePreset.get(0))+"->"+locationIDs.get(onePreset.get(onePreset.size()-1));
-							ArrayList<PoseSteering> newPathAL = new ArrayList<PoseSteering>();
-							for (PoseSteering ps : newPath) newPathAL.add(ps);
-							allPaths.put(pathName,newPathAL);
-						}
-					}	
+					}
 					updatePaths();
 				}
 			}
@@ -959,6 +971,29 @@ public class PathEditor2 {
 			}
 		};
 		panel.getActionMap().put("Decrease maximum turning radius",actTRMinus);
+		
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_PLUS,0),"Increase spline distance");
+		AbstractAction actSDPlus = new AbstractAction() {
+			private static final long serialVersionUID = 8414380724212398117L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				SPLINE_DISTANCE += deltaSD;
+				System.out.println("Spline distance (>): " + SPLINE_DISTANCE);
+			}
+		};
+		panel.getActionMap().put("Increase spline distance",actSDPlus);
+
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_MINUS,0),"Decrease spline distance");
+		AbstractAction actSDMinus = new AbstractAction() {
+			private static final long serialVersionUID = 8414380724212398117L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				SPLINE_DISTANCE -= deltaSD;
+				System.out.println("Spline distance (<): " + SPLINE_DISTANCE);
+			}
+		};
+		panel.getActionMap().put("Decrease spline distance",actSDMinus);
+
 
 		panel.setFocusable(true);
 		panel.setArrowHeadSizeInMeters(0.9);
