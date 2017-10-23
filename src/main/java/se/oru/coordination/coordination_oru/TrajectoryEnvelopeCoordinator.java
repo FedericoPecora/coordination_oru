@@ -745,6 +745,22 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		}
 	}
 
+	private boolean isAhead(CriticalSection cs, RobotReport rr1, RobotReport rr2) {
+		//Robot 1 is ahead --> return true
+		PoseSteering[] pathRobot1 = cs.getTe1().getTrajectory().getPoseSteering();
+		PoseSteering[] pathRobot2 = cs.getTe2().getTrajectory().getPoseSteering();
+		double dist1 = 0.0;
+		double dist2 = 0.0;
+		for (int i = cs.getTe1Start(); i < rr1.getPathIndex()-1; i++) {
+			dist1 += pathRobot1[i].getPose().getPosition().distance(pathRobot1[i+1].getPose().getPosition());
+		}
+		for (int i = cs.getTe2Start(); i < rr2.getPathIndex()-1; i++) {
+			dist2 += pathRobot2[i].getPose().getPosition().distance(pathRobot2[i+1].getPose().getPosition());
+		}
+		if (dist1 > dist2) return true;
+		return false;
+	}
+	
 	//Update and set the critical points
 	protected void updateDependencies() {
 
@@ -894,7 +910,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					//Both robots in critical section --> re-impose previously decided dependency
 					else {
 						//Robot 1 is ahead --> make robot 2 follow
-						if (robotReport1.getPathIndex()-cs.getTe1Start() > robotReport2.getPathIndex()-cs.getTe2Start()) {
+						//if (robotReport1.getPathIndex()-cs.getTe1Start() > robotReport2.getPathIndex()-cs.getTe2Start()) {
+						if (isAhead(cs, robotReport1, robotReport2)) {
 							drivingCurrentIndex = robotReport1.getPathIndex();
 							waitingCurrentIndex = robotReport2.getPathIndex();
 							waitingTE = cs.getTe2();
