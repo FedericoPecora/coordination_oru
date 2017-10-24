@@ -996,8 +996,8 @@ public class PathEditor2 {
 
 
 		panel.setFocusable(true);
-		panel.setArrowHeadSizeInMeters(0.9);
-		panel.setTextSizeInMeters(5.3);
+		panel.setArrowHeadSizeInMeters(2.4);
+		panel.setTextSizeInMeters(2.3);
 	}
 	
 	
@@ -1059,20 +1059,22 @@ public class PathEditor2 {
 	}
 
 	public static void main(String[] args) {
-		PREFIX = "/home/fpa/gitroot.gitlab/volvo_ce/coordination_oru_vce";
-		String locAndPathFilename = "paths/elsite_locations.bare.txt";
-		String selectionsFile = "paths/selections.txt";
-		String mapFilename = "maps/elsite_1m.yaml";
+
+		PREFIX = "/home/fpa/catkin_ws/src/volvo_gto/gazebo_vgto/gazebo_worlds_vgto/maps";
+		String locAndPathFilename = "output-good/locations_and_paths.txt";
+		String selectionsFile = null;
+		String mapFilename = "vgto_plant.yaml";
 		//new PathEditor2(locAndPathFilename,mapFilename);
 		new PathEditor2(locAndPathFilename,mapFilename,selectionsFile);
 		
-		//PREFIX = "/home/fpa/gitroot.gitlab/volvo_ce/coordination_oru_vce";
-		//String pathFileName = PREFIX+File.separator+"paths/poses.txt";
-		//String pathFileName = PREFIX+File.separator+"paths/elsite_smooth_paths/elsite_paths_left.path1_and_2_and_3.path.new";
-		//String mapFileName = PREFIX+File.separator+"maps/elsite_1m.yaml";
-		//String posesFileName = null;// PREFIX+File.separator+"paths/poses.txt";
-		//new PathEditor(pathFileName,mapFileName,posesFileName);
-		
+//		//Volvo CE
+//		PREFIX = "/home/fpa/gitroot.gitlab/volvo_ce/coordination_oru_vce";
+//		String locAndPathFilename = "paths/elsite_locations.bare.txt";
+//		String selectionsFile = "paths/selections.txt";
+//		String mapFilename = "maps/elsite_1m.yaml";
+//		//new PathEditor2(locAndPathFilename,mapFilename);
+//		new PathEditor2(locAndPathFilename,mapFilename,selectionsFile);
+				
 	}
 
 }
