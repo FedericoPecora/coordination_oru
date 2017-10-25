@@ -61,16 +61,20 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner13 {
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
 		tec.setCheckEscapePoses(true);
+		tec.setBreakDeadlocks(true);
 
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
 		tec.setVisualization(viz);
 
-		Pose startRobot1 = new Pose(1.0,1.0,0.0);
-		Pose goalRobot1 = new Pose(10.0,1.0,0.0);
+		Pose startRobot1 = new Pose(5.0,1.0,0.0);
+		Pose goalRobot1 = new Pose(5.0,10.0,Math.PI);
 
-		Pose startRobot2 = new Pose(6.0,1.0,Math.PI);
-		Pose goalRobot2 = new Pose(2.0,1.0,Math.PI);
+		Pose startRobot2 = new Pose(1.0,10.0,0.0);
+		Pose goalRobot2 = new Pose(6.0,10.0,Math.PI);
+		
+		Pose startRobot2Next = new Pose(6.0,10.0,Math.PI);
+		Pose goalRobot2Next = new Pose(12.0,10.0,Math.PI);
 
 		//Place robots in their initial locations (looked up in the data file that was loaded above)
 		// -- creates a trajectory envelope for each location, representing the fact that the robot is parked
@@ -98,10 +102,25 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner13 {
 		rsp.setGoals(goalRobot2);
 		rsp.plan();
 		Missions.putMission(new Mission(2,rsp.getPath()));
-		
+
+		rsp.setStart(startRobot2Next);
+		rsp.setGoals(goalRobot2Next);
+		rsp.plan();
+		Missions.putMission(new Mission(2,rsp.getPath()));
+
 		System.out.println("Added missions " + Missions.getMissions());
 
 		tec.addMissions(Missions.getMission(1, 0), Missions.getMission(2, 0));
+		tec.computeCriticalSections();
+		tec.startTrackingAddedMissions();
+		
+		while (!tec.isFree(2)) {
+			Thread.sleep(100);
+		}
+		
+		Thread.sleep(5000);
+		
+		tec.addMissions(Missions.getMission(2, 1));
 		tec.computeCriticalSections();
 		tec.startTrackingAddedMissions();
 

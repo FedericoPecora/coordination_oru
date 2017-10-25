@@ -762,7 +762,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	}
 
 	//Update and set the critical points
-	protected void updateDependencies() {
+	public void updateDependencies() {
 
 		//System.out.println("Caller of updateDependencies(): " + Thread.currentThread().getStackTrace()[2]);
 
@@ -851,6 +851,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						metaCSPLogger.info("Robot" + drivingRobotID + " is parked, so Robot" + waitingRobotID + " will have to wait");	
 						//Make new dependency
 						int drivingCSEnd = -1;
+//						//with +1
+//						if (waitingRobotID == cs.getTe1().getRobotID()) drivingCSEnd = Math.min(cs.getTe2End()+1,cs.getTe2().getTrajectory().getPose().length-1);
+//						else drivingCSEnd = Math.min(cs.getTe1End()+1,cs.getTe1().getTrajectory().getPose().length-1);
 						if (waitingRobotID == cs.getTe1().getRobotID()) drivingCSEnd = cs.getTe2End();
 						else drivingCSEnd = cs.getTe1End();
 						Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd, waitingTracker, drivingTracker);
