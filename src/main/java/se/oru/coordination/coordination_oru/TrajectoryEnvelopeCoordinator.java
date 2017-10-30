@@ -664,12 +664,27 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				}
 				if (i == edgesAlongCycle.size()-2) {
 					System.out.println("Cycle: " + edgesAlongCycle + " is NOT deadlock-free");
+					spawnReplanning(edgesAlongCycle);
 					synchronized (disallowedDependencies) {
 						disallowedDependencies.add(anUnsafeDep);
 					}
 				}
 			}
 
+		}
+	}
+	
+	private boolean atCP(int robotID) {
+		return (Math.abs(getRobotReport(robotID).getCriticalPoint() - getRobotReport(robotID).getPathIndex()) <= 1);
+	}
+	
+	private void spawnReplanning(ArrayList<ArrayList<Dependency>> deadlockedDeps) {
+		for (ArrayList<Dependency> depList : deadlockedDeps) {
+			for (Dependency dep : depList) {
+				if (atCP(dep.getWaitingRobotID()) && atCP(dep.getDrivingRobotID())) {
+					System.out.println("Should replan path of either Robot" + dep.getWaitingRobotID() + " or Robot" + dep.getDrivingRobotID());
+				}
+			}
 		}
 	}
 
@@ -1074,6 +1089,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				if (path1.length == 1 || path2.length == 1) safe = true;
 				if (!safe) {
 					metaCSPLogger.severe("** WARNING ** Cannot coordinate as one envelope is completely overlapped by the other!");
+					metaCSPLogger.severe("** " + te1 + " <--> " + te2);
 					//throw new Error("Cannot coordinate as one envelope is completely overlapped by the other!");
 				}
 
@@ -1088,6 +1104,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				if (path1.length == 1 || path2.length == 1) safe = true;
 				if (!safe) {
 					metaCSPLogger.severe("** WARNING ** Cannot coordinate as one envelope is completely overlapped by the other!");
+					metaCSPLogger.severe("** " + te1 + " <--> " + te2);
 					//throw new Error("Cannot coordinate as one envelope is completely overlapped by the other!");
 				}
 			}

@@ -64,6 +64,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner17 {
 
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
+		viz.setSize(1800, 450);
 		tec.setVisualization(viz);
 
 		Pose startRobot1 = new Pose(5.0,5.0,0.0);

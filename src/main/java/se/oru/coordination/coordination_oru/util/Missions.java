@@ -34,6 +34,7 @@ public class Missions {
 	protected static HashMap<Integer,Boolean> missionDispatcherFlags = new HashMap<Integer,Boolean>();
 	protected static HashMap<Integer,MissionDispatchingCallback> mdcs = new HashMap<Integer, MissionDispatchingCallback>();
 	protected static HashMap<Mission,ArrayList<Mission>> concatenatedMissions = new HashMap<Mission, ArrayList<Mission>>();
+	protected static String pathPrefix = "";
 	
 	/**
 	 * Get all the {@link Mission}s currently known for one robot
@@ -147,6 +148,8 @@ public class Missions {
 	public static void loadLocationAndPathData(String fileName) {
 		try {
 			Scanner in = new Scanner(new FileReader(fileName));
+			File f = new File(fileName);
+			pathPrefix = f.getAbsolutePath().substring(0,f.getAbsolutePath().lastIndexOf(File.separator))+File.separator;
 			while (in.hasNextLine()) {
 				String line = in.nextLine().trim();
 				if (line.length() != 0 && !line.startsWith("#")) {
@@ -202,6 +205,27 @@ public class Missions {
 		if (!locations.containsKey(toLocation)) throw new Error("Unknown location " + toLocation);
 		if (ret == null) throw new Error("No path between " + fromLocation + " and " + toLocation);
 		return ret;
+	}
+	
+	/**
+	 * Queries whether a path between two locations is known
+	 * @param fromLocation The source location
+	 * @param toLocation The goal location
+	 * @return <code>true</code> iff a path between two locations is known
+	 */
+	public static boolean isKnownPath(String fromLocation, String toLocation) {
+		return paths.containsKey(fromLocation+"->"+toLocation);
+	}
+	
+	/**
+	 * Return a path between locations if available (throws error if locations and/or path are now known)
+	 * @param fromLocation The source location
+	 * @param toLocation The goal location
+	 * @return The path between the two (known) locations
+	 */
+	public static PoseSteering[] loadKnownPath(String fromLocation, String toLocation) {
+		if (!isKnownPath(fromLocation, toLocation)) throw new Error("No path between " + fromLocation + " and " + toLocation);
+		return loadPathFromFile(pathPrefix+getPathFile(fromLocation, toLocation));
 	}
 
 	/**

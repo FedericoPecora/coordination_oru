@@ -3,6 +3,9 @@ package se.oru.coordination.coordination_oru.tests;
 import java.io.File;
 import java.util.Comparator;
 
+import javax.swing.JFrame;
+import javax.swing.SwingUtilities;
+
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 
 import com.vividsolutions.jts.geom.Coordinate;
@@ -65,6 +68,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner16 {
 		String yamlFile = "maps/map-empty.yaml";
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization(yamlFile);
+		viz.setSize(1800, 450);
 		tec.setVisualization(viz);
 
 		Pose startRobot1 = new Pose(25.0,5.0,0.0);

@@ -55,10 +55,10 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner {
 		tec.setForwardModel(1, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTrackingPeriod(), tec.getTemporalResolution()));
 		tec.setForwardModel(2, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTrackingPeriod(), tec.getTemporalResolution()));
 
-		Coordinate footprint1 = new Coordinate(-2.0,0.5);
-		Coordinate footprint2 = new Coordinate(2.0,0.5);
-		Coordinate footprint3 = new Coordinate(2.0,-0.5);
-		Coordinate footprint4 = new Coordinate(-2.0,-0.5);
+		Coordinate footprint1 = new Coordinate(-1.0,0.5);
+		Coordinate footprint2 = new Coordinate(1.0,0.5);
+		Coordinate footprint3 = new Coordinate(1.0,-0.5);
+		Coordinate footprint4 = new Coordinate(-1.0,-0.5);
 		tec.setDefaultFootprint(footprint1, footprint2, footprint3, footprint4);
 
 		//Need to setup infrastructure that maintains the representation

@@ -5,6 +5,9 @@ import java.awt.event.KeyListener;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
+import javax.swing.JFrame;
+import javax.swing.SwingUtilities;
+
 import org.metacsp.multi.spatial.DE9IM.GeometricShapeDomain;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 import org.metacsp.utility.UI.JTSDrawingPanel;
@@ -30,6 +33,11 @@ public class JTSDrawingPanelVisualization implements FleetVisualization {
 	
 	public JTSDrawingPanel getPanel() {
 		return this.panel;
+	}
+	
+	public void setSize(int width, int height) {
+		JFrame topFrame = (JFrame) SwingUtilities.getWindowAncestor(this.getPanel());
+		topFrame.setSize(width,height);
 	}
 
 	@Override

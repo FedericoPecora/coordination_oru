@@ -62,6 +62,9 @@ public class PathEditor2 {
 	private double deltaTR = 0.1;
 	private double deltaSD = 0.5;
 	
+	private double radius = 3.0;
+	private Coordinate[] footprint = null;
+	
 	private static String TEMP_MAP_DIR = ".tempMapsPathEditor";
 
 	public PathEditor2(String posesAndPaths, String mapFilename) {
@@ -76,7 +79,7 @@ public class PathEditor2 {
 		this.deltaX = deltaX;
 		this.deltaY = deltaY;
 		this.deltaT = deltaTheta;
-		this.mapFilename = PREFIX+File.separator+mapFN;
+		this.mapFilename = (PREFIX == null ? "" : PREFIX+File.separator) + mapFN;
 		if (this.mapFilename != null) {
 			String path = this.mapFilename.substring(0, this.mapFilename.lastIndexOf(File.separator)+1);
 			this.mapImgFilename = path+Missions.getProperty("image", this.mapFilename);
@@ -92,12 +95,12 @@ public class PathEditor2 {
 		this.deleteDir(new File(TEMP_MAP_DIR));
 		new File(TEMP_MAP_DIR).mkdir();
 
-		this.outputDir = PREFIX+File.separator+"output";
+		this.outputDir = (PREFIX == null ? "" : PREFIX+File.separator) + "output";
 		this.deleteDir(new File(this.outputDir));
 		new File(outputDir).mkdir();
 
 		if (posesAndPaths != null) {
-			this.locationsAndPathsFilename = PREFIX+File.separator+posesAndPaths;
+			this.locationsAndPathsFilename = (PREFIX == null ? "" : PREFIX+File.separator) + posesAndPaths;
 			String pathURI = this.locationsAndPathsFilename.substring(0, this.locationsAndPathsFilename.lastIndexOf(File.separator)+1);
 			allPaths = new HashMap<String, ArrayList<PoseSteering>>();
 			Missions.loadLocationAndPathData(this.locationsAndPathsFilename);
@@ -141,11 +144,19 @@ public class PathEditor2 {
 		}
 		
 		if (selectionsF != null) {
-			this.selectionsFile = PREFIX+File.separator+selectionsF;
+			this.selectionsFile = (PREFIX == null ? "" : PREFIX+File.separator) + selectionsF;
 			loadSelectionsFile();
 		}
 
 
+	}
+	
+	public void setPathPlanningFootprint(Coordinate ... footprint) {
+		this.footprint = footprint;
+	}
+	
+	public void setPathPlanningRadius(double rad) {
+		this.radius = rad;
 	}
 	
 	public void loadSelectionsFile() {
@@ -1045,7 +1056,8 @@ public class PathEditor2 {
 			rsp.setMapFilename(mapImgFilename);
 			rsp.setMapResolution(mapRes);
 		}
-		rsp.setRadius(3.0);
+		rsp.setRadius(this.radius);
+		rsp.setFootprint(this.footprint);
 		rsp.setTurningRadius(MAX_TURNING_RADIUS);
 		rsp.setDistanceBetweenPathPoints(DISTANCE_BETWEEN_PATH_POINTS);
 		rsp.setStart(from);
