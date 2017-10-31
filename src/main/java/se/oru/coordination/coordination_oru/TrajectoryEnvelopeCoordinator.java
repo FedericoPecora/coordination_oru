@@ -712,17 +712,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			}
 		}
 
-		if (yieldIfParking) {
-			if (cs.getTe1End() == cs.getTe1().getPathLength()-1) {
-				metaCSPLogger.info("Robot" + cs.getTe1().getRobotID() + " will park in " + cs + ", letting Robot" + cs.getTe2().getRobotID() + " go first");
-				return false;
-			}
-			if (cs.getTe2End() == cs.getTe2().getPathLength()-1) {
-				metaCSPLogger.info("Robot" + cs.getTe2().getRobotID() + " will park in " + cs + ", letting Robot" + cs.getTe1().getRobotID() + " go first");
-				return true;
-			}
-		}
-
 		ForwardModel fm1 = getForwardModel(robotTracker1.getTrajectoryEnvelope().getRobotID());
 		ForwardModel fm2 = getForwardModel(robotTracker2.getTrajectoryEnvelope().getRobotID());
 		boolean canStopRobot1 = false;
@@ -740,6 +729,18 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		//If both can stop, use ordering function (or closest if no ordering function)
 		if (canStopRobot1 && canStopRobot2) {
 			metaCSPLogger.finest("Both robots can stop at " + cs);
+			
+			if (yieldIfParking) {
+				if (cs.getTe1End() == cs.getTe1().getPathLength()-1) {
+					metaCSPLogger.info("Robot" + cs.getTe1().getRobotID() + " will park in " + cs + ", letting Robot" + cs.getTe2().getRobotID() + " go first");
+					return false;
+				}
+				if (cs.getTe2End() == cs.getTe2().getPathLength()-1) {
+					metaCSPLogger.info("Robot" + cs.getTe2().getRobotID() + " will park in " + cs + ", letting Robot" + cs.getTe1().getRobotID() + " go first");
+					return true;
+				}
+			}
+			
 			RobotAtCriticalSection r1atcs = new RobotAtCriticalSection(robotTracker1, cs);
 			RobotAtCriticalSection r2atcs = new RobotAtCriticalSection(robotTracker2, cs);
 			boolean ret = false;
