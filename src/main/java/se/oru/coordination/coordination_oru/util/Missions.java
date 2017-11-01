@@ -207,6 +207,21 @@ public class Missions {
 	}
 
 	/**
+	 * Get the mission preceding a given mission.
+	 * @param m A mission.
+	 * @return The mission preceding the given mission.
+	 */
+	public static Mission getPreviousMission(Mission m) {
+		for (int i = 0; i < missions.get(m.getRobotID()).size(); i++) {
+			if (missions.get(m.getRobotID()).get(i).equals(m)) {
+				if (i == 0) return missions.get(m.getRobotID()).get(missions.get(m.getRobotID()).size()-1);
+				return missions.get(m.getRobotID()).get((i-1)); 
+			}
+		}
+		return null;
+	}
+
+	/**
 	 * Get path files from the data loaded by method loadLocationAndPathData()
 	 * @param fromLocation The name of the source location
 	 * @param toLocation The name of the destination location

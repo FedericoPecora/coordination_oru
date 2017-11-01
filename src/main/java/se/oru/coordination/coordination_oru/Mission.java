@@ -1,5 +1,7 @@
 package se.oru.coordination.coordination_oru;
 
+import java.util.HashMap;
+
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 
@@ -21,6 +23,7 @@ public class Mission implements Comparable<Mission> {
 	protected String toLocation = null;
 	protected Pose fromPose = null;
 	protected Pose toPose = null;
+	protected HashMap<Pose,Integer> stoppingPoints = new HashMap<Pose, Integer>();
 	
 	/**
 	 * Instantiates a {@link Mission} for a given robot to navigate between two locations, but where the path
@@ -48,6 +51,30 @@ public class Mission implements Comparable<Mission> {
 	 */
 	public Mission(int robotID, PoseSteering[] path) {
 		this(robotID, path, path[0].getPose().toString(), path[path.length-1].getPose().toString(), path[0].getPose(), path[path.length-1].getPose());
+	}
+
+	/**
+	 * Make the robot stop at the nearest location to a given pose for a given duration.
+	 * @param pose A pose to stop at.
+	 * @param duration Stopping time in milliseconds. 
+	 */
+	public void setStoppingPoint(Pose pose, int duration) {
+		this.stoppingPoints.put(pose, duration);
+	}
+	
+	/**
+	 * Clear the stopping points of this {@link Mission}.
+	 */
+	public void clearStoppingPoints() {
+		this.stoppingPoints.clear();
+	}
+	
+	/**
+	 * Get the stopping points along this {@link Mission}'s trajectory along with their durations.
+	 * @return The stopping points along this {@link Mission}'s trajectory along with their durations.
+	 */
+	public HashMap<Pose,Integer> getStoppingPoints() {
+		return this.stoppingPoints;
 	}
 	
 	/**

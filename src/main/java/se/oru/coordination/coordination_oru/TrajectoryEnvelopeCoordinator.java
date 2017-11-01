@@ -66,7 +66,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	static { printLicense(); }
 
 	public static final int PARKING_DURATION = 3000;
-	protected static final long STOPPING_TIME = 5000;
+	protected static final int DEFAULT_STOPPING_TIME = 5000;
 	protected int CONTROL_PERIOD;
 	protected double TEMPORAL_RESOLUTION;
 
@@ -82,6 +82,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected HashMap<CriticalSection,Dependency> criticalSectionsToDeps = new HashMap<CriticalSection, Dependency>();
 	protected ArrayList<CriticalSection> allCriticalSections = new ArrayList<CriticalSection>();
 	protected HashMap<Integer,ArrayList<Integer>> stoppingPoints = new HashMap<Integer,ArrayList<Integer>>();
+	protected HashMap<Integer,ArrayList<Integer>> stoppingTimes = new HashMap<Integer,ArrayList<Integer>>();
 	protected HashMap<Integer,Thread> stoppingPointTimers = new HashMap<Integer,Thread>();
 
 	protected HashMap<Integer,AbstractTrajectoryEnvelopeTracker> trackers = new HashMap<Integer, AbstractTrajectoryEnvelopeTracker>();
@@ -593,16 +594,17 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	}
 
 	//Spawn a waiting thread at this stopping point
-	protected void spawnWaitingThread(final int robotID, final int index) {
+	protected void spawnWaitingThread(final int robotID, final int index, final int duration) {
 		Thread stoppingPointTimer = new Thread() {
 			private long startTime = Calendar.getInstance().getTimeInMillis();
 			@Override
 			public void run() {
-				while (Calendar.getInstance().getTimeInMillis()-startTime < STOPPING_TIME) {
+				while (Calendar.getInstance().getTimeInMillis()-startTime < duration) {
 					try { Thread.sleep(100); }
 					catch (InterruptedException e) { e.printStackTrace(); }
 				}
 				stoppingPoints.get(robotID).remove(index);
+				stoppingTimes.get(robotID).remove(index);
 				stoppingPointTimers.remove(robotID);
 				//waitingTracker.setCriticalPoint(-1);
 			}
@@ -794,6 +796,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				if (stoppingPoints.containsKey(robotID)) {
 					for (int i = 0; i < stoppingPoints.get(robotID).size(); i++) {
 						int stoppingPoint = stoppingPoints.get(robotID).get(i);
+						int duration = stoppingTimes.get(robotID).get(i);
 						if (robotReport.getPathIndex() <= stoppingPoint) {
 							Dependency dep = new Dependency(robotTracker.getTrajectoryEnvelope(), null, stoppingPoint, 0, robotTracker, null);
 							if (!currentDeps.containsKey(robotID)) currentDeps.put(robotID, new TreeSet<Dependency>());
@@ -801,7 +804,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						}
 						//Start waiting thread if the stopping point has been reached
 						if (Math.abs(robotReport.getPathIndex()-stoppingPoint) <= 1 && robotReport.getCriticalPoint() == stoppingPoint && !stoppingPointTimers.containsKey(robotID)) {
-							spawnWaitingThread(robotID, i);
+							spawnWaitingThread(robotID, i, duration);
 						}
 					}
 				}
@@ -1261,6 +1264,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							//reset stopping points
 							synchronized(stoppingPoints) {
 								stoppingPoints.remove(te.getRobotID());
+								stoppingTimes.remove(te.getRobotID());
 							}
 
 							//remove critical sections in which this robot is involved
@@ -1366,16 +1370,41 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				TrajectoryEnvelope te = null;
 				te = solver.createEnvelopeNoParking(robotID, overallPath.toArray(new PoseSteering[overallPath.size()]), "Driving", getFootprint(robotID));
 
-				//Add destinations as stopping points
+				//Add mission stopping points
 				synchronized(stoppingPoints) {
+					for (int i = 0; i < e.getValue().size(); i++) {
+						Mission m = e.getValue().get(i);
+						for (Entry<Pose,Integer> entry : m.getStoppingPoints().entrySet()) {
+							Pose stoppingPose = entry.getKey();
+							int stoppingPoint = te.getSequenceNumber(new Coordinate(stoppingPose.getX(), stoppingPose.getY()));
+							if (stoppingPoint == te.getPathLength()-1) stoppingPoint--;
+							int duration = entry.getValue();
+							if (!stoppingPoints.keySet().contains(robotID)) {
+								stoppingPoints.put(robotID, new ArrayList<Integer>());
+								stoppingTimes.put(robotID, new ArrayList<Integer>());
+							}
+							if (!stoppingPoints.get(robotID).contains(stoppingPoint)) {
+								stoppingPoints.get(robotID).add(stoppingPoint);
+								stoppingTimes.get(robotID).add(duration);
+							}
+						}
+					}
+				
+					//If many missions, add destinations as stopping points
 					for (int i = 0; i < e.getValue().size()-1; i++) {
 						Mission m = e.getValue().get(i);
 						Pose destPose = m.getToPose();
 						int stoppingPoint = te.getSequenceNumber(new Coordinate(destPose.getX(), destPose.getY()));
-						if (!stoppingPoints.keySet().contains(robotID)) stoppingPoints.put(robotID, new ArrayList<Integer>());
-						if (!stoppingPoints.get(robotID).contains(stoppingPoint)) stoppingPoints.get(robotID).add(stoppingPoint);
+						if (!stoppingPoints.keySet().contains(robotID)) {
+							stoppingPoints.put(robotID, new ArrayList<Integer>());
+							stoppingTimes.put(robotID, new ArrayList<Integer>());
+						}
+						if (!stoppingPoints.get(robotID).contains(stoppingPoint)) {
+							stoppingPoints.get(robotID).add(stoppingPoint);
+							stoppingTimes.get(robotID).add(DEFAULT_STOPPING_TIME);
+						}
 					}
-					metaCSPLogger.info("Stopping points along trajectory for Robot" + robotID + ": " + stoppingPoints);
+					metaCSPLogger.info("Stopping points along trajectory for Robot" + robotID + ": " + stoppingPoints.get(robotID));
 				}
 
 				//Put in more realistic DTs computed with the RK4 integrator
