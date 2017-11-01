@@ -727,6 +727,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		if (!canStopRobot1 && !canStopRobot2) {
 			metaCSPLogger.severe("** WARNING ** Neither robot can stop at " + cs);
 			//throw new Error("Neither robot can stop at " + cs);
+			if (cs.getTe1Start()-robotReport1.getPathIndex() < cs.getTe2Start()-robotReport2.getPathIndex()) return true;
+			return false;
 		}
 
 		//If both can stop, use ordering function (or closest if no ordering function)

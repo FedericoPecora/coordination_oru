@@ -49,6 +49,9 @@ public class PathEditor2 {
 	private ArrayList<String> selectionStringsNames = null;
 	private ArrayList<String> selectionStrings = null;
 	private ArrayList<ArrayList<Integer>> selectedLocationsInts = null;
+	private HashMap<Integer,ArrayList<Integer>> selectionGroupsToSelections = null;
+	private int selectedGroup = -1;
+
 	private String selectionString = "";
 	private ArrayList<Integer> selectedLocationsInt = new ArrayList<Integer>();
 	private ArrayList<String> locationIDs = new ArrayList<String>();
@@ -169,7 +172,12 @@ public class PathEditor2 {
 					String[] oneline = line.split(" |\t");
 					ArrayList<Integer> oneSelection = new ArrayList<Integer>();
 					String str = "";
+					int groupNumber = -1;
 					for (int i = 0; i < oneline.length; i++) {
+						try {
+							groupNumber = Integer.parseInt(oneline[i]);
+						}
+						catch (NumberFormatException e) { }
 						for (int j = 0; j < locationIDs.size(); j++) {
 							if (locationIDs.get(j).equals(oneline[i])) {
 								oneSelection.add(j);
@@ -184,6 +192,11 @@ public class PathEditor2 {
 					if (selectionStrings == null) selectionStrings = new ArrayList<String>();
 					selectedLocationsInts.add(oneSelection);
 					selectionStrings.add(str);
+					if (groupNumber != -1) {
+						if (selectionGroupsToSelections == null) selectionGroupsToSelections = new HashMap<Integer, ArrayList<Integer>>();
+						if (!selectionGroupsToSelections.containsKey(groupNumber)) selectionGroupsToSelections.put(groupNumber, new ArrayList<Integer>());
+						selectionGroupsToSelections.get(groupNumber).add(selectedLocationsInts.size()-1);
+					}
 				}
 			}
 			in.close();
@@ -353,6 +366,7 @@ public class PathEditor2 {
 				if (!selectionInputListen) {
 					selectedLocationsInt = new ArrayList<Integer>();
 					selectionString = "";
+					selectedGroup = -1;
 					clearLocations();
 					System.out.println("Input one path index in [0.." + (selectionStrings.size()-1) + "]: " + selectionString);
 				}
@@ -366,6 +380,7 @@ public class PathEditor2 {
 						System.out.println("Current selection (locations): " + selectedLocationsInt);
 					}
 					catch(NumberFormatException ex) { }
+					catch(IndexOutOfBoundsException ex) { }
 				}
 				selectionInputListen = !selectionInputListen;
 			}
@@ -469,6 +484,7 @@ public class PathEditor2 {
 				if (!selectionInputListen) {
 					selectedLocationsInt = new ArrayList<Integer>();
 					selectionString = "";
+					selectedGroup = -1;
 					clearLocations();
 					System.out.println("Input list or range of locations ('x' or 'x,y,..,z' or 'x-z'): " + selectionString);
 				}
@@ -494,7 +510,39 @@ public class PathEditor2 {
 			}
 		};
 		panel.getActionMap().put("Select location(s)",actSelectLocations);
-		
+
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_G,0),"Select group");
+		AbstractAction actSelectGroup = new AbstractAction() {
+			private static final long serialVersionUID = -4218195170958172242L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (!selectionInputListen) {
+					selectedLocationsInt = new ArrayList<Integer>();
+					selectionString = "";
+					selectedGroup = -1;
+					clearLocations();
+					System.out.println("Input group index ('x'): " + selectionString);
+				}
+				else if (selectionInputListen) {
+					clearLocations();
+					try {
+						selectedGroup = Integer.parseInt(selectionString);
+						System.out.println(selectionGroupsToSelections);
+						if (selectionGroupsToSelections.containsKey(selectedGroup)) {
+							for (Integer g : selectionGroupsToSelections.get(selectedGroup)) {
+								selectedLocationsInt.addAll(selectedLocationsInts.get(g));
+							}
+							highlightSelectedLocations();
+							System.out.println("Current selection (all poses in group " + selectedGroup + "): " + selectedLocationsInt);
+						}
+					}
+					catch(NumberFormatException ex) { }
+				}
+				selectionInputListen = !selectionInputListen;
+			}
+		};
+		panel.getActionMap().put("Select group",actSelectGroup);
+
 		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE,0),"Delete path between selected locations");
 		AbstractAction actDelete = new AbstractAction() {
 			private static final long serialVersionUID = 4455373738365388356L;
@@ -516,7 +564,7 @@ public class PathEditor2 {
 
 		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE,KeyEvent.SHIFT_DOWN_MASK),"Delete path between all locations");
 		AbstractAction actDeleteAll = new AbstractAction() {
-			private static final long serialVersionUID = 4455373738365388356L;
+			private static final long serialVersionUID = 4455373738365788356L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				for (String pathName : allPaths.keySet()) {
@@ -601,7 +649,14 @@ public class PathEditor2 {
 			private static final long serialVersionUID = -3238585469762752293L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				for (ArrayList<Integer> onePreset : selectedLocationsInts) {
+				ArrayList<ArrayList<Integer>> selectionsToPlan = selectedLocationsInts;
+				if (selectedGroup != -1) {
+					selectionsToPlan = new ArrayList<ArrayList<Integer>>();
+					for (Integer g : selectionGroupsToSelections.get(selectedGroup)) {
+						selectionsToPlan.add(selectedLocationsInts.get(g));
+					}
+				}
+				for (ArrayList<Integer> onePreset : selectionsToPlan) {
 					if (onePreset.size() >= 2) {
 						ArrayList<PoseSteering> overallPath = new ArrayList<PoseSteering>();
 						String pathName = locationIDs.get(onePreset.get(0))+"->"+locationIDs.get(onePreset.get(onePreset.size()-1));
