@@ -6,6 +6,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Scanner;
 
@@ -191,6 +192,18 @@ public class Missions {
 		Pose ret = locations.get(name);
 		if (ret == null) throw new Error("Unknown location " + name);
 		return ret;
+	}
+	
+	/**
+	 * Get the mission following a given mission.
+	 * @param m A mission.
+	 * @return The mission following the given mission.
+	 */
+	public static Mission getNextMission(Mission m) {
+		for (int i = 0; i < missions.get(m.getRobotID()).size(); i++) {
+			if (missions.get(m.getRobotID()).get(i).equals(m)) return missions.get(m.getRobotID()).get((i+1)%missions.get(m.getRobotID()).size()); 
+		}
+		return null;
 	}
 
 	/**

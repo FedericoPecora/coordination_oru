@@ -80,6 +80,7 @@ public class PathEditor2 {
 		this.deltaY = deltaY;
 		this.deltaT = deltaTheta;
 		this.mapFilename = (PREFIX == null ? "" : PREFIX+File.separator) + mapFN;
+		System.out.println("map fn is " + this.mapFilename);
 		if (this.mapFilename != null) {
 			String path = this.mapFilename.substring(0, this.mapFilename.lastIndexOf(File.separator)+1);
 			this.mapImgFilename = path+Missions.getProperty("image", this.mapFilename);
