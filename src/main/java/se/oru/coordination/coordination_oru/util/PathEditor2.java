@@ -500,8 +500,8 @@ public class PathEditor2 {
 			private static final long serialVersionUID = 4455373738365388356L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				if (selectedLocationsInt.size() == 2) {
-					String pathName = locationIDs.get(selectedLocationsInt.get(0)) + "->" + locationIDs.get(selectedLocationsInt.get(1));
+				if (selectedLocationsInt.size() >= 2) {
+					String pathName = locationIDs.get(selectedLocationsInt.get(0)) + "->" + locationIDs.get(selectedLocationsInt.get(selectedLocationsInt.size()-1));
 					ArrayList<PoseSteering> pathToRemove = allPaths.get(pathName);
 					if (pathToRemove != null) {
 						for (int i = 0; i < pathToRemove.size(); i++) panel.removeGeometry(pathName+"."+i);
@@ -513,7 +513,25 @@ public class PathEditor2 {
 			}
 		};
 		panel.getActionMap().put("Delete path between selected locations",actDelete);
-		
+
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE,KeyEvent.SHIFT_DOWN_MASK),"Delete path between all locations");
+		AbstractAction actDeleteAll = new AbstractAction() {
+			private static final long serialVersionUID = 4455373738365388356L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				for (String pathName : allPaths.keySet()) {
+					ArrayList<PoseSteering> pathToRemove = allPaths.get(pathName);
+					if (pathToRemove != null) {
+						for (int i = 0; i < pathToRemove.size(); i++) panel.removeGeometry(pathName+"."+i);
+						System.out.println("Removed path " + pathName);
+					}
+				}
+				allPaths.clear();
+				updatePaths();
+			}
+		};
+		panel.getActionMap().put("Delete path between all locations",actDeleteAll);
+
 		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_BACK_SPACE,0),"Delete selected location(s)");
 		AbstractAction actDeleteLoc = new AbstractAction() {
 			private static final long serialVersionUID = 4455173731365388356L;
