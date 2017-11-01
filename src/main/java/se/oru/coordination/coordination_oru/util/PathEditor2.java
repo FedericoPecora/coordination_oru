@@ -37,7 +37,6 @@ public class PathEditor2 {
 	private String selectionsFile = null;
 	private String outputDir = null;
 	private static String NEW_SUFFIX = ".new";
-//	private static String PREFIX = null;
 	private static int EMPTY_MAP_DIM = 10000;
 	private static double MAX_TURNING_RADIUS = 5.0;
 	private static double SPLINE_DISTANCE = 20.0;
@@ -79,7 +78,6 @@ public class PathEditor2 {
 		this.deltaX = deltaX;
 		this.deltaY = deltaY;
 		this.deltaT = deltaTheta;
-		//this.mapFilename = (PREFIX == null ? "" : PREFIX+File.separator) + mapFN;
 		this.mapFilename = mapFN;
 		if (this.mapFilename != null) {
 			String path = this.mapFilename.substring(0, this.mapFilename.lastIndexOf(File.separator)+1);
@@ -96,13 +94,11 @@ public class PathEditor2 {
 		this.deleteDir(new File(TEMP_MAP_DIR));
 		new File(TEMP_MAP_DIR).mkdir();
 
-		//this.outputDir = (PREFIX == null ? "" : PREFIX+File.separator) + "output";
 		this.outputDir = "output";
 		this.deleteDir(new File(this.outputDir));
 		new File(outputDir).mkdir();
 
 		if (posesAndPaths != null) {
-			//this.locationsAndPathsFilename = (PREFIX == null ? "" : PREFIX+File.separator) + posesAndPaths;
 			this.locationsAndPathsFilename = posesAndPaths;
 			String pathURI = this.locationsAndPathsFilename.substring(0, this.locationsAndPathsFilename.lastIndexOf(File.separator)+1);
 			allPaths = new HashMap<String, ArrayList<PoseSteering>>();
@@ -147,7 +143,6 @@ public class PathEditor2 {
 		}
 		
 		if (selectionsF != null) {
-			//this.selectionsFile = (PREFIX == null ? "" : PREFIX+File.separator) + selectionsF;
 			this.selectionsFile = selectionsF;
 			loadSelectionsFile();
 		}
@@ -1076,7 +1071,6 @@ public class PathEditor2 {
 
 	public static void main(String[] args) {
 
-		//PREFIX = "/home/fpa/catkin_ws/src/volvo_gto/gazebo_vgto/gazebo_worlds_vgto/maps";
 		String locAndPathFilename = "/home/fpa/catkin_ws/src/volvo_gto/coordination_gto/missions/GTO_locations_and_paths.txt";
 		String selectionsFile = null;
 		String mapFilename = "/home/fpa/catkin_ws/src/volvo_gto/gazebo_vgto/gazebo_worlds_vgto/maps/vgto_plant.yaml";
@@ -1084,7 +1078,6 @@ public class PathEditor2 {
 		new PathEditor2(locAndPathFilename,mapFilename,selectionsFile);
 		
 //		//Volvo CE
-//		//PREFIX = "/home/fpa/gitroot.gitlab/volvo_ce/coordination_oru_vce";
 //		String locAndPathFilename = "paths/elsite_locations.bare.txt";
 //		String selectionsFile = "paths/selections.txt";
 //		String mapFilename = "maps/elsite_1m.yaml";
