@@ -28,6 +28,7 @@ import org.metacsp.utility.UI.JTSDrawingPanel;
 import com.vividsolutions.jts.geom.Coordinate;
 
 import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppCarPlanner;
+import se.oru.coordination.coordination_oru.util.splines.BezierSplineFactory;
 import se.oru.coordination.coordination_oru.util.splines.Spline3D;
 import se.oru.coordination.coordination_oru.util.splines.SplineFactory;
 
@@ -1114,8 +1115,10 @@ public class PathEditor2 {
 		controlPoints[1] = new Coordinate(from.getX()+SPLINE_DISTANCE*Math.cos(from.getTheta()), from.getY()+SPLINE_DISTANCE*Math.sin(from.getTheta()), 0.0);
 		controlPoints[2] = new Coordinate(to.getX()-SPLINE_DISTANCE*Math.cos(to.getTheta()), to.getY()-SPLINE_DISTANCE*Math.sin(to.getTheta()), 0.0);
 		controlPoints[3] = new Coordinate(to.getX(),to.getY(),0.0);
-		Spline3D spline1 = SplineFactory.createBezier(controlPoints, DISTANCE_BETWEEN_PATH_POINTS);
-		return spline1.asPoseSteerings();
+		Coordinate[] spline = BezierSplineFactory.createBezierSpline(controlPoints[0], controlPoints[1], controlPoints[2], controlPoints[3], DISTANCE_BETWEEN_PATH_POINTS);
+		return BezierSplineFactory.asPoseSteering(spline);
+		//Spline3D spline1 = SplineFactory.createBezier(controlPoints, DISTANCE_BETWEEN_PATH_POINTS);
+		//return spline1.asPoseSteerings();
 	}
 
 	private PoseSteering[] computePath(Pose from, Pose ... to) {
