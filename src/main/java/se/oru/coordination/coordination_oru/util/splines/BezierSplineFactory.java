@@ -96,7 +96,6 @@ public class BezierSplineFactory {
 				ret.add(coord);
 				prevCoord = coord;
 			}
-			System.out.println(coord);
 			t += 0.01;
 		}
 		while (t < 1.0);

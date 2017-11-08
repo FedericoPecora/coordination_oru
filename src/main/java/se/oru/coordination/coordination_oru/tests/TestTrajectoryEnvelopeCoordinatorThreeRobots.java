@@ -7,6 +7,7 @@ import se.oru.coordination.coordination_oru.CriticalSection;
 import se.oru.coordination.coordination_oru.Mission;
 import se.oru.coordination.coordination_oru.RobotAtCriticalSection;
 import se.oru.coordination.coordination_oru.RobotReport;
+import se.oru.coordination.coordination_oru.TrackingCallback;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
 import se.oru.coordination.coordination_oru.util.JTSDrawingPanelVisualization;
@@ -53,6 +54,32 @@ public class TestTrajectoryEnvelopeCoordinatorThreeRobots {
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
 		tec.setVisualization(viz);
+		//Example of how you can add extra info Strings to the visualization of robot status
+		TrackingCallback cb = new TrackingCallback() {
+			
+			@Override
+			public void onTrackingStart() { }
+			
+			@Override
+			public void onTrackingFinished() { }
+			
+			@Override
+			public String[] onPositionUpdate() {
+				return new String[] {"a","b","c"};
+			}
+			
+			@Override
+			public void onNewGroundEnvelope() { }
+			
+			@Override
+			public void beforeTrackingStart() { }
+			
+			@Override
+			public void beforeTrackingFinished() { }
+		};
+		tec.addTrackingCallback(1, cb);
+		tec.addTrackingCallback(2, cb);
+		tec.addTrackingCallback(3, cb);
 		
 		//Load data file with locations and pointers to files containing paths between locations
 		Missions.loadLocationAndPathData("paths/test_poses_and_path_data.txt");

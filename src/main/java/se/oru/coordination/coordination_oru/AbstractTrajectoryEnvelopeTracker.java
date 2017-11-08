@@ -14,6 +14,7 @@ import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelopeSolver;
 import org.metacsp.time.APSPSolver;
 import org.metacsp.time.Bounds;
+import org.metacsp.utility.UI.Callback;
 import org.metacsp.utility.logging.MetaCSPLogging;
 
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeTrackerRK4;
@@ -43,6 +44,7 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 	protected Map mapMetaConstraint = null; 
 	protected boolean calledOnTrackingStart = false;
 	protected boolean calledStartTracking = false;
+	protected Callback extraStatusCallback = null;
 	
 	protected Logger metaCSPLogger = MetaCSPLogging.getLogger(AbstractTrajectoryEnvelopeTracker.class);
 
@@ -127,10 +129,15 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 
 	protected void onPositionUpdate() {
 	
+		String[] extraRobotState = null;
+		if (cb != null) {
+			extraRobotState = cb.onPositionUpdate();
+		}
+
 		if (tec.getVisualization() != null) {
 			//Update the position of the robot in the GUI
 			RobotReport rr = getRobotReport();
-			tec.getVisualization().displayRobotState(te, rr);
+			tec.getVisualization().displayRobotState(te, rr, extraRobotState);
 			
 			//Draw an arrow if there is a critical point
 			RobotReport rrWaiting = getRobotReport();

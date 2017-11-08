@@ -15,6 +15,8 @@ import org.metacsp.utility.UI.JTSDrawingPanel;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.Point;
+import com.vividsolutions.jts.geom.Polygon;
 
 import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator;
@@ -41,12 +43,18 @@ public class JTSDrawingPanelVisualization implements FleetVisualization {
 	}
 
 	@Override
-	public void displayRobotState(TrajectoryEnvelope te, RobotReport rr) {
+	public void displayRobotState(TrajectoryEnvelope te, RobotReport rr, String ... extraStatusInfo) {
 		double x = rr.getPose().getX();
 		double y = rr.getPose().getY();
 		double theta = rr.getPose().getTheta();
-		if (rr.getPathIndex() != -1) panel.addGeometry("R" + te.getRobotID(), TrajectoryEnvelope.getFootprint(te.getFootprint(), x, y, theta), false, true, false, "#FF0000");
-		else panel.addGeometry("R" + te.getRobotID(), TrajectoryEnvelope.getFootprint(te.getFootprint(), te.getTrajectory().getPose()[0].getX(), te.getTrajectory().getPose()[0].getY(), te.getTrajectory().getPose()[0].getTheta()), false, true, false, "#4286F4");
+		String name = "R"+te.getRobotID();
+		if (extraStatusInfo != null) {
+			for (String st : extraStatusInfo) {
+				name += ("\\"+st);
+			}
+		}
+		if (rr.getPathIndex() != -1) panel.addGeometry(name, TrajectoryEnvelope.getFootprint(te.getFootprint(), x, y, theta), false, true, false, "#FF0000");
+		else panel.addGeometry(name, TrajectoryEnvelope.getFootprint(te.getFootprint(), te.getTrajectory().getPose()[0].getX(), te.getTrajectory().getPose()[0].getY(), te.getTrajectory().getPose()[0].getTheta()), false, true, false, "#4286F4");
 	}
 
 	@Override

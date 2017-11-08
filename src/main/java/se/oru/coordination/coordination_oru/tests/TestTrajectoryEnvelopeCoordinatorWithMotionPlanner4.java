@@ -20,6 +20,7 @@ import se.oru.coordination.coordination_oru.CriticalSection;
 import se.oru.coordination.coordination_oru.Mission;
 import se.oru.coordination.coordination_oru.RobotAtCriticalSection;
 import se.oru.coordination.coordination_oru.RobotReport;
+import se.oru.coordination.coordination_oru.TrackingCallback;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
@@ -96,8 +97,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner4 {
 			mapHeight = img.getHeight()*res*0.9;
 		}
 		catch (IOException e) { e.printStackTrace(); }
-
-
+		
 		int[] robotIDs = new int[] {1,2,3,4,5,6,7,8};
 		for (int index = 0; index < robotIDs.length; index++) {
 			int robotID = robotIDs[index];

@@ -6,7 +6,7 @@ import se.oru.coordination.coordination_oru.RobotReport;
 
 public interface FleetVisualization {
 	
-	public void displayRobotState(TrajectoryEnvelope te, RobotReport rr);
+	public void displayRobotState(TrajectoryEnvelope te, RobotReport rr, String ... extraStatusInfo);
 	
 	public void displayDependency(RobotReport rrWaiting, RobotReport rrDriving, String dependencyDescriptor);
 	

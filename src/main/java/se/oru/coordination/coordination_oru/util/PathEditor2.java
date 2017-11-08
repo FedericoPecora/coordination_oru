@@ -64,11 +64,40 @@ public class PathEditor2 {
 	private double deltaT = 0.01;
 	private double deltaTR = 0.1;
 	private double deltaSD = 0.5;
+	private double deltaD = 0.1;
 	
 	private double radius = 3.0;
 	private Coordinate[] footprint = null;
 	
 	private static String TEMP_MAP_DIR = ".tempMapsPathEditor";
+
+	public PathEditor2() {
+		this(null, null, null, 0.1, 0.1, 0.01);
+	}
+	
+	public void setDeltaX(double dx) {
+		this.deltaX = dx;
+	}
+
+	public void setDeltaY(double dy) {
+		this.deltaY = dy;
+	}
+
+	public void setDeltaTheta(double dt) {
+		this.deltaT = dt;
+	}
+	
+	public void setSplineDistance(double val) {
+		SPLINE_DISTANCE = val;
+	}
+	
+	public void setDistanceBetweenPathPoints(double val) {
+		DISTANCE_BETWEEN_PATH_POINTS = val;
+	}
+	
+	public void setMaxTurningRadius(double val) {
+		MAX_TURNING_RADIUS = val;
+	}
 
 	public PathEditor2(String posesAndPaths, String mapFilename) {
 		this(posesAndPaths, mapFilename, null, 0.1, 0.1, 0.01);
@@ -102,10 +131,11 @@ public class PathEditor2 {
 		this.deleteDir(new File(this.outputDir));
 		new File(outputDir).mkdir();
 
+		this.allPaths = new HashMap<String, ArrayList<PoseSteering>>();
+
 		if (posesAndPaths != null) {
 			this.locationsAndPathsFilename = posesAndPaths;
 			String pathURI = this.locationsAndPathsFilename.substring(0, this.locationsAndPathsFilename.lastIndexOf(File.separator)+1);
-			allPaths = new HashMap<String, ArrayList<PoseSteering>>();
 			Missions.loadLocationAndPathData(this.locationsAndPathsFilename);
 			addAllKnownLocations();
 			HashMap<String,Pose> locations = Missions.getLocations();
@@ -621,6 +651,19 @@ public class PathEditor2 {
 					System.out.println("Inserted new locations " + selectedLocationsInt);
 					highlightSelectedLocations();
 				}
+				else {
+					ArrayList<Integer> newSelection = new ArrayList<Integer>();
+					Pose pNew = new Pose(0.0, 0.0, 0.0);
+					String newPoseName = "AUX_"+newLocationCounter++;
+					Missions.setLocation(newPoseName, pNew);
+					locationIDs.add(newPoseName);
+					newSelection.add(locationIDs.size()-1);
+					panel.addArrow((locationIDs.size()-1)+":"+newPoseName, pNew, Color.green);
+					clearLocations();
+					selectedLocationsInt = newSelection;
+					System.out.println("Inserted new locations " + selectedLocationsInt);
+					highlightSelectedLocations();
+				}
 			}
 		};
 		panel.getActionMap().put("Add locations(s)",actInsert);
@@ -1017,7 +1060,7 @@ public class PathEditor2 {
 			private static final long serialVersionUID = 8414380724212398117L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				DISTANCE_BETWEEN_PATH_POINTS += deltaX;
+				DISTANCE_BETWEEN_PATH_POINTS += deltaD;
 				System.out.println("Minimum distance between path points (>): " + DISTANCE_BETWEEN_PATH_POINTS);
 			}
 		};
@@ -1028,7 +1071,7 @@ public class PathEditor2 {
 			private static final long serialVersionUID = 8414380724212398117L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				if (DISTANCE_BETWEEN_PATH_POINTS-deltaX >= 0) DISTANCE_BETWEEN_PATH_POINTS -= deltaX;
+				if (DISTANCE_BETWEEN_PATH_POINTS-deltaD >= 0) DISTANCE_BETWEEN_PATH_POINTS -= deltaD;
 				System.out.println("Minimum distance between path points (<): " + DISTANCE_BETWEEN_PATH_POINTS);
 			}
 		};
@@ -1147,11 +1190,20 @@ public class PathEditor2 {
 
 	public static void main(String[] args) {
 
-		String locAndPathFilename = "/home/fpa/catkin_ws/src/volvo_gto/coordination_gto/missions/GTO_locations_and_paths.txt";
-		String selectionsFile = null;
-		String mapFilename = "/home/fpa/catkin_ws/src/volvo_gto/gazebo_vgto/gazebo_worlds_vgto/maps/vgto_plant.yaml";
-		//new PathEditor2(locAndPathFilename,mapFilename);
-		new PathEditor2(locAndPathFilename,mapFilename,selectionsFile);
+		String locAndPathFilename = "paths/locations.txt";
+		String selectionsFile = "paths/selections.txt";
+		PathEditor2 pe2 = new PathEditor2(locAndPathFilename,null,selectionsFile);
+		pe2.setDeltaX(5.0);
+		pe2.setDeltaY(5.0);
+		pe2.setSplineDistance(3.0);
+		pe2.setDistanceBetweenPathPoints(0.3);
+		
+		//Volvo GTO
+//		String locAndPathFilename = "/home/fpa/catkin_ws/src/volvo_gto/coordination_gto/missions/GTO_locations_and_paths.txt";
+//		String selectionsFile = null;
+//		String mapFilename = "/home/fpa/catkin_ws/src/volvo_gto/gazebo_vgto/gazebo_worlds_vgto/maps/vgto_plant.yaml";
+//		//new PathEditor2(locAndPathFilename,mapFilename);
+//		new PathEditor2(locAndPathFilename,mapFilename,selectionsFile);
 		
 //		//Volvo CE
 //		String locAndPathFilename = "paths/elsite_locations.bare.txt";

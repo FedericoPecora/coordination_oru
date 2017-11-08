@@ -109,6 +109,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected boolean checkEscapePoses = true;
 	protected boolean breakDeadlocks = true;
 
+	protected HashMap<Integer,TrackingCallback> trackingCallbacks = new HashMap<Integer, TrackingCallback>();
+	
 	//Default footprint (same for all robots)
 	//NOTE: coordinates must be in CCW or CW order
 	public static Coordinate[] DEFAULT_FOOTPRINT = new Coordinate[] {
@@ -442,15 +444,30 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 			TrackingCallback cb = new TrackingCallback() {
 				@Override
-				public void beforeTrackingStart() { }
+				public void beforeTrackingStart() {
+					if (trackingCallbacks.containsKey(robotID)) trackingCallbacks.get(robotID).beforeTrackingStart();
+				}
 				@Override
-				public void onTrackingStart() { }
+				public void onTrackingStart() {
+					if (trackingCallbacks.containsKey(robotID)) trackingCallbacks.get(robotID).onTrackingStart();
+				}
 				@Override
-				public void onNewGroundEnvelope() { }
+				public void onNewGroundEnvelope() {
+					if (trackingCallbacks.containsKey(robotID)) trackingCallbacks.get(robotID).onNewGroundEnvelope();
+				}
 				@Override
-				public void beforeTrackingFinished() { }
+				public void beforeTrackingFinished() {
+					if (trackingCallbacks.containsKey(robotID)) trackingCallbacks.get(robotID).beforeTrackingFinished();
+				}
 				@Override
-				public void onTrackingFinished() { }
+				public void onTrackingFinished() {
+					if (trackingCallbacks.containsKey(robotID)) trackingCallbacks.get(robotID).onTrackingFinished();
+				}
+				@Override
+				public String[] onPositionUpdate() {
+					if (trackingCallbacks.containsKey(robotID)) return trackingCallbacks.get(robotID).onPositionUpdate();
+					return null;
+				}
 			};
 
 			//Now start the tracker for this parking (will be ended by call to addMissions for this robot)
@@ -593,6 +610,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		//		throw new Error("Could not determine CP for " + te2);
 	}
 
+	public boolean atStoppingPoint(int robotID) {
+		return stoppingPointTimers.containsKey(robotID);
+	}
+	
 	//Spawn a waiting thread at this stopping point
 	protected void spawnWaitingThread(final int robotID, final int index, final int duration) {
 		Thread stoppingPointTimer = new Thread() {
@@ -1209,6 +1230,15 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			startTrackingAddedMissions();
 		}
 	}
+	
+	/**
+	 * Add a {@link TrackingCallback} that will be called by the tracker of a given robot.
+	 * @param robotID The ID of the robot to which the callback should be attached.
+	 * @param cb A callback object.
+	 */
+	public void addTrackingCallback(int robotID, TrackingCallback cb) {
+		trackingCallbacks.put(robotID, cb);
+	}
 
 	/**
 	 * Start the trackers associated to the last batch of {@link Mission}s that has been added.
@@ -1238,6 +1268,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 					@Override
 					public void beforeTrackingStart() {
+						
+						if (trackingCallbacks.containsKey(te.getRobotID())) trackingCallbacks.get(te.getRobotID()).beforeTrackingStart();
+						
 						//Sleep for one control period
 						//(allows to impose critical points before tracking actually starts)
 						try { Thread.sleep(CONTROL_PERIOD); }
@@ -1246,18 +1279,25 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 					@Override
 					public void onTrackingStart() {
+						if (trackingCallbacks.containsKey(te.getRobotID())) trackingCallbacks.get(te.getRobotID()).onTrackingStart();
 						if (viz != null) viz.addEnvelope(te);
 					}
 
 					@Override
-					public void onNewGroundEnvelope() { }
+					public void onNewGroundEnvelope() {
+						if (trackingCallbacks.containsKey(te.getRobotID())) trackingCallbacks.get(te.getRobotID()).onNewGroundEnvelope();
+					}
 
 					@Override
-					public void beforeTrackingFinished() { }
+					public void beforeTrackingFinished() {
+						if (trackingCallbacks.containsKey(te.getRobotID())) trackingCallbacks.get(te.getRobotID()).beforeTrackingFinished();
+					}
 
 					@Override
 					public void onTrackingFinished() {
 
+						if (trackingCallbacks.containsKey(te.getRobotID())) trackingCallbacks.get(te.getRobotID()).onTrackingFinished();
+						
 						synchronized (solver) {
 							metaCSPLogger.info("Tracking finished for " + te);
 
@@ -1306,6 +1346,12 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							updateDependencies();							
 						}
 
+					}
+
+					@Override
+					public String[] onPositionUpdate() {
+						if (trackingCallbacks.containsKey(te.getRobotID())) return trackingCallbacks.get(te.getRobotID()).onPositionUpdate();
+						return null;
 					}
 
 				};

@@ -1,5 +1,7 @@
 package se.oru.coordination.coordination_oru;
 
+import se.oru.coordination.coordination_oru.util.FleetVisualization;
+
 /**
  * Implement this class to provide a callback to pass on to an {@link AbstractTrajectoryEnvelopeTracker} which
  * will be called at important points during tracking.
@@ -19,6 +21,13 @@ public interface TrackingCallback {
 	 */
 	public void onTrackingStart();
 
+
+	/**
+	 * Will be called on position update.
+	 * @return Can return an array of strings that will be displayed if there is a {@link FleetVisualization} that supports it.
+	 */
+	public String[] onPositionUpdate();
+	
 	/**
 	 * Will be called once just before tracking ends.
 	 */
