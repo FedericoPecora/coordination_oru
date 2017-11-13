@@ -31,15 +31,28 @@ extern "C" bool plan_multiple_circles(const char* mapFilename, double mapResolut
   ob::StateSpacePtr space(new ob::ReedsSheppStateSpace(turningRadius));
   
   COccupancyGridMap2D gridmap;
-  gridmap.loadFromBitmapFile( mapFilename, (float)mapResolution, 0.0f, 0.0f );
-  std::cout << "Loaded map (1) " << mapFilename << std::endl;
+  if (mapFilename != NULL) {
+    gridmap.loadFromBitmapFile( mapFilename, (float)mapResolution, 0.0f, 0.0f );
+    std::cout << "Loaded map (1) " << mapFilename << std::endl;
+  }
+  else {
+    std::cout << "Using empty map" << std::endl;
+  }
   
   ob::ScopedState<> start(space), goal(space);
   ob::RealVectorBounds bounds(2);
-  bounds.low[0] = gridmap.getXMin();
-  bounds.low[1] = gridmap.getYMin();
-  bounds.high[0] = gridmap.getXMax();
-  bounds.high[1] = gridmap.getYMax();
+  if (mapFilename != NULL) {
+    bounds.low[0] = gridmap.getXMin();
+    bounds.low[1] = gridmap.getYMin();
+    bounds.high[0] = gridmap.getXMax();
+    bounds.high[1] = gridmap.getYMax();
+  }
+  else {
+    bounds.low[0] = -10000;
+    bounds.low[1] = -10000;
+    bounds.high[0] = 10000;
+    bounds.high[1] = 10000;
+  }
   space->as<ob::SE2StateSpace>()->setBounds(bounds);
   std::cout << "Bounds are [(" << bounds.low[0] << "," << bounds.low[1] << "),(" << bounds.high[0] << "," << bounds.high[1] << ")]" << std::endl;
   

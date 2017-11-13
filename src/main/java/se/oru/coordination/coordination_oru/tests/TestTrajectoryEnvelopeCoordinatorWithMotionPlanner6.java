@@ -52,16 +52,21 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner6 {
 		tec.setForwardModel(3, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTrackingPeriod(), tec.getTemporalResolution()));
 		//comment out following (or set to true) to make the coordinator attempt to break the deadlock
 		tec.setBreakDeadlocks(false);
+
+		Coordinate footprint1 = new Coordinate(-0.25,0.25);
+		Coordinate footprint2 = new Coordinate(0.25,0.25);
+		Coordinate footprint3 = new Coordinate(0.25,-0.25);
+		Coordinate footprint4 = new Coordinate(-0.25,-0.25);
+		tec.setDefaultFootprint(footprint1, footprint2, footprint3, footprint4);
 		
-		Coordinate[] ret = new Coordinate[6];		
-		ret[0] = new Coordinate(0.36, 0.0);
-		ret[1] = new Coordinate(0.18, 0.36);
-		ret[2] = new Coordinate(-0.18, 0.36);
-		ret[3] = new Coordinate(-0.36, 0.0);
-		ret[4] = new Coordinate(-0.18, -0.36);
-		ret[5] = new Coordinate(0.18, -0.36);
-		
-		tec.setDefaultFootprint(ret);
+//		Coordinate[] ret = new Coordinate[6];		
+//		ret[0] = new Coordinate(0.36, 0.0);
+//		ret[1] = new Coordinate(0.18, 0.36);
+//		ret[2] = new Coordinate(-0.18, 0.36);
+//		ret[3] = new Coordinate(-0.36, 0.0);
+//		ret[4] = new Coordinate(-0.18, -0.36);
+//		ret[5] = new Coordinate(0.18, -0.36);
+//		tec.setDefaultFootprint(ret);
 
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
@@ -82,7 +87,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner6 {
 		double res = Double.parseDouble(Missions.getProperty("resolution", yamlFile));
 		rsp.setMapResolution(res);
 		rsp.setRadius(0.2);
-		rsp.setFootprint(ret);
+		rsp.setFootprint(tec.getDefaultFootprint());
 		rsp.setTurningRadius(4.0);
 		rsp.setDistanceBetweenPathPoints(0.5);
 	

@@ -63,7 +63,8 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner10 {
 		tec.setVisualization(viz);
 
 		tec.setUseInternalCriticalPoints(false);
-		tec.setBreakDeadlocks(true);
+		tec.setBreakDeadlocks(false);
+		tec.setYieldIfParking(false);
 
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
 		rsp.setMapFilename("maps"+File.separator+Missions.getProperty("image", yamlFile));

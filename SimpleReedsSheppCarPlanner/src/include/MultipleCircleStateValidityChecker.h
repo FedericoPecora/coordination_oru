@@ -12,7 +12,7 @@ namespace og = ompl::geometric;
 
 class MultipleCircleStateValidityChecker : public ob::StateValidityChecker {
  public:
-  COccupancyGridMap2D gridmap;
+  COccupancyGridMap2D* gridmap;
   float radius;
   double* xCoords;
   double* yCoords;
@@ -23,8 +23,14 @@ class MultipleCircleStateValidityChecker : public ob::StateValidityChecker {
     xCoords = _xCoords;
     yCoords = _yCoords;
     numCoords = _numCoords;
-    gridmap.loadFromBitmapFile( mapFilename, mapResolution, 0.0f, 0.0f );
-    std::cout << "Loaded map " << mapFilename << std::endl;
+    if (mapFilename != NULL) {
+      gridmap->loadFromBitmapFile( mapFilename, mapResolution, 0.0f, 0.0f );
+      std::cout << "Loaded map " << mapFilename << " for validity checking" << std::endl;
+    }
+    else {
+      gridmap = NULL;
+      std::cout << "Using empty map for validity checking" << std::endl;
+    }
   }
   
   virtual bool isValid(const ob::State *state) const;
