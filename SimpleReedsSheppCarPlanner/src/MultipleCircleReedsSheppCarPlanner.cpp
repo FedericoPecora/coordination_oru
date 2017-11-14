@@ -61,7 +61,12 @@ extern "C" bool plan_multiple_circles(const char* mapFilename, double mapResolut
 
   // set state validity checking for this space
   ob::SpaceInformationPtr si(ss.getSpaceInformation());
-  si->setStateValidityChecker(ob::StateValidityCheckerPtr(new MultipleCircleStateValidityChecker(si, mapFilename, mapResolution, robotRadius, xCoords, yCoords, numCoords)));
+  if (mapFilename != NULL) {
+    si->setStateValidityChecker(ob::StateValidityCheckerPtr(new MultipleCircleStateValidityChecker(si, mapFilename, mapResolution, robotRadius, xCoords, yCoords, numCoords)));
+  }
+  else {
+    si->setStateValidityChecker(ob::StateValidityCheckerPtr(new MultipleCircleStateValidityChecker(si)));
+  }
 
   ob::PlannerPtr planner(new og::RRTConnect(si));
   //ob::PlannerPtr planner(new og::RRTstar(si));
