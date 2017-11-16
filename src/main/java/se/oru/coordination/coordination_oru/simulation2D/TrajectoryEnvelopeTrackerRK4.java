@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Map.Entry;
 import java.util.Random;
 import java.util.TreeMap;
 
@@ -35,6 +36,8 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 	private TreeMap<Double,Double> slowDownProfile = null;
 	private boolean slowingDown = false;
 	private boolean useInternalCPs = true;
+	
+	private HashMap<Integer,Integer> userCPReplacements = null;
 
 	public void setUseInternalCriticalPoints(boolean value) {
 		this.useInternalCPs = value;
@@ -108,9 +111,9 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 
 	private void startInternalCPThread() {
 		Thread t = new Thread() {
-			private HashMap<Integer,Integer> userCPReplacements = new HashMap<Integer, Integer>();
 			@Override
 			public void run() {
+				userCPReplacements = new HashMap<Integer, Integer>();
 				while (th.isAlive()) {
 					ArrayList<Integer> toRemove = new ArrayList<Integer>();
 					for (Integer i : internalCriticalPoints) {
@@ -139,6 +142,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 		};
 		t.start();
 	}
+	
 	
 	private TreeMap<Double,Double> getSlowdownProfile() {
 		TreeMap<Double,Double> ret = new TreeMap<Double, Double>(Collections.reverseOrder());
@@ -213,7 +217,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 		if (this.criticalPoint != criticalPointToSet) {
 			
 			//A new intermediate index to stop at has been given
-			if (criticalPointToSet != -1 && criticalPointToSet > getRobotReport().getPathIndex()) {				
+			if (criticalPointToSet != -1 && criticalPointToSet > getRobotReport().getPathIndex()) {			
 				//Store backups in case we are too late for critical point
 				double totalDistanceBKP = this.totalDistance;
 				int criticalPointBKP = this.criticalPoint;

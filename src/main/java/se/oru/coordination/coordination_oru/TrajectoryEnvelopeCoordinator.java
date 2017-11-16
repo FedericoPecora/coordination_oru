@@ -624,9 +624,12 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					try { Thread.sleep(100); }
 					catch (InterruptedException e) { e.printStackTrace(); }
 				}
-				stoppingPoints.get(robotID).remove(index);
-				stoppingTimes.get(robotID).remove(index);
-				stoppingPointTimers.remove(robotID);
+				synchronized(stoppingPoints) {
+					stoppingPoints.get(robotID).remove((int)index);
+					stoppingTimes.get(robotID).remove((int)index);
+					stoppingPointTimers.remove(robotID);
+				}
+				updateDependencies();
 				//waitingTracker.setCriticalPoint(-1);
 			}
 		};
@@ -826,9 +829,13 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							currentDeps.get(robotID).add(dep);					
 						}
 						//Start waiting thread if the stopping point has been reached
-						if (Math.abs(robotReport.getPathIndex()-stoppingPoint) <= 1 && robotReport.getCriticalPoint() == stoppingPoint && !stoppingPointTimers.containsKey(robotID)) {
+						//if (Math.abs(robotReport.getPathIndex()-stoppingPoint) <= 1 && robotReport.getCriticalPoint() == stoppingPoint && !stoppingPointTimers.containsKey(robotID)) {
+						if (Math.abs(robotReport.getPathIndex()-stoppingPoint) <= 1 && robotReport.getCriticalPoint() <= stoppingPoint && !stoppingPointTimers.containsKey(robotID)) {
 							spawnWaitingThread(robotID, i, duration);
 						}
+//						else {
+//							System.out.println("NOT YET for Robot" + robotID + " stoppingPoint = " + stoppingPoint + " rr.cp = " + robotReport.getCriticalPoint() + " rr.pi = " + robotReport.getPathIndex());
+//						}
 					}
 				}
 			}
@@ -1088,9 +1095,110 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					}
 				}
 			}
-
+			
+			filterCriticalSections();
+			
 			metaCSPLogger.info("There are now " + allCriticalSections.size() + " critical sections");
 		}
+	}
+	
+	private void filterCriticalSections() {
+		ArrayList<CriticalSection> toAdd = new ArrayList<CriticalSection>();
+		ArrayList<CriticalSection> toRemove = new ArrayList<CriticalSection>();
+		int passNum = 0;
+		do {
+			passNum++;
+			toAdd.clear();
+			toRemove.clear();
+			for (CriticalSection cs1 : allCriticalSections) {
+				for (CriticalSection cs2 : allCriticalSections) {
+					//If CS1 and CS2 are about the same pair of robots
+					if (!cs1.equals(cs2) && cs1.getTe1().equals(cs2.getTe1()) && cs1.getTe2().equals(cs2.getTe2())) {
+						int start11 = cs1.getTe1Start();
+						int start12 = cs1.getTe2Start();
+						int start21 = cs2.getTe1Start();
+						int start22 = cs2.getTe2Start();
+						int end11 = cs1.getTe1End();
+						int end12 = cs1.getTe2End();
+						int end21 = cs2.getTe1End();
+						int end22 = cs2.getTe2End();
+						Pose[] path1 = cs1.getTe1().getTrajectory().getPose();
+						//CS1 before CS2
+						if (start11 < start21) {
+							//CS1 ends after CS2 starts
+							if (end11 >= start21) {
+								toRemove.add(cs1);
+								toRemove.add(cs2);
+								int newStart1 = start11;
+								int newEnd1 = end21;
+								int newStart2 = -1;
+								int newEnd2 = -1;
+								if (start12 < start22) {
+									newStart2 = start12;
+									newEnd2 = end22;
+								}
+								else {
+									newStart2 = start22;
+									newEnd2 = end12;
+								}
+								CriticalSection newCS = new CriticalSection(cs1.getTe1(), cs1.getTe2(), newStart1, newStart2, newEnd1, newEnd2); 
+								toAdd.add(newCS);
+								System.out.println("(Pass " + passNum + ") MERGED (ends-after-start): " + cs1 + " + " + cs2 + " = " + newCS);
+							}
+							//distance CS1.end -> CS2.start too small
+							else if (path1[end11].distanceTo(path1[start21]) <= 1.1*getMaxFootprintDimension(cs1.getTe1().getRobotID())) {
+								toRemove.add(cs1);
+								toRemove.add(cs2);
+								int newStart1 = start11;
+								int newEnd1 = end21;
+								int newStart2 = -1;
+								int newEnd2 = -1;
+								if (start12 < start22) {
+									newStart2 = start12;
+									newEnd2 = end22;
+								}
+								else {
+									newStart2 = start22;
+									newEnd2 = end12;
+								}
+								CriticalSection newCS = new CriticalSection(cs1.getTe1(), cs1.getTe2(), newStart1, newStart2, newEnd1, newEnd2); 
+								toAdd.add(newCS);
+								System.out.println("(Pass " + passNum + ") MERGED (too-close): " + cs1 + " + " + cs2 + " = " + newCS);								
+							}
+						}
+					}
+				}	
+			}
+			for (CriticalSection cs : toRemove) allCriticalSections.remove(cs);
+			for (CriticalSection cs : toAdd) allCriticalSections.add(cs);
+		}
+		while (!toAdd.isEmpty() || !toRemove.isEmpty());
+		
+		toRemove.clear();
+		for (int i = 0; i < allCriticalSections.size(); i++) {
+			for (int j = i+1; j < allCriticalSections.size(); j++) {
+				CriticalSection cs1 = allCriticalSections.get(i);
+				CriticalSection cs2 = allCriticalSections.get(j);
+				int start11 = cs1.getTe1Start();
+				int start12 = cs1.getTe2Start();
+				int start21 = cs2.getTe1Start();
+				int start22 = cs2.getTe2Start();
+				int end11 = cs1.getTe1End();
+				int end12 = cs1.getTe2End();
+				int end21 = cs2.getTe1End();
+				int end22 = cs2.getTe2End();
+				//If CS1 and CS2 are about the same pair of robots
+				if (!cs1.equals(cs2) && cs1.getTe1().equals(cs2.getTe1()) && cs1.getTe2().equals(cs2.getTe2())) {
+					//CS1 and CS2 are identical
+					if (start11 == start21 && end11 == end21 && start12 == start22 && end12 == end22) {
+						toRemove.add(cs1);
+						System.out.println("(Pass " + passNum + ") REMOVED ONE OF " + cs1 + " and " + cs2);
+					}
+				}
+			}
+		}
+		for (CriticalSection cs : toRemove) allCriticalSections.remove(cs);
+
 	}
 
 	protected CriticalSection[] getCriticalSections(TrajectoryEnvelope te1, TrajectoryEnvelope te2) {
@@ -1200,7 +1308,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				}
 			}
 		}
-
+		
 		return css.toArray(new CriticalSection[css.size()]);
 	}
 

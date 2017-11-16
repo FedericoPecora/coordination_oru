@@ -1,10 +1,13 @@
 package se.oru.coordination.coordination_oru.simulation2D;
 
+import java.util.ArrayList;
 import java.util.Calendar;
 
+import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 
 import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeTracker;
+import se.oru.coordination.coordination_oru.Mission;
 import se.oru.coordination.coordination_oru.TrackingCallback;
 import se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator;
 
@@ -80,6 +83,39 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 		this(CONTROL_PERIOD, TEMPORAL_RESOLUTION, 10.0, 1.0, 30);
 	}
 	
+	private ArrayList<Integer> computeStoppingPoints(PoseSteering[] poses) {
+		ArrayList<Integer> ret = new ArrayList<Integer>();
+		double prevTheta = poses[0].getTheta();
+		if (poses.length > 1) prevTheta = Math.atan2(poses[1].getY() - poses[0].getY(), poses[1].getX() - poses[0].getX());
+		for (int i = 0; i < poses.length-1; i++) {
+			double theta = Math.atan2(poses[i+1].getY() - poses[i].getY(), poses[i+1].getX() - poses[i].getX());
+			double deltaTheta = (theta-prevTheta);
+			prevTheta = theta;
+			if (Math.abs(deltaTheta) > Math.PI/2 && Math.abs(deltaTheta) < 1.9*Math.PI) {
+				ret.add(i);
+			}
+		}
+		return ret;
+	}
+	
+	@Override
+	public boolean addMissions(Mission... missions) {
+		if (this.useInternalCPs) {
+			for (Mission m : missions) {
+				PoseSteering[] path = m.getPath();
+				ArrayList<Integer> sps = computeStoppingPoints(path);
+				for (Integer i : sps) m.setStoppingPoint(path[i-1].getPose(), 100);				
+			}
+		}
+		if (!super.addMissions(missions)) {
+			for (Mission m : missions) {
+				m.clearStoppingPoints();
+				return false;
+			}			
+		}
+		return true;
+	}
+	
 	/**
 	 * Create a new {@link TrajectoryEnvelopeCoordinatorSimulation} with given parameters.
 	 * @param CONTROL_PERIOD The control period of the coordinator (e.g., 1000 msec)
@@ -114,7 +150,8 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 				return Calendar.getInstance().getTimeInMillis()-START_TIME;
 			}
 		};
-		ret.setUseInternalCriticalPoints(this.useInternalCPs);
+		//ret.setUseInternalCriticalPoints(this.useInternalCPs);
+		ret.setUseInternalCriticalPoints(false);
 		return ret;
 	}
 

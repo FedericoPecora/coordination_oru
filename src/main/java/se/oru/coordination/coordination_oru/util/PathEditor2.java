@@ -482,7 +482,7 @@ public class PathEditor2 {
 				for (Entry<String,ArrayList<PoseSteering>> entry : allPaths.entrySet()) {
 					String pathFilename = entry.getKey().replaceAll("->", "-")+".path";
 					st += entry.getKey().replaceAll("->", " -> ") + "\t" + pathFilename + "\n";
-					writePath(outputDir+File.separator+pathFilename, entry.getValue());
+					Missions.writePath(outputDir+File.separator+pathFilename, entry.getValue());
 				}
 		        try {
 		        	String newFilename = outputDir+File.separator+"locations_and_paths.txt";
@@ -1127,19 +1127,6 @@ public class PathEditor2 {
 		panel.setTextSizeInMeters(2.3);
 	}
 	
-	
-	private void writePath(String fileName, ArrayList<PoseSteering> path) {
-        try {
-            File file = new File(fileName);
-            System.out.println("Saved path file: " + file.getAbsolutePath());
-            PrintWriter writer = new PrintWriter(file);
-            for (PoseSteering ps : path) {
-            	writer.println(ps.getPose().getX() + "\t" + ps.getPose().getY() + "\t" + ps.getPose().getTheta() + "\t" + ps.getSteering());
-            }
-            writer.close();
-        }
-        catch (Exception e) { e.printStackTrace(); }
-	}
 		
 	private String makeEmptyMapMap() {
 		BufferedImage img = new BufferedImage(EMPTY_MAP_DIM, EMPTY_MAP_DIM, BufferedImage.TYPE_INT_RGB);
@@ -1190,13 +1177,47 @@ public class PathEditor2 {
 
 	public static void main(String[] args) {
 
-		String locAndPathFilename = "paths/locations.txt";
-		String selectionsFile = "paths/selections.txt";
-		PathEditor2 pe2 = new PathEditor2(locAndPathFilename,null,selectionsFile);
-		pe2.setDeltaX(5.0);
-		pe2.setDeltaY(5.0);
+		//ICAPS 2
+		String mapFilename = "/home/fpa/catkin_ws/src/coordination_oru_ros/maps/map-partial-2.yaml";
+		String locs = "/home/fpa/catkin_ws/src/coordination_oru_ros/missions/icaps_locations_and_paths_1.txt";
+		String sel = "/home/fpa/catkin_ws/src/coordination_oru_ros/missions/icaps_selections.txt";
+		PathEditor2 pe2 = new PathEditor2(locs,mapFilename,null);
+		pe2.setDeltaX(0.5);
+		pe2.setDeltaY(0.5);
 		pe2.setSplineDistance(3.0);
-		pe2.setDistanceBetweenPathPoints(0.3);
+		pe2.setDistanceBetweenPathPoints(0.5);
+		pe2.setPathPlanningRadius(0.1);
+		pe2.setMaxTurningRadius(2.0);
+		Coordinate footprint1 = new Coordinate(-1.0,0.5);
+		Coordinate footprint2 = new Coordinate(1.0,0.5);
+		Coordinate footprint3 = new Coordinate(1.0,-0.5);
+		Coordinate footprint4 = new Coordinate(-1.0,-0.5);
+		pe2.setPathPlanningFootprint(footprint1,footprint2,footprint3,footprint4,footprint1);
+
+//		//ICAPS 1
+//		String mapFilename = "/home/fpa/catkin_ws/src/coordination_oru_ros/maps/map-partial-1.yaml";
+//		String locs = "/home/fpa/catkin_ws/src/coordination_oru_ros/missions/icaps_locations_and_paths.txt";
+//		String sel = "/home/fpa/catkin_ws/src/coordination_oru_ros/missions/icaps_selections.txt";
+//		PathEditor2 pe2 = new PathEditor2(locs,mapFilename,sel);
+//		pe2.setDeltaX(0.5);
+//		pe2.setDeltaY(0.5);
+//		pe2.setSplineDistance(3.0);
+//		pe2.setDistanceBetweenPathPoints(0.5);
+//		pe2.setPathPlanningRadius(0.1);
+//		pe2.setMaxTurningRadius(2.0);
+//		Coordinate footprint1 = new Coordinate(-1.0,0.5);
+//		Coordinate footprint2 = new Coordinate(1.0,0.5);
+//		Coordinate footprint3 = new Coordinate(1.0,-0.5);
+//		Coordinate footprint4 = new Coordinate(-1.0,-0.5);
+//		pe2.setPathPlanningFootprint(footprint1,footprint2,footprint3,footprint4,footprint1);
+
+//		String locAndPathFilename = "paths/locations.txt";
+//		String selectionsFile = "paths/selections.txt";
+//		PathEditor2 pe2 = new PathEditor2(locAndPathFilename,null,selectionsFile);
+//		pe2.setDeltaX(5.0);
+//		pe2.setDeltaY(5.0);
+//		pe2.setSplineDistance(3.0);
+//		pe2.setDistanceBetweenPathPoints(0.3);
 		
 		//Volvo GTO
 //		String locAndPathFilename = "/home/fpa/catkin_ws/src/volvo_gto/coordination_gto/missions/GTO_locations_and_paths.txt";

@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -293,6 +294,42 @@ public class Missions {
 		}
 	}
 	
+	/**
+	 * Save a path to a file.
+	 * @param fileName The name of the file.
+	 * @param path The path to save.
+	 */
+	public static void writePath(String fileName, ArrayList<PoseSteering> path) {
+        try {
+            File file = new File(fileName);
+            System.out.println("Saved path file: " + file.getAbsolutePath());
+            PrintWriter writer = new PrintWriter(file);
+            for (PoseSteering ps : path) {
+            	writer.println(ps.getPose().getX() + "\t" + ps.getPose().getY() + "\t" + ps.getPose().getTheta() + "\t" + ps.getSteering());
+            }
+            writer.close();
+        }
+        catch (Exception e) { e.printStackTrace(); }
+	}
+
+	/**
+	 * Save a path to a file.
+	 * @param fileName The name of the file.
+	 * @param path The path to save.
+	 */
+	public static void writePath(String fileName, PoseSteering[] path) {
+        try {
+            File file = new File(fileName);
+            System.out.println("Saved path file: " + file.getAbsolutePath());
+            PrintWriter writer = new PrintWriter(file);
+            for (PoseSteering ps : path) {
+            	writer.println(ps.getPose().getX() + "\t" + ps.getPose().getY() + "\t" + ps.getPose().getTheta() + "\t" + ps.getSteering());
+            }
+            writer.close();
+        }
+        catch (Exception e) { e.printStackTrace(); }
+	}
+
 	public static void concatenateMissions(Mission ... m) {
 		ArrayList<Mission> toAdd = new ArrayList<Mission>();
 		for (Mission oneM : m) toAdd.add(oneM);
