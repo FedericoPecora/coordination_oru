@@ -3,7 +3,6 @@ package se.oru.coordination.coordination_oru;
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
@@ -30,6 +29,7 @@ import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelopeSolver;
 import org.metacsp.time.Bounds;
+import org.metacsp.utility.UI.Callback;
 import org.metacsp.utility.logging.MetaCSPLogging;
 
 import com.vividsolutions.jts.geom.Coordinate;
@@ -73,6 +73,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	public static int EFFECTIVE_CONTROL_PERIOD = 0;
 
 	protected boolean overlay = false;
+	protected boolean quiet = false;
 
 	protected TrajectoryEnvelopeSolver solver = null;
 	//protected JTSDrawingPanel panel = null;
@@ -111,6 +112,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 	protected HashMap<Integer,TrackingCallback> trackingCallbacks = new HashMap<Integer, TrackingCallback>();
 	
+	protected Callback inferenceCallback = null;
+	
 	//Default footprint (same for all robots)
 	//NOTE: coordinates must be in CCW or CW order
 	public static Coordinate[] DEFAULT_FOOTPRINT = new Coordinate[] {
@@ -123,6 +126,25 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	//Reflects the default footprint
 	public static double MAX_DEFAULT_FOOTPRINT_DIMENSION = 4.4;
 
+	/**
+	 * Set whether this {@link TrajectoryEnvelopeCoordinator} should print info at every period.
+	 * @param value Set to <code>true</code> if this {@link TrajectoryEnvelopeCoordinator} should print info at every period.
+	 */
+	public void setQuiet(boolean value) {
+		this.quiet = value;
+	}
+	/**
+	 * Set a {@link Callback} that will be called at every cycle.
+	 * @param cb A {@link Callback} that will be called at every cycle.
+	 */
+	public void setInferenceCallback(Callback cb) {
+		this.inferenceCallback = cb;
+	}
+	
+	/**
+	 * Get the control period of this {@link TrajectoryEnvelopeCoordinator}.
+	 * @return the control period (in milliseconds) of this {@link TrajectoryEnvelopeCoordinator}.
+	 */
 	public int getControlPeriod() {
 		return this.CONTROL_PERIOD;
 	}
@@ -781,11 +803,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			return ret;
 		}
 		else if (!canStopRobot1) {
-			metaCSPLogger.info("Robot" + robotTracker1.getTrajectoryEnvelope().getRobotID() + " cannot stop at " + cs);
+			metaCSPLogger.finest("Robot" + robotTracker1.getTrajectoryEnvelope().getRobotID() + " cannot stop at " + cs);
 			return true;
 		}
 		else {
-			metaCSPLogger.info("Robot" + robotTracker2.getTrajectoryEnvelope().getRobotID() + " cannot stop at " + cs);
+			metaCSPLogger.finest("Robot" + robotTracker2.getTrajectoryEnvelope().getRobotID() + " cannot stop at " + cs);
 			return false;
 		}
 	}
@@ -898,7 +920,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					//System.out.println("Robot" + drivingRobotID + " is parked, so Robot" + waitingRobotID + " SHOULD wait");
 					boolean alreadyCommunicated = (communicatedCPs.containsKey(waitingTracker) && communicatedCPs.get(waitingTracker) == waitingPoint); 
 					if (alreadyCommunicated || waitingPoint >= waitingCurrentIndex) {
-						metaCSPLogger.info("Robot" + drivingRobotID + " is parked, so Robot" + waitingRobotID + " will have to wait");	
+						metaCSPLogger.finest("Robot" + drivingRobotID + " is parked, so Robot" + waitingRobotID + " will have to wait");	
 						//Make new dependency
 						int drivingCSEnd = -1;
 //						//with +1
@@ -912,7 +934,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						criticalSectionsToDeps.put(cs, dep);
 					}
 					else {
-						metaCSPLogger.severe("** Warning ** Robot" + waitingRobotID + " cannot stop at " + waitingPoint + " for Robot" + drivingRobotID + " (which is parked) because it is already at " + waitingCurrentIndex);
+						metaCSPLogger.finest("** Warning ** Robot" + waitingRobotID + " cannot stop at " + waitingPoint + " for Robot" + drivingRobotID + " (which is parked) because it is already at " + waitingCurrentIndex);
 					}
 				}
 
@@ -1678,18 +1700,23 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			public void run() {
 				while (true) {
 					synchronized(solver) {						
-						printStatistics();
+						if (!quiet) printStatistics();
 						if (overlay) overlayStatistics();
 						updateDependencies();
 					}
 
 					//Sleep a little...
-					try { Thread.sleep(CONTROL_PERIOD); }
-					catch (InterruptedException e) { e.printStackTrace(); }
+					if (CONTROL_PERIOD > 0) {
+						try { Thread.sleep(CONTROL_PERIOD); }
+						catch (InterruptedException e) { e.printStackTrace(); }
+					}
 
 					long threadCurrentUpdate = Calendar.getInstance().getTimeInMillis();
 					EFFECTIVE_CONTROL_PERIOD = (int)(threadCurrentUpdate-threadLastUpdate);
 					threadLastUpdate = threadCurrentUpdate;
+					
+					if (inferenceCallback != null) inferenceCallback.performOperation();
+
 				}
 			}
 		};

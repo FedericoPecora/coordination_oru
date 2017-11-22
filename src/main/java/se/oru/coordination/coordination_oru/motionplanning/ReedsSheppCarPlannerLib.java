@@ -14,6 +14,8 @@ public interface ReedsSheppCarPlannerLib extends Library {
 	public boolean plan(String mapFilename, double mapResolution, double robotRadius, double startX, double startY, double startTheta, double goalX, double goalY, double goalTheta, PointerByReference path, IntByReference pathLength, double distanceBetweenPathPoints, double turningRadius);
 
 	public boolean plan_multiple_circles(String mapFilename, double mapResolution, double robotRadius, double[] xCoords, double[] yCoords, int numCoords, double startX, double startY, double startTheta, double goalX, double goalY, double goalTheta, PointerByReference path, IntByReference pathLength, double distanceBetweenPathPoints, double turningRadius);
+	
+	public boolean plan_multiple_circles_nomap(double[] xCoords, double[] yCoords, int numCoords, double startX, double startY, double startTheta, double goalX, double goalY, double goalTheta, PointerByReference path, IntByReference pathLength, double distanceBetweenPathPoints, double turningRadius);
 
 	public void cleanupPath(Pointer p);
 	
