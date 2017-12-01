@@ -642,21 +642,22 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			private long startTime = Calendar.getInstance().getTimeInMillis();
 			@Override
 			public void run() {
+				System.out.println("WAITING THREAD STARTS FOR " + robotID);
 				while (Calendar.getInstance().getTimeInMillis()-startTime < duration) {
 					try { Thread.sleep(100); }
 					catch (InterruptedException e) { e.printStackTrace(); }
 				}
+				System.out.println("WAITING THREAD FINISHED FOR " + robotID);
 				synchronized(stoppingPoints) {
 					stoppingPoints.get(robotID).remove((int)index);
 					stoppingTimes.get(robotID).remove((int)index);
 					stoppingPointTimers.remove(robotID);
 				}
 				updateDependencies();
-				//waitingTracker.setCriticalPoint(-1);
 			}
 		};
+		stoppingPointTimers.put(robotID,stoppingPointTimer);
 		stoppingPointTimer.start();
-		stoppingPointTimers.put(robotID,stoppingPointTimer);		
 	}
 
 	// Deadlock:
@@ -1555,7 +1556,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						for (Entry<Pose,Integer> entry : m.getStoppingPoints().entrySet()) {
 							Pose stoppingPose = entry.getKey();
 							int stoppingPoint = te.getSequenceNumber(new Coordinate(stoppingPose.getX(), stoppingPose.getY()));
-							if (stoppingPoint == te.getPathLength()-1) stoppingPoint--;
+							if (stoppingPoint == te.getPathLength()-1) stoppingPoint -= 2;
 							int duration = entry.getValue();
 							if (!stoppingPoints.keySet().contains(robotID)) {
 								stoppingPoints.put(robotID, new ArrayList<Integer>());
