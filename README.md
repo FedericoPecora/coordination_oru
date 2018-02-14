@@ -1,6 +1,6 @@
 # coordination_oru
 
-This software implements an _online coordination method for multiple robots_. The main features are:
+This software implements an _online coordination method for multiple robots_. Its main features are:
 
 * Goals can be posted and paths computed online
 * Precedences are inferred online, accounting for robot dynamics via provided dynamic models
