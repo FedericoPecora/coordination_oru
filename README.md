@@ -1,38 +1,26 @@
 # coordination_oru
-This package provides an online coordination method for multiple robots. It is based on the Meta-CSP Framework library available at <a href="http://metacsp.org">metacsp.org</a>. This package includes a basic 2D robot simulation, and does not require ROS or ROSJava. To use this package with <a href="http://www.ros.org">ROS</a> and the <a href="https://github.com/OrebroUniversity/navigation_oru-release">navigation_oru</a> stack, please see <a href="https://github.com/FedericoPecora/coordination_oru_ros">coordination_oru_ros</a>.
+
+This software implements an online coordination method for multiple robots. The main features of the coordination method are:
+
+* Goals can be posted and paths computed online
+* Precedences are inferred online, accounting for robot dynamics via provided dynamic models
+* Very few assumptions are made on robot controllers
+* The coordination method is not specific to a particular motion planning technique
+
+The software includes a basic 2D robot simulation and a simple built-in motion planner (which depends on the <a href="http://ompl.kavrakilab.org/">OMPL</a> and <a href="http://www.mrpt.org/">MRPT</a> libraries). A <a href="https://github.com/FedericoPecora/coordination_oru_ros">separate interface package</a> is provided to enable the use of this software in conjunction with <a href="http://www.ros.org/">ROS</a> and the <a href="https://github.com/OrebroUniversity/navigation_oru-release">navigation_oru</a> stack to obtain a fully implemented stack for multi-robot coordination and motion planning.
 
 ## Overview
-The coordination method is based on the trajectory envelope representation provided by the Meta-CSP framework. A _trajectory envelope_ is a set of spatio-temporal constraints on a robot's trajectory. A trajectory envelope spans over a _path_, which is a sequence of _poses_ ```<p1, ... pn>```. In the current implementation, the spatial constraints defining a trajectory enevlope are computed as the sweep of the robot's footprint over the path. For more details on trajectory envelopes, please see
+The algorithm provided by this implementation is detailed in
+
+* Federico Pecora, Henrik Andreasson, Masoumeh Mansouri, and Vilian Petkov, <a href="">A loosely-coupled approach for multi-robot coordination, motion planning and control</a>. In Proc. of the International Conference on Automated Planning and Scheduling (ICAPS), 2018.
+
+The approach makes very few assumptions on robot controllers, and can be used with any motion planning method for computing kinematically-feasible paths. The overall fleet automation problem is seen as a high-level control scheme for the entire fleet. Heuristics are used to update precedences of robots through critical sections while the fleet is in motion, and the dynamic feasibility of precedences is guaranteed via the inclusion of user-definable models of robot dynamics. 
+
+The coordination method is based on the _trajectory envelope_ representation provided by the <a href="http://metacsp.org">Meta-CSP framework</a>. This representation is detailed in
 
 * Federico Pecora, Marcelo Cirillo, Dimitar Dimitrov, <a href="http://ieeexplore.ieee.org/abstract/document/6385862/">On Mission-Dependent Coordination of Multiple Vehicles under Spatial and Temporal Constraints</a>, IEEE/RSJ International Conference on Intelligent Robots and Systems (2012), pp. 5262-5269.
 
-The coordination algorithm provided in this implementation works as follows:
-
-1. For each pair of trajectory envelopes (```te1```, ```te2```) that are navigated by robots ```R1``` and ```R2```, compute the areas of spatial intersection of the trajectory envelopes. Each such contiguous area is a _critical section_, defined as a tuple (```te1```, ```te2```, [```start1```, ```end1```], [```start2```, ```end2```]), where
-
-   * ```te1``` and ```te2``` are trajectory envelopes that intesect in the critical section
-   
-   * ```start1``` (```start2```) is the index of the first pose along the path navigated by robot ```R1``` (```R2```) at which this robot's footprint intersects ```te2``` (```te1```)
-   
-   * ```end1``` (```end2```) is the index of the first pose beyond ```start1``` (```start2```) along the path navigated by robot ```R1``` (```R2```) from which this robot's footprint ceases to intersect ```te2``` (```te1```)
-
-2. For each critical section (```te1```, ```te2```, [```start1```, ```start2```], [```end1```, ```end2```]) found at step 1, decide whether the critical section is relevant, and, if so, which among robots ```{ R1, R2 }``` should transit the critical section first:
-
-   * if either of the two robots has exited the critical section, discard this critical section
-   
-   * if neither robot has entered the critical section, assign priority to the robot that is closest to the start of the critical section
-
-   * if only one of the two robots has entered the critical section, assign priority to that robot
-
-   * (note that a priority has already been assigned if both robots have entered the critical section)
-
-3. For each critical section (```te1```, ```te2```, [```start1```, ```start2```], [```end1```, ```end2```]) found by step 1 and not discarded by step 2, inform the robot that was _not_ given priority in step 2 (let this be ```R2```) that it _cannot_ proceed beyond a _critical point_ ```p``` defined as max(```start2```, ```start2``` + (```cp1``` - ```start1```) - ```s```), where
-
-   * ```cp1``` is the index of the pose in the path of ```te1``` that is closest to the current pose of the robot given priority (```R1```)
-   
-   * ```s``` is a safety distance (number of path indices by which ```R2``` should stay behind ```R1```)
-
-New critical sections are added (step 1) whenever new missions are added. Critical sections are filtered and priorities decided (step 2), and critical points for each robot are updated (step 3) at a specified control period (by default, 1000 msec).
+In short, a trajectory envelope is a set of spatio-temporal constraints on a robot's trajectory. A trajectory envelope spans over a _path_, which is a sequence of _poses_ ```<p1, ... pn>```. In the current implementation, the spatial constraints defining a trajectory enevlope are computed as the sweep of the robot's footprint over the path.
 
 ## Installation
 To install, clone this repository and compile the source code with gradle (redistributable included):

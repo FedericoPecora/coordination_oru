@@ -85,7 +85,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner22 {
 		rsp.setMapResolution(res);
 		rsp.setRadius(0.2);
 		rsp.setFootprint(footprint1, footprint2, footprint3, footprint4);
-		rsp.setTurningRadius(4.0);
+		rsp.setTurningRadius(1.0);
 		rsp.setDistanceBetweenPathPoints(0.1);
 
 		rsp.setStart(startRobot1);

@@ -30,7 +30,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner20 {
 		// -- the factory method getNewTracker() which returns a trajectory envelope tracker
 		// -- the getCurrentTimeInMillis() method, which is used by the coordinator to keep time
 		//You still need to add one or more comparators to determine robot orderings thru critical sections (comparators are evaluated in the order in which they are added)
-		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(MAX_VEL,MAX_ACCEL);
+		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(300,1000.0,MAX_VEL,MAX_ACCEL);
 		tec.addComparator(new Comparator<RobotAtCriticalSection> () {
 			@Override
 			public int compare(RobotAtCriticalSection o1, RobotAtCriticalSection o2) {
@@ -60,6 +60,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner20 {
 
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
+		tec.setBreakDeadlocks(false);
 
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
@@ -88,11 +89,6 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner20 {
 		rsp.setTurningRadius(4.0);
 		rsp.setDistanceBetweenPathPoints(0.1);
 
-		rsp.setStart(startRobot1);
-		rsp.setGoals(goalRobot1);
-		rsp.plan();
-		Missions.putMission(new Mission(1,rsp.getPath()));
-
 		rsp.setStart(startRobot2);
 		rsp.setGoals(goalRobot2);
 		rsp.plan();
@@ -105,8 +101,18 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner20 {
 		tec.startTrackingAddedMissions();
 		System.out.println("Started mission " + Missions.getMission(2, 0));
 
-		Thread.sleep(13000);
+		//Starts early enough to avoid deadlock:
+		//Thread.sleep(2300);
 		
+		//Starts too late to avoid deadlock:
+		Thread.sleep(3300);
+
+		rsp.setStart(startRobot1);
+		rsp.setGoals(goalRobot1);
+		//rsp.addObstacles(tec.getFootprintPolygon(2),tec.getRobotReport(2).getPose());
+		rsp.plan();
+		Missions.putMission(new Mission(1,rsp.getPath()));
+
 		tec.addMissions(Missions.getMission(1, 0));
 		tec.computeCriticalSections();
 		tec.startTrackingAddedMissions();
