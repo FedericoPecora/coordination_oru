@@ -29,8 +29,6 @@ import com.vividsolutions.jts.geom.Coordinate;
 
 import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.util.splines.BezierSplineFactory;
-import se.oru.coordination.coordination_oru.util.splines.Spline3D;
-import se.oru.coordination.coordination_oru.util.splines.SplineFactory;
 
 public class PathEditor2 {
 
