@@ -162,11 +162,16 @@ public class Missions {
 						System.out.println("Added to paths: " + oneline[0]+oneline[1]+oneline[2] + " --> " + oneline[3]);
 					}
 					else {
-						String locationName = oneline[0];
+						String[] newLineContents = new String[4];
+						int counter = 0;
+						for (int i = 0; i < oneline.length; i++) {
+							if (!oneline[i].trim().equals("")) newLineContents[counter++] = oneline[i].trim(); 
+						}
+						String locationName = newLineContents[0];
 						ps = new Pose(
-								new Double(oneline[1]).doubleValue(),
-								new Double(oneline[2]).doubleValue(),
-								new Double(oneline[3]).doubleValue());
+								new Double(newLineContents[1]).doubleValue(),
+								new Double(newLineContents[2]).doubleValue(),
+								new Double(newLineContents[3]).doubleValue());
 						locations.put(locationName, ps);
 					}
 				}
