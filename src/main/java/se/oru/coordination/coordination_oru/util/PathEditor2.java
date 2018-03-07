@@ -271,7 +271,29 @@ public class PathEditor2 {
 	    }
 	    return dir.delete();
 	}
-		
+	
+	protected void dumpLocationAndPathData(HashMap<String,Pose> locs, HashMap<String,ArrayList<PoseSteering>> pths) {
+		String st = "#Locations\n";
+		for (Entry<String,Pose> entry : locs.entrySet()) {
+			st += entry.getKey() + "\t" + entry.getValue().getX() + "\t" + entry.getValue().getY() + "\t" + entry.getValue().getTheta() + "\n";
+		}
+		st+="\n#Paths\n";
+		for (Entry<String,ArrayList<PoseSteering>> entry : pths.entrySet()) {
+			String pathFilename = entry.getKey().replaceAll("->", "-")+".path";
+			st += entry.getKey().replaceAll("->", " -> ") + "\t" + pathFilename + "\n";
+			Missions.writePath(outputDir+File.separator+pathFilename, entry.getValue());
+		}
+        try {
+        	String newFilename = outputDir+File.separator+"locations_and_paths.txt";
+            File file = new File(newFilename);
+            PrintWriter writer = new PrintWriter(file);
+            writer.write(st);
+            writer.close();
+            System.out.println("Saved locations and paths file: " + newFilename);
+        }
+        catch (Exception ex) { ex.printStackTrace(); }
+	}
+	
 	private String getHelp() {
 		String ret = "";
 		TreeMap<String,String> helpText = new TreeMap<String, String>();
@@ -471,26 +493,32 @@ public class PathEditor2 {
 			private static final long serialVersionUID = 8788274388808789051L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				String st = "#Locations\n";
+				HashMap<String,Pose> locs = new HashMap<String,Pose>();
 				for (String locationName : locationIDs) {
-					Pose locPose = Missions.getLocation(locationName);
-					st += locationName + "\t" + locPose.getX() + "\t" + locPose.getY() + "\t" + locPose.getTheta() + "\n";
+					locs.put(locationName, Missions.getLocation(locationName));
 				}
-				st+="\n#Paths\n";
-				for (Entry<String,ArrayList<PoseSteering>> entry : allPaths.entrySet()) {
-					String pathFilename = entry.getKey().replaceAll("->", "-")+".path";
-					st += entry.getKey().replaceAll("->", " -> ") + "\t" + pathFilename + "\n";
-					Missions.writePath(outputDir+File.separator+pathFilename, entry.getValue());
-				}
-		        try {
-		        	String newFilename = outputDir+File.separator+"locations_and_paths.txt";
-		            File file = new File(newFilename);
-		            PrintWriter writer = new PrintWriter(file);
-		            writer.write(st);
-		            writer.close();
-		            System.out.println("Saved locations and paths file: " + newFilename);
-		        }
-		        catch (Exception ex) { ex.printStackTrace(); }
+				dumpLocationAndPathData(locs, allPaths);
+				
+//				String st = "#Locations\n";
+//				for (String locationName : locationIDs) {
+//					Pose locPose = Missions.getLocation(locationName);
+//					st += locationName + "\t" + locPose.getX() + "\t" + locPose.getY() + "\t" + locPose.getTheta() + "\n";
+//				}
+//				st+="\n#Paths\n";
+//				for (Entry<String,ArrayList<PoseSteering>> entry : allPaths.entrySet()) {
+//					String pathFilename = entry.getKey().replaceAll("->", "-")+".path";
+//					st += entry.getKey().replaceAll("->", " -> ") + "\t" + pathFilename + "\n";
+//					Missions.writePath(outputDir+File.separator+pathFilename, entry.getValue());
+//				}
+//		        try {
+//		        	String newFilename = outputDir+File.separator+"locations_and_paths.txt";
+//		            File file = new File(newFilename);
+//		            PrintWriter writer = new PrintWriter(file);
+//		            writer.write(st);
+//		            writer.close();
+//		            System.out.println("Saved locations and paths file: " + newFilename);
+//		        }
+//		        catch (Exception ex) { ex.printStackTrace(); }
 			}
 		};
 		panel.getActionMap().put("Save locations and paths",actSave);
