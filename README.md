@@ -14,7 +14,7 @@ The algorithm provided by this implementation is detailed in
 
 * Federico Pecora, Henrik Andreasson, Masoumeh Mansouri, and Vilian Petkov, <a href="">A loosely-coupled approach for multi-robot coordination, motion planning and control</a>. In Proc. of the International Conference on Automated Planning and Scheduling (ICAPS), 2018.
 
-[![IMAGE ALT TEXT](http://img.youtube.com/vi/jCgrCVWf8sE/0.jpg)](http://www.youtube.com/watch?v=jCgrCVWf8sE "Examples of use of the coordination_oru library")
+[![Examples usages of the coordination_oru library](http://img.youtube.com/vi/jCgrCVWf8sE/0.jpg)](http://www.youtube.com/watch?v=jCgrCVWf8sE "Examples usages of the coordination_oru library")
 
 The approach makes very few assumptions on robot controllers, and can be used with any motion planning method for computing kinematically-feasible paths. The overall fleet automation problem is seen as a high-level control scheme for the entire fleet. Heuristics are used to update precedences of robots through critical sections while the fleet is in motion, and the dynamic feasibility of precedences is guaranteed via the inclusion of user-definable models of robot dynamics. 
 
