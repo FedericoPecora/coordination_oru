@@ -42,7 +42,7 @@ In the first demo, ```TestTrajectoryEnvelopeCoordinatorThreeRobots```, missions 
 
 Running the examples opens a GUI showing the current state of the three robots. For the first example, the GUI looks like this:
 
-![alt text](images/coord.png "Coordination GUI")
+![Coordination GUI](images/coord.png "Coordination GUI")
 
 A gray arrow between two robots indicates that the source robot will yield to the target robot. Priorities are computed every time a new mission is added. If multiple missions are added in batch, yielding behavior follows a fixed priority which can be specified programmatically. Driving robots always have priority over robots whose missions have been newly added. The specific poses at which robots yield are computed on the fly based on the current positions of robots and the intersecting areas of their trajectory envelopes (critical sections). This makes it possible to achieve "following" behavior, that is, the yielding pose of a robot is updated online while the "leading" robot drives.
 
@@ -50,7 +50,7 @@ The GUI also allows to take screenshots in SVG, EPS and PDF formats by pressing 
 
 More detailed information about execution is posted in the terminal and saved to log files. Log files can be inspected offline by running class ```coordination_oru.util.BrowseLogs```, which opens a log browsing GUI. Each panel in the GUI shows the output of one of the class instances that ran in the previous execution of the test program. Several of these classes are instantiated in separate threads, and messages produced concurrently are highlighted when the caret position in one of the panels is updated by the user. The key-bindings Alt-\<X\> and Ctrl-Alt-\<X\> can be used to quickly select panel \<X\> in the top and bottom pane, respectively.  
 
-![alt text](images/logs.png "LogBrowser GUI")
+![LogBrowser GUI](images/logs.png "LogBrowser GUI")
 
 ## The ```SimpleReedsSheppCarPlanner``` motion planner
 
@@ -95,12 +95,12 @@ Most of the coordination examples make use of the motion planner (see screenshot
 
 for a list of all provided examples and instructions on how to run them (and/or see package ```se.oru.coordination.coordination_oru.tests```).
 
-![alt text](images/coord-rsp.png "Coordination with the ReedsSheppCarPlanner")
+![Coordination with the ReedsSheppCarPlanner](images/coord-rsp.png "Coordination with the ReedsSheppCarPlanner")
 
 ## License
 coordination_oru - Online coordination for multiple robots
 
-Copyright (C) 2017 Federico Pecora
+Copyright (C) 2017-2018 Federico Pecora
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
