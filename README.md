@@ -97,6 +97,13 @@ for a list of all provided examples and instructions on how to run them (and/or 
 
 ![Coordination with the ReedsSheppCarPlanner](images/coord-rsp.png "Coordination with the ReedsSheppCarPlanner")
 
+## Sponsors
+This project is supported by
+
+* The <a href="http://semanticrobots.oru.se">Semantic Robots</a> Research Profile, funded by the <a href="http://www.kks.se/">Swedish Knowledge Foundation</a>
+* The <a href="https://iliad-project.eu/">ILIAD Project</a>, funded by the <a href="https://ec.europa.eu/programmes/horizon2020/">EC H2020 Program</a>
+* The iQMobility Project, funded by <a href="https://www.vinnova.se/">Vinnova</a>
+
 ## License
 coordination_oru - Online coordination for multiple robots
 
