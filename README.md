@@ -14,6 +14,8 @@ The algorithm provided by this implementation is detailed in
 
 * Federico Pecora, Henrik Andreasson, Masoumeh Mansouri, and Vilian Petkov, <a href="">A loosely-coupled approach for multi-robot coordination, motion planning and control</a>. In Proc. of the International Conference on Automated Planning and Scheduling (ICAPS), 2018.
 
+[![Examples usages of the coordination_oru library](http://img.youtube.com/vi/jCgrCVWf8sE/0.jpg)](http://www.youtube.com/watch?v=jCgrCVWf8sE "Examples usages of the coordination_oru library")
+
 The approach makes very few assumptions on robot controllers, and can be used with any motion planning method for computing kinematically-feasible paths. The overall fleet automation problem is seen as a high-level control scheme for the entire fleet. Heuristics are used to update precedences of robots through critical sections while the fleet is in motion, and the dynamic feasibility of precedences is guaranteed via the inclusion of user-definable models of robot dynamics. 
 
 The coordination method is based on the _trajectory envelope_ representation provided by the <a href="http://metacsp.org">Meta-CSP framework</a>. This representation is detailed in
@@ -40,7 +42,7 @@ In the first demo, ```TestTrajectoryEnvelopeCoordinatorThreeRobots```, missions 
 
 Running the examples opens a GUI showing the current state of the three robots. For the first example, the GUI looks like this:
 
-![alt text](images/coord.png "Coordination GUI")
+![Coordination GUI](images/coord.png "Coordination GUI")
 
 A gray arrow between two robots indicates that the source robot will yield to the target robot. Priorities are computed every time a new mission is added. If multiple missions are added in batch, yielding behavior follows a fixed priority which can be specified programmatically. Driving robots always have priority over robots whose missions have been newly added. The specific poses at which robots yield are computed on the fly based on the current positions of robots and the intersecting areas of their trajectory envelopes (critical sections). This makes it possible to achieve "following" behavior, that is, the yielding pose of a robot is updated online while the "leading" robot drives.
 
@@ -48,7 +50,7 @@ The GUI also allows to take screenshots in SVG, EPS and PDF formats by pressing 
 
 More detailed information about execution is posted in the terminal and saved to log files. Log files can be inspected offline by running class ```coordination_oru.util.BrowseLogs```, which opens a log browsing GUI. Each panel in the GUI shows the output of one of the class instances that ran in the previous execution of the test program. Several of these classes are instantiated in separate threads, and messages produced concurrently are highlighted when the caret position in one of the panels is updated by the user. The key-bindings Alt-\<X\> and Ctrl-Alt-\<X\> can be used to quickly select panel \<X\> in the top and bottom pane, respectively.  
 
-![alt text](images/logs.png "LogBrowser GUI")
+![LogBrowser GUI](images/logs.png "LogBrowser GUI")
 
 ## The ```SimpleReedsSheppCarPlanner``` motion planner
 
@@ -93,12 +95,19 @@ Most of the coordination examples make use of the motion planner (see screenshot
 
 for a list of all provided examples and instructions on how to run them (and/or see package ```se.oru.coordination.coordination_oru.tests```).
 
-![alt text](images/coord-rsp.png "Coordination with the ReedsSheppCarPlanner")
+![Coordination with the ReedsSheppCarPlanner](images/coord-rsp.png "Coordination with the ReedsSheppCarPlanner")
+
+## Sponsors
+This project is supported by
+
+* The <a href="http://semanticrobots.oru.se">Semantic Robots</a> Research Profile, funded by the <a href="http://www.kks.se/">Swedish Knowledge Foundation</a>
+* The <a href="https://iliad-project.eu/">ILIAD Project</a>, funded by the <a href="https://ec.europa.eu/programmes/horizon2020/">EC H2020 Program</a>
+* The iQMobility Project, funded by <a href="https://www.vinnova.se/">Vinnova</a>
 
 ## License
 coordination_oru - Online coordination for multiple robots
 
-Copyright (C) 2017 Federico Pecora
+Copyright (C) 2017-2018 Federico Pecora
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
