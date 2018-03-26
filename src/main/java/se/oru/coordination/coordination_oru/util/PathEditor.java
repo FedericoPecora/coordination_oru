@@ -30,7 +30,7 @@ import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.util.AffineTransformation;
 
-import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppCarPlanner;
+import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.util.splines.Spline3D;
 import se.oru.coordination.coordination_oru.util.splines.SplineFactory;
 

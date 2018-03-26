@@ -1,4 +1,4 @@
-package se.oru.coordination.coordination_oru.motionplanning.tests;
+package se.oru.coordination.coordination_oru.motionplanning.tests.ompl;
 
 
 import org.metacsp.utility.UI.JTSDrawingPanel;
@@ -7,7 +7,7 @@ import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.Polygon;
 
-import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppCarPlanner;
+import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
 
 public class TestReedsSheppCarPlannerSmoothGeometry {
 	

@@ -1,4 +1,4 @@
-package se.oru.coordination.coordination_oru.motionplanning;
+package se.oru.coordination.coordination_oru.motionplanning.ompl;
 
 import java.util.Arrays;
 import java.util.List;

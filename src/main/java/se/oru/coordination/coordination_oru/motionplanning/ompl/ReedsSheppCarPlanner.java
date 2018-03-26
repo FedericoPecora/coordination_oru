@@ -1,15 +1,7 @@
-package se.oru.coordination.coordination_oru.motionplanning;
+package se.oru.coordination.coordination_oru.motionplanning.ompl;
 
-import java.awt.Color;
-import java.awt.Graphics2D;
-import java.awt.Shape;
-import java.awt.image.BufferedImage;
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
-
-import javax.imageio.ImageIO;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
@@ -19,33 +11,22 @@ import com.sun.jna.NativeLibrary;
 import com.sun.jna.Pointer;
 import com.sun.jna.ptr.IntByReference;
 import com.sun.jna.ptr.PointerByReference;
-import com.vividsolutions.jts.awt.ShapeWriter;
 import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.Polygon;
-import com.vividsolutions.jts.geom.util.AffineTransformation;
 
-import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppCarPlannerLib.PathPose;
+import se.oru.coordination.coordination_oru.motionplanning.AbstractMotionPlanner;
+import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlannerLib.PathPose;
 import se.oru.coordination.coordination_oru.util.GeometrySmoother;
 import se.oru.coordination.coordination_oru.util.GeometrySmoother.SmootherControl;
-import se.oru.coordination.coordination_oru.util.Missions;
 
-public class ReedsSheppCarPlanner {
+public class ReedsSheppCarPlanner extends AbstractMotionPlanner {
 
-	private static String TEMP_MAP_DIR = ".tempMaps";
-	private int numObstacles = 0;
-	private String mapFilename = null;
-	private String mapFilenameBAK = null;
-	private double mapResolution = 1.0;
 	private double robotRadius = 1.0;
-	private Pose start = null;
-	private Pose[] goal = null;
 	private PointerByReference path = null;
 	private IntByReference pathLength = null;
 	private double distanceBetweenPathPoints = 0.5;
 	private double turningRadius = 1.0;
-	private PoseSteering[] pathPS = null;
 	private Coordinate[] collisionCircleCenters = null;
 	
 	public static ReedsSheppCarPlannerLib INSTANCE = null;
@@ -54,6 +35,7 @@ public class ReedsSheppCarPlanner {
 		INSTANCE = Native.loadLibrary("simplereedssheppcarplanner", ReedsSheppCarPlannerLib.class);
 	}
 	
+	@Override
 	public void setFootprint(Coordinate ... coords) {
 		GeometryFactory gf = new GeometryFactory();
 		Coordinate[] newCoords = new Coordinate[coords.length+1];
@@ -86,33 +68,8 @@ public class ReedsSheppCarPlanner {
 		new File(TEMP_MAP_DIR).mkdir();
 	}
 
-	public void setStart(Pose p) {
-		Pose newStart = new Pose(p.getX(),p.getY(),Missions.wrapAngle180(p.getTheta()));
-		this.start = newStart;
-	}
-
-	@Deprecated
-	public void setGoal(Pose p) {
-		this.setGoals(p);
-	}
-	
-	public void setGoals(Pose ... p) {
-		ArrayList<Pose> newGoals = new ArrayList<Pose>();
-		for (Pose pose : p) newGoals.add(new Pose(pose.getX(),pose.getY(),Missions.wrapAngle180(pose.getTheta())));
-		this.goal = newGoals.toArray(new Pose[newGoals.size()]);
-	}
-	
 	public void setCirclePositions(Coordinate ... circlePositions) {
 		this.collisionCircleCenters = circlePositions;
-	}
-
-	public void setMapFilename(String filename) {
-		this.mapFilename = filename;
-		this.mapFilenameBAK = filename;
-	}
-
-	public void setMapResolution(double res) {
-		this.mapResolution = res;
 	}
 
 	@Deprecated
@@ -132,72 +89,7 @@ public class ReedsSheppCarPlanner {
 		this.turningRadius = rad;
 	}
 
-	public void addObstacles(Geometry ... geom) {
-		if (this.mapFilename == null) throw new Error("Please set a map file first!");
-		BufferedImage img = null;
-		try {
-			img = ImageIO.read(new File(mapFilename)); 
-			System.out.println("IMGTYPE: " + img.getType());
-			Graphics2D g2 = img.createGraphics();
-			ShapeWriter writer = new ShapeWriter();
-			g2.setPaint(Color.black);
-			for (Geometry g : geom) {
-				AffineTransformation at = new AffineTransformation();
-				at.scale(1.0/mapResolution, -1.0/mapResolution);
-				at.translate(0, img.getHeight());
-				Geometry scaledGeom = at.transform(g);
-				Shape shape = writer.toShape(scaledGeom);
-				System.out.println("Shape: " + shape.getBounds2D());
-				g2.fill(shape);
-			}
-			File outputfile = new File(TEMP_MAP_DIR + File.separator + "tempMap" + (numObstacles++) + ".png");
-			ImageIO.write(img, "png", outputfile);
-			this.mapFilename = outputfile.getAbsolutePath();
-		}
-		catch (IOException e) { e.printStackTrace(); }		
-	}
-
-	public void addObstacles(Geometry geom, Pose ... poses) {
-		if (this.mapFilename == null) throw new Error("Please set a map file first!");
-		BufferedImage img = null;
-		try {
-			img = ImageIO.read(new File(mapFilename)); 
-			Graphics2D g2 = img.createGraphics();
-			ShapeWriter writer = new ShapeWriter();
-			g2.setPaint(Color.black);
-			for (Pose pose : poses) {
-				AffineTransformation at = new AffineTransformation();
-				at.rotate(pose.getTheta());
-				at.translate(pose.getX(), pose.getY());
-				at.scale(1.0/mapResolution, -1.0/mapResolution);
-				at.translate(0, img.getHeight());
-				Geometry scaledGeom = at.transform(geom);
-				Shape shape = writer.toShape(scaledGeom);
-				System.out.println("Shape: " + shape.getBounds2D());
-				g2.fill(shape);
-			}
-			File outputfile = new File(TEMP_MAP_DIR + File.separator + "tempMap" + (numObstacles++) + ".png");
-			ImageIO.write(img, "png", outputfile);
-			this.mapFilename = outputfile.getAbsolutePath();
-		}
-		catch (IOException e) { e.printStackTrace(); }
-	}
-
-	public void clearObstacles() {
-		this.setMapFilename(this.mapFilenameBAK);
-	}
-
-	public PoseSteering[] getPath() {
-		return this.pathPS;
-	}
-	
-	public PoseSteering[] getPathInv() {
-		ArrayList<PoseSteering> inv = new ArrayList<PoseSteering>();
-		for (PoseSteering ps : this.pathPS) inv.add(ps);
-		Collections.reverse(inv);
-		return inv.toArray(new PoseSteering[inv.size()]);
-	}
-
+	@Override
 	public boolean plan() {
 		ArrayList<PoseSteering> finalPath = new ArrayList<PoseSteering>();  
 		for (int i = 0; i < this.goal.length; i++) {
@@ -237,19 +129,6 @@ public class ReedsSheppCarPlanner {
 		}
 		this.pathPS = finalPath.toArray(new PoseSteering[finalPath.size()]);
 		return true;
-	}
-
-	public static boolean deleteDir(File dir) {
-	    if (dir.isDirectory()) {
-	        String[] children = dir.list();
-	        for (int i=0; i<children.length; i++) {
-	            boolean success = deleteDir(new File(dir, children[i]));
-	            if (!success) {
-	                return false;
-	            }
-	        }
-	    }
-	    return dir.delete();
 	}
 
 }

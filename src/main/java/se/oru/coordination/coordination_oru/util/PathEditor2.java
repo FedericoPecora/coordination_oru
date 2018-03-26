@@ -27,7 +27,7 @@ import org.metacsp.utility.UI.JTSDrawingPanel;
 
 import com.vividsolutions.jts.geom.Coordinate;
 
-import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppCarPlanner;
+import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.util.splines.BezierSplineFactory;
 
 public class PathEditor2 {

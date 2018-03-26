@@ -39,7 +39,6 @@ repositories {
   // the Maven Central repository
   mavenCentral()
   mavenLocal()
-
 }
 
 version = '0.0.0-SNAPSHOT'

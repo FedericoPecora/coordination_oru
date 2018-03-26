@@ -1,10 +1,10 @@
-package se.oru.coordination.coordination_oru.motionplanning.tests;
+package se.oru.coordination.coordination_oru.motionplanning.tests.ompl;
 
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 
-import se.oru.coordination.coordination_oru.motionplanning.ReedsSheppCarPlanner;
+import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
 
 public class TestReedsSheppCarPlanner {
 	
