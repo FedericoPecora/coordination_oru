@@ -460,15 +460,15 @@ public class Missions {
 	 * leader's mission.
 	 * @param leaderMission The mission to follow.
 	 * @param followerID The ID of the follower robot.
-	 * @param currentFollowerPose The current pose of the follower robot.
+	 * @param followerStartingPose The current pose of the follower robot.
 	 * @param mp The motion planner that should be used to compute the path from the follower robot's
 	 * current pose to goal pose of the leader's mission, passing through the start pose of the leader's mission.
 	 * @param computePathToLeaderGoal Set this to <code>true</code> iff the follower's path to the goal of the 
-	 * leader's mission should be recomupted (otherwise the leader's path will be re-used).  
+	 * leader's mission should be recomputed (otherwise the leader's path will be re-used).  
 	 * @return
 	 */
-	public static Mission followMission(Mission leaderMission, int followerID, Pose currentFollowerPose, AbstractMotionPlanner mp, boolean computePathToLeaderGoal) {
-		mp.setStart(currentFollowerPose);
+	public static Mission followMission(Mission leaderMission, int followerID, Pose followerStartingPose, AbstractMotionPlanner mp, boolean computePathToLeaderGoal) {
+		mp.setStart(followerStartingPose);
 		if (computePathToLeaderGoal) mp.setGoals(leaderMission.getFromPose(), leaderMission.getToPose());
 		else mp.setGoals(leaderMission.getFromPose());
 		if (!mp.plan()) return null;
