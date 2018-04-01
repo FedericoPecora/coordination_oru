@@ -18,8 +18,10 @@ import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 
 import com.vividsolutions.jts.geom.Geometry;
 
+import aima.core.search.nondeterministic.Path;
 import se.oru.coordination.coordination_oru.Mission;
 import se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator;
+import se.oru.coordination.coordination_oru.motionplanning.AbstractMotionPlanner;
 
 /**
  * This class collects utility methods for storing missions and extracting information from YAML files.
@@ -450,6 +452,36 @@ public class Missions {
 		}
 		catch (FileNotFoundException e) { e.printStackTrace(); }
 		return ret.toArray(new PoseSteering[ret.size()]);
+	}
+	
+	/**
+	 * Create a mission following a given mission. The mission will make the follower robot navigate from its
+	 * current pose to the start pose of the leader's mission, after which the follower robot will follow the
+	 * leader's mission.
+	 * @param leaderMission The mission to follow.
+	 * @param followerID The ID of the follower robot.
+	 * @param currentFollowerPose The current pose of the follower robot.
+	 * @param mp The motion planner that should be used to compute the path from the follower robot's
+	 * current pose to goal pose of the leader's mission, passing through the start pose of the leader's mission.
+	 * @param computePathToLeaderGoal Set this to <code>true</code> iff the follower's path to the goal of the 
+	 * leader's mission should be recomupted (otherwise the leader's path will be re-used).  
+	 * @return
+	 */
+	public static Mission followMission(Mission leaderMission, int followerID, Pose currentFollowerPose, AbstractMotionPlanner mp, boolean computePathToLeaderGoal) {
+		mp.setStart(currentFollowerPose);
+		if (computePathToLeaderGoal) mp.setGoals(leaderMission.getFromPose(), leaderMission.getToPose());
+		else mp.setGoals(leaderMission.getFromPose());
+		if (!mp.plan()) return null;
+		PoseSteering[] followerPath = mp.getPath();
+		if (!computePathToLeaderGoal) {
+			PoseSteering[] newPath = new PoseSteering[followerPath.length+leaderMission.getPath().length-1];
+			int counter = 0;
+			for (PoseSteering ps : followerPath) newPath[counter++] = ps;
+			for (int i = 1; i < leaderMission.getPath().length; i++) newPath[counter++] = leaderMission.getPath()[i];
+			followerPath = newPath;
+		}
+		Mission followerMission = new Mission(followerID, followerPath);
+		return followerMission;
 	}
 
 }
