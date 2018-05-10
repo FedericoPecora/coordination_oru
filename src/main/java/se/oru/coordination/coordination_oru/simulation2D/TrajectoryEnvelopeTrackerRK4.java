@@ -12,6 +12,7 @@ import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.Trajectory;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 
+import prefuse.util.UpdateListener;
 import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeTracker;
 import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.TrackingCallback;
@@ -45,6 +46,16 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 	
 	public TrajectoryEnvelopeTrackerRK4(TrajectoryEnvelope te, int timeStep, double temporalResolution, TrajectoryEnvelopeCoordinator tec, TrackingCallback cb) {
 		this(te, timeStep, temporalResolution, 1.0, 0.1, tec, cb);
+	}
+	
+	public void doAbort() {
+		//Do nothing here
+	}
+	
+	@Override
+	public void updateTrajectoryEnvelope(TrajectoryEnvelope te) {
+		super.updateTrajectoryEnvelope(te);
+		computeInternalCriticalPoints();
 	}
 	
 	private void computeInternalCriticalPoints() {
@@ -346,7 +357,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 		int myRobotID = te.getRobotID();
 		int myTEID = te.getID();
 		
-		while (true) {
+		while (true && !this.abort) {
 						
 			//End condition: passed the middle AND velocity < 0 AND no criticalPoint 			
 			boolean skipIntegration = false;

@@ -46,8 +46,21 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 	protected boolean calledStartTracking = false;
 	protected Callback extraStatusCallback = null;
 	
+	protected boolean abort = false;
+	
 	protected Logger metaCSPLogger = MetaCSPLogging.getLogger(AbstractTrajectoryEnvelopeTracker.class);
 
+	public TrackingCallback getTrackingCallback() {
+		return this.cb;
+	}
+
+	public void setExtraStatusCallback(Callback escb) {
+		this.extraStatusCallback = escb;
+	}
+	
+	public Callback getExtraStatusCallback() {
+		return this.extraStatusCallback;
+	}
 	/**
 	 * Create a new {@link AbstractTrajectoryEnvelopeTracker} to track a given {@link TrajectoryEnvelope},
 	 * with a given tracking period in a given temporal resolution. The tracker will post temporal constraints
@@ -60,8 +73,7 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 	 * @param cb An optional callback function.
 	 */
 	public AbstractTrajectoryEnvelopeTracker(TrajectoryEnvelope te, double temporalResolution, TrajectoryEnvelopeCoordinator tec, int trackingPeriodInMillis, TrackingCallback cb) {
-		this.te = te;
-		this.traj = te.getTrajectory();
+		this.setTrajectoryEnvelope(te);
 		this.criticalPoint = -1;
 		this.temporalResolution = temporalResolution;
 		this.tec = tec;
@@ -69,6 +81,15 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 		this.trackingPeriodInMillis = trackingPeriodInMillis;
 		this.cb = cb;
 		startMonitoringThread();
+	}
+
+	public void updateTrajectoryEnvelope(TrajectoryEnvelope te) {
+		this.setTrajectoryEnvelope(te);
+	}
+	
+	private void setTrajectoryEnvelope(TrajectoryEnvelope te) {
+		this.te = te;
+		this.traj = te.getTrajectory();
 	}
 	
 	public void setMapMetaConstraint(Map mapMetaConstraint) {
@@ -341,6 +362,18 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 							break;
 						}
 						
+						//Or if abort requested
+						if (abort) {
+							metaCSPLogger.info("Aborting (current: " + currentSeqNumber + ", prev: " + prevSeqNumber + ") of " + te + "...");
+							for (TrajectoryEnvelope toFinish : startedGroundEnvelopes) {
+								if (!finishedGroundEnvelopes.contains(toFinish)) {
+									metaCSPLogger.info("<<<< Finished (ground envelope) " + toFinish);
+									finishedGroundEnvelopes.add(toFinish);
+								}
+							}
+							break;
+						}
+						
 						//Update previous seq number
 						prevSeqNumber = currentSeqNumber;
 					}
@@ -362,6 +395,18 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 		
 		monitorSubEnvelopes.start();
 	}
+	
+	/**
+	 * Request that this tracker aborts.
+	 */
+	public void abort() {
+		this.abort = true; 
+	}
+	
+	/**
+	 * Implement what should happen when the tracker is aborted.
+	 */
+	public abstract void doAbort();
 	
 	protected void finishTracking() {
 		metaCSPLogger.info("<<<< Finished (super envelope) " + this.te);

@@ -18,8 +18,8 @@ public class TestTrajectoryEnvelopeCoordinatorThreeRobots {
 
 	public static void main(String[] args) throws InterruptedException {
 
-		double MAX_ACCEL = 1.0;
-		double MAX_VEL = 4.0;
+		double MAX_ACCEL = 2.0;
+		double MAX_VEL = 10.0;
 		//Instantiate a trajectory envelope coordinator.
 		//The TrajectoryEnvelopeCoordinatorSimulation implementation provides
 		// -- the factory method getNewTracker() which returns a trajectory envelope tracker
