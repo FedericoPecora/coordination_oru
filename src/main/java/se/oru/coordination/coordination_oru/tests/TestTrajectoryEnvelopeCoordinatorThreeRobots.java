@@ -12,6 +12,7 @@ import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
 import se.oru.coordination.coordination_oru.util.JTSDrawingPanelVisualization;
 import se.oru.coordination.coordination_oru.util.Missions;
+import se.oru.coordination.coordination_oru.util.RVizVisualization;
 
 @DemoDescription(desc = "Simple test showing the use of pre-planned paths stored in files.")
 public class TestTrajectoryEnvelopeCoordinatorThreeRobots {
@@ -53,6 +54,7 @@ public class TestTrajectoryEnvelopeCoordinatorThreeRobots {
 
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
+		//RVizVisualization viz = new RVizVisualization();
 		tec.setVisualization(viz);
 		//Example of how you can add extra info Strings to the visualization of robot status
 		TrackingCallback cb = new TrackingCallback() {
