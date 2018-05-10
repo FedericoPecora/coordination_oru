@@ -26,7 +26,6 @@ import org.metacsp.multi.spatial.DE9IM.GeometricShapeDomain;
 import org.metacsp.multi.spatial.DE9IM.GeometricShapeVariable;
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
-import org.metacsp.multi.spatioTemporal.paths.Trajectory;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelopeSolver;
 import org.metacsp.time.Bounds;
@@ -36,7 +35,6 @@ import org.metacsp.utility.logging.MetaCSPLogging;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 
-import se.oru.coordination.coordination_oru.motionplanning.AbstractMotionPlanner;
 import se.oru.coordination.coordination_oru.util.FleetVisualization;
 import se.oru.coordination.coordination_oru.util.StringUtils;
 
@@ -76,8 +74,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 	protected boolean overlay = false;
 	protected boolean quiet = false;
-	
-	protected AbstractMotionPlanner mp = null;
 
 	protected TrajectoryEnvelopeSolver solver = null;
 	//protected JTSDrawingPanel panel = null;
@@ -113,32 +109,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected boolean yieldIfParking = true;
 	protected boolean checkEscapePoses = true;
 	protected boolean breakDeadlocks = true;
-	
-	private HashMap<Integer, TrajectoryEnvelope> endParkings = new HashMap<Integer, TrajectoryEnvelope>();
-	protected class BackingUpPair {
-		protected int backingUp = -1;
-		protected int waiting = -1;
-		public BackingUpPair(int bu, int w) {
-			this.backingUp = bu;
-			this.waiting = w;
-		}
-		public int getBackingUp() {
-			return this.backingUp;
-		}
-		public int getWaiting() {
-			return this.waiting;
-		}
-		public boolean samePair(int a, int b) {
-			return ((this.backingUp == a && this.waiting == b) || (this.waiting == a && this.backingUp == b));
-		}
-		public boolean involves(int a) {
-			return (this.backingUp == a || this.waiting == a);
-		}
-		public String toString() {
-			return "Robot"+this.backingUp+" backs up for Robot"+this.waiting;
-		}
-	}
-	private HashSet<BackingUpPair> backinUpRobots = new HashSet<BackingUpPair>();
 
 	protected HashMap<Integer,TrackingCallback> trackingCallbacks = new HashMap<Integer, TrackingCallback>();
 	
@@ -153,14 +123,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			new Coordinate(2.7, 0.7)	//front left
 	};
 
-	/**
-	 * Set the motion planner to be used for resolving deadlocks.
-	 * @param mp The motion planner to be used in resolving deadlocks. 
-	 */
-	public void setMotionPlannerForReplanning(AbstractMotionPlanner mp) {
-		this.mp = mp;
-	}
-	
 	//Reflects the default footprint
 	public static double MAX_DEFAULT_FOOTPRINT_DIMENSION = 4.4;
 
@@ -752,7 +714,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				}
 				if (i == edgesAlongCycle.size()-2) {
 					System.out.println("Cycle: " + edgesAlongCycle + " is NOT deadlock-free");
-					//spawnReplanning(edgesAlongCycle);
+					spawnReplanning(edgesAlongCycle);
 					synchronized (disallowedDependencies) {
 						disallowedDependencies.add(anUnsafeDep);
 					}
@@ -766,82 +728,14 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		return (Math.abs(getRobotReport(robotID).getCriticalPoint() - getRobotReport(robotID).getPathIndex()) <= 1);
 	}
 	
-	public Geometry getObstacleFromCurrentPose(int robotID) {
-		return getCurrentTrajectoryEnvelope(robotID).makeFootprint(getRobotReport(robotID).getPose().getX(), getRobotReport(robotID).getPose().getY(), getRobotReport(robotID).getPose().getTheta());
-	}
-	
 	private void spawnReplanning(ArrayList<ArrayList<Dependency>> deadlockedDeps) {
-		HashSet<TrajectoryEnvelope> toReplan = new HashSet<TrajectoryEnvelope>();
 		for (ArrayList<Dependency> depList : deadlockedDeps) {
 			for (Dependency dep : depList) {
 				if (atCP(dep.getWaitingRobotID()) && atCP(dep.getDrivingRobotID())) {
-					toReplan.add(getCurrentTrajectoryEnvelope(dep.getWaitingRobotID()));
-					for (BackingUpPair bup : backinUpRobots) {
-						if (bup.samePair(dep.getWaitingRobotID(), dep.getDrivingRobotID())) return;
-					}
+					System.out.println("Should replan path of either Robot" + dep.getWaitingRobotID() + " or Robot" + dep.getDrivingRobotID());
 				}
 			}
 		}
-		double maxDistanceTraveled = 0;
-		TrajectoryEnvelope maxTE = null;
-		int maxPP = -1;
-		for (TrajectoryEnvelope te : toReplan) {
-			if (getRobotReport(te.getRobotID()).getDistanceTraveled() > maxDistanceTraveled) {
-				maxDistanceTraveled = getRobotReport(te.getRobotID()).getDistanceTraveled();
-				maxTE = te;
-				maxPP = getRobotReport(te.getRobotID()).getPathIndex();
-			}
-		}
-		
-		System.out.println("One of the following robots should back up:");
-		int bu = -1;
-		int w = -1;
-		for (TrajectoryEnvelope te : toReplan) {
-			if (te.equals(maxTE)) {
-				bu = te.getRobotID();
-				System.out.println("   Robot" + te.getRobotID() + " (chosen)");
-			}
-			else {
-				w = te.getRobotID();
-				System.out.println("   Robot" + te.getRobotID());
-			}
-		}
-		backinUpRobots.add(new BackingUpPair(bu, w));
-		
-		PoseSteering[] oldPath = maxTE.getTrajectory().getPoseSteering();
-		
-		//TODO: Compute this point instead of guessing...
-		int pathPointToBackUpTo = Math.max(maxPP-20,0);
-		System.out.println("pathPointToBackUpTo = " + pathPointToBackUpTo);
-		
-		int newSectionLength = maxPP-pathPointToBackUpTo;
-		PoseSteering[] newPath = new PoseSteering[(newSectionLength*2)+(oldPath.length-maxPP)];
-		int counter = 0;
-		for (int i = maxPP; i > pathPointToBackUpTo; i--) newPath[counter++] = oldPath[i];
-		for (int i = pathPointToBackUpTo; i < maxPP; i++) newPath[counter++] = oldPath[i];
-		for (int i = maxPP; i < oldPath.length; i++) newPath[counter++] = oldPath[i];
-
-		endParkings.put(maxTE.getRobotID(), solver.createParkingEnvelope(maxTE.getRobotID(), PARKING_DURATION, maxTE.getTrajectory().getPose()[maxPP], "whatever", getFootprint(maxTE.getRobotID())));
-		
-		AbstractTrajectoryEnvelopeTracker oldTracker = trackers.get(maxTE.getRobotID());
-		oldTracker.abort();
-		
-		final Mission backUpMission = new Mission(maxTE.getRobotID(),newPath);
-		
-		new Thread() {
-			public void run() {
-				while (!addMissions(backUpMission)) {
-					try { Thread.sleep(100); }
-					catch (InterruptedException e) { e.printStackTrace(); }
-				}
-				computeCriticalSections();
-				startTrackingAddedMissions();
-			}
-		}.start();
-		
-		computeCriticalSections();
-		startTrackingAddedMissions();
-		
 	}
 
 	private boolean unsafePair(Dependency dep1, Dependency dep2) {
@@ -1476,7 +1370,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	public void addTrackingCallback(int robotID, TrackingCallback cb) {
 		trackingCallbacks.put(robotID, cb);
 	}
-	
+
 	/**
 	 * Start the trackers associated to the last batch of {@link Mission}s that has been added.
 	 */
@@ -1487,18 +1381,17 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				TrajectoryEnvelopeTrackerDummy startParkingTracker = (TrajectoryEnvelopeTrackerDummy)trackers.get(te.getRobotID());
 				final TrajectoryEnvelope startParking = startParkingTracker.getTrajectoryEnvelope();
 				//Create end parking envelope
-				//final TrajectoryEnvelope endParking = solver.createParkingEnvelope(te.getRobotID(), PARKING_DURATION, te.getTrajectory().getPose()[te.getTrajectory().getPose().length-1], "whatever", getFootprint(te.getRobotID()));
-				endParkings.put(te.getRobotID(), solver.createParkingEnvelope(te.getRobotID(), PARKING_DURATION, te.getTrajectory().getPose()[te.getTrajectory().getPose().length-1], "whatever", getFootprint(te.getRobotID())));
+				final TrajectoryEnvelope endParking = solver.createParkingEnvelope(te.getRobotID(), PARKING_DURATION, te.getTrajectory().getPose()[te.getTrajectory().getPose().length-1], "whatever", getFootprint(te.getRobotID()));
 
-//				//Driving meets final parking
-//				AllenIntervalConstraint meets1 = new AllenIntervalConstraint(AllenIntervalConstraint.Type.Meets);
-//				meets1.setFrom(te);
-//				meets1.setTo(endParking);
-//
-//				if (!solver.addConstraints(meets1)) {
-//					metaCSPLogger.severe("ERROR: Could not add constraints " + meets1);
-//					throw new Error("Could not add constraints " + meets1);		
-//				}
+				//Driving meets final parking
+				AllenIntervalConstraint meets1 = new AllenIntervalConstraint(AllenIntervalConstraint.Type.Meets);
+				meets1.setFrom(te);
+				meets1.setTo(endParking);
+
+				if (!solver.addConstraints(meets1)) {
+					metaCSPLogger.severe("ERROR: Could not add constraints " + meets1);
+					throw new Error("Could not add constraints " + meets1);		
+				}
 
 				//Add onStart call back that cleans up parking tracker
 				//Note: onStart is triggered only when earliest start of this tracker's envelope is < current time
@@ -1533,7 +1426,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 					@Override
 					public void onTrackingFinished() {
-						
+
 						if (trackingCallbacks.containsKey(te.getRobotID())) trackingCallbacks.get(te.getRobotID()).onTrackingFinished();
 						
 						synchronized (solver) {
@@ -1557,14 +1450,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 							}
 
-							//remove backing up pairs
-							HashSet<BackingUpPair> toRemovePairs = new HashSet<BackingUpPair>();
-							for (BackingUpPair bup : backinUpRobots) {
-								if (bup.involves(te.getRobotID())) toRemovePairs.add(bup);
-							}
-							backinUpRobots.removeAll(toRemovePairs);
-							System.out.println("BACKING UP PAIRS: " + backinUpRobots);
-								
 							//clean up the old parking envelope
 							cleanUp(startParking);
 							currentParkingEnvelopes.remove(startParking);
@@ -1575,22 +1460,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							//remove communicatedCP entry
 							communicatedCPs.remove(trackers.get(te.getRobotID()));
 
-							/****/
 							//make a new parking tracker (park the robot)
-							//Driving meets final parking
-							AllenIntervalConstraint meets1 = new AllenIntervalConstraint(AllenIntervalConstraint.Type.Meets);
-							meets1.setFrom(te);
-							meets1.setTo(endParkings.get(te.getRobotID()));
+							placeRobot(te.getRobotID(), null, endParking, null);
 
-							if (!solver.addConstraints(meets1)) {
-								metaCSPLogger.severe("ERROR: Could not add constraints " + meets1);
-								throw new Error("Could not add constraints " + meets1);		
-							}
-
-							//placeRobot(te.getRobotID(), null, endParking, null);
-							placeRobot(te.getRobotID(), null, endParkings.get(te.getRobotID()), null);
-							/***/
-							
 							synchronized (disallowedDependencies) {
 								ArrayList<Dependency> toRemove = new ArrayList<Dependency>();
 								for (Dependency dep : disallowedDependencies) {

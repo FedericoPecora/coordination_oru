@@ -36,10 +36,6 @@ public abstract class TrajectoryEnvelopeTrackerDummy extends AbstractTrajectoryE
 		this.th.start();
 	}
 	
-	public void doAbort() {
-		//Do nothing here
-	}
-	
 	@Override
 	public void startTracking() {  }
 	

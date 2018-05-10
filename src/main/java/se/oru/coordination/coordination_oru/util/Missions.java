@@ -483,21 +483,5 @@ public class Missions {
 		Mission followerMission = new Mission(followerID, followerPath);
 		return followerMission;
 	}
-	
-	/**
-	 * Splice a new path into an existing {@link Mission} at a given path point. 
-	 * @param currentMission The {@link Mission} to splice the given path into.
-	 * @param splice The path to splice into the given {@link Mission}.
-	 * @param currentPathPoint The path point where the given path should be splices into the {@link Mission}.
-	 */
-	public static void spliceMission(Mission currentMission, PoseSteering[] splice, int currentPathPoint) {
-		PoseSteering[] oldPath = currentMission.getPath();
-		PoseSteering[] newPath = new PoseSteering[oldPath.length+splice.length-1];
-		int counter = 0;
-		for (int i = 0; i < currentPathPoint; i++) newPath[counter++] = oldPath[i];
-		for (int i = 0; i < splice.length; i++) newPath[counter++] = splice[i];
-		for (int i = currentPathPoint+1; i < oldPath.length; i++) newPath[counter++] = oldPath[i];
-		currentMission.setPath(newPath);
-	}
 
 }
