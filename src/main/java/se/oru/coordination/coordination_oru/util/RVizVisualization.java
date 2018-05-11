@@ -122,6 +122,7 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 	public RVizVisualization(ConnectedNode node) {
 		this(false);
 		this.node = node;
+		this.ready = true;
 	}
 
 	
