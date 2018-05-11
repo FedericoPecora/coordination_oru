@@ -116,6 +116,10 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 	}
 	
 	public RVizVisualization() {
+		this(true);
+	}
+	
+	public RVizVisualization(boolean startROSCore) {
 		this.robotStatusPublishers = new HashMap<Integer,Publisher<visualization_msgs.MarkerArray>>();
 		this.dependencyPublishers = new HashMap<Integer,Publisher<visualization_msgs.MarkerArray>>();
 		this.robotStatusMarkers = new HashMap<Integer,ArrayList<visualization_msgs.Marker>>();
@@ -124,17 +128,19 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 		this.boxMarkerPublishers = new HashMap<String,Publisher<visualization_msgs.MarkerArray>>();
 		this.boxMarkerMarkers = new HashMap<String,ArrayList<visualization_msgs.Marker>>();
 		
-		NodeConfiguration nodeConfiguration = NodeConfiguration.newPublic("localhost");
-		NodeMainExecutor executor = DefaultNodeMainExecutor.newDefault();
-		executor.execute(this, nodeConfiguration);
-
-		RosCore mRosCore = RosCore.newPublic("localhost", 11311);
-		mRosCore.start();
-		try {
-			mRosCore.awaitStart(5, TimeUnit.SECONDS);
+		if (startROSCore) {
+			NodeConfiguration nodeConfiguration = NodeConfiguration.newPublic("localhost");
+			NodeMainExecutor executor = DefaultNodeMainExecutor.newDefault();
+			executor.execute(this, nodeConfiguration);
+	
+			RosCore mRosCore = RosCore.newPublic("localhost", 11311);
+			mRosCore.start();
+			try {
+				mRosCore.awaitStart(5, TimeUnit.SECONDS);
+			}
+			catch (InterruptedException e) { e.printStackTrace(); }
+			System.out.println("ROS-core started");
 		}
-		catch (InterruptedException e) { e.printStackTrace(); }
-		System.out.println("ROS-core started");
 	}
 
 	private BufferedImage toGrayScale(BufferedImage imgIn) {
