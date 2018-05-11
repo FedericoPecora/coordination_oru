@@ -119,6 +119,12 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 		this(true);
 	}
 	
+	public RVizVisualization(ConnectedNode node) {
+		this(false);
+		this.node = node;
+	}
+
+	
 	public RVizVisualization(boolean startROSCore) {
 		this.robotStatusPublishers = new HashMap<Integer,Publisher<visualization_msgs.MarkerArray>>();
 		this.dependencyPublishers = new HashMap<Integer,Publisher<visualization_msgs.MarkerArray>>();
