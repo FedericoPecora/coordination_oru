@@ -56,6 +56,7 @@ public class TestTrajectoryEnvelopeCoordinatorThreeRobots {
 		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
 		//RVizVisualization viz = new RVizVisualization();
 		tec.setVisualization(viz);
+		
 		//Example of how you can add extra info Strings to the visualization of robot status
 		TrackingCallback cb = new TrackingCallback() {
 			
