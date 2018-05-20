@@ -660,22 +660,17 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		stoppingPointTimer.start();
 	}
 
-	// Deadlock:
-	//  R1-x/R2-y
-	//  R2-z/R1-w 
-	// (R1-x/R2-y)              --> deadlock iff (y>z AND w>x)
-	// 
-	//  R1-x1/R2-x2
-	//  R2-x3/R3-x4
-	//  R3-x5/R4-x6
-	//  ...
-	//  Rj-x(2j-1)/R(j+1)-x(2j)
-	//  ...
-	//  Rn-x(2n-1)/R1-x(2n)     
-	// (R1-x1/R2-x2)            --> deadlock iff x(2j)>x(2j+1) forall j in [1..n] AND x(2n)>x1
-
-
 	private void findCycles() {
+		
+		//Dep multi-graph G = (V,E)
+		//  V = robots incolved in deps
+		//  E = {(u,v,dep) | exists dep stating that robot u should wait for robot v}
+		//Deadlock iff:
+		//  Cycle <r_1, r_2, ... r_1> in G
+		//  Exists one selection of edges along the cycle (this is a multi-graph) such that
+		//    Exists (u,v,dep1) and (v,w,dep2) such that
+		//      v.dep2.waitingpoint <= v.dep1.releasingpoint
+		
 		DirectedMultigraph<Integer,Dependency> g = new DirectedMultigraph<Integer, Dependency>(Dependency.class);
 		for (Dependency dep : currentDependencies) {
 			if (!g.containsVertex(dep.getWaitingRobotID())) g.addVertex(dep.getWaitingRobotID());
@@ -684,7 +679,12 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		}
 		JohnsonSimpleCycles<Integer, Dependency> cycleFinder = new JohnsonSimpleCycles<Integer, Dependency>(g);
 		List<List<Integer>> cycles = cycleFinder.findSimpleCycles();
+		
+		//For each cycle...
 		for (List<Integer> cycle : cycles) {
+			
+			//Get edges along the cycle...
+			//  Recall: there could be more than one edge per pair of verts, as this is a multi-graph
 			ArrayList<ArrayList<Dependency>> edgesAlongCycle = new ArrayList<ArrayList<Dependency>>();
 			Collections.reverse(cycle);
 			for (int i = 0; i < cycle.size(); i++) {
@@ -696,7 +696,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				}
 			}
 
-
+			//Check for unsafe cycles, that is:
+			//  All along the cycle, check if there are (u,v,dep1) and (v,w,dep2) such that
+			//    v.dep2.waitingpoint <= v.dep1.releasingpoint
+			//  And if so mark cycle as deadlock
 			Dependency anUnsafeDep = null;
 			for (int i = 0; i < edgesAlongCycle.size()-1; i++) {
 				boolean safe = true;
@@ -720,7 +723,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					}
 				}
 			}
-
 		}
 	}
 	
@@ -951,7 +953,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							waitingCurrentIndex = robotReport2.getPathIndex();
 							waitingTE = cs.getTe2();
 							drivingTE = cs.getTe1();
-							metaCSPLogger.finest("Both Out (1) and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID());
+							metaCSPLogger.info("Both-out (1) and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID() + " and CS is: " + cs);
 						}
 
 						//If robot 2 has priority over robot 1
@@ -960,7 +962,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							waitingCurrentIndex = robotReport1.getPathIndex();
 							waitingTE = cs.getTe1();
 							drivingTE = cs.getTe2();
-							metaCSPLogger.finest("Both Out (2) and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID());
+							metaCSPLogger.info("Both-out (2) and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID() + " and CS is: " + cs);
 						}
 
 					}
@@ -971,7 +973,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						waitingCurrentIndex = robotReport1.getPathIndex();
 						waitingTE = cs.getTe1();
 						drivingTE = cs.getTe2();
-						metaCSPLogger.finest("One-in-one-out (1) and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID());
+						metaCSPLogger.info("One-in-one-out (1) and Robot" + drivingTE.getRobotID() + " (in) is ahead of Robot" + waitingTE.getRobotID() + " (out) and CS is: " + cs);
 					}
 
 					//Robot 2 has not reached critical section, robot 1 in critical section --> robot 2 waits
@@ -980,7 +982,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						waitingCurrentIndex = robotReport2.getPathIndex();
 						waitingTE = cs.getTe2();
 						drivingTE = cs.getTe1();
-						metaCSPLogger.finest("One-in-one-out (2) and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID());
+						metaCSPLogger.info("One-in-one-out (2) and Robot" + drivingTE.getRobotID() + " (in) ahead of Robot" + waitingTE.getRobotID() + " (out) and CS is: " + cs);
 					}
 
 					//Both robots in critical section --> re-impose previously decided dependency
@@ -1000,7 +1002,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							waitingTE = cs.getTe1();
 							drivingTE = cs.getTe2();
 						}
-						metaCSPLogger.finest("In CS at start and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID());
+						metaCSPLogger.info("Both-in and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID() + " and CS is: " + cs);
 					}
 
 					waitingRobotID = waitingTE.getRobotID();
@@ -1022,7 +1024,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						criticalSectionsToDeps.put(cs, dep);
 					}
 					else {
-						//If robot is asked in an invalid path point, throw error and give up!
+						//If robot is asked to wait in an invalid path point, throw error and give up!
 						metaCSPLogger.severe("Waiting point < 0 for critical section " + cs);
 						throw new Error("Waiting point < 0 for critical section " + cs);
 					}
@@ -1169,25 +1171,26 @@ public abstract class TrajectoryEnvelopeCoordinator {
 								System.out.println("(Pass " + passNum + ") MERGED (ends-after-start): " + cs1 + " + " + cs2 + " = " + newCS);
 							}
 							//distance CS1.end -> CS2.start too small
-							else if (path1[end11].distanceTo(path1[start21]) <= 1.1*getMaxFootprintDimension(cs1.getTe1().getRobotID())) {
-								toRemove.add(cs1);
-								toRemove.add(cs2);
-								int newStart1 = start11;
-								int newEnd1 = end21;
-								int newStart2 = -1;
-								int newEnd2 = -1;
-								if (start12 < start22) {
-									newStart2 = start12;
-									newEnd2 = end22;
-								}
-								else {
-									newStart2 = start22;
-									newEnd2 = end12;
-								}
-								CriticalSection newCS = new CriticalSection(cs1.getTe1(), cs1.getTe2(), newStart1, newStart2, newEnd1, newEnd2); 
-								toAdd.add(newCS);
-								System.out.println("(Pass " + passNum + ") MERGED (too-close): " + cs1 + " + " + cs2 + " = " + newCS);								
-							}
+							//(this is incorrect, leads to deadlocks!)
+//							else if (path1[end11].distanceTo(path1[start21]) <= 1.1*getMaxFootprintDimension(cs1.getTe1().getRobotID())) {
+//								toRemove.add(cs1);
+//								toRemove.add(cs2);
+//								int newStart1 = start11;
+//								int newEnd1 = end21;
+//								int newStart2 = -1;
+//								int newEnd2 = -1;
+//								if (start12 < start22) {
+//									newStart2 = start12;
+//									newEnd2 = end22;
+//								}
+//								else {
+//									newStart2 = start22;
+//									newEnd2 = end12;
+//								}
+//								CriticalSection newCS = new CriticalSection(cs1.getTe1(), cs1.getTe2(), newStart1, newStart2, newEnd1, newEnd2); 
+//								toAdd.add(newCS);
+//								System.out.println("(Pass " + passNum + ") MERGED (too-close): " + cs1 + " + " + cs2 + " = " + newCS);								
+//							}
 						}
 					}
 				}	
