@@ -67,19 +67,29 @@ public class Missions {
 	}
 
 	/**
-	 * Add a new {@link Mission} for a robot
+	 * Add a new {@link Mission} for a robot.
+	 * @param m The mission to push.
+	 */
+	@Deprecated
+	public static void putMission(Mission m) {
+		if (!missions.containsKey(m.getRobotID())) missions.put(m.getRobotID(), new ArrayList<Mission>());
+		missions.get(m.getRobotID()).add(m);
+	}
+	
+	/**
+	 * Push a new {@link Mission} for a robot on the mission stack.
 	 * @param m The mission to push
 	 */
-	public static void putMission(Mission m) {
+	public static void pushMission(Mission m) {
 		if (!missions.containsKey(m.getRobotID())) missions.put(m.getRobotID(), new ArrayList<Mission>());
 		missions.get(m.getRobotID()).add(m);
 	}
 
 	/**
-	 * Get the i-th mission for a given robot	
-	 * @param robotID A robot identifier
-	 * @param missionNumber The mission to get
-	 * @return The i-th mission for a given robot
+	 * Get the i-th mission for a given robot.	
+	 * @param robotID A robot identifier.
+	 * @param missionNumber The mission to get.
+	 * @return The i-th mission for a given robot.
 	 */
 	public static Mission getMission(int robotID, int missionNumber) {
 		return missions.get(robotID).get(missionNumber);
@@ -94,6 +104,19 @@ public class Missions {
 		if (!missions.get(robotID).isEmpty()) {
 			Mission m = missions.get(robotID).get(0);
 			missions.get(robotID).remove(0);
+			return m;
+		}
+		return null;
+	}
+	
+	/**
+	 * Pop the first mission from the queue of a given robot, but do NOT remove the mission from the queue. 
+	 * @param robotID The ID of the robot.
+	 * @return The first mission from the queue of a given robot.
+	 */
+	public static Mission peekMission(int robotID) {
+		if (!missions.get(robotID).isEmpty()) {
+			Mission m = missions.get(robotID).get(0);
 			return m;
 		}
 		return null;
