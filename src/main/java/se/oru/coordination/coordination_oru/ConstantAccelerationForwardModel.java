@@ -1,8 +1,11 @@
 package se.oru.coordination.coordination_oru;
 
+import org.metacsp.multi.spatioTemporal.paths.Pose;
+import org.metacsp.multi.spatioTemporal.paths.Trajectory;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 
 import se.oru.coordination.coordination_oru.simulation2D.State;
+import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeTrackerRK4;
 
 public class ConstantAccelerationForwardModel implements ForwardModel {
 		
@@ -47,6 +50,48 @@ public class ConstantAccelerationForwardModel implements ForwardModel {
 			time += deltaTime;
 		}
 		return true;
+	}
+
+	private int getPathIndex(TrajectoryEnvelope te, State auxState) {
+		if (auxState == null) return -1;
+		Pose pose = null;
+		int currentPathIndex = -1;
+		double accumulatedDist = 0.0;
+		Trajectory traj = te.getTrajectory();
+		Pose[] poses = traj.getPose();
+		for (int i = 0; i < poses.length-1; i++) {
+			double deltaS = poses[i].distanceTo(poses[i+1]);
+			accumulatedDist += deltaS;
+			if (accumulatedDist > auxState.getPosition()) {
+				double ratio = 1.0-(accumulatedDist-auxState.getPosition())/deltaS;
+				pose = poses[i].interpolate(poses[i+1], ratio);
+				currentPathIndex = i;
+				break;
+			}
+		}
+		if (currentPathIndex == -1) {
+			currentPathIndex = poses.length-1;
+			pose = poses[currentPathIndex];
+		}
+		return currentPathIndex;
+	}
+	
+	@Override
+	public int getEarliestStoppingPathIndex(TrajectoryEnvelope te, RobotReport currentState) {
+		State state = new State(currentState.getDistanceTraveled(), currentState.getVelocity());
+		double time = 0.0;
+		double deltaTime = 0.0001;
+		if (CONTROL_PERIOD != -1) {
+			while (time*TEMPORAL_RESOLUTION < Math.max(CONTROL_PERIOD*numControlPeriodsFreeRun,TrajectoryEnvelopeCoordinator.EFFECTIVE_CONTROL_PERIOD)) {
+				se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeTrackerRK4.integrateRK4(state, time, deltaTime, false, maxVel, 1.0, maxAccel*1.1);
+				time += deltaTime;
+			}
+		}
+		while (state.getVelocity() > 0) {
+			se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeTrackerRK4.integrateRK4(state, time, deltaTime, true, maxVel, 1.0, maxAccel*0.9);
+			time += deltaTime;
+		}
+		return getPathIndex(te,state);
 	}
 
 }

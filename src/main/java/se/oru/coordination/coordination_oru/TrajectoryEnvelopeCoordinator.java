@@ -3,6 +3,7 @@ package se.oru.coordination.coordination_oru;
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
@@ -26,6 +27,7 @@ import org.metacsp.multi.spatial.DE9IM.GeometricShapeDomain;
 import org.metacsp.multi.spatial.DE9IM.GeometricShapeVariable;
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
+import org.metacsp.multi.spatioTemporal.paths.Trajectory;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelopeSolver;
 import org.metacsp.time.Bounds;
@@ -273,6 +275,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			@Override
 			public boolean canStop(TrajectoryEnvelope te, RobotReport currentState, int targetPathIndex) {
 				return true;
+			}
+			@Override
+			public int getEarliestStoppingPathIndex(TrajectoryEnvelope te, RobotReport currentState) {
+				// TODO Auto-generated method stub
+				return 0;
 			}
 		};
 	}
@@ -1127,6 +1134,61 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		}
 	}
 	
+	public void truncateEnvelope(int robotID) {
+		synchronized (solver) {
+			TrajectoryEnvelope te = this.getCurrentTrajectoryEnvelope(robotID);
+			AbstractTrajectoryEnvelopeTracker tet = this.trackers.get(robotID); 
+			if (!(tet instanceof TrajectoryEnvelopeTrackerDummy)) {
+				int earliestStoppingPathIndex = this.getForwardModel(robotID).getEarliestStoppingPathIndex(te, this.getRobotReport(robotID));
+				if (earliestStoppingPathIndex != -1) {
+					System.out.println("TRUNCATING " + te + " AT " + earliestStoppingPathIndex);
+					
+					//Remove CSs involving this robot
+					ArrayList<CriticalSection> toRemove = new ArrayList<CriticalSection>();
+					for (CriticalSection cs : allCriticalSections) {
+						if (cs.getTe1().equals(te) || cs.getTe2().equals(te)) {
+							toRemove.add(cs);
+						}
+					}
+					for (CriticalSection cs : toRemove) {
+						this.criticalSectionsToDeps.remove(cs);
+						this.allCriticalSections.remove(cs);
+					}
+	
+					//Compute and add new TE, remove old TE (both driving and final parking)
+					PoseSteering[] truncatedPath = Arrays.copyOf(te.getTrajectory().getPoseSteering(), earliestStoppingPathIndex+1);
+					TrajectoryEnvelope newTE = solver.createEnvelopeNoParking(robotID, truncatedPath, "Driving", this.getFootprint(robotID));
+					this.trackers.get(robotID).updateTrajectoryEnvelope(newTE);
+					for (Constraint con : solver.getConstraintNetwork().getOutgoingEdges(te)) {
+						if (con instanceof AllenIntervalConstraint) {
+							AllenIntervalConstraint aic = (AllenIntervalConstraint)con;
+							if (aic.getTypes()[0].equals(AllenIntervalConstraint.Type.Meets)) {
+								TrajectoryEnvelope newEndParking = solver.createParkingEnvelope(robotID, PARKING_DURATION, newTE.getTrajectory().getPose()[newTE.getTrajectory().getPose().length-1], "whatever", getFootprint(robotID));
+								TrajectoryEnvelope oldEndParking = (TrajectoryEnvelope)aic.getTo();
+
+								solver.removeConstraints(solver.getConstraintNetwork().getIncidentEdges(te));
+								solver.removeVariable(te);
+								solver.removeConstraints(solver.getConstraintNetwork().getIncidentEdges(oldEndParking));
+								solver.removeVariable(oldEndParking);
+								
+								AllenIntervalConstraint newMeets = new AllenIntervalConstraint(AllenIntervalConstraint.Type.Meets);
+								newMeets.setFrom(newTE);
+								newMeets.setTo(newEndParking);
+								solver.addConstraint(newMeets);
+
+								break;
+							}
+						}
+					}
+					
+					//Recompute CSs involving this robot
+					computeCriticalSections();
+					updateDependencies();
+				}
+			}
+		}
+	}
+	
 	private void filterCriticalSections() {
 		ArrayList<CriticalSection> toAdd = new ArrayList<CriticalSection>();
 		ArrayList<CriticalSection> toRemove = new ArrayList<CriticalSection>();
@@ -1390,6 +1452,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				AllenIntervalConstraint meets1 = new AllenIntervalConstraint(AllenIntervalConstraint.Type.Meets);
 				meets1.setFrom(te);
 				meets1.setTo(endParking);
+				System.out.println("Made end parking: " + endParking + " with con: " + meets1);
 
 				if (!solver.addConstraints(meets1)) {
 					metaCSPLogger.severe("ERROR: Could not add constraints " + meets1);
@@ -1398,12 +1461,12 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 				//Add onStart call back that cleans up parking tracker
 				//Note: onStart is triggered only when earliest start of this tracker's envelope is < current time
-				TrackingCallback cb = new TrackingCallback() {
-
+				TrackingCallback cb = new TrackingCallback(te) {
+					
 					@Override
 					public void beforeTrackingStart() {
 						
-						if (trackingCallbacks.containsKey(te.getRobotID())) trackingCallbacks.get(te.getRobotID()).beforeTrackingStart();
+						if (trackingCallbacks.containsKey(myTE.getRobotID())) trackingCallbacks.get(myTE.getRobotID()).beforeTrackingStart();
 						
 						//Sleep for one control period
 						//(allows to impose critical points before tracking actually starts)
@@ -1413,41 +1476,41 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 					@Override
 					public void onTrackingStart() {
-						if (trackingCallbacks.containsKey(te.getRobotID())) trackingCallbacks.get(te.getRobotID()).onTrackingStart();
-						if (viz != null) viz.addEnvelope(te);
+						if (trackingCallbacks.containsKey(myTE.getRobotID())) trackingCallbacks.get(myTE.getRobotID()).onTrackingStart();
+						if (viz != null) viz.addEnvelope(myTE);
 					}
 
 					@Override
 					public void onNewGroundEnvelope() {
-						if (trackingCallbacks.containsKey(te.getRobotID())) trackingCallbacks.get(te.getRobotID()).onNewGroundEnvelope();
+						if (trackingCallbacks.containsKey(myTE.getRobotID())) trackingCallbacks.get(myTE.getRobotID()).onNewGroundEnvelope();
 					}
 
 					@Override
 					public void beforeTrackingFinished() {
-						if (trackingCallbacks.containsKey(te.getRobotID())) trackingCallbacks.get(te.getRobotID()).beforeTrackingFinished();
+						if (trackingCallbacks.containsKey(myTE.getRobotID())) trackingCallbacks.get(myTE.getRobotID()).beforeTrackingFinished();
 					}
 
 					@Override
 					public void onTrackingFinished() {
 
-						if (trackingCallbacks.containsKey(te.getRobotID())) trackingCallbacks.get(te.getRobotID()).onTrackingFinished();
+						if (trackingCallbacks.containsKey(myTE.getRobotID())) trackingCallbacks.get(myTE.getRobotID()).onTrackingFinished();
 						
 						synchronized (solver) {
-							metaCSPLogger.info("Tracking finished for " + te);
+							metaCSPLogger.info("Tracking finished for " + myTE);
 
-							if (viz != null) viz.removeEnvelope(te);
+							if (viz != null) viz.removeEnvelope(myTE);
 
 							//reset stopping points
 							synchronized(stoppingPoints) {
-								stoppingPoints.remove(te.getRobotID());
-								stoppingTimes.remove(te.getRobotID());
+								stoppingPoints.remove(myTE.getRobotID());
+								stoppingTimes.remove(myTE.getRobotID());
 							}
 
 							//remove critical sections in which this robot is involved
 							synchronized(allCriticalSections) {
 								ArrayList<CriticalSection> toRemove = new ArrayList<CriticalSection>();
 								for (CriticalSection cs : allCriticalSections) {
-									if (cs.getTe1().getRobotID() == te.getRobotID() || cs.getTe2().getRobotID() == te.getRobotID()) toRemove.add(cs);
+									if (cs.getTe1().getRobotID() == myTE.getRobotID() || cs.getTe2().getRobotID() == myTE.getRobotID()) toRemove.add(cs);
 								}
 								for (CriticalSection cs : toRemove) allCriticalSections.remove(cs);
 
@@ -1457,19 +1520,31 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							cleanUp(startParking);
 							currentParkingEnvelopes.remove(startParking);
 
+							//Find end parking...
+							TrajectoryEnvelope myEndParking = null;
+							for (Constraint con : solver.getConstraintNetwork().getOutgoingEdges(myTE)) {
+								if (con instanceof AllenIntervalConstraint) {
+									AllenIntervalConstraint aic = (AllenIntervalConstraint)con;
+									if (aic.getTypes()[0].equals(AllenIntervalConstraint.Type.Meets)) {
+										myEndParking = (TrajectoryEnvelope)aic.getTo();
+										break;
+									}
+								}
+							}
+							
 							//clean up this tracker's TE
-							cleanUp(te);
+							cleanUp(myTE);
 
 							//remove communicatedCP entry
-							communicatedCPs.remove(trackers.get(te.getRobotID()));
+							communicatedCPs.remove(trackers.get(myTE.getRobotID()));
 
-							//make a new parking tracker (park the robot)
-							placeRobot(te.getRobotID(), null, endParking, null);
+							//Make a new parking tracker for the found end parking (park the robot)
+							placeRobot(myTE.getRobotID(), null, myEndParking, null);
 
 							synchronized (disallowedDependencies) {
 								ArrayList<Dependency> toRemove = new ArrayList<Dependency>();
 								for (Dependency dep : disallowedDependencies) {
-									if (dep.getDrivingRobotID() == te.getRobotID() || dep.getWaitingRobotID() == te.getRobotID()) {
+									if (dep.getDrivingRobotID() == myTE.getRobotID() || dep.getWaitingRobotID() == myTE.getRobotID()) {
 										toRemove.add(dep);
 									}
 								}
@@ -1484,7 +1559,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 					@Override
 					public String[] onPositionUpdate() {
-						if (trackingCallbacks.containsKey(te.getRobotID())) return trackingCallbacks.get(te.getRobotID()).onPositionUpdate();
+						if (trackingCallbacks.containsKey(myTE.getRobotID())) return trackingCallbacks.get(myTE.getRobotID()).onPositionUpdate();
 						return null;
 					}
 

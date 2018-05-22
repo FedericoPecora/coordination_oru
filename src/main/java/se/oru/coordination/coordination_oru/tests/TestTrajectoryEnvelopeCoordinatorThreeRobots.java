@@ -58,7 +58,7 @@ public class TestTrajectoryEnvelopeCoordinatorThreeRobots {
 		tec.setVisualization(viz);
 		
 		//Example of how you can add extra info Strings to the visualization of robot status
-		TrackingCallback cb = new TrackingCallback() {
+		TrackingCallback cb = new TrackingCallback(null) {
 			
 			@Override
 			public void onTrackingStart() { }
@@ -140,6 +140,9 @@ public class TestTrajectoryEnvelopeCoordinatorThreeRobots {
 			//Start the thread!
 			t.start();
 		}
+		
+//		Thread.sleep(12000);
+//		tec.truncateEnvelope(2);
 
 	}
 

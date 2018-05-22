@@ -71,6 +71,19 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 		startMonitoringThread();
 	}
 	
+	public abstract void onTrajectoryEnvelopeUpdate(TrajectoryEnvelope te);
+	
+	/**
+	 * Update the {@link TrajectoryEnvelope} of this tracker (used for truncating {@link TrajectoryEnvelope}s online).
+	 * @param te The new {@link TrajectoryEnvelope} of this tracker.
+	 */
+	public void updateTrajectoryEnvelope(TrajectoryEnvelope te) {
+		this.te = te;
+		this.cb.updateTrajectoryEnvelope(te);
+		this.traj = te.getTrajectory();
+		this.onTrajectoryEnvelopeUpdate(te);
+	}
+	
 	public void setMapMetaConstraint(Map mapMetaConstraint) {
 		this.mapMetaConstraint = mapMetaConstraint;
 	}

@@ -74,9 +74,9 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 		super(te, temporalResolution, tec, timeStep, cb);
 		this.MAX_VELOCITY = maxVelocity;
 		this.MAX_ACCELERATION = maxAcceleration;
-		this.te = te;
-		this.traj = te.getTrajectory();
-		this.temporalResolution = temporalResolution;
+//		this.te = te;
+//		this.traj = te.getTrajectory();
+//		this.temporalResolution = temporalResolution;
 		this.state = new State(0.0, 0.0);
 		this.totalDistance = this.computeDistance(0, traj.getPose().length-1);
 		this.overallDistance = totalDistance;
@@ -85,6 +85,14 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 		this.positionToSlowDown = this.computePositionToSlowDown();
 		this.th = new Thread(this, "RK4 tracker " + te.getComponent());
 		this.th.setPriority(Thread.MAX_PRIORITY);
+	}
+	
+	@Override
+	public void onTrajectoryEnvelopeUpdate(TrajectoryEnvelope te) {
+		this.totalDistance = this.computeDistance(0, traj.getPose().length-1);
+		this.overallDistance = totalDistance;
+		this.positionToSlowDown = this.computePositionToSlowDown();
+		System.out.println("POSITION TO SLOW DOWN: " + this.positionToSlowDown + " and state is " + this.state);
 	}
 	
 	@Override
