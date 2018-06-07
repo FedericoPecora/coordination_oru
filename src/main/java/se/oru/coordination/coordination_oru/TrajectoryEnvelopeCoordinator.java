@@ -775,6 +775,12 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		}
 	}
 	
+	/**
+	 * Generate obstacles representing the placement(s) of a given robot in given poses.
+	 * @param robotID The ID of the robot whose footprint should be used.
+	 * @param obstaclePoses The poses of the footprint.
+	 * @return A {@link Geometry} that has the shape of the given robot's footprint, placed in each of the the given {@link Pose}s. 
+	 */
 	public Geometry[] makeObstacles(int robotID, Pose ... obstaclePoses) {
 		ArrayList<Geometry> ret = new ArrayList<Geometry>();
 		for (Pose p : obstaclePoses) {
