@@ -36,6 +36,8 @@ import org.metacsp.utility.logging.MetaCSPLogging;
 
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.util.AffineTransformation;
 
 import se.oru.coordination.coordination_oru.util.FleetVisualization;
 import se.oru.coordination.coordination_oru.util.StringUtils;
@@ -67,6 +69,26 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	//Force printing of (c) and license upon class loading
 	static { printLicense(); }
 
+	protected HashSet<RobotPair> spawnedReplanning = new HashSet<RobotPair>();
+	protected class RobotPair {
+		private int robotID1 = -1;
+		private int robotID2 = -1;
+		public RobotPair(int robotID1, int robotID2) {
+			this.robotID1 = robotID1;
+			this.robotID2 = robotID2;
+		}
+		public boolean equals(Object o) {
+			if (o instanceof RobotPair) {
+				return ( (((RobotPair)o).robotID1 == this.robotID1 && ((RobotPair)o).robotID2 == this.robotID2) || (((RobotPair)o).robotID1 == this.robotID2 && ((RobotPair)o).robotID2 == this.robotID1)); 
+			}
+			return false;
+		}
+		@Override
+		public int hashCode() {
+			return (robotID1+robotID2)*robotID1*robotID2;
+		}
+	};
+	
 	public static final int PARKING_DURATION = 3000;
 	protected static final int DEFAULT_STOPPING_TIME = 5000;
 	protected int CONTROL_PERIOD;
@@ -734,6 +756,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	}
 	
 	private boolean atCP(int robotID) {
+		if (getRobotReport(robotID).getPathIndex() == -1) return false;
 		return (Math.abs(getRobotReport(robotID).getCriticalPoint() - getRobotReport(robotID).getPathIndex()) <= 1);
 	}
 	
@@ -742,10 +765,37 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			for (Dependency dep : depList) {
 				if (atCP(dep.getWaitingRobotID()) && atCP(dep.getDrivingRobotID())) {
 					System.out.println("Should replan path of either Robot" + dep.getWaitingRobotID() + " or Robot" + dep.getDrivingRobotID());
+					RobotPair rp = new RobotPair(dep.getWaitingRobotID(), dep.getDrivingRobotID());
+					if (!spawnedReplanning.contains(rp)) {
+						spawnedReplanning.add(rp);
+						rePlanPath(dep);
+					}
 				}
 			}
 		}
 	}
+	
+	public Geometry[] makeObstacles(int robotID, Pose ... obstaclePoses) {
+		ArrayList<Geometry> ret = new ArrayList<Geometry>();
+		for (Pose p : obstaclePoses) {
+			GeometryFactory gf = new GeometryFactory();
+			Coordinate[] footprint = this.getFootprint(robotID);
+			Coordinate[] newFoot = new Coordinate[footprint.length+1];
+			for (int j = 0; j < footprint.length; j++) {
+				newFoot[j] = footprint[j];
+			}
+			newFoot[footprint.length] = footprint[0];
+			Geometry obstacle = gf.createPolygon(newFoot);
+			AffineTransformation at = new AffineTransformation();
+			at.rotate(p.getTheta());
+			at.translate(p.getX(), p.getY());
+			obstacle = at.transform(obstacle);
+			ret.add(obstacle);
+		}
+		return ret.toArray(new Geometry[ret.size()]);
+	}
+	
+	protected void rePlanPath(Dependency dep) { };
 
 	private boolean unsafePair(Dependency dep1, Dependency dep2) {
 		if (dep2.getWaitingPoint() <= dep1.getReleasingPoint()) return true;
@@ -1134,6 +1184,58 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		}
 	}
 	
+	public void replacePath(int robotID, PoseSteering[] newPath) {
+	
+		//Get current envelope
+		TrajectoryEnvelope te = this.getCurrentTrajectoryEnvelope(robotID);
+				
+		//Remove CSs involving this robot
+		ArrayList<CriticalSection> toRemove = new ArrayList<CriticalSection>();
+		for (CriticalSection cs : allCriticalSections) {
+			if (cs.getTe1().equals(te) || cs.getTe2().equals(te)) {
+				toRemove.add(cs);
+			}
+		}
+		for (CriticalSection cs : toRemove) {
+			this.criticalSectionsToDeps.remove(cs);
+			this.allCriticalSections.remove(cs);
+		}
+	
+		//Make new envelope
+		TrajectoryEnvelope newTE = solver.createEnvelopeNoParking(robotID, newPath, "Driving", this.getFootprint(robotID));
+		
+		//Notify tracker
+		this.trackers.get(robotID).updateTrajectoryEnvelope(newTE);
+		
+		//Stitch together with rest of constraint network (temporal constraints with parking envelopes etc.)
+		for (Constraint con : solver.getConstraintNetwork().getOutgoingEdges(te)) {
+			if (con instanceof AllenIntervalConstraint) {
+				AllenIntervalConstraint aic = (AllenIntervalConstraint)con;
+				if (aic.getTypes()[0].equals(AllenIntervalConstraint.Type.Meets)) {
+					TrajectoryEnvelope newEndParking = solver.createParkingEnvelope(robotID, PARKING_DURATION, newTE.getTrajectory().getPose()[newTE.getTrajectory().getPose().length-1], "whatever", getFootprint(robotID));
+					TrajectoryEnvelope oldEndParking = (TrajectoryEnvelope)aic.getTo();
+
+					solver.removeConstraints(solver.getConstraintNetwork().getIncidentEdges(te));
+					solver.removeVariable(te);
+					solver.removeConstraints(solver.getConstraintNetwork().getIncidentEdges(oldEndParking));
+					solver.removeVariable(oldEndParking);
+					
+					AllenIntervalConstraint newMeets = new AllenIntervalConstraint(AllenIntervalConstraint.Type.Meets);
+					newMeets.setFrom(newTE);
+					newMeets.setTo(newEndParking);
+					solver.addConstraint(newMeets);
+
+					break;
+				}
+			}
+		}
+		
+		//Recompute CSs involving this robot
+		computeCriticalSections();
+		updateDependencies();
+	}
+	
+	
 	public void truncateEnvelope(int robotID) {
 		synchronized (solver) {
 			TrajectoryEnvelope te = this.getCurrentTrajectoryEnvelope(robotID);
@@ -1143,51 +1245,17 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				if (earliestStoppingPathIndex != -1) {
 					System.out.println("TRUNCATING " + te + " AT " + earliestStoppingPathIndex);
 					
-					//Remove CSs involving this robot
-					ArrayList<CriticalSection> toRemove = new ArrayList<CriticalSection>();
-					for (CriticalSection cs : allCriticalSections) {
-						if (cs.getTe1().equals(te) || cs.getTe2().equals(te)) {
-							toRemove.add(cs);
-						}
-					}
-					for (CriticalSection cs : toRemove) {
-						this.criticalSectionsToDeps.remove(cs);
-						this.allCriticalSections.remove(cs);
-					}
-	
 					//Compute and add new TE, remove old TE (both driving and final parking)
 					PoseSteering[] truncatedPath = Arrays.copyOf(te.getTrajectory().getPoseSteering(), earliestStoppingPathIndex+1);
-					TrajectoryEnvelope newTE = solver.createEnvelopeNoParking(robotID, truncatedPath, "Driving", this.getFootprint(robotID));
-					this.trackers.get(robotID).updateTrajectoryEnvelope(newTE);
-					for (Constraint con : solver.getConstraintNetwork().getOutgoingEdges(te)) {
-						if (con instanceof AllenIntervalConstraint) {
-							AllenIntervalConstraint aic = (AllenIntervalConstraint)con;
-							if (aic.getTypes()[0].equals(AllenIntervalConstraint.Type.Meets)) {
-								TrajectoryEnvelope newEndParking = solver.createParkingEnvelope(robotID, PARKING_DURATION, newTE.getTrajectory().getPose()[newTE.getTrajectory().getPose().length-1], "whatever", getFootprint(robotID));
-								TrajectoryEnvelope oldEndParking = (TrajectoryEnvelope)aic.getTo();
-
-								solver.removeConstraints(solver.getConstraintNetwork().getIncidentEdges(te));
-								solver.removeVariable(te);
-								solver.removeConstraints(solver.getConstraintNetwork().getIncidentEdges(oldEndParking));
-								solver.removeVariable(oldEndParking);
-								
-								AllenIntervalConstraint newMeets = new AllenIntervalConstraint(AllenIntervalConstraint.Type.Meets);
-								newMeets.setFrom(newTE);
-								newMeets.setTo(newEndParking);
-								solver.addConstraint(newMeets);
-
-								break;
-							}
-						}
-					}
 					
-					//Recompute CSs involving this robot
-					computeCriticalSections();
-					updateDependencies();
+					//replace the path of this robot (will compute new envelope)
+					replacePath(robotID, truncatedPath);
+					
 				}
 			}
 		}
 	}
+	
 	
 	private void filterCriticalSections() {
 		ArrayList<CriticalSection> toAdd = new ArrayList<CriticalSection>();

@@ -65,9 +65,8 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner16 {
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
 
-		String yamlFile = "maps/map-empty.yaml";
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
-		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization(yamlFile);
+		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
 		viz.setSize(1800, 450);
 		tec.setVisualization(viz);
 
@@ -88,9 +87,8 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner16 {
 		tec.placeRobot(1, startRobot1);
 		tec.placeRobot(2, startRobot2);
 
-		
+		//Set up path planner (using empty map)
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-		rsp.setMapFilename("maps"+File.separator+Missions.getProperty("image", yamlFile));
 		double res = 0.2;// Double.parseDouble(getProperty("resolution", yamlFile));
 		rsp.setMapResolution(res);
 		rsp.setRadius(0.2);
@@ -101,12 +99,12 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner16 {
 		rsp.setStart(startRobot1);
 		rsp.setGoals(goalRobot11,goalRobot12,goalRobot13);
 		rsp.plan();
-		Missions.putMission(new Mission(1,rsp.getPath()));
+		Missions.pushMission(new Mission(1,rsp.getPath()));
 
 		rsp.setStart(startRobot2);
 		rsp.setGoals(goalRobot21,goalRobot22,goalRobot23);
 		rsp.plan();
-		Missions.putMission(new Mission(2,rsp.getPath()));
+		Missions.pushMission(new Mission(2,rsp.getPath()));
 		
 		System.out.println("Added missions " + Missions.getMissions());
 

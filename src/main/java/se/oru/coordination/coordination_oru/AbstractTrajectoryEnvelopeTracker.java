@@ -388,6 +388,6 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 	public TrajectoryEnvelope getTrajectoryEnvelope() {
 		return this.te;
 	}
-
-
+	
+	
 }

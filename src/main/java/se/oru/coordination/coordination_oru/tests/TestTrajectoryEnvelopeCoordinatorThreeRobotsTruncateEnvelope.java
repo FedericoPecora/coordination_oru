@@ -1,6 +1,7 @@
 package se.oru.coordination.coordination_oru.tests;
 
 import java.util.Comparator;
+import java.util.HashMap;
 
 import se.oru.coordination.coordination_oru.ConstantAccelerationForwardModel;
 import se.oru.coordination.coordination_oru.CriticalSection;
@@ -13,8 +14,8 @@ import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoord
 import se.oru.coordination.coordination_oru.util.JTSDrawingPanelVisualization;
 import se.oru.coordination.coordination_oru.util.Missions;
 
-@DemoDescription(desc = "Simple test showing the use of pre-planned paths stored in files.")
-public class TestTrajectoryEnvelopeCoordinatorThreeRobots {
+@DemoDescription(desc = "Simple test showing the use of pre-planned paths stored in files, plus ability to truncate envelopes.")
+public class TestTrajectoryEnvelopeCoordinatorThreeRobotsTruncateEnvelope {
 
 	public static void main(String[] args) throws InterruptedException {
 
@@ -112,6 +113,7 @@ public class TestTrajectoryEnvelopeCoordinatorThreeRobots {
 
 		System.out.println("Added missions " + Missions.getMissions());
 
+		final HashMap<Integer,Boolean> isPaused = new HashMap<Integer, Boolean>();
 		//Start a mission dispatching thread for each robot, which will run forever
 		for (int i = 1; i <= 3; i++) {
 			final int robotID = i;
@@ -120,12 +122,13 @@ public class TestTrajectoryEnvelopeCoordinatorThreeRobots {
 				int iteration = 0;
 				@Override
 				public void run() {
+					isPaused.put(robotID,false);
 					while (true) {
 						//Mission to dispatch alternates between (rip -> desti) and (desti -> rip)
 						Mission m = Missions.getMission(robotID, iteration%2);
 						synchronized(tec) {
 							//addMission returns true iff the robot was free to accept a new mission
-							if (tec.addMissions(m)) {
+							if (!isPaused.get(robotID) && tec.addMissions(m)) {
 								tec.computeCriticalSections();
 								tec.startTrackingAddedMissions();
 								iteration++;
@@ -141,6 +144,10 @@ public class TestTrajectoryEnvelopeCoordinatorThreeRobots {
 			t.start();
 		}
 		
+		Thread.sleep(12000);
+		isPaused.put(2, true);
+		tec.truncateEnvelope(2);
+
 	}
 
 }
