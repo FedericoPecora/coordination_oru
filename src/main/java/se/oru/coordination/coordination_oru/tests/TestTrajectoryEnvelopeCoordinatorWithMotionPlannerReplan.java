@@ -1,6 +1,7 @@
 package se.oru.coordination.coordination_oru.tests;
 
 import java.io.File;
+import java.util.Arrays;
 import java.util.Comparator;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
@@ -53,40 +54,51 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlannerReplan {
 		//You still need to add one or more comparators to determine robot orderings thru critical sections (comparators are evaluated in the order in which they are added)
 		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(MAX_VEL,MAX_ACCEL) {
 			@Override
-			protected void rePlanPath(Dependency dep) {
-				AbstractTrajectoryEnvelopeTracker tetWaiting = dep.getWaitingTracker();
-				PoseSteering[] oldPathWaiting = tetWaiting.getTrajectoryEnvelope().getTrajectory().getPoseSteering();
-				Pose currentPoseWaiting = oldPathWaiting[tetWaiting.getRobotReport().getPathIndex()].getPose();
-				Pose originalGoalWaiting = oldPathWaiting[oldPathWaiting.length-1].getPose();
+			protected void rePlanPath(final Dependency dep) {
+				
+				new Thread() {
+					public void run() {
+						int replannedRobot = -1;
+						
+						AbstractTrajectoryEnvelopeTracker tetWaiting = dep.getWaitingTracker();
+						PoseSteering[] oldPathWaiting = tetWaiting.getTrajectoryEnvelope().getTrajectory().getPoseSteering();
+						Pose currentPoseWaiting = oldPathWaiting[tetWaiting.getRobotReport().getPathIndex()].getPose();
+						Pose originalGoalWaiting = oldPathWaiting[oldPathWaiting.length-1].getPose();
 
-				AbstractTrajectoryEnvelopeTracker tetDriving = dep.getDrivingTracker();
-				PoseSteering[] oldPathDriving = tetDriving.getTrajectoryEnvelope().getTrajectory().getPoseSteering();
-				Pose currentPoseDriving = oldPathDriving[tetDriving.getRobotReport().getPathIndex()].getPose();
-				Pose originalGoalDriving = oldPathDriving[oldPathDriving.length-1].getPose();
+						AbstractTrajectoryEnvelopeTracker tetDriving = dep.getDrivingTracker();
+						PoseSteering[] oldPathDriving = tetDriving.getTrajectoryEnvelope().getTrajectory().getPoseSteering();
+						Pose currentPoseDriving = oldPathDriving[tetDriving.getRobotReport().getPathIndex()].getPose();
+						Pose originalGoalDriving = oldPathDriving[oldPathDriving.length-1].getPose();
 
-				rsp.setStart(currentPoseDriving);
-				rsp.setGoals(originalGoalDriving);
-				rsp.addObstacles(makeObstacles(dep.getWaitingRobotID(), currentPoseWaiting));				
-				int replannedRobot = dep.getDrivingRobotID();
-				System.out.println("ATTEMPTING REPLANNING for Robot" + replannedRobot + "...");
-				if (!rsp.plan()) {
-					rsp.clearObstacles();
-					rsp.setStart(currentPoseWaiting);
-					rsp.setGoals(originalGoalWaiting);
-					rsp.addObstacles(makeObstacles(dep.getDrivingRobotID(), currentPoseDriving));
-					replannedRobot = dep.getWaitingRobotID();
-					System.out.println("ATTEMPTING REPLANNING for Robot" + replannedRobot + "...");
-					if (!rsp.plan()) {
-						System.out.println("Could not replan path!");
-						replannedRobot = -1;
+						rsp.setStart(currentPoseWaiting);
+						rsp.setGoals(originalGoalWaiting);
+						rsp.addObstacles(makeObstacles(dep.getDrivingRobotID(), currentPoseDriving));
+						replannedRobot = dep.getWaitingRobotID();
+
+						System.out.println("ATTEMPTING REPLANNING for Robot" + replannedRobot + "...");
+						if (!rsp.plan()) {
+							
+							rsp.clearObstacles();
+							rsp.setStart(currentPoseDriving);
+							rsp.setGoals(originalGoalDriving);
+							rsp.addObstacles(makeObstacles(dep.getWaitingRobotID(), currentPoseWaiting));
+							replannedRobot = dep.getDrivingRobotID();
+							
+							System.out.println("ATTEMPTING REPLANNING for Robot" + replannedRobot + "...");
+							if (!rsp.plan()) {
+								System.out.println("Could not replan path!");
+								replannedRobot = -1;
+							}
+						}
+						if (replannedRobot != -1) {
+							System.out.println("REPLANNING for Robot" + replannedRobot + " SUCCEEDED!");
+							PoseSteering[] newPath = rsp.getPath();
+							System.out.println("NEW PATH IS " + newPath.length + " POSES LONG:");
+							replacePath(replannedRobot, newPath);
+							spawnedReplanning.remove(new RobotPair(dep.getWaitingRobotID(), dep.getDrivingRobotID()));
+						}						
 					}
-				}
-				if (replannedRobot != -1) {
-					System.out.println("REPLANNING for Robot" + replannedRobot + " SUCCEEDED!");
-					PoseSteering[] newPath = rsp.getPath();
-					replacePath(replannedRobot, newPath);
-					spawnedReplanning.remove(new RobotPair(dep.getWaitingRobotID(), dep.getDrivingRobotID()));
-				}
+				}.start();
 			}
 		};
 		
@@ -106,7 +118,6 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlannerReplan {
 			}
 		});
 		tec.setUseInternalCriticalPoints(false);
-		
 		
 		tec.setDefaultFootprint(footprint1, footprint2, footprint3, footprint4);
 		
