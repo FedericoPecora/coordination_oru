@@ -3,14 +3,17 @@ package se.oru.coordination.coordination_oru.simulation2D;
 import java.util.ArrayList;
 import java.util.Calendar;
 
+import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 import org.metacsp.utility.UI.Callback;
 
 import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeTracker;
+import se.oru.coordination.coordination_oru.Dependency;
 import se.oru.coordination.coordination_oru.Mission;
 import se.oru.coordination.coordination_oru.TrackingCallback;
 import se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator;
+import se.oru.coordination.coordination_oru.motionplanning.AbstractMotionPlanner;
 
 public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeCoordinator {
 
@@ -19,15 +22,20 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	protected double MAX_ACCELERATION;
 	protected int trackingPeriodInMillis;
 	protected boolean useInternalCPs = true;
-	
+	protected AbstractMotionPlanner mp = null;
+
 	public int getTrackingPeriod() {
 		return trackingPeriodInMillis;
 	}
-	
+
 	public double getTemporalResolution() {
 		return 1000.0;
 	}
-	
+
+	public void setMotionPlanner(AbstractMotionPlanner mp) {
+		this.mp = mp;
+	}
+
 	/**
 	 * Create a new {@link TrajectoryEnvelopeCoordinatorSimulation} with the following default values:
 	 * <ul>
@@ -83,7 +91,7 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	public TrajectoryEnvelopeCoordinatorSimulation(int CONTROL_PERIOD, double TEMPORAL_RESOLUTION) {
 		this(CONTROL_PERIOD, TEMPORAL_RESOLUTION, 10.0, 1.0, 30);
 	}
-	
+
 	private ArrayList<Integer> computeStoppingPoints(PoseSteering[] poses) {
 		ArrayList<Integer> ret = new ArrayList<Integer>();
 		double prevTheta = poses[0].getTheta();
@@ -98,7 +106,7 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 		}
 		return ret;
 	}
-	
+
 	@Override
 	public boolean addMissions(Mission... missions) {
 		if (this.useInternalCPs) {
@@ -116,8 +124,8 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 		}
 		return true;
 	}
-	
-	
+
+
 	/**
 	 * Create a new {@link TrajectoryEnvelopeCoordinatorSimulation} with given parameters.
 	 * @param CONTROL_PERIOD The control period of the coordinator (e.g., 1000 msec)
@@ -132,7 +140,7 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 		this.MAX_ACCELERATION = MAX_ACCELERATION;
 		this.trackingPeriodInMillis = trackingPeriodInMillis;
 	}
-	
+
 	/**
 	 * Enable (default) or disable the use of internal critical points in the {@link TrajectoryEnvelopeTrackerRK4} trackers.
 	 * @param value <code>true</code> if these critical points should be used to slow down, <code>false</code> otherwise.
@@ -143,9 +151,9 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 
 	@Override
 	public AbstractTrajectoryEnvelopeTracker getNewTracker(TrajectoryEnvelope te, TrackingCallback cb) {
-				
+
 		TrajectoryEnvelopeTrackerRK4 ret = new TrajectoryEnvelopeTrackerRK4(te, trackingPeriodInMillis, TEMPORAL_RESOLUTION, MAX_VELOCITY, MAX_ACCELERATION, this, cb) {
-						
+
 			//Method for measuring time in the trajectory envelope tracker
 			@Override
 			public long getCurrentTimeInMillis() {
@@ -161,6 +169,54 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	@Override
 	public long getCurrentTimeInMillis() {
 		return Calendar.getInstance().getTimeInMillis()-START_TIME;
+	}
+
+	@Override
+	protected void rePlanPath(Dependency dep) {
+		if (this.mp == null) throw new Error("Please provide a motion planner for replanning!");
+		
+		int replannedRobot = -1;
+
+		//Waiting robot
+		AbstractTrajectoryEnvelopeTracker tetWaiting = dep.getWaitingTracker();
+		PoseSteering[] oldPathWaiting = tetWaiting.getTrajectoryEnvelope().getTrajectory().getPoseSteering();
+		Pose currentPoseWaiting = oldPathWaiting[tetWaiting.getRobotReport().getPathIndex()].getPose();
+		Pose originalGoalWaiting = oldPathWaiting[oldPathWaiting.length-1].getPose();
+
+		//Driving robot
+		AbstractTrajectoryEnvelopeTracker tetDriving = dep.getDrivingTracker();
+		PoseSteering[] oldPathDriving = tetDriving.getTrajectoryEnvelope().getTrajectory().getPoseSteering();
+		Pose currentPoseDriving = oldPathDriving[tetDriving.getRobotReport().getPathIndex()].getPose();
+		Pose originalGoalDriving = oldPathDriving[oldPathDriving.length-1].getPose();
+
+		//Try replanning waiting robot
+		mp.setStart(currentPoseWaiting);
+		mp.setGoals(originalGoalWaiting);
+		mp.addObstacles(makeObstacles(dep.getDrivingRobotID(), currentPoseDriving));
+		replannedRobot = dep.getWaitingRobotID();
+		System.out.println("ATTEMPTING REPLANNING for Robot" + replannedRobot + "...");
+		if (!mp.plan()) {
+			//Try replanning driving robot
+			mp.clearObstacles();
+			mp.setStart(currentPoseDriving);
+			mp.setGoals(originalGoalDriving);
+			mp.addObstacles(makeObstacles(dep.getWaitingRobotID(), currentPoseWaiting));
+			replannedRobot = dep.getDrivingRobotID();
+			System.out.println("ATTEMPTING REPLANNING for Robot" + replannedRobot + "...");
+			if (!mp.plan()) {
+				//Fail!
+				System.out.println("Could not replan path!");
+				replannedRobot = -1;
+			}
+		}
+		//If replanning succeeded, update trajectory envelope
+		if (replannedRobot != -1) {
+			System.out.println("REPLANNING for Robot" + replannedRobot + " SUCCEEDED!");
+			PoseSteering[] newPath = mp.getPath();
+			System.out.println("NEW PATH IS " + newPath.length + " POSES LONG:");
+			replacePath(replannedRobot, newPath);
+			spawnedReplanning.remove(new RobotPair(dep.getWaitingRobotID(), dep.getDrivingRobotID()));
+		}						
 	}
 
 }

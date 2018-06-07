@@ -762,13 +762,17 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	
 	private void spawnReplanning(ArrayList<ArrayList<Dependency>> deadlockedDeps) {
 		for (ArrayList<Dependency> depList : deadlockedDeps) {
-			for (Dependency dep : depList) {
+			for (final Dependency dep : depList) {
 				if (atCP(dep.getWaitingRobotID()) && atCP(dep.getDrivingRobotID())) {
 					System.out.println("Should replan path of either Robot" + dep.getWaitingRobotID() + " or Robot" + dep.getDrivingRobotID());
 					RobotPair rp = new RobotPair(dep.getWaitingRobotID(), dep.getDrivingRobotID());
 					if (!spawnedReplanning.contains(rp)) {
 						spawnedReplanning.add(rp);
-						rePlanPath(dep);
+						new Thread() {
+							public void run() {
+								rePlanPath(dep);		
+							}
+						}.start();
 					}
 				}
 			}
@@ -801,7 +805,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		return ret.toArray(new Geometry[ret.size()]);
 	}
 	
-	protected void rePlanPath(Dependency dep) { };
+	protected void rePlanPath(Dependency dep) {
+		String name = this.getClass().getName();
+		name += "."+Thread.currentThread().getStackTrace()[1].getMethodName();
+		System.out.println("Implement method " + name + " to specify how to replan!");
+	}
 
 	private boolean unsafePair(Dependency dep1, Dependency dep2) {
 		if (dep2.getWaitingPoint() <= dep1.getReleasingPoint()) return true;
