@@ -2,12 +2,20 @@ package se.oru.coordination.coordination_oru.simulation2D;
 
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.HashSet;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
+import org.metacsp.multi.spatioTemporal.paths.Trajectory;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 import org.metacsp.utility.UI.Callback;
 
+import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.util.AffineTransformation;
+
+import geometry_msgs.Point;
 import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeTracker;
 import se.oru.coordination.coordination_oru.Dependency;
 import se.oru.coordination.coordination_oru.Mission;
@@ -170,53 +178,60 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	public long getCurrentTimeInMillis() {
 		return Calendar.getInstance().getTimeInMillis()-START_TIME;
 	}
-
-	@Override
-	protected void rePlanPath(Dependency dep) {
-		if (this.mp == null) throw new Error("Please provide a motion planner for replanning!");
-		
-		int replannedRobot = -1;
-
-		//Waiting robot
-		AbstractTrajectoryEnvelopeTracker tetWaiting = dep.getWaitingTracker();
-		PoseSteering[] oldPathWaiting = tetWaiting.getTrajectoryEnvelope().getTrajectory().getPoseSteering();
-		Pose currentPoseWaiting = oldPathWaiting[tetWaiting.getRobotReport().getPathIndex()].getPose();
-		Pose originalGoalWaiting = oldPathWaiting[oldPathWaiting.length-1].getPose();
-
-		//Driving robot
-		AbstractTrajectoryEnvelopeTracker tetDriving = dep.getDrivingTracker();
-		PoseSteering[] oldPathDriving = tetDriving.getTrajectoryEnvelope().getTrajectory().getPoseSteering();
-		Pose currentPoseDriving = oldPathDriving[tetDriving.getRobotReport().getPathIndex()].getPose();
-		Pose originalGoalDriving = oldPathDriving[oldPathDriving.length-1].getPose();
-
-		//Try replanning waiting robot
-		mp.setStart(currentPoseWaiting);
-		mp.setGoals(originalGoalWaiting);
-		mp.addObstacles(makeObstacles(dep.getDrivingRobotID(), currentPoseDriving));
-		replannedRobot = dep.getWaitingRobotID();
-		System.out.println("ATTEMPTING REPLANNING for Robot" + replannedRobot + "...");
-		if (!mp.plan()) {
-			//Try replanning driving robot
-			mp.clearObstacles();
-			mp.setStart(currentPoseDriving);
-			mp.setGoals(originalGoalDriving);
-			mp.addObstacles(makeObstacles(dep.getWaitingRobotID(), currentPoseWaiting));
-			replannedRobot = dep.getDrivingRobotID();
-			System.out.println("ATTEMPTING REPLANNING for Robot" + replannedRobot + "...");
-			if (!mp.plan()) {
-				//Fail!
-				System.out.println("Could not replan path!");
-				replannedRobot = -1;
+	
+	private Geometry[] getObstaclesFromWaitingRobots(int robotID) {
+		//Compute one obstacle per robot that is waiting for this robot, placed in the waiting robot's waiting pose
+		ArrayList<Geometry> ret = new ArrayList<Geometry>();
+		for (Dependency dep : getCurrentDependencies()) {
+			int drivingID = dep.getDrivingRobotID();
+			int waitingID = dep.getWaitingRobotID();
+			if (robotID == drivingID) {
+				Pose waitingPose  = dep.getWaitingTrajectoryEnvelope().getTrajectory().getPose()[dep.getWaitingPoint()];
+				ret.add(makeObstacles(waitingID, waitingPose)[0]);
 			}
 		}
-		//If replanning succeeded, update trajectory envelope
-		if (replannedRobot != -1) {
-			System.out.println("REPLANNING for Robot" + replannedRobot + " SUCCEEDED!");
-			PoseSteering[] newPath = mp.getPath();
-			System.out.println("NEW PATH IS " + newPath.length + " POSES LONG:");
-			replacePath(replannedRobot, newPath);
-			spawnedReplanning.remove(new RobotPair(dep.getWaitingRobotID(), dep.getDrivingRobotID()));
-		}						
+		return ret.toArray(new Geometry[ret.size()]);
+	}
+	
+	@Override
+	protected void rePlanPath(HashSet<Integer> robotsToReplan) {
+		if (this.mp == null) throw new Error("Please provide a motion planner for replanning!");		
+		for (int robotID : robotsToReplan) {
+			int currentWaitingIndex = -1;
+			Pose currentWaitingPose = null;
+			Pose currentWaitingGoal = null;
+			PoseSteering[] oldPath = null;
+			for (Dependency dep : getCurrentDependencies()) {
+				if (dep.getWaitingRobotID() == robotID) {
+					currentWaitingIndex = dep.getWaitingPoint();
+					currentWaitingPose = dep.getWaitingPose();
+					Trajectory traj = dep.getWaitingTrajectoryEnvelope().getTrajectory();
+					oldPath = traj.getPoseSteering();
+					currentWaitingGoal = oldPath[oldPath.length-1].getPose();
+					break;
+				}
+			}
+			mp.setStart(currentWaitingPose);
+			mp.setGoals(currentWaitingGoal);
+			mp.clearObstacles();
+			Geometry[] obstacles = getObstaclesFromWaitingRobots(robotID);
+			mp.addObstacles(obstacles);			
+			metaCSPLogger.info("Attempting to re-plan path of Robot" + robotID + "...");
+			if (mp.plan()) {
+				PoseSteering[] newPath = mp.getPath();
+//				System.out.println("REPLANNING for Robot" + robotID + " SUCCEEDED!");
+//				System.out.println("OLD PATH IS " + oldPath.length + " POSES LONG");
+//				System.out.println("NEW PATH IS " + newPath.length + " POSES LONG");
+				PoseSteering[] newCompletePath = new PoseSteering[newPath.length+currentWaitingIndex];
+				for (int i = 0; i < newCompletePath.length; i++) {
+					if (i < currentWaitingIndex) newCompletePath[i] = oldPath[i];
+					else newCompletePath[i] = newPath[i-currentWaitingIndex];
+				}
+				replacePath(robotID, newPath);
+				replanningSpawned.remove(robotsToReplan);
+				break;
+			}
+		}
 	}
 
 }

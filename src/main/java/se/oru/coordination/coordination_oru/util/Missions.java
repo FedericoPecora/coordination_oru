@@ -129,7 +129,7 @@ public class Missions {
 	 */
 	public static double wrapAngle180(double th) {
 		double ret = Math.atan2(Math.sin(th), Math.cos(th));
-		//if (Math.abs(ret-Math.PI) < 0.00001) return -Math.PI;
+		if (Math.abs(ret-Math.PI) < 0.00001) return -Math.PI;
 		return ret;
 	}
 

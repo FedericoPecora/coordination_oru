@@ -69,6 +69,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	//Force printing of (c) and license upon class loading
 	static { printLicense(); }
 
+	protected HashSet<HashSet<Integer>> replanningSpawned = new HashSet<HashSet<Integer>>();
+
 	protected HashSet<RobotPair> spawnedReplanning = new HashSet<RobotPair>();
 	protected class RobotPair {
 		private int robotID1 = -1;
@@ -762,19 +764,25 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	
 	private void spawnReplanning(ArrayList<ArrayList<Dependency>> deadlockedDeps) {
 		for (ArrayList<Dependency> depList : deadlockedDeps) {
+			boolean tryReplanning = true;
+			final HashSet<Integer> deadlockedRobots = new HashSet<Integer>();
 			for (final Dependency dep : depList) {
-				if (atCP(dep.getWaitingRobotID()) && atCP(dep.getDrivingRobotID())) {
-					System.out.println("Should replan path of either Robot" + dep.getWaitingRobotID() + " or Robot" + dep.getDrivingRobotID());
-					RobotPair rp = new RobotPair(dep.getWaitingRobotID(), dep.getDrivingRobotID());
-					if (!spawnedReplanning.contains(rp)) {
-						spawnedReplanning.add(rp);
-						new Thread() {
-							public void run() {
-								rePlanPath(dep);		
-							}
-						}.start();
-					}
+				deadlockedRobots.add(dep.getWaitingRobotID());
+				deadlockedRobots.add(dep.getDrivingRobotID());
+				if (getRobotReport(dep.getDrivingRobotID()).getPathIndex() == -1 || getRobotReport(dep.getWaitingRobotID()).getPathIndex() == -1) {
+					tryReplanning = false;
+					break;
 				}
+			}
+			if (tryReplanning && !replanningSpawned.contains(deadlockedRobots)) {
+				replanningSpawned.add(deadlockedRobots);
+				metaCSPLogger.info("Will replan for one of the following deadlocked robots: " + deadlockedRobots + "...");
+				new Thread() {
+					public void run() {
+						rePlanPath(deadlockedRobots);
+					}
+				}.start();
+
 			}
 		}
 	}
@@ -805,10 +813,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		return ret.toArray(new Geometry[ret.size()]);
 	}
 	
-	protected void rePlanPath(Dependency dep) {
+	protected void rePlanPath(HashSet<Integer> robotsToReplan) {
 		String name = this.getClass().getName();
 		name += "."+Thread.currentThread().getStackTrace()[1].getMethodName();
-		System.out.println("Implement method " + name + " to specify how to replan!");
+		metaCSPLogger.warning("Implement method " + name + " to specify how to replan!");
 	}
 
 	private boolean unsafePair(Dependency dep1, Dependency dep2) {
@@ -1257,7 +1265,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			if (!(tet instanceof TrajectoryEnvelopeTrackerDummy)) {
 				int earliestStoppingPathIndex = this.getForwardModel(robotID).getEarliestStoppingPathIndex(te, this.getRobotReport(robotID));
 				if (earliestStoppingPathIndex != -1) {
-					System.out.println("TRUNCATING " + te + " AT " + earliestStoppingPathIndex);
+					metaCSPLogger.info("Truncating " + te + " at " + earliestStoppingPathIndex);
 					
 					//Compute and add new TE, remove old TE (both driving and final parking)
 					PoseSteering[] truncatedPath = Arrays.copyOf(te.getTrajectory().getPoseSteering(), earliestStoppingPathIndex+1);
