@@ -37,6 +37,7 @@ public class ReedsSheppCarPlanner extends AbstractMotionPlanner {
 	
 	@Override
 	public void setFootprint(Coordinate ... coords) {
+		super.setFootprint(coords);
 		GeometryFactory gf = new GeometryFactory();
 		Coordinate[] newCoords = new Coordinate[coords.length+1];
 		for (int i = 0; i < coords.length; i++) {
@@ -90,7 +91,7 @@ public class ReedsSheppCarPlanner extends AbstractMotionPlanner {
 	}
 
 	@Override
-	public boolean plan() {
+	public boolean doPlanning() {
 		ArrayList<PoseSteering> finalPath = new ArrayList<PoseSteering>();  
 		for (int i = 0; i < this.goal.length; i++) {
 			Pose start_ = null;

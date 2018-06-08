@@ -17,6 +17,7 @@ import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 import com.vividsolutions.jts.awt.ShapeWriter;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.util.AffineTransformation;
 
 import se.oru.coordination.coordination_oru.util.Missions;
@@ -31,11 +32,15 @@ public abstract class AbstractMotionPlanner {
 	protected String mapFilename = null;
 	protected String mapFilenameBAK = null;
 	protected double mapResolution = 1.0;
+	protected ArrayList<Geometry> obstacles = new ArrayList<Geometry>();
+	protected Coordinate[] footprintCoords = null;
 	
 	protected PoseSteering[] pathPS = null;
 
 	
-	public abstract void setFootprint(Coordinate ... coords);
+	public void setFootprint(Coordinate ... coords) {
+		this.footprintCoords = coords;
+	}
 	
 	public void setStart(Pose p) {
 		Pose newStart = new Pose(p.getX(),p.getY(),Missions.wrapAngle180(p.getTheta()));
@@ -72,6 +77,7 @@ public abstract class AbstractMotionPlanner {
 			ShapeWriter writer = new ShapeWriter();
 			g2.setPaint(Color.black);
 			for (Geometry g : geom) {
+				this.obstacles.add(g);
 				AffineTransformation at = new AffineTransformation();
 				at.scale(1.0/mapResolution, -1.0/mapResolution);
 				at.translate(0, img.getHeight());
@@ -96,6 +102,13 @@ public abstract class AbstractMotionPlanner {
 			ShapeWriter writer = new ShapeWriter();
 			g2.setPaint(Color.black);
 			for (Pose pose : poses) {
+
+				AffineTransformation atObs = new AffineTransformation();
+				atObs.rotate(pose.getTheta());
+				atObs.translate(pose.getX(), pose.getY());
+				Geometry obs = atObs.transform(geom);
+				this.obstacles.add(obs);
+				
 				AffineTransformation at = new AffineTransformation();
 				at.rotate(pose.getTheta());
 				at.translate(pose.getX(), pose.getY());
@@ -114,6 +127,7 @@ public abstract class AbstractMotionPlanner {
 	}
 
 	public void clearObstacles() {
+		this.obstacles.clear();
 		this.setMapFilename(this.mapFilenameBAK);
 	}
 	
@@ -128,7 +142,30 @@ public abstract class AbstractMotionPlanner {
 		return inv.toArray(new PoseSteering[inv.size()]);
 	}
 
-	public abstract boolean plan();
+	public abstract boolean doPlanning();
+	
+	public boolean plan() {
+		
+		GeometryFactory gf = new GeometryFactory();
+		Coordinate[] newFoot = new Coordinate[footprintCoords.length+1];
+		for (int j = 0; j < footprintCoords.length; j++) {
+			newFoot[j] = footprintCoords[j];
+		}
+		newFoot[footprintCoords.length] = footprintCoords[0];
+		Geometry goalFoot = gf.createPolygon(newFoot);
+		AffineTransformation at = new AffineTransformation();
+		at.rotate(this.goal[this.goal.length-1].getTheta());
+		at.translate(this.goal[this.goal.length-1].getX(), this.goal[this.goal.length-1].getY());
+		goalFoot = at.transform(goalFoot);
+		for (Geometry obs : this.obstacles) {
+			if (obs.intersects(goalFoot)) {
+				System.out.println("Goal intersects with an obstacle - no path can exist!");
+				return false;
+			}
+		}
+		
+		return doPlanning();
+	}
 	
 	public static boolean deleteDir(File dir) {
 	    if (dir.isDirectory()) {
