@@ -107,7 +107,7 @@ This project is supported by
 ## License
 coordination_oru - Online coordination for multiple robots
 
-Copyright (C) 2017-2018 Federico Pecora
+Copyright &copy; 2017-2018 Federico Pecora
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
