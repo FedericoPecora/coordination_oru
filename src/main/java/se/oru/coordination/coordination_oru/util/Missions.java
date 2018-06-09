@@ -123,6 +123,28 @@ public class Missions {
 	}
 
 	/**
+	 * Normalize an angle to be within (-PI,PI).
+	 * @param th The angle to normalize
+	 * @return A value within (-PI,PI)
+	 */
+	public static double wrapAngle180b(double th) {
+		double ret = Math.atan2(Math.sin(th), Math.cos(th));
+		if (Math.abs(ret-Math.PI) < 0.00001) return Math.PI-0.01;
+		return ret;
+	}
+
+	/**
+	 * Normalize an angle to be within (-PI,PI].
+	 * @param th The angle to normalize
+	 * @return A value within (-PI,PI]
+	 */
+	public static double wrapAngle180a(double th) {
+		double ret = Math.atan2(Math.sin(th), Math.cos(th));
+		if (Math.abs(ret-Math.PI) < 0.00001) return Math.PI;
+		return ret;
+	}
+	
+	/**
 	 * Normalize an angle to be within [-PI,PI).
 	 * @param th The angle to normalize
 	 * @return A value within [-PI,PI)
@@ -134,12 +156,14 @@ public class Missions {
 	}
 
 	/**
-	 * Normalize an angle to be within [0,PI].
+	 * Normalize an angle to be within [0,2*PI).
 	 * @param th The angle to normalize
-	 * @return A value within [0,PI]
+	 * @return A value within [0,2*PI)
 	 */
 	public static double wrapAngle360(double th) {
-		return th-Math.PI*2.0*Math.floor(th/(Math.PI*2.0));
+		double ret = Math.atan2(Math.sin(th), Math.cos(th));
+		if (ret < 0) return ret+2*Math.PI;
+		return ret;
 	}
 
 	/**
