@@ -1252,6 +1252,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			}
 		}
 		
+		if (viz != null) {
+			viz.removeEnvelope(te);
+			viz.addEnvelope(newTE);
+		}
+		
 		//Recompute CSs involving this robot
 		computeCriticalSections();
 		updateDependencies();
