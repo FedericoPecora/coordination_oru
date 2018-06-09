@@ -27,7 +27,6 @@ import org.metacsp.multi.spatial.DE9IM.GeometricShapeDomain;
 import org.metacsp.multi.spatial.DE9IM.GeometricShapeVariable;
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
-import org.metacsp.multi.spatioTemporal.paths.Trajectory;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelopeSolver;
 import org.metacsp.time.Bounds;
@@ -53,7 +52,7 @@ import se.oru.coordination.coordination_oru.util.StringUtils;
 public abstract class TrajectoryEnvelopeCoordinator {
 
 	public static String TITLE = "coordination_oru - Online coordination for multiple robots";
-	public static String COPYRIGHT = "Copyright (C) 2017 Federico Pecora";
+	public static String COPYRIGHT = "Copyright \u00a9 2017-2018 Federico Pecora";
 
 	//null -> public (GPL3) license
 	public static String LICENSE = null;
@@ -69,28 +68,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	//Force printing of (c) and license upon class loading
 	static { printLicense(); }
 
-	protected HashSet<HashSet<Integer>> replanningSpawned = new HashSet<HashSet<Integer>>();
-
-	protected HashSet<RobotPair> spawnedReplanning = new HashSet<RobotPair>();
-	protected class RobotPair {
-		private int robotID1 = -1;
-		private int robotID2 = -1;
-		public RobotPair(int robotID1, int robotID2) {
-			this.robotID1 = robotID1;
-			this.robotID2 = robotID2;
-		}
-		public boolean equals(Object o) {
-			if (o instanceof RobotPair) {
-				return ( (((RobotPair)o).robotID1 == this.robotID1 && ((RobotPair)o).robotID2 == this.robotID2) || (((RobotPair)o).robotID1 == this.robotID2 && ((RobotPair)o).robotID2 == this.robotID1)); 
-			}
-			return false;
-		}
-		@Override
-		public int hashCode() {
-			return (robotID1+robotID2)*robotID1*robotID2;
-		}
-	};
-	
 	public static final int PARKING_DURATION = 3000;
 	protected static final int DEFAULT_STOPPING_TIME = 5000;
 	protected int CONTROL_PERIOD;
@@ -136,12 +113,16 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected boolean checkEscapePoses = true;
 	protected boolean breakDeadlocks = true;
 
-	protected HashMap<Integer,TrackingCallback> trackingCallbacks = new HashMap<Integer, TrackingCallback>();
-	
+	protected HashMap<Integer,TrackingCallback> trackingCallbacks = new HashMap<Integer, TrackingCallback>();	
 	protected Callback inferenceCallback = null;
 	
-	//Default footprint (same for all robots)
-	//NOTE: coordinates must be in CCW or CW order
+	protected HashSet<HashSet<Integer>> replanningSpawned = new HashSet<HashSet<Integer>>();
+
+	
+	/**
+	 * The default footprint used for robots if none is specified.
+	 * NOTE: coordinates in footprints must be given in in CCW or CW order. 
+	 */
 	public static Coordinate[] DEFAULT_FOOTPRINT = new Coordinate[] {
 			new Coordinate(-1.7, 0.7),	//back left
 			new Coordinate(-1.7, -0.7),	//back right
@@ -149,7 +130,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			new Coordinate(2.7, 0.7)	//front left
 	};
 
-	//Reflects the default footprint
+	/**
+	 * Dimension of the default footprint.
+	 */
 	public static double MAX_DEFAULT_FOOTPRINT_DIMENSION = 4.4;
 
 	/**
@@ -178,7 +161,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	/**
 	 * Set whether the coordinator should try to break deadlocks by disallowing an arbitrary
 	 * ordering involved in a loop in the dependency multigraph.
-	 * @param value <code>true</code> deadlocks should be broken.
+	 * @param value <code>true</code> if deadlocks should be broken.
 	 */
 	public void setBreakDeadlocks(boolean value) {
 		this.breakDeadlocks = value;
@@ -193,8 +176,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	}
 
 	/**
-	 * Set whether completely overlapping paths should lead to failure.
-	 * @param value <code>true</code> if completely overlapping paths should lead to failure.
+	 * Set whether completely overlapping paths should lead to a warning.
+	 * @param value <code>true</code> if completely overlapping paths should lead to a warning.
 	 */
 	public void setCheckEscapePoses(boolean value) {
 		this.checkEscapePoses = value;
@@ -236,7 +219,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		muted.remove(robotID);
 	}
 
-	public double getMaxFootprintDimension(int robotID) {
+	private double getMaxFootprintDimension(int robotID) {
 		if (this.footprints.containsKey(robotID)) return maxFootprintDimensions.get(robotID);
 		return MAX_DEFAULT_FOOTPRINT_DIMENSION;
 	}
@@ -342,6 +325,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		MetaCSPLogging.setLogDir(logDirName);
 	}
 
+	/**
+	 * Get the {@link TrajectoryEnvelopeSolver} underlying this coordinator. This solver maintains the {@link TrajectoryEnvelope}s and temporal constraints
+	 * among them.
+	 * @return The {@link TrajectoryEnvelopeSolver} underlying this coordinator.
+	 */
 	public TrajectoryEnvelopeSolver getSolver() {
 		return this.solver;
 	}
@@ -540,15 +528,23 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		}
 	}
 
+	/**
+	 * Get the {@link FleetVisualization} that is used for displaying the current fleet.
+	 * @return The {@link FleetVisualization} that is used for displaying the current fleet.
+	 */
 	public FleetVisualization getVisualization() {
 		return this.viz;
 	}
 
+	/**
+	 * Get the list of current dependencies between robots.
+	 * @return A list of {@link Dependency} objects.
+	 */
 	public HashSet<Dependency> getCurrentDependencies() {
 		return this.currentDependencies;
 	}
 
-	/**
+	/*
 	 * Get the path index beyond which a robot should not navigate, given the {@link TrajectoryEnvelope} of another robot.  
 	 * @param te1 The {@link TrajectoryEnvelope} of the leading robot.
 	 * @param te2 The {@link TrajectoryEnvelope} of the yielding robot.
@@ -556,9 +552,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 * @param te1Start The path index
 	 * @param te1End
 	 * @param te2Start
-	 * @return
+	 * @return The path index beyond which a robot should not navigate, given the {@link TrajectoryEnvelope} of another robot.
 	 */
-	public int getCriticalPoint(int yieldingRobotID, CriticalSection cs, int leadingRobotCurrentPathIndex) {
+	private int getCriticalPoint(int yieldingRobotID, CriticalSection cs, int leadingRobotCurrentPathIndex) {
 
 		//Number of additional path points robot 2 should stay behind robot 1
 		int TRAILING_PATH_POINTS = 3;
@@ -619,7 +615,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	}
 
 	@Deprecated
-	public int getCriticalPoint(TrajectoryEnvelope te1, TrajectoryEnvelope te2, int currentPIR1, int te1Start, int te1End, int te2Start) {
+	private int getCriticalPoint(TrajectoryEnvelope te1, TrajectoryEnvelope te2, int currentPIR1, int te1Start, int te1End, int te2Start) {
 
 		//Number of additional path points robot 2 should stay behind robot 1
 		int TRAILING_PATH_POINTS = 3;
@@ -663,6 +659,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		//		throw new Error("Could not determine CP for " + te2);
 	}
 
+	/**
+	 * Returns <code>true</code> iff the given robot is at a stopping point.
+	 * @param robotID The ID of a robot.
+	 * @return <code>true</code> iff the given robot is at a stopping point.
+	 */
 	public boolean atStoppingPoint(int robotID) {
 		return stoppingPointTimers.containsKey(robotID);
 	}
@@ -816,7 +817,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected void rePlanPath(HashSet<Integer> robotsToReplan) {
 		String name = this.getClass().getName();
 		name += "."+Thread.currentThread().getStackTrace()[1].getMethodName();
-		metaCSPLogger.warning("Implement method " + name + " to specify how to replan!");
+		metaCSPLogger.warning("Please override method " + name + " to specify how to replan!");
 	}
 
 	private boolean unsafePair(Dependency dep1, Dependency dep2) {
@@ -911,7 +912,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	}
 
 	//Update and set the critical points
-	public void updateDependencies() {
+	private void updateDependencies() {
 
 		//System.out.println("Caller of updateDependencies(): " + Thread.currentThread().getStackTrace()[2]);
 
@@ -999,15 +1000,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					}
 
 					int waitingPoint = getCriticalPoint(waitingRobotID, cs, drivingCurrentIndex);
-					//System.out.println("Robot" + drivingRobotID + " is parked, so Robot" + waitingRobotID + " SHOULD wait");
 					boolean alreadyCommunicated = (communicatedCPs.containsKey(waitingTracker) && communicatedCPs.get(waitingTracker) == waitingPoint); 
 					if (alreadyCommunicated || waitingPoint >= waitingCurrentIndex) {
 						metaCSPLogger.finest("Robot" + drivingRobotID + " is parked, so Robot" + waitingRobotID + " will have to wait");	
 						//Make new dependency
 						int drivingCSEnd = -1;
-//						//with +1
-//						if (waitingRobotID == cs.getTe1().getRobotID()) drivingCSEnd = Math.min(cs.getTe2End()+1,cs.getTe2().getTrajectory().getPose().length-1);
-//						else drivingCSEnd = Math.min(cs.getTe1End()+1,cs.getTe1().getTrajectory().getPose().length-1);
 						if (waitingRobotID == cs.getTe1().getRobotID()) drivingCSEnd = cs.getTe2End();
 						else drivingCSEnd = cs.getTe1End();
 						Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd, waitingTracker, drivingTracker);
@@ -1067,7 +1064,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					//Both robots in critical section --> re-impose previously decided dependency
 					else {
 						//Robot 1 is ahead --> make robot 2 follow
-						//if (robotReport1.getPathIndex()-cs.getTe1Start() > robotReport2.getPathIndex()-cs.getTe2Start()) {
 						if (isAhead(cs, robotReport1, robotReport2)) {
 							drivingCurrentIndex = robotReport1.getPathIndex();
 							waitingCurrentIndex = robotReport2.getPathIndex();
@@ -1090,7 +1086,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					drivingTracker = trackers.get(drivingRobotID);
 
 					//Compute waiting path index point for waiting robot
-					//int waitingPoint = getCriticalPoint(drivingTE, waitingTE, drivingCurrentIndex, drivingCSStart, drivingCSEnd, waitingCSStart);
 					int waitingPoint = getCriticalPoint(waitingRobotID, cs, drivingCurrentIndex);
 					if (waitingPoint >= 0) {		
 						//Make new dependency
@@ -1206,6 +1201,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		}
 	}
 	
+	/**
+	 * Replace the path of a robot's {@link TrajectoryEnvelope} on the fly.
+	 * @param robotID The ID of the robot whose {@link TrajectoryEnvelope} is to be recomputed.
+	 * @param newPath The path based on which the new {@link TrajectoryEnvelope} should be computed.
+	 */
 	public void replacePath(int robotID, PoseSteering[] newPath) {
 	
 		//Get current envelope
@@ -1262,7 +1262,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		updateDependencies();
 	}
 	
-	
+	/**
+	 * Truncate the {@link TrajectoryEnvelope} of a given robot at the closest dynamically-feasible path point. This path point is computed via the robot's {@link ForwardModel}.
+	 * @param robotID The ID of the robot whose {@link TrajectoryEnvelope} should be truncated.
+	 */
 	public void truncateEnvelope(int robotID) {
 		synchronized (solver) {
 			TrajectoryEnvelope te = this.getCurrentTrajectoryEnvelope(robotID);
