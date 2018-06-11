@@ -195,7 +195,7 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	
 	@Override
 	protected void rePlanPath(HashSet<Integer> robotsToReplan) {
-		if (this.mp == null) throw new Error("Please provide a motion planner for replanning!");		
+		if (this.mp == null) return; //throw new Error("Please provide a motion planner for replanning!");		
 		for (int robotID : robotsToReplan) {
 			int currentWaitingIndex = -1;
 			Pose currentWaitingPose = null;
