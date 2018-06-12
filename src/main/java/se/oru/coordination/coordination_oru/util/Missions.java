@@ -50,6 +50,14 @@ public class Missions {
 	}
 	
 	/**
+	 * Remove one or more {@link Mission}s.
+	 * @param m The mission(s) to remove.
+	 */
+	public static void removeMissions(Mission ... m) {
+		for (Mission mis : m) missions.get(mis.getRobotID()).remove(mis);
+	}
+	
+	/**
 	 * Set the pose of a location.
 	 * @param locationName The name of the location.
 	 * @param p The pose of the location.
@@ -400,54 +408,68 @@ public class Missions {
 	
 	/**
 	 * Start a thread for each robot that cycles through the known missions for that
-	 * robot and dispatches them when the robot is free.
+	 * robot and dispatches them when the robot is free. This method will loop through all missions forever.
 	 * @param tec The {@link TrajectoryEnvelopeCoordinator} that coordinates the missions.
 	 * @param robotIDs The robot IDs for which a dispatching thread should be started.
 	 */
 	public static void startMissionDispatchers(final TrajectoryEnvelopeCoordinator tec, int ... robotIDs) {
+		startMissionDispatchers(tec, true, robotIDs);
+	}
+	
+	/**
+	 * Start a thread for each robot that cycles through the known missions for that
+	 * robot and dispatches them when the robot is free.
+	 * @param tec The {@link TrajectoryEnvelopeCoordinator} that coordinates the missions.
+	 * @param loop Set to <code>false</code> if missions should be de-queued once dispatched. 
+	 * @param robotIDs The robot IDs for which a dispatching thread should be started.
+	 */
+	public static void startMissionDispatchers(final TrajectoryEnvelopeCoordinator tec, final boolean loop, int ... robotIDs) {
 		//Start a mission dispatching thread for each robot, which will run forever
 		for (final int robotID : robotIDs) {
 			//For each robot, create a thread that dispatches the "next" mission when the robot is free 
 			Thread t = new Thread() {
-				int iteration = 0;
 				@Override
 				public void run() {
 					while (missionDispatcherFlags.get(robotID)) {
-						Mission m = Missions.getMission(robotID, iteration%Missions.getMissions(robotID).size());
-						if (iteration > 0 && iteration%Missions.getMissions(robotID).size() == 0) {
-							iteration++;
-							continue;
-						}
-						synchronized(tec) {
-							int numCats = 1;
-							if (tec.isFree(m.getRobotID())) {
-								//cat with future missions if necessary
-								if (concatenatedMissions.containsKey(m)) {
-									ArrayList<Mission> catMissions = concatenatedMissions.get(m);
-									numCats = catMissions.size();
-									m = new Mission(m.getRobotID(), m.getFromLocation(), catMissions.get(catMissions.size()-1).getToLocation(), m.getFromPose(), catMissions.get(catMissions.size()-1).getToPose());
-									ArrayList<PoseSteering> path = new ArrayList<PoseSteering>();
-									for (int i = 0; i < catMissions.size(); i++) {
-										Mission oneMission = catMissions.get(i);
-										if (mdcs.containsKey(robotID)) mdcs.get(robotID).beforeMissionDispatch(oneMission);
-										if (i == 0) path.add(oneMission.getPath()[0]);
-										for (int j = 1; j < oneMission.getPath().length-1; j++) {
-											path.add(oneMission.getPath()[j]);
+						if (Missions.getMissions(robotID).size() != 0) {
+							Mission m = Missions.peekMission(robotID);
+							if (m != null) {								
+								synchronized(tec) {
+									if (tec.isFree(m.getRobotID())) {
+										//cat with future missions if necessary
+										if (concatenatedMissions.containsKey(m)) {
+											ArrayList<Mission> catMissions = concatenatedMissions.get(m);
+											m = new Mission(m.getRobotID(), m.getFromLocation(), catMissions.get(catMissions.size()-1).getToLocation(), m.getFromPose(), catMissions.get(catMissions.size()-1).getToPose());
+											ArrayList<PoseSteering> path = new ArrayList<PoseSteering>();
+											for (int i = 0; i < catMissions.size(); i++) {
+												Mission oneMission = catMissions.get(i);
+												if (mdcs.containsKey(robotID)) mdcs.get(robotID).beforeMissionDispatch(oneMission);
+												if (i == 0) path.add(oneMission.getPath()[0]);
+												for (int j = 1; j < oneMission.getPath().length-1; j++) {
+													path.add(oneMission.getPath()[j]);
+												}
+												if (i == catMissions.size()-1) path.add(oneMission.getPath()[oneMission.getPath().length-1]);
+											}
+											m.setPath(path.toArray(new PoseSteering[path.size()]));
 										}
-										if (i == catMissions.size()-1) path.add(oneMission.getPath()[oneMission.getPath().length-1]);
+										else if (mdcs.containsKey(robotID)) mdcs.get(robotID).beforeMissionDispatch(m);							
 									}
-									m.setPath(path.toArray(new PoseSteering[path.size()]));
+		
+									//addMission returns true iff the robot was free to accept a new mission
+									if (tec.addMissions(m)) {
+										tec.computeCriticalSectionsAndStartTrackingAddedMission();
+										if (mdcs.containsKey(robotID)) mdcs.get(robotID).afterMissionDispatch(m);
+										if (!loop) {
+											Missions.removeMissions(m);
+											System.out.println("Removed mission " + m);
+											if (concatenatedMissions.get(m) != null) {
+												for (Mission cm : concatenatedMissions.get(m)) {
+													Missions.removeMissions(cm);
+												}
+											}
+										}
+									}
 								}
-								else if (mdcs.containsKey(robotID)) mdcs.get(robotID).beforeMissionDispatch(m);							
-							}
-
-							//addMission returns true iff the robot was free to accept a new mission
-							if (tec.addMissions(m)) {
-//								tec.computeCriticalSections();
-//								tec.startTrackingAddedMissions();
-								tec.computeCriticalSectionsAndStartTrackingAddedMission();
-								iteration = iteration + numCats;
-								if (mdcs.containsKey(robotID)) mdcs.get(robotID).afterMissionDispatch(m);
 							}
 						}
 						//Sleep for a little (2 sec)
