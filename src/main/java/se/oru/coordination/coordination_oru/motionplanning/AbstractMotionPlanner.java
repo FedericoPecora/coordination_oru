@@ -8,11 +8,13 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.logging.Logger;
 
 import javax.imageio.ImageIO;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
+import org.metacsp.utility.logging.MetaCSPLogging;
 
 import com.vividsolutions.jts.awt.ShapeWriter;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -23,7 +25,9 @@ import com.vividsolutions.jts.geom.util.AffineTransformation;
 import se.oru.coordination.coordination_oru.util.Missions;
 
 public abstract class AbstractMotionPlanner {
-	
+
+	protected Logger metaCSPLogger = MetaCSPLogging.getLogger(this.getClass());
+
 	protected static String TEMP_MAP_DIR = ".tempMaps";
 	protected int numObstacles = 0;
 	
@@ -34,6 +38,7 @@ public abstract class AbstractMotionPlanner {
 	protected double mapResolution = 1.0;
 	protected ArrayList<Geometry> obstacles = new ArrayList<Geometry>();
 	protected Coordinate[] footprintCoords = null;
+	protected boolean verifyPlanning = true;
 	
 	protected PoseSteering[] pathPS = null;
 
@@ -78,7 +83,7 @@ public abstract class AbstractMotionPlanner {
 		BufferedImage img = null;
 		try {
 			img = ImageIO.read(new File(mapFilename)); 
-			System.out.println("IMGTYPE: " + img.getType());
+			metaCSPLogger.finest("Map IMGTYPE: " + img.getType());
 			Graphics2D g2 = img.createGraphics();
 			ShapeWriter writer = new ShapeWriter();
 			g2.setPaint(Color.black);
@@ -89,7 +94,7 @@ public abstract class AbstractMotionPlanner {
 				at.translate(0, img.getHeight());
 				Geometry scaledGeom = at.transform(g);
 				Shape shape = writer.toShape(scaledGeom);
-				System.out.println("Shape: " + shape.getBounds2D());
+				//System.out.println("Shape: " + shape.getBounds2D());
 				g2.fill(shape);
 			}
 			File outputfile = new File(TEMP_MAP_DIR + File.separator + "tempMap" + (numObstacles++) + ".png");
@@ -122,7 +127,7 @@ public abstract class AbstractMotionPlanner {
 				at.translate(0, img.getHeight());
 				Geometry scaledGeom = at.transform(geom);
 				Shape shape = writer.toShape(scaledGeom);
-				System.out.println("Shape: " + shape.getBounds2D());
+				//System.out.println("Shape: " + shape.getBounds2D());
 				g2.fill(shape);
 			}
 			File outputfile = new File(TEMP_MAP_DIR + File.separator + "tempMap" + (numObstacles++) + ".png");
@@ -165,12 +170,30 @@ public abstract class AbstractMotionPlanner {
 		goalFoot = at.transform(goalFoot);
 		for (Geometry obs : this.obstacles) {
 			if (obs.intersects(goalFoot)) {
-				System.out.println("Goal intersects with an obstacle - no path can exist!");
+				metaCSPLogger.info("Goal intersects with an obstacle - no path can exist!");
 				return false;
 			}
 		}
 		
-		return doPlanning();
+		boolean ret = doPlanning();
+		if (!ret || !verifyPlanning) return ret;
+		
+		PoseSteering[] path = getPath();
+		for (int i = 0; i < path.length; i++) {
+			Pose p = path[i].getPose();
+			Geometry checkFoot = gf.createPolygon(newFoot);
+			at = new AffineTransformation();
+			at.rotate(p.getTheta());
+			at.translate(p.getX(), p.getY());
+			checkFoot = at.transform(checkFoot);
+			for (Geometry obs : this.obstacles) {
+				if (obs.intersects(checkFoot)) {
+					metaCSPLogger.info("Path verification failed, returning false!");
+					return false;
+				}
+			}
+		}
+		return ret;
 	}
 	
 	public static boolean deleteDir(File dir) {

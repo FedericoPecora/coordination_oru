@@ -1,6 +1,5 @@
 package se.oru.coordination.coordination_oru.tests;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.Comparator;
 
@@ -16,7 +15,6 @@ import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
 import se.oru.coordination.coordination_oru.util.JTSDrawingPanelVisualization;
-import se.oru.coordination.coordination_oru.util.Missions;
 
 @DemoDescription(desc = "Coordination with deadlock-inducing ordering heuristic (paths obtained with the ReedsSheppCarPlanner).")
 public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner6 {
@@ -72,20 +70,15 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner6 {
 		tec.setupSolver(0, 100000000);
 		
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
-		String yamlFile = "maps/map-empty.yaml";
-		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization(yamlFile);
+		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
 		tec.setVisualization(viz);
 		
 		//tec.setUseInternalCriticalPoints(false);
 		
 		//MetaCSPLogging.setLevel(tec.getClass().getSuperclass(), Level.FINEST);
 
-		//Instantiate a simple motion planner
+		//Instantiate a simple motion planner (no map)
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-		String mapFile = "maps"+File.separator+Missions.getProperty("image", yamlFile);
-		rsp.setMapFilename(mapFile);
-		double res = Double.parseDouble(Missions.getProperty("resolution", yamlFile));
-		rsp.setMapResolution(res);
 		rsp.setRadius(0.2);
 		rsp.setFootprint(tec.getDefaultFootprint());
 		rsp.setTurningRadius(4.0);
@@ -143,7 +136,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner6 {
 		if (!rsp.plan()) throw new Error ("No path between " + goalPoseRobot3 + " and " + startPoseRobot3);
 		PoseSteering[] pssInv3 = rsp.getPath();
 		paths.add(pssInv3);
-
+		
 		//Start a mission dispatching thread for each robot, which will run forever
 		int iteration = 0;
 		while(true) {

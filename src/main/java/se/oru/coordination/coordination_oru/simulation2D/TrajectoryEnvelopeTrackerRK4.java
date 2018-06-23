@@ -93,7 +93,6 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 		this.overallDistance = totalDistance;
 		this.computeInternalCriticalPoints();
 		this.positionToSlowDown = this.computePositionToSlowDown();
-		System.out.println("POSITION TO SLOW DOWN: " + this.positionToSlowDown + " and state is " + this.state);
 	}
 	
 	@Override

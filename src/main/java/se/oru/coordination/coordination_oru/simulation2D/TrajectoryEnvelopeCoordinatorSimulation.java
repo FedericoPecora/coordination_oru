@@ -179,59 +179,15 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 		return Calendar.getInstance().getTimeInMillis()-START_TIME;
 	}
 	
-	private Geometry[] getObstaclesFromWaitingRobots(int robotID) {
-		//Compute one obstacle per robot that is waiting for this robot, placed in the waiting robot's waiting pose
-		ArrayList<Geometry> ret = new ArrayList<Geometry>();
-		for (Dependency dep : getCurrentDependencies()) {
-			int drivingID = dep.getDrivingRobotID();
-			int waitingID = dep.getWaitingRobotID();
-			if (robotID == drivingID) {
-				Pose waitingPose  = dep.getWaitingTrajectoryEnvelope().getTrajectory().getPose()[dep.getWaitingPoint()];
-				ret.add(makeObstacles(waitingID, waitingPose)[0]);
-			}
-		}
-		return ret.toArray(new Geometry[ret.size()]);
-	}
-	
 	@Override
-	protected void rePlanPath(HashSet<Integer> robotsToReplan) {
-		if (this.mp == null) return; //throw new Error("Please provide a motion planner for replanning!");		
-		for (int robotID : robotsToReplan) {
-			int currentWaitingIndex = -1;
-			Pose currentWaitingPose = null;
-			Pose currentWaitingGoal = null;
-			PoseSteering[] oldPath = null;
-			for (Dependency dep : getCurrentDependencies()) {
-				if (dep.getWaitingRobotID() == robotID) {
-					currentWaitingIndex = dep.getWaitingPoint();
-					currentWaitingPose = dep.getWaitingPose();
-					Trajectory traj = dep.getWaitingTrajectoryEnvelope().getTrajectory();
-					oldPath = traj.getPoseSteering();
-					currentWaitingGoal = oldPath[oldPath.length-1].getPose();
-					break;
-				}
-			}
-			mp.setStart(currentWaitingPose);
-			mp.setGoals(currentWaitingGoal);
-			mp.clearObstacles();
-			Geometry[] obstacles = getObstaclesFromWaitingRobots(robotID);
-			mp.addObstacles(obstacles);			
-			metaCSPLogger.info("Attempting to re-plan path of Robot" + robotID + "...");
-			if (mp.plan()) {
-				PoseSteering[] newPath = mp.getPath();
-//				System.out.println("REPLANNING for Robot" + robotID + " SUCCEEDED!");
-//				System.out.println("OLD PATH IS " + oldPath.length + " POSES LONG");
-//				System.out.println("NEW PATH IS " + newPath.length + " POSES LONG");
-				PoseSteering[] newCompletePath = new PoseSteering[newPath.length+currentWaitingIndex];
-				for (int i = 0; i < newCompletePath.length; i++) {
-					if (i < currentWaitingIndex) newCompletePath[i] = oldPath[i];
-					else newCompletePath[i] = newPath[i-currentWaitingIndex];
-				}
-				replacePath(robotID, newPath);
-				replanningSpawned.remove(robotsToReplan);
-				break;
-			}
-		}
+	protected PoseSteering[] doReplanning(Pose fromPose, Pose toPose, Geometry... obstaclesToConsider) {
+		if (this.mp == null) return null;
+		mp.setStart(fromPose);
+		mp.setGoals(toPose);
+		mp.clearObstacles();
+		if (obstaclesToConsider != null && obstaclesToConsider.length > 0) mp.addObstacles(obstaclesToConsider);
+		if (mp.plan()) return mp.getPath();
+		return null;
 	}
 
 }

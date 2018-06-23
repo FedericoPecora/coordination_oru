@@ -50,6 +50,15 @@ public class Missions {
 	}
 	
 	/**
+	 * Ascertain whether there is at least one {@link Mission} for a gitven robot. 
+	 * @param robotID The ID of a robot.
+	 * @return <code>true</code> iff the robot with the given ID has a mission.
+	 */
+	public static boolean hasMissions(int robotID) {
+		return missions.containsKey(robotID);
+	}
+	
+	/**
 	 * Remove one or more {@link Mission}s.
 	 * @param m The mission(s) to remove.
 	 */
@@ -431,7 +440,7 @@ public class Missions {
 				@Override
 				public void run() {
 					while (missionDispatcherFlags.get(robotID)) {
-						if (Missions.getMissions(robotID).size() != 0) {
+						if (Missions.hasMissions(robotID)) {
 							Mission m = Missions.peekMission(robotID);
 							if (m != null) {								
 								synchronized(tec) {

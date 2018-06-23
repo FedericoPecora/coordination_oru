@@ -27,9 +27,12 @@ import org.metacsp.multi.spatial.DE9IM.GeometricShapeDomain;
 import org.metacsp.multi.spatial.DE9IM.GeometricShapeVariable;
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
+import org.metacsp.multi.spatioTemporal.paths.Trajectory;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelopeSolver;
 import org.metacsp.time.Bounds;
+import org.metacsp.utility.Combination;
+import org.metacsp.utility.PermutationsWithRepetition;
 import org.metacsp.utility.UI.Callback;
 import org.metacsp.utility.logging.MetaCSPLogging;
 
@@ -117,7 +120,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected Callback inferenceCallback = null;
 	
 	protected HashSet<HashSet<Integer>> replanningSpawned = new HashSet<HashSet<Integer>>();
-
+	protected boolean replanning = false;
 	
 	/**
 	 * The default footprint used for robots if none is specified.
@@ -763,29 +766,184 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		return (Math.abs(getRobotReport(robotID).getCriticalPoint() - getRobotReport(robotID).getPathIndex()) <= 1);
 	}
 	
+	private boolean inParkingPose(int robotID) {
+		return getRobotReport(robotID).getPathIndex() == -1;
+	}
+	
 	private void spawnReplanning(ArrayList<ArrayList<Dependency>> deadlockedDeps) {
-		for (ArrayList<Dependency> depList : deadlockedDeps) {
+		
+		int maxSize = 0;
+		for (ArrayList<Dependency> oneDepList : deadlockedDeps) if (oneDepList.size() > maxSize) maxSize = oneDepList.size();
+		PermutationsWithRepetition gen = new PermutationsWithRepetition(maxSize, deadlockedDeps.size());
+		//Combination c = new Combination(maxSize, deadlockedDeps.size());
+		int[][] v = gen.getVariations();
+		ArrayList<ArrayList<Dependency>> newDeps = new ArrayList<ArrayList<Dependency>>();
+		for (int k = 0; k < v.length; k++) {
+			int[] oneComb = v[k];
+			//System.out.println("Selecting: " + Arrays.toString(oneComb));
+			ArrayList<Dependency> oneSelection = new ArrayList<Dependency>();
+			for (int i = 0; i < oneComb.length; i++) {
+				if (oneComb[i] < deadlockedDeps.get(i).size()) oneSelection.add(deadlockedDeps.get(i).get(oneComb[i]));
+				else {
+					oneSelection = null;
+					break;
+				}
+			}
+			if (oneSelection != null) newDeps.add(oneSelection);
+		}
+		for (ArrayList<Dependency> depList : newDeps) {
+			//System.out.println("DEPLIST: " + depList);
 			boolean tryReplanning = true;
 			final HashSet<Integer> deadlockedRobots = new HashSet<Integer>();
-			for (final Dependency dep : depList) {
+			for (Dependency dep : depList) {
 				deadlockedRobots.add(dep.getWaitingRobotID());
 				deadlockedRobots.add(dep.getDrivingRobotID());
-				if (getRobotReport(dep.getDrivingRobotID()).getPathIndex() == -1 || getRobotReport(dep.getWaitingRobotID()).getPathIndex() == -1) {
+				//if (getRobotReport(dep.getDrivingRobotID()).getPathIndex() == -1 || getRobotReport(dep.getWaitingRobotID()).getPathIndex() == -1) {
+				if (inParkingPose(dep.getDrivingRobotID()) || inParkingPose(dep.getWaitingRobotID())) {
+				//if (atCP(dep.getDrivingRobotID()) && atCP(dep.getWaitingRobotID())) {
 					tryReplanning = false;
 					break;
 				}
 			}
-			if (tryReplanning && !replanningSpawned.contains(deadlockedRobots)) {
+			if (!replanning && tryReplanning && !replanningSpawned.contains(deadlockedRobots)) {
+				replanning = true;
+				//Get other robots
+				final HashSet<Integer> allRobots = new HashSet<Integer>();
+				for (Integer robotID : deadlockedRobots) {
+					for (Dependency dep : currentDependencies) {
+						if (dep.getDrivingRobotID() == robotID) allRobots.add(dep.getWaitingRobotID());
+						else if (dep.getWaitingRobotID() == robotID) allRobots.add(dep.getDrivingRobotID());
+					}
+				}
+
 				replanningSpawned.add(deadlockedRobots);
-				metaCSPLogger.info("Will replan for one of the following deadlocked robots: " + deadlockedRobots + "...");
+				metaCSPLogger.info("Will re-plan for one of the following deadlocked robots: " + deadlockedRobots + " (" + allRobots + ")...");
 				new Thread() {
 					public void run() {
-						rePlanPath(deadlockedRobots);
+						rePlanPath(deadlockedRobots, allRobots);
 					}
 				}.start();
 
 			}
+//			else {
+//				System.out.println("Skipping because (!replanning && tryReplanning && !replanningSpawned.contains(deadlockedRobots)):" + !replanning  + ", " + tryReplanning + ", " + !replanningSpawned.contains(deadlockedRobots));
+//			}
 		}
+	}
+	
+//	private void spawnReplanning(ArrayList<ArrayList<Dependency>> deadlockedDeps) {
+//		for (ArrayList<Dependency> depList : deadlockedDeps) {
+//			boolean tryReplanning = true;
+//			final HashSet<Integer> deadlockedRobots = new HashSet<Integer>();
+//			for (final Dependency dep : depList) {
+//				deadlockedRobots.add(dep.getWaitingRobotID());
+//				deadlockedRobots.add(dep.getDrivingRobotID());
+//				if (getRobotReport(dep.getDrivingRobotID()).getPathIndex() == -1 || getRobotReport(dep.getWaitingRobotID()).getPathIndex() == -1) {
+//					tryReplanning = false;
+//					break;
+//				}
+//			}
+//			if (tryReplanning && !replanningSpawned.contains(deadlockedRobots)) {
+//				replanningSpawned.add(deadlockedRobots);
+//				metaCSPLogger.info("Will replan for one of the following deadlocked robots: " + deadlockedRobots + "...");
+//				new Thread() {
+//					public void run() {
+//						rePlanPath(deadlockedRobots);
+//					}
+//				}.start();
+//
+//			}
+//		}
+//	}
+	
+	
+	protected Geometry[] getObstaclesInCriticalPoints(int ... robotIDs) {
+		//Compute one obstacle per given robot, placed in the robot's waiting pose
+		ArrayList<Geometry> ret = new ArrayList<Geometry>();
+		for (int robotID : robotIDs) {
+			for (Dependency dep : getCurrentDependencies()) {
+				int waitingID = dep.getWaitingRobotID();
+				if (robotID == waitingID) {
+					Pose waitingPose = dep.getWaitingPose();
+					int waitingPoint = dep.getWaitingPoint();
+					Geometry currentFP = makeObstacles(waitingID, waitingPose)[0]; 
+
+					//In case the robot has stopped a little beyond the critical point
+					int currentPoint = getRobotReport(robotID).getPathIndex();
+					if (currentPoint != -1 && currentPoint > waitingPoint) {
+						Pose currentPose = dep.getWaitingTrajectoryEnvelope().getTrajectory().getPose()[currentPoint];
+						currentFP = makeObstacles(waitingID, currentPose)[0];
+						System.out.println("Oops: " + waitingPoint + " < " + currentPoint);
+					}
+					
+					ret.add(currentFP);
+				}
+			}
+		}
+		return ret.toArray(new Geometry[ret.size()]);
+	}
+	
+	protected Geometry[] getObstaclesFromWaitingRobots(int robotID) {
+		//Compute one obstacle per robot that is waiting for this robot, placed in the waiting robot's waiting pose
+		ArrayList<Geometry> ret = new ArrayList<Geometry>();
+		for (Dependency dep : getCurrentDependencies()) {
+			int drivingID = dep.getDrivingRobotID();
+			int waitingID = dep.getWaitingRobotID();
+			if (robotID == drivingID) {
+				Pose waitingPose  = dep.getWaitingTrajectoryEnvelope().getTrajectory().getPose()[dep.getWaitingPoint()];
+				ret.add(makeObstacles(waitingID, waitingPose)[0]);
+			}
+		}
+		return ret.toArray(new Geometry[ret.size()]);
+	}
+	
+	protected abstract PoseSteering[] doReplanning(Pose fromPose, Pose toPose, Geometry ... obstaclesToConsider);
+	
+	protected void rePlanPath(HashSet<Integer> robotsToReplan, HashSet<Integer> allRobots) {
+		for (int robotID : robotsToReplan) {
+			int currentWaitingIndex = -1;
+			Pose currentWaitingPose = null;
+			Pose currentWaitingGoal = null;
+			PoseSteering[] oldPath = null;
+			for (Dependency dep : getCurrentDependencies()) {
+				if (dep.getWaitingRobotID() == robotID) {
+					currentWaitingIndex = dep.getWaitingPoint();
+					currentWaitingPose = dep.getWaitingPose();
+					Trajectory traj = dep.getWaitingTrajectoryEnvelope().getTrajectory();
+					oldPath = traj.getPoseSteering();
+					currentWaitingGoal = oldPath[oldPath.length-1].getPose();
+					break;
+				}
+			}
+			//Geometry[] obstacles = getObstaclesFromWaitingRobots(robotID);
+			int[] otherRobotIDs = new int[allRobots.size()-1];
+			int counter = 0;
+			for (int otherRobotID : allRobots) if (otherRobotID != robotID) otherRobotIDs[counter++] = otherRobotID;
+			Geometry[] obstacles = getObstaclesInCriticalPoints(otherRobotIDs);
+			metaCSPLogger.info("Attempting to re-plan path of Robot" + robotID + " (with obstacles for robots " + Arrays.toString(otherRobotIDs) + ")...");
+			PoseSteering[] newPath = doReplanning(currentWaitingPose, currentWaitingGoal, obstacles);
+			if (newPath != null && newPath.length > 0) {
+				PoseSteering[] newCompletePath = new PoseSteering[newPath.length+currentWaitingIndex];
+				for (int i = 0; i < newCompletePath.length; i++) {
+					if (i < currentWaitingIndex) newCompletePath[i] = oldPath[i];
+					else newCompletePath[i] = newPath[i-currentWaitingIndex];
+				}
+//				for (int i = 0; i < newCompletePath.length; i++) {
+//					if (i == currentWaitingIndex) System.out.println("--- current pose (" + currentWaitingIndex + ") ---");
+//					else if (i == currentWaitingIndex+1) System.out.println("--- new path starts below ---");
+//					System.out.println(newCompletePath[i].getPose() + " / " + (i < oldPath.length ? oldPath[i].getPose() : "N/A"));
+//				}
+				replacePath(robotID, newCompletePath);
+				replanningSpawned.remove(robotsToReplan);
+				replanning = false;
+				metaCSPLogger.info("Successfully re-planned path of Robot" + robotID);
+				break;
+			}
+			else {
+				metaCSPLogger.info("Failed to re-plan path of Robot" + robotID);
+			}
+		}
+		replanning = false;
 	}
 	
 	/**
@@ -810,14 +968,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			at.translate(p.getX(), p.getY());
 			obstacle = at.transform(obstacle);
 			ret.add(obstacle);
+			metaCSPLogger.fine("Made obstacle for Robot" + robotID + " in pose " + p);
 		}
 		return ret.toArray(new Geometry[ret.size()]);
-	}
-	
-	protected void rePlanPath(HashSet<Integer> robotsToReplan) {
-		String name = this.getClass().getName();
-		name += "."+Thread.currentThread().getStackTrace()[1].getMethodName();
-		metaCSPLogger.warning("Please override method " + name + " to specify how to replan!");
 	}
 
 	private boolean unsafePair(Dependency dep1, Dependency dep2) {
@@ -856,6 +1009,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		if (!canStopRobot1 && !canStopRobot2) {
 			metaCSPLogger.severe("** WARNING ** Neither robot can stop at " + cs);
 			//throw new Error("Neither robot can stop at " + cs);
+			if (robotReport1.getPathIndex() == 0) return false;
+			if (robotReport2.getPathIndex() == 0) return true;
 			if (cs.getTe1Start()-robotReport1.getPathIndex() < cs.getTe2Start()-robotReport2.getPathIndex()) return true;
 			return false;
 		}
@@ -1019,7 +1174,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 				//Both robots are driving, let's determine an ordering for them thru this critical section
 				else {
-
+										
 					//Neither robot has reached the critical section --> follow ordering heuristic if FW model allows it
 					if (robotReport1.getPathIndex() < cs.getTe1Start() && robotReport2.getPathIndex() < cs.getTe2Start()) {
 
@@ -1158,8 +1313,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			//Compute critical sections between driving and new envelopes
 			for (int i = 0; i < drivingEnvelopes.size(); i++) {
 				for (int j = 0; j < envelopesToTrack.size(); j++) {	
-					for (CriticalSection cs : getCriticalSections(drivingEnvelopes.get(i), envelopesToTrack.get(j))) {
-						this.allCriticalSections.add(cs);
+					if (!envelopesToTrack.get(j).equals(drivingEnvelopes.get(i))) {
+						for (CriticalSection cs : getCriticalSections(drivingEnvelopes.get(i), envelopesToTrack.get(j))) {
+							this.allCriticalSections.add(cs);
+						}
 					}
 				}
 			}	
@@ -1184,7 +1341,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				}
 			}
 
-			//Compute critical sections between new driving envelopes and current parking envelopes	
+			//Compute critical sections between NEW driving envelopes and current parking envelopes	
 			for (int i = 0; i < envelopesToTrack.size(); i++) {
 				for (int j = 0; j < currentParkingEnvelopes.size(); j++) {
 					if (envelopesToTrack.get(i).getRobotID() != currentParkingEnvelopes.get(j).getRobotID()) {
@@ -1208,58 +1365,65 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 */
 	public void replacePath(int robotID, PoseSteering[] newPath) {
 	
-		//Get current envelope
-		TrajectoryEnvelope te = this.getCurrentTrajectoryEnvelope(robotID);
-				
-		//Remove CSs involving this robot
-		ArrayList<CriticalSection> toRemove = new ArrayList<CriticalSection>();
-		for (CriticalSection cs : allCriticalSections) {
-			if (cs.getTe1().equals(te) || cs.getTe2().equals(te)) {
-				toRemove.add(cs);
-			}
-		}
-		for (CriticalSection cs : toRemove) {
-			this.criticalSectionsToDeps.remove(cs);
-			this.allCriticalSections.remove(cs);
-		}
-	
-		//Make new envelope
-		TrajectoryEnvelope newTE = solver.createEnvelopeNoParking(robotID, newPath, "Driving", this.getFootprint(robotID));
-		
-		//Notify tracker
-		this.trackers.get(robotID).updateTrajectoryEnvelope(newTE);
-		
-		//Stitch together with rest of constraint network (temporal constraints with parking envelopes etc.)
-		for (Constraint con : solver.getConstraintNetwork().getOutgoingEdges(te)) {
-			if (con instanceof AllenIntervalConstraint) {
-				AllenIntervalConstraint aic = (AllenIntervalConstraint)con;
-				if (aic.getTypes()[0].equals(AllenIntervalConstraint.Type.Meets)) {
-					TrajectoryEnvelope newEndParking = solver.createParkingEnvelope(robotID, PARKING_DURATION, newTE.getTrajectory().getPose()[newTE.getTrajectory().getPose().length-1], "whatever", getFootprint(robotID));
-					TrajectoryEnvelope oldEndParking = (TrajectoryEnvelope)aic.getTo();
-
-					solver.removeConstraints(solver.getConstraintNetwork().getIncidentEdges(te));
-					solver.removeVariable(te);
-					solver.removeConstraints(solver.getConstraintNetwork().getIncidentEdges(oldEndParking));
-					solver.removeVariable(oldEndParking);
+		synchronized (allCriticalSections) {
+			//Get current envelope
+			TrajectoryEnvelope te = this.getCurrentTrajectoryEnvelope(robotID);
 					
-					AllenIntervalConstraint newMeets = new AllenIntervalConstraint(AllenIntervalConstraint.Type.Meets);
-					newMeets.setFrom(newTE);
-					newMeets.setTo(newEndParking);
-					solver.addConstraint(newMeets);
-
-					break;
+			//Remove CSs involving this robot
+			ArrayList<CriticalSection> toRemove = new ArrayList<CriticalSection>();
+			for (CriticalSection cs : allCriticalSections) {
+				if (cs.getTe1().equals(te) || cs.getTe2().equals(te)) {
+					toRemove.add(cs);
 				}
 			}
-		}
+			for (CriticalSection cs : toRemove) {
+				this.criticalSectionsToDeps.remove(cs);
+				this.allCriticalSections.remove(cs);
+			}
 		
-		if (viz != null) {
-			viz.removeEnvelope(te);
-			viz.addEnvelope(newTE);
+			//Make new envelope
+			TrajectoryEnvelope newTE = solver.createEnvelopeNoParking(robotID, newPath, "Driving", this.getFootprint(robotID));
+	
+			//Notify tracker
+			this.trackers.get(robotID).updateTrajectoryEnvelope(newTE);
+			
+			//Stitch together with rest of constraint network (temporal constraints with parking envelopes etc.)
+			for (Constraint con : solver.getConstraintNetwork().getOutgoingEdges(te)) {
+				if (con instanceof AllenIntervalConstraint) {
+					AllenIntervalConstraint aic = (AllenIntervalConstraint)con;
+					if (aic.getTypes()[0].equals(AllenIntervalConstraint.Type.Meets)) {
+						TrajectoryEnvelope newEndParking = solver.createParkingEnvelope(robotID, PARKING_DURATION, newTE.getTrajectory().getPose()[newTE.getTrajectory().getPose().length-1], "whatever", getFootprint(robotID));
+						TrajectoryEnvelope oldEndParking = (TrajectoryEnvelope)aic.getTo();
+	
+						solver.removeConstraints(solver.getConstraintNetwork().getIncidentEdges(te));
+						solver.removeVariable(te);
+						solver.removeConstraints(solver.getConstraintNetwork().getIncidentEdges(oldEndParking));
+						solver.removeVariable(oldEndParking);
+						
+						AllenIntervalConstraint newMeets = new AllenIntervalConstraint(AllenIntervalConstraint.Type.Meets);
+						newMeets.setFrom(newTE);
+						newMeets.setTo(newEndParking);
+						solver.addConstraint(newMeets);
+	
+						break;
+					}
+				}
+			}
+			
+			if (viz != null) {
+				viz.removeEnvelope(te);
+				viz.addEnvelope(newTE);
+			}
+			
+			//Add as if it were a new envelope, that way it will be accounted for in computeCriticalSections()
+			envelopesToTrack.add(newTE);
+			
+			//Recompute CSs involving this robot
+			computeCriticalSections();
+			updateDependencies();
+	
+			envelopesToTrack.remove(newTE);
 		}
-		
-		//Recompute CSs involving this robot
-		computeCriticalSections();
-		updateDependencies();
 	}
 	
 	/**
