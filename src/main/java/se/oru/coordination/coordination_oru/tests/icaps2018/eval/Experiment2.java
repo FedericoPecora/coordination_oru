@@ -182,6 +182,8 @@ public class Experiment2 {
 		initStat(statFilename, header);
 
 		//Sleep a little so we can start Rviz and perhaps screencapture ;)
+		//Create rviz config file by uncommenting the following line
+		//RVizVisualization.writeRVizConfigFile(robotIDs);
 		//To visualize, run "rosrun rviz rviz -d ~/config.rviz"
 		Thread.sleep(5000);
 		
