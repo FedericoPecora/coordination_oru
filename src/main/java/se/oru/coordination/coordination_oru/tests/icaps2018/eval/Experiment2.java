@@ -63,7 +63,7 @@ public class Experiment2 {
 
 		double MAX_ACCEL = 3.0;
 		double MAX_VEL = 14.0;
-		int CONTROL_PERIOD = 200;
+		int CONTROL_PERIOD = 1000;
 		//Instantiate a trajectory envelope coordinator.
 		//The TrajectoryEnvelopeCoordinatorSimulation implementation provides
 		// -- the factory method getNewTracker() which returns a trajectory envelope tracker
