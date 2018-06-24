@@ -2,6 +2,7 @@ package se.oru.coordination.coordination_oru.tests.icaps2018.eval;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Calendar;
 import java.util.Comparator;
@@ -120,9 +121,10 @@ public class Experiment2 {
 		rsp.setTurningRadius(4.0);
 		rsp.setDistanceBetweenPathPoints(0.3);
 		
-		//In case deadlocks occur, we make the coordinator capable of re-planning on the fly
+		//In case deadlocks occur, we make the coordinator capable of re-planning on the fly (experimental, not working properly yet)
 		tec.setMotionPlanner(rsp);
 		
+		boolean cachePaths = false;
 		String outputDir = "paths";
 		boolean clearOutput = false;
 		if (clearOutput) {
@@ -144,20 +146,22 @@ public class Experiment2 {
 			tec.placeRobot(robotID, startLoc);
 			System.out.println("Placed Robot" + robotID + " in " + startLocName);
 
-			//If path exists, load it!
+			//If path exists and we have cachePaths flag set to true, load and save computed paths
 			String pathFilename = outputDir+File.separator+startLocName+"-"+endLocName+".path";
 			String pathFilenameInv = outputDir+File.separator+endLocName+"-"+startLocName+".path";
 			PoseSteering[] path = null;
 			PoseSteering[] pathInv = null;
 			File f = new File(pathFilename);
-			if(!f.exists()) { 
+			if(!cachePaths || (cachePaths && !f.exists())) { 
 				rsp.setStart(startLoc);
 				rsp.setGoals(endLoc);
 				rsp.plan();
 				path = rsp.getPath();
 				pathInv = rsp.getPathInv();
-				Missions.writePath(pathFilename, path);
-				Missions.writePath(pathFilenameInv, pathInv);
+				if (cachePaths) {
+					Missions.writePath(pathFilename, path);
+					Missions.writePath(pathFilenameInv, pathInv);
+				}
 			}
 			else {
 				path = Missions.loadPathFromFile(pathFilename);
@@ -178,6 +182,7 @@ public class Experiment2 {
 		initStat(statFilename, header);
 
 		//Sleep a little so we can start Rviz and perhaps screencapture ;)
+		//To visualize, run "rosrun rviz rviz -d ~/config.rviz"
 		Thread.sleep(5000);
 		
 		//Start a mission dispatching thread for each robot, which will run forever
