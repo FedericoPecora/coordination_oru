@@ -354,6 +354,16 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					trackers.get(robotID).setCriticalPoint(criticalPoint);
 				}
 			}
+			else {
+				if (!communicatedCPs.containsKey(trackers.get(robotID)) || !communicatedCPs.get(trackers.get(robotID)).equals(criticalPoint) ) {
+					System.out.println("NOT SKIPPING robot" + robotID + " CP: " + criticalPoint);
+					communicatedCPs.put(trackers.get(robotID), criticalPoint);
+					trackers.get(robotID).setCriticalPoint(criticalPoint);
+				}
+				else {
+					System.out.println("SKIPPING robot" + robotID + " CP: " + criticalPoint);					
+				}
+			}
 		}
 	}
 
@@ -1421,6 +1431,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			//Recompute CSs involving this robot
 			computeCriticalSections();
 			updateDependencies();
+			
+			communicatedCPs.remove(trackers.get(robotID));
 	
 			envelopesToTrack.remove(newTE);
 		}
