@@ -4,6 +4,11 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionListener;
+import java.awt.geom.AffineTransform;
+import java.awt.geom.NoninvertibleTransformException;
+import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -30,7 +35,7 @@ import com.vividsolutions.jts.geom.Coordinate;
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.util.splines.BezierSplineFactory;
 
-public class PathEditor2 {
+public class PathEditor2 implements MouseMotionListener {
 
 	private static int newLocationCounter = 0;
 	private String selectionsFile = null;
@@ -50,6 +55,8 @@ public class PathEditor2 {
 	private ArrayList<ArrayList<Integer>> selectedLocationsInts = null;
 	private HashMap<Integer,ArrayList<Integer>> selectionGroupsToSelections = null;
 	private int selectedGroup = -1;
+	
+	private Point2D mousePosition = null;
 
 	private String selectionString = "";
 	private ArrayList<Integer> selectedLocationsInt = new ArrayList<Integer>();
@@ -178,6 +185,8 @@ public class PathEditor2 {
 			this.selectionsFile = selectionsF;
 			loadSelectionsFile();
 		}
+		
+		panel.addMouseMotionListener(this);
 
 
 	}
@@ -661,25 +670,43 @@ public class PathEditor2 {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				if (!selectedLocationsInt.isEmpty()) {
-					ArrayList<Integer> newSelection = new ArrayList<Integer>();
-					selectionString = locationIDs.size() + "-" + (locationIDs.size()+selectedLocationsInt.size()-1);
-					for (int selectedLocationOneInt : selectedLocationsInt) {
+//					if (selectedLocationsInt.size() > 1) {
+//						ArrayList<Integer> newSelection = new ArrayList<Integer>();
+//						selectionString = locationIDs.size() + "-" + (locationIDs.size()+selectedLocationsInt.size()-1);
+//						for (int selectedLocationOneInt : selectedLocationsInt) {
+//							Pose pOld = Missions.getLocation(locationIDs.get(selectedLocationOneInt));
+//							Pose pNew = new Pose(pOld.getX()+10*deltaX, pOld.getY()+10*deltaY, pOld.getTheta());
+//							String newPoseName = "AUX_"+newLocationCounter++;
+//							Missions.setLocation(newPoseName, pNew);
+//							locationIDs.add(newPoseName);
+//							newSelection.add(locationIDs.size()-1);
+//							panel.addArrow((locationIDs.size()-1)+":"+newPoseName, pNew, Color.green);
+//						}
+//						clearLocations();
+//						selectedLocationsInt = newSelection;
+//						System.out.println("Inserted new locations " + selectedLocationsInt);
+//						highlightSelectedLocations();
+//					}
+//					else {
+						selectionString = locationIDs.size() + "-" + (locationIDs.size()+selectedLocationsInt.size()-1);
+						int selectedLocationOneInt = selectedLocationsInt.get(selectedLocationsInt.size()-1);
 						Pose pOld = Missions.getLocation(locationIDs.get(selectedLocationOneInt));
-						Pose pNew = new Pose(pOld.getX()+10*deltaX, pOld.getY()+10*deltaY, pOld.getTheta());
+						double theta = Math.atan2(pOld.getY() - mousePosition.getY(), pOld.getX() - mousePosition.getX());
+						Pose pNew = new Pose(mousePosition.getX(), mousePosition.getY(), theta);
 						String newPoseName = "AUX_"+newLocationCounter++;
 						Missions.setLocation(newPoseName, pNew);
 						locationIDs.add(newPoseName);
-						newSelection.add(locationIDs.size()-1);
+						selectedLocationsInt.add(locationIDs.size()-1);
 						panel.addArrow((locationIDs.size()-1)+":"+newPoseName, pNew, Color.green);
-					}
-					clearLocations();
-					selectedLocationsInt = newSelection;
-					System.out.println("Inserted new locations " + selectedLocationsInt);
-					highlightSelectedLocations();
+						clearLocations();
+						System.out.println("Inserted new locations " + selectedLocationsInt);
+						highlightSelectedLocations();
+//					}
 				}
 				else {
 					ArrayList<Integer> newSelection = new ArrayList<Integer>();
-					Pose pNew = new Pose(0.0, 0.0, 0.0);
+					//Pose pNew = new Pose(0.0, 0.0, 0.0);
+					Pose pNew = new Pose(mousePosition.getX(), mousePosition.getY(), 0.0);
 					String newPoseName = "AUX_"+newLocationCounter++;
 					Missions.setLocation(newPoseName, pNew);
 					locationIDs.add(newPoseName);
@@ -1259,6 +1286,25 @@ public class PathEditor2 {
 //		//new PathEditor2(locAndPathFilename,mapFilename);
 //		new PathEditor2(locAndPathFilename,mapFilename,selectionsFile);
 				
+	}
+
+	@Override
+	public void mouseDragged(MouseEvent e) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void mouseMoved(MouseEvent e) {
+		AffineTransform geomToScreen = panel.getMapTransform();
+		try {
+			AffineTransform geomToScreenInv = geomToScreen.createInverse();
+			this.mousePosition = geomToScreenInv.transform(new Point2D.Double(e.getX(),e.getY()), null);
+			//System.out.println(mousePosition);
+		} catch (NoninvertibleTransformException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
 	}
 
 }
