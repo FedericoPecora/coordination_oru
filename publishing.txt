@@ -1,2 +1,2 @@
-git tag -a 0.3.3 -m "Release 0.3.3"
-git push origin 0.3.3
+git tag -a 0.3.5 -m "Release 0.3.5"
+git push origin 0.3.5

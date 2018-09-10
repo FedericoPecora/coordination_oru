@@ -78,7 +78,7 @@ public abstract class AbstractMotionPlanner {
 		this.mapResolution = res;
 	}
 	
-	public void addObstacles(Geometry ... geom) {
+	public synchronized void addObstacles(Geometry ... geom) {
 		if (this.mapFilename == null) throw new Error("Please set a map file first!");
 		BufferedImage img = null;
 		try {
@@ -104,7 +104,7 @@ public abstract class AbstractMotionPlanner {
 		catch (IOException e) { e.printStackTrace(); }		
 	}
 
-	public void addObstacles(Geometry geom, Pose ... poses) {
+	public synchronized void addObstacles(Geometry geom, Pose ... poses) {
 		if (this.mapFilename == null) throw new Error("Please set a map file first!");
 		BufferedImage img = null;
 		try {
@@ -137,7 +137,7 @@ public abstract class AbstractMotionPlanner {
 		catch (IOException e) { e.printStackTrace(); }
 	}
 
-	public void clearObstacles() {
+	public synchronized void clearObstacles() {
 		this.obstacles.clear();
 		this.setMapFilename(this.mapFilenameBAK);
 	}
@@ -155,7 +155,7 @@ public abstract class AbstractMotionPlanner {
 
 	public abstract boolean doPlanning();
 	
-	public boolean plan() {
+	public synchronized boolean plan() {
 		
 		GeometryFactory gf = new GeometryFactory();
 		Coordinate[] newFoot = new Coordinate[footprintCoords.length+1];
