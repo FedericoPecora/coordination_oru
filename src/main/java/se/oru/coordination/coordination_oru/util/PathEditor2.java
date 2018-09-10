@@ -16,6 +16,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Scanner;
 import java.util.Map.Entry;
@@ -253,6 +254,18 @@ public class PathEditor2 implements MouseMotionListener {
 		panel.updatePanel();
 	}
 
+	public void removeKnownLocation(String locationName) {
+		int toRemove = -1;
+		for (int i = 0; i < locationIDs.size(); i++) {
+			if (locationIDs.get(i).equals(locationName)) {
+				panel.removeGeometry(i+":"+locationIDs.get(i));
+				toRemove = i;
+				break;
+			}
+		}
+		locationIDs.remove(toRemove);
+	}
+	
 	public void removeAllKnownLocations() {
 		for (int i = 0; i < locationIDs.size(); i++) {
 			panel.removeGeometry(i+":"+locationIDs.get(i));
@@ -773,7 +786,41 @@ public class PathEditor2 implements MouseMotionListener {
 			}
 		};
 		panel.getActionMap().put("Compute spline for all preset selections",actSplineAll);
+
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_R,0),"Reverse order of selection");
+		AbstractAction reverseSelection = new AbstractAction() {
+			private static final long serialVersionUID = -3238585469762733293L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (selectedLocationsInt.size() >= 2) {
+					Collections.reverse(selectedLocationsInt);
+					clearLocations();
+					System.out.println("Reversed selection: " + selectedLocationsInt);
+					highlightSelectedLocations();
+					
+				}
+			}
+		};
+		panel.getActionMap().put("Reverse order of selection",reverseSelection);
 		
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_U,0),"Remove last element of selection");
+		AbstractAction removeLastInSelection = new AbstractAction() {
+			private static final long serialVersionUID = -3348585469762733293L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (selectedLocationsInt.size() >= 1) {
+					int selectedLocationOneInt = selectedLocationsInt.remove(selectedLocationsInt.size()-1);
+					String locationName = locationIDs.get(selectedLocationOneInt);
+					Missions.removeLocation(locationName);
+					removeKnownLocation(locationName);
+					clearLocations();
+					System.out.println("Removed last element of selection: " + selectedLocationsInt);
+					highlightSelectedLocations();
+				}
+			}
+		};
+		panel.getActionMap().put("Remove last element of selection",removeLastInSelection);
+
 		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_P,KeyEvent.ALT_DOWN_MASK),"Plan path between selected locations");
 		AbstractAction actPlan = new AbstractAction() {
 			private static final long serialVersionUID = -3238585469762752293L;
