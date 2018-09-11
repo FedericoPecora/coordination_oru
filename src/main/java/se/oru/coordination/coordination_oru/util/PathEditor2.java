@@ -640,6 +640,30 @@ public class PathEditor2 implements MouseMotionListener {
 			}
 		};
 		panel.getActionMap().put("Delete path between selected locations",actDelete);
+		
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_C,0),"Concatenate paths traversing selection");
+		AbstractAction actMergePaths = new AbstractAction() {
+			private static final long serialVersionUID = 4455371118322388356L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (selectedLocationsInt.size() > 2) {
+					ArrayList<PoseSteering> newPath = new ArrayList<PoseSteering>();
+					for (int i = 0; i < selectedLocationsInt.size()-1; i++) {
+						String pathName = locationIDs.get(selectedLocationsInt.get(i)) + "->" + locationIDs.get(selectedLocationsInt.get(i+1));
+						System.out.println("\tdoing " + pathName);
+						ArrayList<PoseSteering> path = allPaths.get(pathName);
+						for (int j = 0; j < path.size(); j++) {
+							if (j > 0 || (j == 0 && i == 0)) newPath.add(path.get(j));
+						}
+					}
+					String newPathName = locationIDs.get(selectedLocationsInt.get(0)) + "->" + locationIDs.get(selectedLocationsInt.get(selectedLocationsInt.size()-1));
+					allPaths.put(newPathName, newPath);
+					System.out.println("Concatenated paths: " + newPathName);
+				}
+			}
+		};
+		panel.getActionMap().put("Concatenate paths traversing selection",actMergePaths);
+		
 
 		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE,KeyEvent.SHIFT_DOWN_MASK),"Delete path between all locations");
 		AbstractAction actDeleteAll = new AbstractAction() {
@@ -676,6 +700,45 @@ public class PathEditor2 implements MouseMotionListener {
 			}
 		};
 		panel.getActionMap().put("Delete selected location(s)",actDeleteLoc);
+
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_W,0),"Add location nearest to mouse pointer to current selection");
+		AbstractAction actAddNearest = new AbstractAction() {
+			private static final long serialVersionUID = 3855143731365388356L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				Coordinate mouseCoord = new Coordinate(mousePosition.getX(), mousePosition.getY());
+				double min = Double.MAX_VALUE;
+				int locID = -1;
+				for (int i = 0; i < locationIDs.size(); i++) {
+					Coordinate locPosition = Missions.getLocation(locationIDs.get(i)).getPosition();
+					double dist = locPosition.distance(mouseCoord);
+					if (dist < min) {
+						min = dist;
+						locID = i;
+					}
+				}
+				if (locID != -1) {
+					selectedLocationsInt.add(locID);
+					System.out.println("Added location nearest pointer to selection: " + selectedLocationsInt);
+					highlightSelectedLocations();
+				}
+			}
+		};
+		panel.getActionMap().put("Add location nearest to mouse pointer to current selection",actAddNearest);
+		
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_Z,0),"Deselect last added element of the selection stack");
+		AbstractAction actRemoveLastAdded = new AbstractAction() {
+			private static final long serialVersionUID = 3855143731335358356L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (!selectedLocationsInt.isEmpty()) {
+					selectedLocationsInt.remove(selectedLocationsInt.size()-1);
+					System.out.println("Deselected last element of selection: " + selectedLocationsInt);
+					highlightSelectedLocations();
+				}
+			}
+		};
+		panel.getActionMap().put("Deselect last added element of the selection stack",actRemoveLastAdded);
 		
 		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_INSERT,0),"Add locations(s)");
 		AbstractAction actInsert = new AbstractAction() {
@@ -683,38 +746,19 @@ public class PathEditor2 implements MouseMotionListener {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				if (!selectedLocationsInt.isEmpty()) {
-//					if (selectedLocationsInt.size() > 1) {
-//						ArrayList<Integer> newSelection = new ArrayList<Integer>();
-//						selectionString = locationIDs.size() + "-" + (locationIDs.size()+selectedLocationsInt.size()-1);
-//						for (int selectedLocationOneInt : selectedLocationsInt) {
-//							Pose pOld = Missions.getLocation(locationIDs.get(selectedLocationOneInt));
-//							Pose pNew = new Pose(pOld.getX()+10*deltaX, pOld.getY()+10*deltaY, pOld.getTheta());
-//							String newPoseName = "AUX_"+newLocationCounter++;
-//							Missions.setLocation(newPoseName, pNew);
-//							locationIDs.add(newPoseName);
-//							newSelection.add(locationIDs.size()-1);
-//							panel.addArrow((locationIDs.size()-1)+":"+newPoseName, pNew, Color.green);
-//						}
-//						clearLocations();
-//						selectedLocationsInt = newSelection;
-//						System.out.println("Inserted new locations " + selectedLocationsInt);
-//						highlightSelectedLocations();
-//					}
-//					else {
-						selectionString = locationIDs.size() + "-" + (locationIDs.size()+selectedLocationsInt.size()-1);
-						int selectedLocationOneInt = selectedLocationsInt.get(selectedLocationsInt.size()-1);
-						Pose pOld = Missions.getLocation(locationIDs.get(selectedLocationOneInt));
-						double theta = Math.atan2(pOld.getY() - mousePosition.getY(), pOld.getX() - mousePosition.getX());
-						Pose pNew = new Pose(mousePosition.getX(), mousePosition.getY(), theta);
-						String newPoseName = "AUX_"+newLocationCounter++;
-						Missions.setLocation(newPoseName, pNew);
-						locationIDs.add(newPoseName);
-						selectedLocationsInt.add(locationIDs.size()-1);
-						panel.addArrow((locationIDs.size()-1)+":"+newPoseName, pNew, Color.green);
-						clearLocations();
-						System.out.println("Inserted new locations " + selectedLocationsInt);
-						highlightSelectedLocations();
-//					}
+					selectionString = locationIDs.size() + "-" + (locationIDs.size()+selectedLocationsInt.size()-1);
+					int selectedLocationOneInt = selectedLocationsInt.get(selectedLocationsInt.size()-1);
+					Pose pOld = Missions.getLocation(locationIDs.get(selectedLocationOneInt));
+					double theta = Math.atan2(pOld.getY() - mousePosition.getY(), pOld.getX() - mousePosition.getX());
+					Pose pNew = new Pose(mousePosition.getX(), mousePosition.getY(), theta);
+					String newPoseName = "AUX_"+newLocationCounter++;
+					Missions.setLocation(newPoseName, pNew);
+					locationIDs.add(newPoseName);
+					selectedLocationsInt.add(locationIDs.size()-1);
+					panel.addArrow((locationIDs.size()-1)+":"+newPoseName, pNew, Color.green);
+					clearLocations();
+					System.out.println("Inserted new locations " + selectedLocationsInt);
+					highlightSelectedLocations();
 				}
 				else {
 					ArrayList<Integer> newSelection = new ArrayList<Integer>();
@@ -803,7 +847,7 @@ public class PathEditor2 implements MouseMotionListener {
 		};
 		panel.getActionMap().put("Reverse order of selection",reverseSelection);
 		
-		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_U,0),"Remove last element of selection");
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_U,0),"Delete last element of selection");
 		AbstractAction removeLastInSelection = new AbstractAction() {
 			private static final long serialVersionUID = -3348585469762733293L;
 			@Override
@@ -814,12 +858,12 @@ public class PathEditor2 implements MouseMotionListener {
 					Missions.removeLocation(locationName);
 					removeKnownLocation(locationName);
 					clearLocations();
-					System.out.println("Removed last element of selection: " + selectedLocationsInt);
+					System.out.println("Deleted last element of selection: " + selectedLocationsInt);
 					highlightSelectedLocations();
 				}
 			}
 		};
-		panel.getActionMap().put("Remove last element of selection",removeLastInSelection);
+		panel.getActionMap().put("Delete last element of selection",removeLastInSelection);
 
 		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_P,KeyEvent.ALT_DOWN_MASK),"Plan path between selected locations");
 		AbstractAction actPlan = new AbstractAction() {
