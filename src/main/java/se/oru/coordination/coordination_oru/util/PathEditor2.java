@@ -250,6 +250,7 @@ public class PathEditor2 implements MouseMotionListener {
 			for (int i = 0; i < path.size(); i++) {
 				panel.addArrow(pathName+"."+i, path.get(i).getPose(), Color.blue);
 			}
+			panel.addArrow(pathName+".all", path.get(0).getPose(), path.get(path.size()-1).getPose(), Color.lightGray);
 		}
 		panel.updatePanel();
 	}
@@ -258,7 +259,7 @@ public class PathEditor2 implements MouseMotionListener {
 		int toRemove = -1;
 		for (int i = 0; i < locationIDs.size(); i++) {
 			if (locationIDs.get(i).equals(locationName)) {
-				panel.removeGeometry(i+":"+locationIDs.get(i));
+				panel.removeGeometry("LOC:"+locationIDs.get(i));
 				toRemove = i;
 				break;
 			}
@@ -268,7 +269,7 @@ public class PathEditor2 implements MouseMotionListener {
 	
 	public void removeAllKnownLocations() {
 		for (int i = 0; i < locationIDs.size(); i++) {
-			panel.removeGeometry(i+":"+locationIDs.get(i));
+			panel.removeGeometry("LOC:"+locationIDs.get(i));
 		}
 	}
 	
@@ -276,7 +277,7 @@ public class PathEditor2 implements MouseMotionListener {
 		locationIDs = new ArrayList<String>();
 		for (Entry<String,Pose> entry : Missions.getLocations().entrySet()) {
 			if (entry.getKey().startsWith("AUX_")) newLocationCounter++;
-			panel.addArrow((locationIDs.size())+":"+entry.getKey(), entry.getValue(), Color.green);
+			panel.addArrow("LOC:"+entry.getKey(), entry.getValue(), Color.green);
 			locationIDs.add(entry.getKey());
 		}
 	}
@@ -346,7 +347,7 @@ public class PathEditor2 implements MouseMotionListener {
 		clearLocations();
 		for (int selectedPathPointOneInt : selectedLocationsInt) {
 			if (selectedPathPointOneInt >= 0 && selectedPathPointOneInt < locationIDs.size()) {
-				panel.addArrow(selectedPathPointOneInt+":"+locationIDs.get(selectedPathPointOneInt), Missions.getLocation(locationIDs.get(selectedPathPointOneInt)), Color.red);
+				panel.addArrow("LOC:"+locationIDs.get(selectedPathPointOneInt), Missions.getLocation(locationIDs.get(selectedPathPointOneInt)), Color.red);
 			}
 		}
 		panel.updatePanel();
@@ -354,7 +355,7 @@ public class PathEditor2 implements MouseMotionListener {
 		
 	private void clearLocations() {
 		for (int i = 0; i < locationIDs.size(); i++) {
-			panel.addArrow(i+":"+locationIDs.get(i), Missions.getLocation(locationIDs.get(i)), Color.green);
+			panel.addArrow("LOC:"+locationIDs.get(i), Missions.getLocation(locationIDs.get(i)), Color.green);
 		}
 		panel.updatePanel();
 	}
@@ -629,11 +630,21 @@ public class PathEditor2 implements MouseMotionListener {
 			public void actionPerformed(ActionEvent e) {
 				if (selectedLocationsInt.size() >= 2) {
 					String pathName = locationIDs.get(selectedLocationsInt.get(0)) + "->" + locationIDs.get(selectedLocationsInt.get(selectedLocationsInt.size()-1));
+					String pathNameInv =  locationIDs.get(selectedLocationsInt.get(selectedLocationsInt.size()-1)) + "->" + locationIDs.get(selectedLocationsInt.get(0));
 					ArrayList<PoseSteering> pathToRemove = allPaths.get(pathName);
+					ArrayList<PoseSteering> pathToRemoveInv = allPaths.get(pathNameInv);
 					if (pathToRemove != null) {
 						for (int i = 0; i < pathToRemove.size(); i++) panel.removeGeometry(pathName+"."+i);
+						panel.removeGeometry(pathName+".all");
 						allPaths.remove(pathName);
 						System.out.println("Removed path " + pathName);
+						updatePaths();
+					}
+					if (pathToRemoveInv != null) {
+						for (int i = 0; i < pathToRemoveInv.size(); i++) panel.removeGeometry(pathNameInv+"."+i);
+						panel.removeGeometry(pathNameInv+".all");
+						allPaths.remove(pathNameInv);
+						System.out.println("Removed path " + pathNameInv);
 						updatePaths();
 					}
 				}
@@ -648,6 +659,7 @@ public class PathEditor2 implements MouseMotionListener {
 			public void actionPerformed(ActionEvent e) {
 				if (selectedLocationsInt.size() > 2) {
 					ArrayList<PoseSteering> newPath = new ArrayList<PoseSteering>();
+					ArrayList<PoseSteering> newPathInv = new ArrayList<PoseSteering>();
 					for (int i = 0; i < selectedLocationsInt.size()-1; i++) {
 						String pathName = locationIDs.get(selectedLocationsInt.get(i)) + "->" + locationIDs.get(selectedLocationsInt.get(i+1));
 						System.out.println("\tdoing " + pathName);
@@ -657,7 +669,12 @@ public class PathEditor2 implements MouseMotionListener {
 						}
 					}
 					String newPathName = locationIDs.get(selectedLocationsInt.get(0)) + "->" + locationIDs.get(selectedLocationsInt.get(selectedLocationsInt.size()-1));
+					String newPathNameInv = locationIDs.get(selectedLocationsInt.get(selectedLocationsInt.size()-1)) + "->" + locationIDs.get(selectedLocationsInt.get(0)); 
+					for (PoseSteering ps : newPath) newPathInv.add(ps);
+					Collections.reverse(newPathInv);
 					allPaths.put(newPathName, newPath);
+					allPaths.put(newPathNameInv, newPathInv);
+					updatePaths();
 					System.out.println("Concatenated paths: " + newPathName);
 				}
 			}
@@ -717,9 +734,10 @@ public class PathEditor2 implements MouseMotionListener {
 						locID = i;
 					}
 				}
-				if (locID != -1) {
+				if (locID != -1 && !selectedLocationsInt.contains(locID)) {
 					selectedLocationsInt.add(locID);
 					System.out.println("Added location nearest pointer to selection: " + selectedLocationsInt);
+					clearLocations();
 					highlightSelectedLocations();
 				}
 			}
@@ -755,7 +773,7 @@ public class PathEditor2 implements MouseMotionListener {
 					Missions.setLocation(newPoseName, pNew);
 					locationIDs.add(newPoseName);
 					selectedLocationsInt.add(locationIDs.size()-1);
-					panel.addArrow((locationIDs.size()-1)+":"+newPoseName, pNew, Color.green);
+					//panel.addArrow((locationIDs.size()-1)+":"+newPoseName, pNew, Color.green);
 					clearLocations();
 					System.out.println("Inserted new locations " + selectedLocationsInt);
 					highlightSelectedLocations();
@@ -768,7 +786,7 @@ public class PathEditor2 implements MouseMotionListener {
 					Missions.setLocation(newPoseName, pNew);
 					locationIDs.add(newPoseName);
 					newSelection.add(locationIDs.size()-1);
-					panel.addArrow((locationIDs.size()-1)+":"+newPoseName, pNew, Color.green);
+					//panel.addArrow((locationIDs.size()-1)+":"+newPoseName, pNew, Color.green);
 					clearLocations();
 					selectedLocationsInt = newSelection;
 					System.out.println("Inserted new locations " + selectedLocationsInt);
@@ -793,6 +811,11 @@ public class PathEditor2 implements MouseMotionListener {
 				}
 				String pathName = locationIDs.get(selectedLocationsInt.get(0))+"->"+locationIDs.get(selectedLocationsInt.get(selectedLocationsInt.size()-1));
 				allPaths.put(pathName, overallPath);
+				String pathNameInv = locationIDs.get(selectedLocationsInt.get(selectedLocationsInt.size()-1))+"->"+locationIDs.get(selectedLocationsInt.get(0));
+				ArrayList<PoseSteering> overallPathInv = new ArrayList<PoseSteering>();
+				for (PoseSteering ps : overallPath) overallPathInv.add(ps);
+				Collections.reverse(overallPathInv);
+				allPaths.put(pathNameInv, overallPathInv);
 				updatePaths();
 			}
 		};
@@ -813,7 +836,9 @@ public class PathEditor2 implements MouseMotionListener {
 				for (ArrayList<Integer> onePreset : selectionsToPlan) {
 					if (onePreset.size() >= 2) {
 						ArrayList<PoseSteering> overallPath = new ArrayList<PoseSteering>();
+						ArrayList<PoseSteering> overallPathInv = new ArrayList<PoseSteering>();
 						String pathName = locationIDs.get(onePreset.get(0))+"->"+locationIDs.get(onePreset.get(onePreset.size()-1));
+						String pathNameInv = locationIDs.get(onePreset.get(onePreset.size()-1))+"->"+locationIDs.get(onePreset.get(0));
 						if (!allPaths.containsKey(pathName)) {
 							for (int i = 0; i < onePreset.size()-1; i++) {
 								Pose startPose = Missions.getLocation(locationIDs.get(onePreset.get(i)));
@@ -823,6 +848,9 @@ public class PathEditor2 implements MouseMotionListener {
 								for (int j = 1; j < path.length; j++) overallPath.add(path[j]);
 							}
 							allPaths.put(pathName, overallPath);
+							for (PoseSteering ps : overallPath) overallPathInv.add(ps);
+							Collections.reverse(overallPathInv);
+							allPaths.put(pathNameInv, overallPathInv);
 						}
 					}
 				}
@@ -879,9 +907,16 @@ public class PathEditor2 implements MouseMotionListener {
 					PoseSteering[] newPath = computePath(startPose,goalPoses);
 					if (newPath != null) {
 						String pathName = locationIDs.get(selectedLocationsInt.get(0))+"->"+locationIDs.get(selectedLocationsInt.get(selectedLocationsInt.size()-1));
+						String pathNameInv = locationIDs.get(selectedLocationsInt.get(selectedLocationsInt.size()-1))+"->"+locationIDs.get(selectedLocationsInt.get(0));
 						ArrayList<PoseSteering> newPathAL = new ArrayList<PoseSteering>();
-						for (PoseSteering ps : newPath) newPathAL.add(ps);
+						ArrayList<PoseSteering> newPathALInv = new ArrayList<PoseSteering>();
+						for (PoseSteering ps : newPath) {
+							newPathAL.add(ps);
+							newPathALInv.add(ps);
+						}
+						Collections.reverse(newPathALInv);
 						allPaths.put(pathName,newPathAL);
+						allPaths.put(pathNameInv,newPathALInv);
 						updatePaths();
 					}
 				}
@@ -897,6 +932,7 @@ public class PathEditor2 implements MouseMotionListener {
 				for (ArrayList<Integer> onePreset : selectedLocationsInts) {
 					if (onePreset.size() >= 2) {
 						String pathName = locationIDs.get(onePreset.get(0))+"->"+locationIDs.get(onePreset.get(onePreset.size()-1));
+						String pathNameInv = locationIDs.get(onePreset.get(onePreset.size()-1))+"->"+locationIDs.get(onePreset.get(0));
 						if (!allPaths.containsKey(pathName)) {
 							Pose startPose = Missions.getLocation(locationIDs.get(onePreset.get(0)));
 							Pose[] goalPoses = new Pose[onePreset.size()-1];
@@ -906,8 +942,14 @@ public class PathEditor2 implements MouseMotionListener {
 							PoseSteering[] newPath = computePath(startPose,goalPoses);
 							if (newPath != null) {
 								ArrayList<PoseSteering> newPathAL = new ArrayList<PoseSteering>();
-								for (PoseSteering ps : newPath) newPathAL.add(ps);
+								ArrayList<PoseSteering> newPathALInv = new ArrayList<PoseSteering>();
+								for (PoseSteering ps : newPath) {
+									newPathAL.add(ps);
+									newPathALInv.add(ps);
+								}
 								allPaths.put(pathName,newPathAL);
+								Collections.reverse(newPathALInv);
+								allPaths.put(pathNameInv,newPathALInv);
 							}
 						}
 					}
@@ -931,7 +973,7 @@ public class PathEditor2 implements MouseMotionListener {
 						x -= deltaX;
 						Pose newPose = new Pose(x,y,th);
 						Missions.setLocation(locationName, newPose);
-						panel.addArrow(selectedLocationOneInt+":"+locationName, newPose, Color.green);
+						panel.addArrow("LOC:"+locationName, newPose, Color.green);
 						highlightSelectedLocations();
 					}
 				}
@@ -953,7 +995,7 @@ public class PathEditor2 implements MouseMotionListener {
 						x -= (10*deltaX);
 						Pose newPose = new Pose(x,y,th);
 						Missions.setLocation(locationName, newPose);
-						panel.addArrow(selectedPathPointOneInt+":"+locationName, newPose, Color.green);
+						panel.addArrow("LOC:"+locationName, newPose, Color.green);
 						highlightSelectedLocations();
 					}
 				}
@@ -975,7 +1017,7 @@ public class PathEditor2 implements MouseMotionListener {
 						x += deltaX;
 						Pose newPose = new Pose(x,y,th);
 						Missions.setLocation(locationName, newPose);
-						panel.addArrow(selectedPathPointOneInt+":"+locationName, newPose, Color.green);
+						panel.addArrow("LOC:"+locationName, newPose, Color.green);
 						highlightSelectedLocations();
 					}
 				}
@@ -997,7 +1039,7 @@ public class PathEditor2 implements MouseMotionListener {
 						x += (10*deltaX);
 						Pose newPose = new Pose(x,y,th);
 						Missions.setLocation(locationName, newPose);
-						panel.addArrow(selectedPathPointOneInt+":"+locationName, newPose, Color.green);
+						panel.addArrow("LOC:"+locationName, newPose, Color.green);
 						highlightSelectedLocations();
 					}
 				}
@@ -1019,7 +1061,7 @@ public class PathEditor2 implements MouseMotionListener {
 						y += deltaY;
 						Pose newPose = new Pose(x,y,th);
 						Missions.setLocation(locationName, newPose);
-						panel.addArrow(selectedPathPointOneInt+":"+locationName, newPose, Color.green);
+						panel.addArrow("LOC:"+locationName, newPose, Color.green);
 						highlightSelectedLocations();
 					}
 				}
@@ -1041,7 +1083,7 @@ public class PathEditor2 implements MouseMotionListener {
 						y += (10*deltaY);
 						Pose newPose = new Pose(x,y,th);
 						Missions.setLocation(locationName, newPose);
-						panel.addArrow(selectedPathPointOneInt+":"+locationName, newPose, Color.green);
+						panel.addArrow("LOC:"+locationName, newPose, Color.green);
 						highlightSelectedLocations();
 					}
 				}
@@ -1063,7 +1105,7 @@ public class PathEditor2 implements MouseMotionListener {
 						y -= deltaY;
 						Pose newPose = new Pose(x,y,th);
 						Missions.setLocation(locationName, newPose);
-						panel.addArrow(selectedPathPointOneInt+":"+locationName, newPose, Color.green);
+						panel.addArrow("LOC:"+locationName, newPose, Color.green);
 						highlightSelectedLocations();
 					}
 				}
@@ -1085,7 +1127,7 @@ public class PathEditor2 implements MouseMotionListener {
 						y -= (10*deltaY);
 						Pose newPose = new Pose(x,y,th);
 						Missions.setLocation(locationName, newPose);
-						panel.addArrow(selectedPathPointOneInt+":"+locationName, newPose, Color.green);
+						panel.addArrow("LOC:"+locationName, newPose, Color.green);
 						highlightSelectedLocations();
 					}
 				}
@@ -1107,7 +1149,7 @@ public class PathEditor2 implements MouseMotionListener {
 						th -= deltaT;
 						Pose newPose = new Pose(x,y,th);
 						Missions.setLocation(locationName, newPose);
-						panel.addArrow(selectedPathPointOneInt+":"+locationName, newPose, Color.green);
+						panel.addArrow("LOC:"+locationName, newPose, Color.green);
 						highlightSelectedLocations();
 					}
 				}
@@ -1129,7 +1171,7 @@ public class PathEditor2 implements MouseMotionListener {
 						th -= (10*deltaT);
 						Pose newPose = new Pose(x,y,th);
 						Missions.setLocation(locationName, newPose);
-						panel.addArrow(selectedPathPointOneInt+":"+locationName, newPose, Color.green);
+						panel.addArrow("LOC:"+locationName, newPose, Color.green);
 						highlightSelectedLocations();
 					}
 				}
@@ -1151,7 +1193,7 @@ public class PathEditor2 implements MouseMotionListener {
 						th += deltaT;
 						Pose newPose = new Pose(x,y,th);
 						Missions.setLocation(locationName, newPose);
-						panel.addArrow(selectedPathPointOneInt+":"+locationName, newPose, Color.green);
+						panel.addArrow("LOC:"+locationName, newPose, Color.green);
 						highlightSelectedLocations();
 					}
 				}
@@ -1173,7 +1215,7 @@ public class PathEditor2 implements MouseMotionListener {
 						th += (10*deltaT);
 						Pose newPose = new Pose(x,y,th);
 						Missions.setLocation(locationName, newPose);
-						panel.addArrow(selectedPathPointOneInt+":"+locationName, newPose, Color.green);
+						panel.addArrow("LOC:"+locationName, newPose, Color.green);
 						highlightSelectedLocations();
 					}
 				}
