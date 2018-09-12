@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Scanner;
+import java.util.Set;
 import java.util.Map.Entry;
 import java.util.TreeMap;
 
@@ -29,9 +30,12 @@ import javax.swing.KeyStroke;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
+import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 import org.metacsp.utility.UI.JTSDrawingPanel;
 
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.util.AffineTransformation;
 
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.util.splines.BezierSplineFactory;
@@ -63,6 +67,7 @@ public class PathEditor2 implements MouseMotionListener {
 	private ArrayList<Integer> selectedLocationsInt = new ArrayList<Integer>();
 	private ArrayList<String> locationIDs = new ArrayList<String>();
 	private HashMap<String,ArrayList<PoseSteering>> allPaths = null;
+	private HashMap<String,Boolean> isInversePath = null;
 	private HashMap<String,ArrayList<ArrayList<PoseSteering>>> oldPaths = new HashMap<String,ArrayList<ArrayList<PoseSteering>>>(); 
 	private JTSDrawingPanel panel = null;
 	private double deltaX = 0.1;
@@ -74,11 +79,12 @@ public class PathEditor2 implements MouseMotionListener {
 	
 	private double radius = 3.0;
 	private Coordinate[] footprint = null;
+	private Geometry footprintGeom = null;
 	
 	private static String TEMP_MAP_DIR = ".tempMapsPathEditor";
 
 	public PathEditor2() {
-		this(null, null, null, 0.1, 0.1, 0.01);
+		this(null, null, null, 0.1, 0.1, 0.01, null);
 	}
 	
 	public void setDeltaX(double dx) {
@@ -106,18 +112,32 @@ public class PathEditor2 implements MouseMotionListener {
 	}
 
 	public PathEditor2(String posesAndPaths, String mapFilename) {
-		this(posesAndPaths, mapFilename, null, 0.1, 0.1, 0.01);
+		this(posesAndPaths, mapFilename, null, 0.1, 0.1, 0.01, null);
+	}
+	
+	public PathEditor2(String posesAndPaths, String mapFilename, Coordinate[] footprint) {
+		this(posesAndPaths, mapFilename, null, 0.1, 0.1, 0.01, footprint);
 	}
 
 	public PathEditor2(String posesAndPaths, String mapFilename, String selectionsFile) {
-		this(posesAndPaths, mapFilename, selectionsFile, 0.1, 0.1, 0.01);
+		this(posesAndPaths, mapFilename, selectionsFile, 0.1, 0.1, 0.01, null);
 	}
-			
+
+	public PathEditor2(String posesAndPaths, String mapFilename, String selectionsFile, Coordinate[] footprint) {
+		this(posesAndPaths, mapFilename, selectionsFile, 0.1, 0.1, 0.01, footprint);
+	}
+
 	public PathEditor2(String posesAndPaths, String mapFN, String selectionsF, double deltaX, double deltaY, double deltaTheta) {
+		this(posesAndPaths, mapFN, selectionsF, deltaX, deltaY, deltaTheta, null);
+	}
+	
+	public PathEditor2(String posesAndPaths, String mapFN, String selectionsF, double deltaX, double deltaY, double deltaTheta, Coordinate[] footprint) {
 		this.deltaX = deltaX;
 		this.deltaY = deltaY;
 		this.deltaT = deltaTheta;
 		this.mapFilename = mapFN;
+		this.footprint = footprint;
+		if (this.footprint != null) this.footprintGeom = TrajectoryEnvelope.createFootprintPolygon(footprint);
 		if (this.mapFilename != null) {
 			String path = this.mapFilename.substring(0, this.mapFilename.lastIndexOf(File.separator)+1);
 			this.mapImgFilename = path+Missions.getProperty("image", this.mapFilename);
@@ -138,6 +158,7 @@ public class PathEditor2 implements MouseMotionListener {
 		new File(outputDir).mkdir();
 
 		this.allPaths = new HashMap<String, ArrayList<PoseSteering>>();
+		this.isInversePath = new HashMap<String, Boolean>();
 
 		if (posesAndPaths != null) {
 			this.locationsAndPathsFilename = posesAndPaths;
@@ -154,7 +175,8 @@ public class PathEditor2 implements MouseMotionListener {
 							PoseSteering[] path = Missions.loadPathFromFile(pathURI+pathFile);
 							ArrayList<PoseSteering> pathAL = new ArrayList<PoseSteering>();
 							for (PoseSteering ps : path) pathAL.add(ps);
-							allPaths.put(entry.getKey()+"->"+entry1.getKey(), pathAL);							
+							allPaths.put(entry.getKey()+"->"+entry1.getKey(), pathAL);
+							isInversePath.put(entry.getKey()+"->"+entry1.getKey(), false);
 						}
 						catch(Error e) {
 							//System.out.println("No path for " + entry.getKey()+"->"+entry1.getKey());
@@ -165,6 +187,7 @@ public class PathEditor2 implements MouseMotionListener {
 							ArrayList<PoseSteering> pathAL = new ArrayList<PoseSteering>();
 							for (PoseSteering ps : path) pathAL.add(ps);
 							allPaths.put(entry1.getKey()+"->"+entry.getKey(), pathAL);
+							isInversePath.put(entry1.getKey()+"->"+entry.getKey(), false);
 						}
 						catch(Error e) {
 							//System.out.println("No path for " + entry1.getKey()+"->"+entry.getKey());
@@ -172,14 +195,7 @@ public class PathEditor2 implements MouseMotionListener {
 					}
 				}
 			}
-			for (Entry<String,ArrayList<PoseSteering>> onePath : allPaths.entrySet()) {
-				String pathName = onePath.getKey();
-				ArrayList<PoseSteering> path = onePath.getValue();
-				for (int i = 0; i < path.size(); i++) {
-					panel.addArrow("_"+pathName+"."+i, path.get(i).getPose(), Color.blue);
-				}
-			}
-			panel.updatePanel();
+			updatePaths2();
 		}
 		
 		if (selectionsF != null) {
@@ -194,52 +210,109 @@ public class PathEditor2 implements MouseMotionListener {
 	
 	public void setPathPlanningFootprint(Coordinate ... footprint) {
 		this.footprint = footprint;
+		this.footprintGeom = TrajectoryEnvelope.createFootprintPolygon(footprint);
 	}
 	
 	public void setPathPlanningRadius(double rad) {
 		this.radius = rad;
 	}
 	
-	public void deleteForwardAndInversePaths() {
-		if (selectedLocationsInt.size() >= 2) {
-			String pathName = locationIDs.get(selectedLocationsInt.get(0)) + "->" + locationIDs.get(selectedLocationsInt.get(selectedLocationsInt.size()-1));
-			String pathNameInv =  locationIDs.get(selectedLocationsInt.get(selectedLocationsInt.size()-1)) + "->" + locationIDs.get(selectedLocationsInt.get(0));
-			ArrayList<PoseSteering> pathToRemove = allPaths.get(pathName);
-			ArrayList<PoseSteering> pathToRemoveInv = allPaths.get(pathNameInv);
-			if (pathToRemove != null) {
-				for (int i = 0; i < pathToRemove.size(); i++) panel.removeGeometry("_"+pathName+"."+i);
-				panel.removeGeometry(pathName+".all");
-				allPaths.remove(pathName);
-				System.out.println("Removed path " + pathName);
-				updatePaths();
+	public Geometry makeFootprint(double x, double y, double theta) {
+		AffineTransformation at = new AffineTransformation();
+		at.rotate(theta);
+		at.translate(x,y);
+		Geometry rect = at.transform(footprintGeom);
+		return rect;
+	}
+	
+	public Geometry createEnvelope(ArrayList<PoseSteering> path) {
+		Geometry onePoly = null;
+		Geometry prevPoly = null;
+		for (PoseSteering ps : path) {
+			Geometry rect = makeFootprint(ps.getX(), ps.getY(), ps.getTheta());			
+			if (onePoly == null) {
+				onePoly = rect;
+				prevPoly = rect;
 			}
-			if (pathToRemoveInv != null) {
-				for (int i = 0; i < pathToRemoveInv.size(); i++) panel.removeGeometry("_"+pathNameInv+"."+i);
-				panel.removeGeometry(pathNameInv+".all");
-				allPaths.remove(pathNameInv);
-				System.out.println("Removed path " + pathNameInv);
-				updatePaths();
+			else {
+				Geometry auxPoly = prevPoly.union(rect);
+				onePoly = onePoly.union(auxPoly.convexHull());
+				prevPoly = rect;
+			}
+		}
+		return onePoly;
+		//return onePoly.getCoordinates();
+	}
+	
+	public void updatePaths2() {
+		
+		//Remove all envelopes, add all edges
+		for (Entry<String,ArrayList<PoseSteering>> onePath : allPaths.entrySet()) {
+			String pathName = onePath.getKey();
+			ArrayList<PoseSteering> path = onePath.getValue();
+			panel.removeGeometry("_"+pathName+".env");
+			panel.addArrow(pathName+".all", path.get(0).getPose(), path.get(path.size()-1).getPose(), Color.lightGray);
+		}
+		
+		//Add envelopes of path connected to selected points
+		if (selectedLocationsInt.size() > 0) {
+			Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
+			for (int oneLocation : selectedLocationsInt) {
+				String locationName = locationIDs.get(oneLocation);
+				for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
+					if (entry.getKey().startsWith(locationName) || entry.getKey().endsWith(locationName)) {
+						ArrayList<PoseSteering> path = entry.getValue();
+						Geometry env = createEnvelope(path);
+						//addGeometry(String id, Geometry geom, boolean empty, boolean thick, boolean transp, String color)
+						panel.addGeometry("_"+entry.getKey()+".env",env, false, false, true, "#ff4f4f");
+					}
+				}
+			}
+		}
+		panel.updatePanel();
+	}
+	
+	public void deleteForwardAndInversePaths(ArrayList<Integer> selectedLocsInt) {
+		if (selectedLocsInt.size() > 0) {
+			ArrayList<String> toRemove = new ArrayList<String>();
+			for (int oneLocation : selectedLocsInt) {
+				String locationName = locationIDs.get(oneLocation);
+				for (Entry<String, ArrayList<PoseSteering>> entry : allPaths.entrySet()) {
+					if (entry.getKey().startsWith(locationName) || entry.getKey().endsWith(locationName)) {
+						toRemove.add(entry.getKey());
+					}
+				}
+			}
+			for (String rem : toRemove) {
+				panel.removeGeometry("_"+rem+".env");
+				panel.removeGeometry(rem+".all");
+				allPaths.remove(rem);
+				isInversePath.remove(rem);
+				System.out.println("Removed path " + rem);
+				updatePaths2();
 			}
 		}
 	}
 	
-	public void computeForwardandInversePathsWithSpline() {
+	public void computeForwardAndInversePathsWithSpline(ArrayList<Integer> selectedLocsInt) {
 		ArrayList<PoseSteering> overallPath = new ArrayList<PoseSteering>();
-		for (int i = 0; i < selectedLocationsInt.size()-1; i++) {
-			Pose startPose = Missions.getLocation(locationIDs.get(selectedLocationsInt.get(i)));
-			Pose goalPose = Missions.getLocation(locationIDs.get(selectedLocationsInt.get(i+1)));
+		for (int i = 0; i < selectedLocsInt.size()-1; i++) {
+			Pose startPose = Missions.getLocation(locationIDs.get(selectedLocsInt.get(i)));
+			Pose goalPose = Missions.getLocation(locationIDs.get(selectedLocsInt.get(i+1)));
 			PoseSteering[] path = computeSpline(startPose, goalPose);
 			if (i == 0) overallPath.add(path[0]);
 			for (int j = 1; j < path.length; j++) overallPath.add(path[j]);
 		}
-		String pathName = locationIDs.get(selectedLocationsInt.get(0))+"->"+locationIDs.get(selectedLocationsInt.get(selectedLocationsInt.size()-1));
+		String pathName = locationIDs.get(selectedLocsInt.get(0))+"->"+locationIDs.get(selectedLocsInt.get(selectedLocsInt.size()-1));
 		allPaths.put(pathName, overallPath);
-		String pathNameInv = locationIDs.get(selectedLocationsInt.get(selectedLocationsInt.size()-1))+"->"+locationIDs.get(selectedLocationsInt.get(0));
+		isInversePath.put(pathName, false);
+		String pathNameInv = locationIDs.get(selectedLocsInt.get(selectedLocsInt.size()-1))+"->"+locationIDs.get(selectedLocsInt.get(0));
 		ArrayList<PoseSteering> overallPathInv = new ArrayList<PoseSteering>();
 		for (PoseSteering ps : overallPath) overallPathInv.add(ps);
 		Collections.reverse(overallPathInv);
 		allPaths.put(pathNameInv, overallPathInv);
-		updatePaths();
+		isInversePath.put(pathNameInv, true);
+		updatePaths2();
 	}
 	
 	public void loadSelectionsFile() {
@@ -285,17 +358,17 @@ public class PathEditor2 implements MouseMotionListener {
 		catch (FileNotFoundException e) { e.printStackTrace(); }
 	}
 	
-	public void updatePaths() {
-		for (Entry<String,ArrayList<PoseSteering>> onePath : allPaths.entrySet()) {
-			String pathName = onePath.getKey();
-			ArrayList<PoseSteering> path = onePath.getValue();
-			for (int i = 0; i < path.size(); i++) {
-				panel.addArrow("_"+pathName+"."+i, path.get(i).getPose(), Color.blue);
-			}
-			panel.addArrow(pathName+".all", path.get(0).getPose(), path.get(path.size()-1).getPose(), Color.lightGray);
-		}
-		panel.updatePanel();
-	}
+//	public void updatePaths() {
+//		for (Entry<String,ArrayList<PoseSteering>> onePath : allPaths.entrySet()) {
+//			String pathName = onePath.getKey();
+//			ArrayList<PoseSteering> path = onePath.getValue();
+//			for (int i = 0; i < path.size(); i++) {
+//				panel.addArrow("_"+pathName+"."+i, path.get(i).getPose(), Color.blue);
+//			}
+//			panel.addArrow(pathName+".all", path.get(0).getPose(), path.get(path.size()-1).getPose(), Color.lightGray);
+//		}
+//		panel.updatePanel();
+//	}
 
 	public void removeKnownLocation(String locationName) {
 		int toRemove = -1;
@@ -453,6 +526,7 @@ public class PathEditor2 implements MouseMotionListener {
 				selectedLocationsInt = new ArrayList<Integer>();
 				selectionString = "";
 				clearLocations();
+				updatePaths2();
 			}
 		};
 		panel.getActionMap().put("Cancel selection",actCancel);
@@ -476,6 +550,7 @@ public class PathEditor2 implements MouseMotionListener {
 						selectionString = selectionStrings.get(ssNumber);
 						selectedLocationsInt = selectedLocationsInts.get(ssNumber);
 						highlightSelectedLocations();
+						updatePaths2();
 						System.out.println("Current selection (locations): " + selectedLocationsInt);
 					}
 					catch(NumberFormatException ex) { }
@@ -517,6 +592,7 @@ public class PathEditor2 implements MouseMotionListener {
 							selectedLocationsInt.add(first);
 							selectedLocationsInt.add(last);
 							highlightSelectedLocations();
+							updatePaths2();
 						}
 					}
 					catch(NumberFormatException ex) { }
@@ -601,6 +677,7 @@ public class PathEditor2 implements MouseMotionListener {
 						}
 						else selectedLocationsInt.add(Math.min(locationIDs.size()-1,Integer.parseInt(selectionString)));
 						highlightSelectedLocations();
+						updatePaths2();
 						System.out.println("Current selection (locations): " + selectedLocationsInt);
 					}
 					catch(NumberFormatException ex) { }
@@ -647,7 +724,7 @@ public class PathEditor2 implements MouseMotionListener {
 			private static final long serialVersionUID = 4455373738365388356L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				deleteForwardAndInversePaths();
+				deleteForwardAndInversePaths(selectedLocationsInt);
 			}
 		};
 		panel.getActionMap().put("Delete path between selected locations",actDelete);
@@ -672,8 +749,10 @@ public class PathEditor2 implements MouseMotionListener {
 					for (PoseSteering ps : newPath) newPathInv.add(ps);
 					Collections.reverse(newPathInv);
 					allPaths.put(newPathName, newPath);
+					isInversePath.put(newPathName, false);
 					allPaths.put(newPathNameInv, newPathInv);
-					updatePaths();
+					isInversePath.put(newPathNameInv, true);
+					updatePaths2();
 					System.out.println("Concatenated paths: " + newPathName);
 				}
 			}
@@ -694,7 +773,7 @@ public class PathEditor2 implements MouseMotionListener {
 					}
 				}
 				allPaths.clear();
-				updatePaths();
+				updatePaths2();
 			}
 		};
 		panel.getActionMap().put("Delete path between all locations",actDeleteAll);
@@ -738,6 +817,7 @@ public class PathEditor2 implements MouseMotionListener {
 					System.out.println("Added location nearest pointer to selection: " + selectedLocationsInt);
 					clearLocations();
 					highlightSelectedLocations();
+					updatePaths2();
 				}
 			}
 		};
@@ -800,7 +880,7 @@ public class PathEditor2 implements MouseMotionListener {
 			private static final long serialVersionUID = -3238585469762752293L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				computeForwardandInversePathsWithSpline();
+				computeForwardAndInversePathsWithSpline(selectedLocationsInt);
 			}
 		};
 		panel.getActionMap().put("Compute spline between selected locations",actSpline);
@@ -832,13 +912,15 @@ public class PathEditor2 implements MouseMotionListener {
 								for (int j = 1; j < path.length; j++) overallPath.add(path[j]);
 							}
 							allPaths.put(pathName, overallPath);
+							isInversePath.put(pathName, false);
 							for (PoseSteering ps : overallPath) overallPathInv.add(ps);
 							Collections.reverse(overallPathInv);
 							allPaths.put(pathNameInv, overallPathInv);
+							isInversePath.put(pathNameInv, true);
 						}
 					}
 				}
-				updatePaths();
+				updatePaths2();
 			}
 		};
 		panel.getActionMap().put("Compute spline for all preset selections",actSplineAll);
@@ -900,8 +982,10 @@ public class PathEditor2 implements MouseMotionListener {
 						}
 						Collections.reverse(newPathALInv);
 						allPaths.put(pathName,newPathAL);
+						isInversePath.put(pathName, false);
 						allPaths.put(pathNameInv,newPathALInv);
-						updatePaths();
+						isInversePath.put(pathNameInv, true);
+						updatePaths2();
 					}
 				}
 			}
@@ -932,12 +1016,14 @@ public class PathEditor2 implements MouseMotionListener {
 									newPathALInv.add(ps);
 								}
 								allPaths.put(pathName,newPathAL);
+								isInversePath.put(pathName, false);
 								Collections.reverse(newPathALInv);
 								allPaths.put(pathNameInv,newPathALInv);
+								isInversePath.put(pathNameInv, true);
 							}
 						}
 					}
-					updatePaths();
+					updatePaths2();
 				}
 			}
 		};
@@ -960,7 +1046,37 @@ public class PathEditor2 implements MouseMotionListener {
 						panel.addArrow("LOC:"+locationName, newPose, Color.green);
 						highlightSelectedLocations();
 					}
+					
+					/////
+					Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
+					for (int oneLocation : selectedLocationsInt) {
+						String locationName = locationIDs.get(oneLocation);
+						ArrayList<String> pathsToRecompute = new ArrayList<String>();
+						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
+							if (entry.getKey().startsWith(locationName) || entry.getKey().endsWith(locationName)) {
+								if (!isInversePath.get(entry.getKey())) {
+									pathsToRecompute.add(entry.getKey());
+								}
+							}
+						}
+						ArrayList<Integer> newSelection = new ArrayList<Integer>();
+						newSelection.add(oneLocation);
+						deleteForwardAndInversePaths(newSelection);
+						for (String pathName : pathsToRecompute) {
+							System.out.println("Affected path: " + pathName);
+							String from = pathName.substring(0, pathName.indexOf("->"));
+							String to = pathName.substring(pathName.indexOf("->")+2);
+							int fromIndex = locationIDs.indexOf(from);
+							int toIndex = locationIDs.indexOf(to);
+							newSelection.clear();
+							newSelection.add(fromIndex);
+							newSelection.add(toIndex);
+							computeForwardAndInversePathsWithSpline(newSelection);
+						}
+					}
+					/////
 				}
+
 			}
 		};
 		panel.getActionMap().put("Decrease X of selected location(s)",actXMinus);
@@ -982,6 +1098,35 @@ public class PathEditor2 implements MouseMotionListener {
 						panel.addArrow("LOC:"+locationName, newPose, Color.green);
 						highlightSelectedLocations();
 					}
+					
+					/////
+					Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
+					for (int oneLocation : selectedLocationsInt) {
+						String locationName = locationIDs.get(oneLocation);
+						ArrayList<String> pathsToRecompute = new ArrayList<String>();
+						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
+							if (entry.getKey().startsWith(locationName) || entry.getKey().endsWith(locationName)) {
+								if (!isInversePath.get(entry.getKey())) {
+									pathsToRecompute.add(entry.getKey());
+								}
+							}
+						}
+						ArrayList<Integer> newSelection = new ArrayList<Integer>();
+						newSelection.add(oneLocation);
+						deleteForwardAndInversePaths(newSelection);
+						for (String pathName : pathsToRecompute) {
+							System.out.println("Affected path: " + pathName);
+							String from = pathName.substring(0, pathName.indexOf("->"));
+							String to = pathName.substring(pathName.indexOf("->")+2);
+							int fromIndex = locationIDs.indexOf(from);
+							int toIndex = locationIDs.indexOf(to);
+							newSelection.clear();
+							newSelection.add(fromIndex);
+							newSelection.add(toIndex);
+							computeForwardAndInversePathsWithSpline(newSelection);
+						}
+					}
+					/////
 				}
 			}
 		};
@@ -1004,6 +1149,35 @@ public class PathEditor2 implements MouseMotionListener {
 						panel.addArrow("LOC:"+locationName, newPose, Color.green);
 						highlightSelectedLocations();
 					}
+					
+					/////
+					Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
+					for (int oneLocation : selectedLocationsInt) {
+						String locationName = locationIDs.get(oneLocation);
+						ArrayList<String> pathsToRecompute = new ArrayList<String>();
+						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
+							if (entry.getKey().startsWith(locationName) || entry.getKey().endsWith(locationName)) {
+								if (!isInversePath.get(entry.getKey())) {
+									pathsToRecompute.add(entry.getKey());
+								}
+							}
+						}
+						ArrayList<Integer> newSelection = new ArrayList<Integer>();
+						newSelection.add(oneLocation);
+						deleteForwardAndInversePaths(newSelection);
+						for (String pathName : pathsToRecompute) {
+							System.out.println("Affected path: " + pathName);
+							String from = pathName.substring(0, pathName.indexOf("->"));
+							String to = pathName.substring(pathName.indexOf("->")+2);
+							int fromIndex = locationIDs.indexOf(from);
+							int toIndex = locationIDs.indexOf(to);
+							newSelection.clear();
+							newSelection.add(fromIndex);
+							newSelection.add(toIndex);
+							computeForwardAndInversePathsWithSpline(newSelection);
+						}
+					}
+					/////
 				}
 			}
 		};
@@ -1026,6 +1200,35 @@ public class PathEditor2 implements MouseMotionListener {
 						panel.addArrow("LOC:"+locationName, newPose, Color.green);
 						highlightSelectedLocations();
 					}
+					
+					/////
+					Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
+					for (int oneLocation : selectedLocationsInt) {
+						String locationName = locationIDs.get(oneLocation);
+						ArrayList<String> pathsToRecompute = new ArrayList<String>();
+						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
+							if (entry.getKey().startsWith(locationName) || entry.getKey().endsWith(locationName)) {
+								if (!isInversePath.get(entry.getKey())) {
+									pathsToRecompute.add(entry.getKey());
+								}
+							}
+						}
+						ArrayList<Integer> newSelection = new ArrayList<Integer>();
+						newSelection.add(oneLocation);
+						deleteForwardAndInversePaths(newSelection);
+						for (String pathName : pathsToRecompute) {
+							System.out.println("Affected path: " + pathName);
+							String from = pathName.substring(0, pathName.indexOf("->"));
+							String to = pathName.substring(pathName.indexOf("->")+2);
+							int fromIndex = locationIDs.indexOf(from);
+							int toIndex = locationIDs.indexOf(to);
+							newSelection.clear();
+							newSelection.add(fromIndex);
+							newSelection.add(toIndex);
+							computeForwardAndInversePathsWithSpline(newSelection);
+						}
+					}
+					/////
 				}
 			}
 		};
@@ -1048,6 +1251,36 @@ public class PathEditor2 implements MouseMotionListener {
 						panel.addArrow("LOC:"+locationName, newPose, Color.green);
 						highlightSelectedLocations();
 					}
+					
+					/////
+					Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
+					for (int oneLocation : selectedLocationsInt) {
+						String locationName = locationIDs.get(oneLocation);
+						ArrayList<String> pathsToRecompute = new ArrayList<String>();
+						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
+							if (entry.getKey().startsWith(locationName) || entry.getKey().endsWith(locationName)) {
+								if (!isInversePath.get(entry.getKey())) {
+									pathsToRecompute.add(entry.getKey());
+								}
+							}
+						}
+						ArrayList<Integer> newSelection = new ArrayList<Integer>();
+						newSelection.add(oneLocation);
+						deleteForwardAndInversePaths(newSelection);
+						for (String pathName : pathsToRecompute) {
+							System.out.println("Affected path: " + pathName);
+							String from = pathName.substring(0, pathName.indexOf("->"));
+							String to = pathName.substring(pathName.indexOf("->")+2);
+							int fromIndex = locationIDs.indexOf(from);
+							int toIndex = locationIDs.indexOf(to);
+							newSelection.clear();
+							newSelection.add(fromIndex);
+							newSelection.add(toIndex);
+							computeForwardAndInversePathsWithSpline(newSelection);
+						}
+					}
+					/////
+					
 				}
 			}
 		};
@@ -1070,11 +1303,92 @@ public class PathEditor2 implements MouseMotionListener {
 						panel.addArrow("LOC:"+locationName, newPose, Color.green);
 						highlightSelectedLocations();
 					}
+					
+					/////
+					Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
+					for (int oneLocation : selectedLocationsInt) {
+						String locationName = locationIDs.get(oneLocation);
+						ArrayList<String> pathsToRecompute = new ArrayList<String>();
+						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
+							if (entry.getKey().startsWith(locationName) || entry.getKey().endsWith(locationName)) {
+								if (!isInversePath.get(entry.getKey())) {
+									pathsToRecompute.add(entry.getKey());
+								}
+							}
+						}
+						ArrayList<Integer> newSelection = new ArrayList<Integer>();
+						newSelection.add(oneLocation);
+						deleteForwardAndInversePaths(newSelection);
+						for (String pathName : pathsToRecompute) {
+							System.out.println("Affected path: " + pathName);
+							String from = pathName.substring(0, pathName.indexOf("->"));
+							String to = pathName.substring(pathName.indexOf("->")+2);
+							int fromIndex = locationIDs.indexOf(from);
+							int toIndex = locationIDs.indexOf(to);
+							newSelection.clear();
+							newSelection.add(fromIndex);
+							newSelection.add(toIndex);
+							computeForwardAndInversePathsWithSpline(newSelection);
+						}
+					}
+					/////
 				}
 			}
 		};
 		panel.getActionMap().put("Speed increase Y of selected location(s)",actYPlusFast);
 
+		
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_X,0),"Scale all poses (locations and paths) by a factor");
+		AbstractAction actScale = new AbstractAction() {
+			private static final long serialVersionUID = 6487332455015786029L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				String scaleFactor = JOptionPane.showInputDialog("Enter a scaling factor");
+				try {
+					double scale = Double.parseDouble(scaleFactor);
+					Set<Entry<String,Pose>> allLocations = Missions.getLocations().entrySet(); 
+					for (Entry<String,Pose> oneLocation : allLocations) {
+						double newX = oneLocation.getValue().getX()*scale;
+						double newY = oneLocation.getValue().getY()*scale;
+						Pose newPose = new Pose(newX,newY,oneLocation.getValue().getTheta());
+						Missions.setLocation(oneLocation.getKey(), newPose);
+					}
+					
+					Set<Entry<String,ArrayList<PoseSteering>>> paths = allPaths.entrySet();
+					for (Entry<String,ArrayList<PoseSteering>> onePath : paths) {
+						ArrayList<PoseSteering> newPath = new ArrayList<PoseSteering>();
+						for (PoseSteering ps : onePath.getValue()) {
+							double newX = ps.getX()*scale;
+							double newY = ps.getY()*scale;
+							PoseSteering newPoseSteering = new PoseSteering(newX,newY,ps.getTheta(),ps.getSteering());
+							newPath.add(newPoseSteering);
+							allPaths.put(onePath.getKey(), newPath);
+							isInversePath.put(onePath.getKey(), false);
+						}
+					}
+				}
+				catch(NumberFormatException e1) { System.out.println("Not a number"); }
+				clearLocations();
+				highlightSelectedLocations();
+				updatePaths2();
+			}
+		};
+		panel.getActionMap().put("Scale all poses (locations and paths) by a factor",actScale);
+		
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_D,0),"Measure distance between selected points");
+		AbstractAction actMeasure = new AbstractAction() {
+			private static final long serialVersionUID = 6487332455015786029L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (!selectedLocationsInt.isEmpty()) {
+					Pose p1 = Missions.getLocation(locationIDs.get(selectedLocationsInt.get(0)));
+					Pose p2 = Missions.getLocation(locationIDs.get(selectedLocationsInt.get(selectedLocationsInt.size()-1)));
+					System.out.println(p1.distanceTo(p2));
+				}
+			}
+		};
+		panel.getActionMap().put("Measure distance between selected points",actMeasure);
+		
 		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_DOWN,0),"Decrease Y of selected location(s)");
 		AbstractAction actYMinus = new AbstractAction() {
 			private static final long serialVersionUID = 6487878455015786029L;
@@ -1092,6 +1406,35 @@ public class PathEditor2 implements MouseMotionListener {
 						panel.addArrow("LOC:"+locationName, newPose, Color.green);
 						highlightSelectedLocations();
 					}
+					
+					/////
+					Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
+					for (int oneLocation : selectedLocationsInt) {
+						String locationName = locationIDs.get(oneLocation);
+						ArrayList<String> pathsToRecompute = new ArrayList<String>();
+						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
+							if (entry.getKey().startsWith(locationName) || entry.getKey().endsWith(locationName)) {
+								if (!isInversePath.get(entry.getKey())) {
+									pathsToRecompute.add(entry.getKey());
+								}
+							}
+						}
+						ArrayList<Integer> newSelection = new ArrayList<Integer>();
+						newSelection.add(oneLocation);
+						deleteForwardAndInversePaths(newSelection);
+						for (String pathName : pathsToRecompute) {
+							System.out.println("Affected path: " + pathName);
+							String from = pathName.substring(0, pathName.indexOf("->"));
+							String to = pathName.substring(pathName.indexOf("->")+2);
+							int fromIndex = locationIDs.indexOf(from);
+							int toIndex = locationIDs.indexOf(to);
+							newSelection.clear();
+							newSelection.add(fromIndex);
+							newSelection.add(toIndex);
+							computeForwardAndInversePathsWithSpline(newSelection);
+						}
+					}
+					/////
 				}
 			}
 		};
@@ -1114,6 +1457,35 @@ public class PathEditor2 implements MouseMotionListener {
 						panel.addArrow("LOC:"+locationName, newPose, Color.green);
 						highlightSelectedLocations();
 					}
+					
+					/////
+					Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
+					for (int oneLocation : selectedLocationsInt) {
+						String locationName = locationIDs.get(oneLocation);
+						ArrayList<String> pathsToRecompute = new ArrayList<String>();
+						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
+							if (entry.getKey().startsWith(locationName) || entry.getKey().endsWith(locationName)) {
+								if (!isInversePath.get(entry.getKey())) {
+									pathsToRecompute.add(entry.getKey());
+								}
+							}
+						}
+						ArrayList<Integer> newSelection = new ArrayList<Integer>();
+						newSelection.add(oneLocation);
+						deleteForwardAndInversePaths(newSelection);
+						for (String pathName : pathsToRecompute) {
+							System.out.println("Affected path: " + pathName);
+							String from = pathName.substring(0, pathName.indexOf("->"));
+							String to = pathName.substring(pathName.indexOf("->")+2);
+							int fromIndex = locationIDs.indexOf(from);
+							int toIndex = locationIDs.indexOf(to);
+							newSelection.clear();
+							newSelection.add(fromIndex);
+							newSelection.add(toIndex);
+							computeForwardAndInversePathsWithSpline(newSelection);
+						}
+					}
+					/////
 				}
 			}
 		};
@@ -1136,6 +1508,35 @@ public class PathEditor2 implements MouseMotionListener {
 						panel.addArrow("LOC:"+locationName, newPose, Color.green);
 						highlightSelectedLocations();
 					}
+					
+					/////
+					Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
+					for (int oneLocation : selectedLocationsInt) {
+						String locationName = locationIDs.get(oneLocation);
+						ArrayList<String> pathsToRecompute = new ArrayList<String>();
+						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
+							if (entry.getKey().startsWith(locationName) || entry.getKey().endsWith(locationName)) {
+								if (!isInversePath.get(entry.getKey())) {
+									pathsToRecompute.add(entry.getKey());
+								}
+							}
+						}
+						ArrayList<Integer> newSelection = new ArrayList<Integer>();
+						newSelection.add(oneLocation);
+						deleteForwardAndInversePaths(newSelection);
+						for (String pathName : pathsToRecompute) {
+							System.out.println("Affected path: " + pathName);
+							String from = pathName.substring(0, pathName.indexOf("->"));
+							String to = pathName.substring(pathName.indexOf("->")+2);
+							int fromIndex = locationIDs.indexOf(from);
+							int toIndex = locationIDs.indexOf(to);
+							newSelection.clear();
+							newSelection.add(fromIndex);
+							newSelection.add(toIndex);
+							computeForwardAndInversePathsWithSpline(newSelection);
+						}
+					}
+					/////
 				}
 			}
 		};
@@ -1158,6 +1559,35 @@ public class PathEditor2 implements MouseMotionListener {
 						panel.addArrow("LOC:"+locationName, newPose, Color.green);
 						highlightSelectedLocations();
 					}
+					
+					/////
+					Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
+					for (int oneLocation : selectedLocationsInt) {
+						String locationName = locationIDs.get(oneLocation);
+						ArrayList<String> pathsToRecompute = new ArrayList<String>();
+						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
+							if (entry.getKey().startsWith(locationName) || entry.getKey().endsWith(locationName)) {
+								if (!isInversePath.get(entry.getKey())) {
+									pathsToRecompute.add(entry.getKey());
+								}
+							}
+						}
+						ArrayList<Integer> newSelection = new ArrayList<Integer>();
+						newSelection.add(oneLocation);
+						deleteForwardAndInversePaths(newSelection);
+						for (String pathName : pathsToRecompute) {
+							System.out.println("Affected path: " + pathName);
+							String from = pathName.substring(0, pathName.indexOf("->"));
+							String to = pathName.substring(pathName.indexOf("->")+2);
+							int fromIndex = locationIDs.indexOf(from);
+							int toIndex = locationIDs.indexOf(to);
+							newSelection.clear();
+							newSelection.add(fromIndex);
+							newSelection.add(toIndex);
+							computeForwardAndInversePathsWithSpline(newSelection);
+						}
+					}
+					/////
 				}
 			}
 		};
@@ -1180,6 +1610,35 @@ public class PathEditor2 implements MouseMotionListener {
 						panel.addArrow("LOC:"+locationName, newPose, Color.green);
 						highlightSelectedLocations();
 					}
+					
+					/////
+					Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
+					for (int oneLocation : selectedLocationsInt) {
+						String locationName = locationIDs.get(oneLocation);
+						ArrayList<String> pathsToRecompute = new ArrayList<String>();
+						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
+							if (entry.getKey().startsWith(locationName) || entry.getKey().endsWith(locationName)) {
+								if (!isInversePath.get(entry.getKey())) {
+									pathsToRecompute.add(entry.getKey());
+								}
+							}
+						}
+						ArrayList<Integer> newSelection = new ArrayList<Integer>();
+						newSelection.add(oneLocation);
+						deleteForwardAndInversePaths(newSelection);
+						for (String pathName : pathsToRecompute) {
+							System.out.println("Affected path: " + pathName);
+							String from = pathName.substring(0, pathName.indexOf("->"));
+							String to = pathName.substring(pathName.indexOf("->")+2);
+							int fromIndex = locationIDs.indexOf(from);
+							int toIndex = locationIDs.indexOf(to);
+							newSelection.clear();
+							newSelection.add(fromIndex);
+							newSelection.add(toIndex);
+							computeForwardAndInversePathsWithSpline(newSelection);
+						}
+					}
+					/////
 				}
 			}
 		};
@@ -1202,6 +1661,35 @@ public class PathEditor2 implements MouseMotionListener {
 						panel.addArrow("LOC:"+locationName, newPose, Color.green);
 						highlightSelectedLocations();
 					}
+					
+					/////
+					Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
+					for (int oneLocation : selectedLocationsInt) {
+						String locationName = locationIDs.get(oneLocation);
+						ArrayList<String> pathsToRecompute = new ArrayList<String>();
+						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
+							if (entry.getKey().startsWith(locationName) || entry.getKey().endsWith(locationName)) {
+								if (!isInversePath.get(entry.getKey())) {
+									pathsToRecompute.add(entry.getKey());
+								}
+							}
+						}
+						ArrayList<Integer> newSelection = new ArrayList<Integer>();
+						newSelection.add(oneLocation);
+						deleteForwardAndInversePaths(newSelection);
+						for (String pathName : pathsToRecompute) {
+							System.out.println("Affected path: " + pathName);
+							String from = pathName.substring(0, pathName.indexOf("->"));
+							String to = pathName.substring(pathName.indexOf("->")+2);
+							int fromIndex = locationIDs.indexOf(from);
+							int toIndex = locationIDs.indexOf(to);
+							newSelection.clear();
+							newSelection.add(fromIndex);
+							newSelection.add(toIndex);
+							computeForwardAndInversePathsWithSpline(newSelection);
+						}
+					}
+					/////
 				}
 			}
 		};
@@ -1230,8 +1718,39 @@ public class PathEditor2 implements MouseMotionListener {
 			private static final long serialVersionUID = 8414380724212398117L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
+				
 				DISTANCE_BETWEEN_PATH_POINTS += deltaD;
 				System.out.println("Minimum distance between path points (>): " + DISTANCE_BETWEEN_PATH_POINTS);
+				
+				/////
+				Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
+				for (int oneLocation : selectedLocationsInt) {
+					String locationName = locationIDs.get(oneLocation);
+					ArrayList<String> pathsToRecompute = new ArrayList<String>();
+					for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
+						if (entry.getKey().startsWith(locationName) || entry.getKey().endsWith(locationName)) {
+							if (!isInversePath.get(entry.getKey())) {
+								pathsToRecompute.add(entry.getKey());
+							}
+						}
+					}
+					ArrayList<Integer> newSelection = new ArrayList<Integer>();
+					newSelection.add(oneLocation);
+					deleteForwardAndInversePaths(newSelection);
+					for (String pathName : pathsToRecompute) {
+						System.out.println("Affected path: " + pathName);
+						String from = pathName.substring(0, pathName.indexOf("->"));
+						String to = pathName.substring(pathName.indexOf("->")+2);
+						int fromIndex = locationIDs.indexOf(from);
+						int toIndex = locationIDs.indexOf(to);
+						newSelection.clear();
+						newSelection.add(fromIndex);
+						newSelection.add(toIndex);
+						computeForwardAndInversePathsWithSpline(newSelection);
+					}
+				}
+				/////
+				
 			}
 		};
 		panel.getActionMap().put("Increase minimum distance between path points for path planning",actMDPlus);
@@ -1241,8 +1760,39 @@ public class PathEditor2 implements MouseMotionListener {
 			private static final long serialVersionUID = 8414380724212398117L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
+
 				if (DISTANCE_BETWEEN_PATH_POINTS-deltaD >= 0) DISTANCE_BETWEEN_PATH_POINTS -= deltaD;
 				System.out.println("Minimum distance between path points (<): " + DISTANCE_BETWEEN_PATH_POINTS);
+				
+				/////
+				Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
+				for (int oneLocation : selectedLocationsInt) {
+					String locationName = locationIDs.get(oneLocation);
+					ArrayList<String> pathsToRecompute = new ArrayList<String>();
+					for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
+						if (entry.getKey().startsWith(locationName) || entry.getKey().endsWith(locationName)) {
+							if (!isInversePath.get(entry.getKey())) {
+								pathsToRecompute.add(entry.getKey());
+							}
+						}
+					}
+					ArrayList<Integer> newSelection = new ArrayList<Integer>();
+					newSelection.add(oneLocation);
+					deleteForwardAndInversePaths(newSelection);
+					for (String pathName : pathsToRecompute) {
+						System.out.println("Affected path: " + pathName);
+						String from = pathName.substring(0, pathName.indexOf("->"));
+						String to = pathName.substring(pathName.indexOf("->")+2);
+						int fromIndex = locationIDs.indexOf(from);
+						int toIndex = locationIDs.indexOf(to);
+						newSelection.clear();
+						newSelection.add(fromIndex);
+						newSelection.add(toIndex);
+						computeForwardAndInversePathsWithSpline(newSelection);
+					}
+				}
+				/////
+
 			}
 		};
 		panel.getActionMap().put("Decrease minimum distance between path points for path planning",actMDMinus);
@@ -1274,19 +1824,39 @@ public class PathEditor2 implements MouseMotionListener {
 			private static final long serialVersionUID = 8414380724212398117L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				if (selectedLocationsInt.size() >= 2) {
-					String pathName = locationIDs.get(selectedLocationsInt.get(0)) + "->" + locationIDs.get(selectedLocationsInt.get(selectedLocationsInt.size()-1));
-					if (allPaths.containsKey(pathName)) {
-						deleteForwardAndInversePaths();
-						SPLINE_DISTANCE += deltaSD;
-						System.out.println("Spline distance (>): " + SPLINE_DISTANCE);
-						computeForwardandInversePathsWithSpline();
+
+				SPLINE_DISTANCE += deltaSD;
+				System.out.println("Spline distance (>): " + SPLINE_DISTANCE);
+
+				/////
+				Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
+				for (int oneLocation : selectedLocationsInt) {
+					String locationName = locationIDs.get(oneLocation);
+					ArrayList<String> pathsToRecompute = new ArrayList<String>();
+					for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
+						if (entry.getKey().startsWith(locationName) || entry.getKey().endsWith(locationName)) {
+							if (!isInversePath.get(entry.getKey())) {
+								pathsToRecompute.add(entry.getKey());
+							}
+						}
+					}
+					ArrayList<Integer> newSelection = new ArrayList<Integer>();
+					newSelection.add(oneLocation);
+					deleteForwardAndInversePaths(newSelection);
+					for (String pathName : pathsToRecompute) {
+						System.out.println("Affected path: " + pathName);
+						String from = pathName.substring(0, pathName.indexOf("->"));
+						String to = pathName.substring(pathName.indexOf("->")+2);
+						int fromIndex = locationIDs.indexOf(from);
+						int toIndex = locationIDs.indexOf(to);
+						newSelection.clear();
+						newSelection.add(fromIndex);
+						newSelection.add(toIndex);
+						computeForwardAndInversePathsWithSpline(newSelection);
 					}
 				}
-				else {
-					SPLINE_DISTANCE += deltaSD;
-					System.out.println("Spline distance (>): " + SPLINE_DISTANCE);
-				}
+				/////
+				
 			}
 		};
 		panel.getActionMap().put("Increase spline distance",actSDPlus);
@@ -1296,26 +1866,46 @@ public class PathEditor2 implements MouseMotionListener {
 			private static final long serialVersionUID = 8414380724212398117L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				if (selectedLocationsInt.size() >= 2) {
-					String pathName = locationIDs.get(selectedLocationsInt.get(0)) + "->" + locationIDs.get(selectedLocationsInt.get(selectedLocationsInt.size()-1));
-					if (allPaths.containsKey(pathName)) {
-						deleteForwardAndInversePaths();
-						SPLINE_DISTANCE -= deltaSD;
-						System.out.println("Spline distance (<): " + SPLINE_DISTANCE);
-						computeForwardandInversePathsWithSpline();
+				
+				SPLINE_DISTANCE -= deltaSD;
+				System.out.println("Spline distance (<): " + SPLINE_DISTANCE);
+
+				/////
+				Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
+				for (int oneLocation : selectedLocationsInt) {
+					String locationName = locationIDs.get(oneLocation);
+					ArrayList<String> pathsToRecompute = new ArrayList<String>();
+					for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
+						if (entry.getKey().startsWith(locationName) || entry.getKey().endsWith(locationName)) {
+							if (!isInversePath.get(entry.getKey())) {
+								pathsToRecompute.add(entry.getKey());
+							}
+						}
+					}
+					ArrayList<Integer> newSelection = new ArrayList<Integer>();
+					newSelection.add(oneLocation);
+					deleteForwardAndInversePaths(newSelection);
+					for (String pathName : pathsToRecompute) {
+						System.out.println("Affected path: " + pathName);
+						String from = pathName.substring(0, pathName.indexOf("->"));
+						String to = pathName.substring(pathName.indexOf("->")+2);
+						int fromIndex = locationIDs.indexOf(from);
+						int toIndex = locationIDs.indexOf(to);
+						newSelection.clear();
+						newSelection.add(fromIndex);
+						newSelection.add(toIndex);
+						computeForwardAndInversePathsWithSpline(newSelection);
 					}
 				}
-				else {
-					SPLINE_DISTANCE -= deltaSD;
-					System.out.println("Spline distance (<): " + SPLINE_DISTANCE);
-				}				
+				/////			
+				
 			}
 		};
 		panel.getActionMap().put("Decrease spline distance",actSDMinus);
 
 
 		panel.setFocusable(true);
-		panel.setArrowHeadSizeInMeters(0.4);
+		panel.setArrowHeadSizeInMeters(1.4);
 		panel.setTextSizeInMeters(20.3);
 	}
 	
@@ -1365,66 +1955,6 @@ public class PathEditor2 implements MouseMotionListener {
 		if (!rsp.plan()) return null;
 		PoseSteering[] ret = rsp.getPath();
 		return ret;
-	}
-
-	public static void main(String[] args) {
-
-		//ICAPS 2
-		String mapFilename = "/home/fpa/catkin_ws/src/coordination_oru_ros/maps/map-partial-2.yaml";
-		String locs = "/home/fpa/catkin_ws/src/coordination_oru_ros/missions/icaps_locations_and_paths_1.txt";
-		String sel = "/home/fpa/catkin_ws/src/coordination_oru_ros/missions/icaps_selections.txt";
-		PathEditor2 pe2 = new PathEditor2(locs,mapFilename,null);
-		pe2.setDeltaX(0.5);
-		pe2.setDeltaY(0.5);
-		pe2.setSplineDistance(3.0);
-		pe2.setDistanceBetweenPathPoints(0.5);
-		pe2.setPathPlanningRadius(0.1);
-		pe2.setMaxTurningRadius(2.0);
-		Coordinate footprint1 = new Coordinate(-1.0,0.5);
-		Coordinate footprint2 = new Coordinate(1.0,0.5);
-		Coordinate footprint3 = new Coordinate(1.0,-0.5);
-		Coordinate footprint4 = new Coordinate(-1.0,-0.5);
-		pe2.setPathPlanningFootprint(footprint1,footprint2,footprint3,footprint4,footprint1);
-
-//		//ICAPS 1
-//		String mapFilename = "/home/fpa/catkin_ws/src/coordination_oru_ros/maps/map-partial-1.yaml";
-//		String locs = "/home/fpa/catkin_ws/src/coordination_oru_ros/missions/icaps_locations_and_paths.txt";
-//		String sel = "/home/fpa/catkin_ws/src/coordination_oru_ros/missions/icaps_selections.txt";
-//		PathEditor2 pe2 = new PathEditor2(locs,mapFilename,sel);
-//		pe2.setDeltaX(0.5);
-//		pe2.setDeltaY(0.5);
-//		pe2.setSplineDistance(3.0);
-//		pe2.setDistanceBetweenPathPoints(0.5);
-//		pe2.setPathPlanningRadius(0.1);
-//		pe2.setMaxTurningRadius(2.0);
-//		Coordinate footprint1 = new Coordinate(-1.0,0.5);
-//		Coordinate footprint2 = new Coordinate(1.0,0.5);
-//		Coordinate footprint3 = new Coordinate(1.0,-0.5);
-//		Coordinate footprint4 = new Coordinate(-1.0,-0.5);
-//		pe2.setPathPlanningFootprint(footprint1,footprint2,footprint3,footprint4,footprint1);
-
-//		String locAndPathFilename = "paths/locations.txt";
-//		String selectionsFile = "paths/selections.txt";
-//		PathEditor2 pe2 = new PathEditor2(locAndPathFilename,null,selectionsFile);
-//		pe2.setDeltaX(5.0);
-//		pe2.setDeltaY(5.0);
-//		pe2.setSplineDistance(3.0);
-//		pe2.setDistanceBetweenPathPoints(0.3);
-		
-		//Volvo GTO
-//		String locAndPathFilename = "/home/fpa/catkin_ws/src/volvo_gto/coordination_gto/missions/GTO_locations_and_paths.txt";
-//		String selectionsFile = null;
-//		String mapFilename = "/home/fpa/catkin_ws/src/volvo_gto/gazebo_vgto/gazebo_worlds_vgto/maps/vgto_plant.yaml";
-//		//new PathEditor2(locAndPathFilename,mapFilename);
-//		new PathEditor2(locAndPathFilename,mapFilename,selectionsFile);
-		
-//		//Volvo CE
-//		String locAndPathFilename = "paths/elsite_locations.bare.txt";
-//		String selectionsFile = "paths/selections.txt";
-//		String mapFilename = "maps/elsite_1m.yaml";
-//		//new PathEditor2(locAndPathFilename,mapFilename);
-//		new PathEditor2(locAndPathFilename,mapFilename,selectionsFile);
-				
 	}
 
 	@Override
