@@ -57,7 +57,7 @@ public class PathEditor2 implements MouseMotionListener {
 	private HashMap<Integer,ArrayList<Integer>> selectionGroupsToSelections = null;
 	private int selectedGroup = -1;
 	
-	private Point2D mousePosition = null;
+	private Point2D mousePositionInMap = null;
 
 	private String selectionString = "";
 	private ArrayList<Integer> selectedLocationsInt = new ArrayList<Integer>();
@@ -176,7 +176,7 @@ public class PathEditor2 implements MouseMotionListener {
 				String pathName = onePath.getKey();
 				ArrayList<PoseSteering> path = onePath.getValue();
 				for (int i = 0; i < path.size(); i++) {
-					panel.addArrow(pathName+"."+i, path.get(i).getPose(), Color.blue);
+					panel.addArrow("_"+pathName+"."+i, path.get(i).getPose(), Color.blue);
 				}
 			}
 			panel.updatePanel();
@@ -207,14 +207,14 @@ public class PathEditor2 implements MouseMotionListener {
 			ArrayList<PoseSteering> pathToRemove = allPaths.get(pathName);
 			ArrayList<PoseSteering> pathToRemoveInv = allPaths.get(pathNameInv);
 			if (pathToRemove != null) {
-				for (int i = 0; i < pathToRemove.size(); i++) panel.removeGeometry(pathName+"."+i);
+				for (int i = 0; i < pathToRemove.size(); i++) panel.removeGeometry("_"+pathName+"."+i);
 				panel.removeGeometry(pathName+".all");
 				allPaths.remove(pathName);
 				System.out.println("Removed path " + pathName);
 				updatePaths();
 			}
 			if (pathToRemoveInv != null) {
-				for (int i = 0; i < pathToRemoveInv.size(); i++) panel.removeGeometry(pathNameInv+"."+i);
+				for (int i = 0; i < pathToRemoveInv.size(); i++) panel.removeGeometry("_"+pathNameInv+"."+i);
 				panel.removeGeometry(pathNameInv+".all");
 				allPaths.remove(pathNameInv);
 				System.out.println("Removed path " + pathNameInv);
@@ -290,7 +290,7 @@ public class PathEditor2 implements MouseMotionListener {
 			String pathName = onePath.getKey();
 			ArrayList<PoseSteering> path = onePath.getValue();
 			for (int i = 0; i < path.size(); i++) {
-				panel.addArrow(pathName+"."+i, path.get(i).getPose(), Color.blue);
+				panel.addArrow("_"+pathName+"."+i, path.get(i).getPose(), Color.blue);
 			}
 			panel.addArrow(pathName+".all", path.get(0).getPose(), path.get(path.size()-1).getPose(), Color.lightGray);
 		}
@@ -318,7 +318,8 @@ public class PathEditor2 implements MouseMotionListener {
 	public void addAllKnownLocations() {
 		locationIDs = new ArrayList<String>();
 		for (Entry<String,Pose> entry : Missions.getLocations().entrySet()) {
-			if (entry.getKey().startsWith("AUX_")) newLocationCounter++;
+			//if (entry.getKey().startsWith("AUX_")) newLocationCounter++;
+			newLocationCounter++;
 			panel.addArrow("LOC:"+entry.getKey(), entry.getValue(), Color.green);
 			locationIDs.add(entry.getKey());
 		}
@@ -549,6 +550,31 @@ public class PathEditor2 implements MouseMotionListener {
 		};
 		panel.getActionMap().put("Help",actHelp);
 
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_A,0),"Rename with given label template");
+		AbstractAction actRename = new AbstractAction() {
+			private static final long serialVersionUID = 8788274388899789053L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				String nameTemplate = JOptionPane.showInputDialog("Enter a prefix to use");
+				int templateCounter = 0;
+				for (int selectedLocationOneInt : selectedLocationsInt) {
+					String oldName = locationIDs.get(selectedLocationOneInt);
+					Pose oldPose = Missions.getLocation(oldName);
+					String newName = nameTemplate;
+					if (selectedLocationsInt.size() > 1) newName += (templateCounter++);
+					locationIDs.remove(selectedLocationOneInt);
+					locationIDs.add(selectedLocationOneInt, newName);
+					Missions.removeLocation(oldName);
+					Missions.setLocation(newName, oldPose);
+					System.out.println("Renamed " + oldName + " to " + newName);
+					panel.removeGeometry("LOC:"+oldName);
+					clearLocations();
+					highlightSelectedLocations();
+				}
+			}
+		};
+		panel.getActionMap().put("Rename with given label template",actRename);
+
 		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_L,0),"Select location(s)");
 		AbstractAction actSelectLocations = new AbstractAction() {
 			private static final long serialVersionUID = -4218195170958172222L;
@@ -663,7 +689,7 @@ public class PathEditor2 implements MouseMotionListener {
 				for (String pathName : allPaths.keySet()) {
 					ArrayList<PoseSteering> pathToRemove = allPaths.get(pathName);
 					if (pathToRemove != null) {
-						for (int i = 0; i < pathToRemove.size(); i++) panel.removeGeometry(pathName+"."+i);
+						for (int i = 0; i < pathToRemove.size(); i++) panel.removeGeometry("_"+pathName+"."+i);
 						System.out.println("Removed path " + pathName);
 					}
 				}
@@ -696,7 +722,7 @@ public class PathEditor2 implements MouseMotionListener {
 			private static final long serialVersionUID = 3855143731365388356L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				Coordinate mouseCoord = new Coordinate(mousePosition.getX(), mousePosition.getY());
+				Coordinate mouseCoord = new Coordinate(mousePositionInMap.getX(), mousePositionInMap.getY());
 				double min = Double.MAX_VALUE;
 				int locID = -1;
 				for (int i = 0; i < locationIDs.size(); i++) {
@@ -737,11 +763,11 @@ public class PathEditor2 implements MouseMotionListener {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				if (!selectedLocationsInt.isEmpty()) {
-					selectionString = locationIDs.size() + "-" + (locationIDs.size()+selectedLocationsInt.size()-1);
+					//selectionString = locationIDs.size() + "-" + (locationIDs.size()+selectedLocationsInt.size()-1);
 					int selectedLocationOneInt = selectedLocationsInt.get(selectedLocationsInt.size()-1);
 					Pose pOld = Missions.getLocation(locationIDs.get(selectedLocationOneInt));
-					double theta = Math.atan2(pOld.getY() - mousePosition.getY(), pOld.getX() - mousePosition.getX());
-					Pose pNew = new Pose(mousePosition.getX(), mousePosition.getY(), theta);
+					double theta = Math.atan2(pOld.getY() - mousePositionInMap.getY(), pOld.getX() - mousePositionInMap.getX());
+					Pose pNew = new Pose(mousePositionInMap.getX(), mousePositionInMap.getY(), theta);
 					String newPoseName = "AUX_"+newLocationCounter++;
 					Missions.setLocation(newPoseName, pNew);
 					locationIDs.add(newPoseName);
@@ -754,7 +780,7 @@ public class PathEditor2 implements MouseMotionListener {
 				else {
 					ArrayList<Integer> newSelection = new ArrayList<Integer>();
 					//Pose pNew = new Pose(0.0, 0.0, 0.0);
-					Pose pNew = new Pose(mousePosition.getX(), mousePosition.getY(), 0.0);
+					Pose pNew = new Pose(mousePositionInMap.getX(), mousePositionInMap.getY(), 0.0);
 					String newPoseName = "AUX_"+newLocationCounter++;
 					Missions.setLocation(newPoseName, pNew);
 					locationIDs.add(newPoseName);
@@ -1289,8 +1315,8 @@ public class PathEditor2 implements MouseMotionListener {
 
 
 		panel.setFocusable(true);
-		panel.setArrowHeadSizeInMeters(2.4);
-		panel.setTextSizeInMeters(2.3);
+		panel.setArrowHeadSizeInMeters(0.4);
+		panel.setTextSizeInMeters(20.3);
 	}
 	
 		
@@ -1412,7 +1438,7 @@ public class PathEditor2 implements MouseMotionListener {
 		AffineTransform geomToScreen = panel.getMapTransform();
 		try {
 			AffineTransform geomToScreenInv = geomToScreen.createInverse();
-			this.mousePosition = geomToScreenInv.transform(new Point2D.Double(e.getX(),e.getY()), null);
+			this.mousePositionInMap = geomToScreenInv.transform(new Point2D.Double(e.getX(),e.getY()), null);
 			//System.out.println(mousePosition);
 		} catch (NoninvertibleTransformException e1) {
 			// TODO Auto-generated catch block
