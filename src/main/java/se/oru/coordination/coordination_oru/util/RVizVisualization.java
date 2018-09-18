@@ -49,6 +49,7 @@ import visualization_msgs.MarkerArray;
 
 public class RVizVisualization implements FleetVisualization, NodeMain {
 
+  private final String mapFrameID = "/map_2dlaser";
 	private ConnectedNode node = null;
 	private HashMap<String,Publisher<visualization_msgs.MarkerArray>> boxMarkerPublishers = null;
 	private HashMap<String,ArrayList<visualization_msgs.Marker>> boxMarkerMarkers = null;
@@ -209,7 +210,7 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 				DataBufferByte data = (DataBufferByte)raster.getDataBuffer();
 				ChannelBuffer buffer = ChannelBuffers.copiedBuffer(ByteOrder.nativeOrder(), data.getData());
 				occMap.setData(buffer);
-				occMap.getHeader().setFrameId("/map");
+				occMap.getHeader().setFrameId(mapFrameID);
 				occMap.getInfo().setHeight((int)(img.getHeight()));
 				occMap.getInfo().setWidth((int)(img.getWidth()));
 				geometry_msgs.Pose pose = node.getTopicMessageFactory().newFromType(geometry_msgs.Pose._TYPE);
@@ -218,7 +219,7 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 				occMap.getInfo().setOrigin(pose);
 				double res = Double.parseDouble(Missions.getProperty("resolution", mapYAMLFile));
 				occMap.getInfo().setResolution((float)res);
-				final Publisher<OccupancyGrid> publisher = node.newPublisher("/map", OccupancyGrid._TYPE);
+				final Publisher<OccupancyGrid> publisher = node.newPublisher(mapFrameID, OccupancyGrid._TYPE);
 				node.executeCancellableLoop(new CancellableLoop() {
 					@Override
 					protected void loop() throws InterruptedException {
@@ -242,7 +243,7 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 			double theta = rr.getPose().getTheta();
 
 			visualization_msgs.Marker marker = node.getTopicMessageFactory().newFromType(visualization_msgs.Marker._TYPE);
-			marker.getHeader().setFrameId("/map");
+			marker.getHeader().setFrameId(mapFrameID);
 			marker.getScale().setX(0.2f);
 			marker.getColor().setR(100f);
 			marker.getColor().setG(0.0f);
@@ -278,7 +279,7 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 
 			//////////////
 			visualization_msgs.Marker markerName = node.getTopicMessageFactory().newFromType(visualization_msgs.Marker._TYPE);
-			markerName.getHeader().setFrameId("/map");
+			markerName.getHeader().setFrameId(mapFrameID);
 			markerName.getScale().setX(1.0f);
 			markerName.getScale().setY(1.0f);
 			markerName.getScale().setZ(1.0f);
@@ -311,7 +312,7 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 	public void displayBox(String markerLabel, Coordinate[] shape, int markerID, double x, double y, double durationInSeconds) {
 		if (ready) {
 			visualization_msgs.Marker marker = node.getTopicMessageFactory().newFromType(visualization_msgs.Marker._TYPE);
-			marker.getHeader().setFrameId("/map");
+			marker.getHeader().setFrameId(mapFrameID);
 			marker.getScale().setX(0.2f);
 			marker.getColor().setR(0.0f);
 			marker.getColor().setG(100.0f);
@@ -346,7 +347,7 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 
 			//////////////
 			visualization_msgs.Marker markerName = node.getTopicMessageFactory().newFromType(visualization_msgs.Marker._TYPE);
-			markerName.getHeader().setFrameId("/map");
+			markerName.getHeader().setFrameId(mapFrameID);
 			markerName.getScale().setX(1.0f);
 			markerName.getScale().setY(1.0f);
 			markerName.getScale().setZ(1.0f);
@@ -395,7 +396,7 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 			points.add(pointTo);
 			mArrow.setPoints(points);
 			mArrow.setId(dependencyDescriptor.hashCode());
-			mArrow.getHeader().setFrameId("/map");
+			mArrow.getHeader().setFrameId(mapFrameID);
 			mArrow.getScale().setX(0.4);
 			mArrow.getScale().setY(1.0);
 			mArrow.getScale().setZ(1.2);
@@ -508,7 +509,7 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 		Coordinate[] verts = dom.getGeometry().getCoordinates();
 
 		visualization_msgs.Marker marker = node.getTopicMessageFactory().newFromType(visualization_msgs.Marker._TYPE);
-		marker.getHeader().setFrameId("/map");
+		marker.getHeader().setFrameId(mapFrameID);
 		marker.getScale().setX(0.1f);
 		marker.getColor().setR(50f);
 		marker.getColor().setG(50.0f);
