@@ -219,7 +219,7 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 				occMap.getInfo().setOrigin(pose);
 				double res = Double.parseDouble(Missions.getProperty("resolution", mapYAMLFile));
 				occMap.getInfo().setResolution((float)res);
-				final Publisher<OccupancyGrid> publisher = node.newPublisher(mapFrameID, OccupancyGrid._TYPE);
+				final Publisher<OccupancyGrid> publisher = node.newPublisher("/map", OccupancyGrid._TYPE);
 				node.executeCancellableLoop(new CancellableLoop() {
 					@Override
 					protected void loop() throws InterruptedException {
