@@ -354,6 +354,16 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					trackers.get(robotID).setCriticalPoint(criticalPoint);
 				}
 			}
+			else {
+				if (!communicatedCPs.containsKey(trackers.get(robotID)) || !communicatedCPs.get(trackers.get(robotID)).equals(criticalPoint) ) {
+					System.out.println("NOT SKIPPING robot" + robotID + " CP: " + criticalPoint);
+					communicatedCPs.put(trackers.get(robotID), criticalPoint);
+					trackers.get(robotID).setCriticalPoint(criticalPoint);
+				}
+				else {
+					System.out.println("SKIPPING robot" + robotID + " CP: " + criticalPoint);					
+				}
+			}
 		}
 	}
 
@@ -1218,6 +1228,16 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 					//Both robots in critical section --> re-impose previously decided dependency
 					else {
+						
+						//If one of the robots is position 0, then it is idle, hence neither robot should move (deadlock)
+						//(the other direction will also be evaluated, hence we will get a deadlock)
+//						if (robotReport1.getPathIndex() == 0 || robotReport2.getCriticalPoint() == 0) {
+//							drivingCurrentIndex = robotReport1.getPathIndex();
+//							waitingCurrentIndex = robotReport2.getPathIndex();
+//							waitingTE = cs.getTe2();
+//							drivingTE = cs.getTe1();
+//						}
+						
 						//Robot 1 is ahead --> make robot 2 follow
 						if (isAhead(cs, robotReport1, robotReport2)) {
 							drivingCurrentIndex = robotReport1.getPathIndex();
@@ -1421,6 +1441,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			//Recompute CSs involving this robot
 			computeCriticalSections();
 			updateDependencies();
+			
+			communicatedCPs.remove(trackers.get(robotID));
 	
 			envelopesToTrack.remove(newTE);
 		}
@@ -1444,6 +1466,33 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					
 					//replace the path of this robot (will compute new envelope)
 					replacePath(robotID, truncatedPath);
+					
+				}
+			}
+		}
+	}
+	
+	/**
+	 * Reverse the {@link TrajectoryEnvelope} of a given robot at the closest dynamically-feasible path point. This path point is computed via the robot's {@link ForwardModel}.
+	 * @param robotID The ID of the robot whose {@link TrajectoryEnvelope} should be reversed.
+	 */
+	public void reverseEnvelope(int robotID) {
+		synchronized (solver) {
+			TrajectoryEnvelope te = this.getCurrentTrajectoryEnvelope(robotID);
+			AbstractTrajectoryEnvelopeTracker tet = this.trackers.get(robotID); 
+			if (!(tet instanceof TrajectoryEnvelopeTrackerDummy)) {
+				int earliestStoppingPathIndex = this.getForwardModel(robotID).getEarliestStoppingPathIndex(te, this.getRobotReport(robotID));
+				if (earliestStoppingPathIndex != -1) {
+					metaCSPLogger.info("Reversing " + te + " at " + earliestStoppingPathIndex);
+					
+					//Compute and add new TE, remove old TE (both driving and final parking)
+					PoseSteering[] truncatedPath = Arrays.copyOf(te.getTrajectory().getPoseSteering(), earliestStoppingPathIndex+1);
+					PoseSteering[] overallPath = new PoseSteering[truncatedPath.length*2-1];
+					for (int i = 0; i < truncatedPath.length; i++) overallPath[i] = truncatedPath[i];
+					for (int i = 1; i < truncatedPath.length; i++) overallPath[truncatedPath.length-1+i] = truncatedPath[truncatedPath.length-i];
+										
+					//replace the path of this robot (will compute new envelope)
+					replacePath(robotID, overallPath);
 					
 				}
 			}
