@@ -49,7 +49,7 @@ import visualization_msgs.MarkerArray;
 
 public class RVizVisualization implements FleetVisualization, NodeMain {
 
-  private final String mapFrameID = "/map_2dlaser";
+  private final String mapFrameID = "/map_laser2d";
 	private ConnectedNode node = null;
 	private HashMap<String,Publisher<visualization_msgs.MarkerArray>> boxMarkerPublishers = null;
 	private HashMap<String,ArrayList<visualization_msgs.Marker>> boxMarkerMarkers = null;
