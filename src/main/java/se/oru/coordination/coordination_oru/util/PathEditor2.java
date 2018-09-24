@@ -260,7 +260,7 @@ public class PathEditor2 implements MouseMotionListener {
 			for (int oneLocation : selectedLocationsInt) {
 				String locationName = locationIDs.get(oneLocation);
 				for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
-					if (entry.getKey().startsWith(locationName) || entry.getKey().endsWith(locationName)) {
+					if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
 						ArrayList<PoseSteering> path = entry.getValue();
 						Geometry env = createEnvelope(path);
 						//addGeometry(String id, Geometry geom, boolean empty, boolean thick, boolean transp, String color)
@@ -278,7 +278,7 @@ public class PathEditor2 implements MouseMotionListener {
 			for (int oneLocation : selectedLocsInt) {
 				String locationName = locationIDs.get(oneLocation);
 				for (Entry<String, ArrayList<PoseSteering>> entry : allPaths.entrySet()) {
-					if (entry.getKey().startsWith(locationName) || entry.getKey().endsWith(locationName)) {
+					if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
 						toRemove.add(entry.getKey());
 					}
 				}
@@ -1053,7 +1053,7 @@ public class PathEditor2 implements MouseMotionListener {
 						String locationName = locationIDs.get(oneLocation);
 						ArrayList<String> pathsToRecompute = new ArrayList<String>();
 						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
-							if (entry.getKey().startsWith(locationName) || entry.getKey().endsWith(locationName)) {
+							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
 								if (!isInversePath.get(entry.getKey())) {
 									pathsToRecompute.add(entry.getKey());
 								}
@@ -1105,7 +1105,7 @@ public class PathEditor2 implements MouseMotionListener {
 						String locationName = locationIDs.get(oneLocation);
 						ArrayList<String> pathsToRecompute = new ArrayList<String>();
 						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
-							if (entry.getKey().startsWith(locationName) || entry.getKey().endsWith(locationName)) {
+							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
 								if (!isInversePath.get(entry.getKey())) {
 									pathsToRecompute.add(entry.getKey());
 								}
@@ -1156,7 +1156,7 @@ public class PathEditor2 implements MouseMotionListener {
 						String locationName = locationIDs.get(oneLocation);
 						ArrayList<String> pathsToRecompute = new ArrayList<String>();
 						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
-							if (entry.getKey().startsWith(locationName) || entry.getKey().endsWith(locationName)) {
+							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
 								if (!isInversePath.get(entry.getKey())) {
 									pathsToRecompute.add(entry.getKey());
 								}
@@ -1207,7 +1207,7 @@ public class PathEditor2 implements MouseMotionListener {
 						String locationName = locationIDs.get(oneLocation);
 						ArrayList<String> pathsToRecompute = new ArrayList<String>();
 						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
-							if (entry.getKey().startsWith(locationName) || entry.getKey().endsWith(locationName)) {
+							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
 								if (!isInversePath.get(entry.getKey())) {
 									pathsToRecompute.add(entry.getKey());
 								}
@@ -1258,7 +1258,7 @@ public class PathEditor2 implements MouseMotionListener {
 						String locationName = locationIDs.get(oneLocation);
 						ArrayList<String> pathsToRecompute = new ArrayList<String>();
 						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
-							if (entry.getKey().startsWith(locationName) || entry.getKey().endsWith(locationName)) {
+							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
 								if (!isInversePath.get(entry.getKey())) {
 									pathsToRecompute.add(entry.getKey());
 								}
@@ -1310,7 +1310,7 @@ public class PathEditor2 implements MouseMotionListener {
 						String locationName = locationIDs.get(oneLocation);
 						ArrayList<String> pathsToRecompute = new ArrayList<String>();
 						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
-							if (entry.getKey().startsWith(locationName) || entry.getKey().endsWith(locationName)) {
+							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
 								if (!isInversePath.get(entry.getKey())) {
 									pathsToRecompute.add(entry.getKey());
 								}
@@ -1388,7 +1388,21 @@ public class PathEditor2 implements MouseMotionListener {
 			}
 		};
 		panel.getActionMap().put("Measure distance between selected points",actMeasure);
-		
+
+		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_B,0),"Select all poses (and paths)");
+		AbstractAction actSelectAll = new AbstractAction() {
+			private static final long serialVersionUID = 6487432455015786029L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				selectedLocationsInt.clear();
+				for (int i = 0; i < locationIDs.size(); i++) selectedLocationsInt.add(i);
+				clearLocations();
+				highlightSelectedLocations();
+				updatePaths2();
+			}
+		};
+		panel.getActionMap().put("Select all poses (and paths)",actSelectAll);
+
 		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_DOWN,0),"Decrease Y of selected location(s)");
 		AbstractAction actYMinus = new AbstractAction() {
 			private static final long serialVersionUID = 6487878455015786029L;
@@ -1413,7 +1427,7 @@ public class PathEditor2 implements MouseMotionListener {
 						String locationName = locationIDs.get(oneLocation);
 						ArrayList<String> pathsToRecompute = new ArrayList<String>();
 						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
-							if (entry.getKey().startsWith(locationName) || entry.getKey().endsWith(locationName)) {
+							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
 								if (!isInversePath.get(entry.getKey())) {
 									pathsToRecompute.add(entry.getKey());
 								}
@@ -1464,7 +1478,7 @@ public class PathEditor2 implements MouseMotionListener {
 						String locationName = locationIDs.get(oneLocation);
 						ArrayList<String> pathsToRecompute = new ArrayList<String>();
 						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
-							if (entry.getKey().startsWith(locationName) || entry.getKey().endsWith(locationName)) {
+							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
 								if (!isInversePath.get(entry.getKey())) {
 									pathsToRecompute.add(entry.getKey());
 								}
@@ -1515,7 +1529,7 @@ public class PathEditor2 implements MouseMotionListener {
 						String locationName = locationIDs.get(oneLocation);
 						ArrayList<String> pathsToRecompute = new ArrayList<String>();
 						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
-							if (entry.getKey().startsWith(locationName) || entry.getKey().endsWith(locationName)) {
+							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
 								if (!isInversePath.get(entry.getKey())) {
 									pathsToRecompute.add(entry.getKey());
 								}
@@ -1566,7 +1580,7 @@ public class PathEditor2 implements MouseMotionListener {
 						String locationName = locationIDs.get(oneLocation);
 						ArrayList<String> pathsToRecompute = new ArrayList<String>();
 						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
-							if (entry.getKey().startsWith(locationName) || entry.getKey().endsWith(locationName)) {
+							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
 								if (!isInversePath.get(entry.getKey())) {
 									pathsToRecompute.add(entry.getKey());
 								}
@@ -1617,7 +1631,7 @@ public class PathEditor2 implements MouseMotionListener {
 						String locationName = locationIDs.get(oneLocation);
 						ArrayList<String> pathsToRecompute = new ArrayList<String>();
 						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
-							if (entry.getKey().startsWith(locationName) || entry.getKey().endsWith(locationName)) {
+							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
 								if (!isInversePath.get(entry.getKey())) {
 									pathsToRecompute.add(entry.getKey());
 								}
@@ -1668,7 +1682,7 @@ public class PathEditor2 implements MouseMotionListener {
 						String locationName = locationIDs.get(oneLocation);
 						ArrayList<String> pathsToRecompute = new ArrayList<String>();
 						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
-							if (entry.getKey().startsWith(locationName) || entry.getKey().endsWith(locationName)) {
+							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
 								if (!isInversePath.get(entry.getKey())) {
 									pathsToRecompute.add(entry.getKey());
 								}
@@ -1728,7 +1742,7 @@ public class PathEditor2 implements MouseMotionListener {
 					String locationName = locationIDs.get(oneLocation);
 					ArrayList<String> pathsToRecompute = new ArrayList<String>();
 					for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
-						if (entry.getKey().startsWith(locationName) || entry.getKey().endsWith(locationName)) {
+						if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
 							if (!isInversePath.get(entry.getKey())) {
 								pathsToRecompute.add(entry.getKey());
 							}
@@ -1770,7 +1784,7 @@ public class PathEditor2 implements MouseMotionListener {
 					String locationName = locationIDs.get(oneLocation);
 					ArrayList<String> pathsToRecompute = new ArrayList<String>();
 					for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
-						if (entry.getKey().startsWith(locationName) || entry.getKey().endsWith(locationName)) {
+						if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
 							if (!isInversePath.get(entry.getKey())) {
 								pathsToRecompute.add(entry.getKey());
 							}
@@ -1834,7 +1848,7 @@ public class PathEditor2 implements MouseMotionListener {
 					String locationName = locationIDs.get(oneLocation);
 					ArrayList<String> pathsToRecompute = new ArrayList<String>();
 					for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
-						if (entry.getKey().startsWith(locationName) || entry.getKey().endsWith(locationName)) {
+						if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
 							if (!isInversePath.get(entry.getKey())) {
 								pathsToRecompute.add(entry.getKey());
 							}
@@ -1876,7 +1890,7 @@ public class PathEditor2 implements MouseMotionListener {
 					String locationName = locationIDs.get(oneLocation);
 					ArrayList<String> pathsToRecompute = new ArrayList<String>();
 					for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
-						if (entry.getKey().startsWith(locationName) || entry.getKey().endsWith(locationName)) {
+						if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
 							if (!isInversePath.get(entry.getKey())) {
 								pathsToRecompute.add(entry.getKey());
 							}
