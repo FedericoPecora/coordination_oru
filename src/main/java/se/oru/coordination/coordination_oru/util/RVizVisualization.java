@@ -49,7 +49,8 @@ import visualization_msgs.MarkerArray;
 
 public class RVizVisualization implements FleetVisualization, NodeMain {
 
-  private final String mapFrameID = "/map_laser2d";
+	//private final String mapFrameID = "/map_laser2d";
+	private String mapFrameID = "/map";
 	private ConnectedNode node = null;
 	private HashMap<String,Publisher<visualization_msgs.MarkerArray>> boxMarkerPublishers = null;
 	private HashMap<String,ArrayList<visualization_msgs.Marker>> boxMarkerMarkers = null;
@@ -117,17 +118,29 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 	}
 	
 	public RVizVisualization() {
-		this(true);
+		this("/map");
 	}
 	
+	public RVizVisualization(String mapFrameID) {
+		this(true,mapFrameID);
+	}
+
 	public RVizVisualization(ConnectedNode node) {
-		this(false);
+		this(node,"/map");
+	}
+	
+	public RVizVisualization(ConnectedNode node, String mapFrameID) {
+		this(false, mapFrameID);
 		this.node = node;
 		this.ready = true;
 	}
 
-	
 	public RVizVisualization(boolean startROSCore) {
+		this(startROSCore,"/map");
+	}
+	
+	public RVizVisualization(boolean startROSCore, String mapFrameID) {
+		this.mapFrameID = mapFrameID;
 		this.robotStatusPublishers = new HashMap<Integer,Publisher<visualization_msgs.MarkerArray>>();
 		this.dependencyPublishers = new HashMap<Integer,Publisher<visualization_msgs.MarkerArray>>();
 		this.robotStatusMarkers = new HashMap<Integer,ArrayList<visualization_msgs.Marker>>();
