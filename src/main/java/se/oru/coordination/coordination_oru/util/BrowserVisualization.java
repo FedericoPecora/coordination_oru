@@ -117,7 +117,7 @@ public class BrowserVisualization implements FleetVisualization {
 		double y = rr.getPose().getY();
 		double theta = rr.getPose().getTheta();
 		String name = "R"+te.getRobotID();
-		String extraData = "";
+		String extraData = " : " + rr.getPathIndex();
 		if (extraStatusInfo != null) {
 			for (String st : extraStatusInfo) {
 				extraData += (" | " + st);
@@ -126,21 +126,22 @@ public class BrowserVisualization implements FleetVisualization {
 		Geometry geom = null;
 		if (rr.getPathIndex() != -1) geom = TrajectoryEnvelope.getFootprint(te.getFootprint(), x, y, theta);
 		else geom = TrajectoryEnvelope.getFootprint(te.getFootprint(), te.getTrajectory().getPose()[0].getX(), te.getTrajectory().getPose()[0].getY(), te.getTrajectory().getPose()[0].getTheta()); 
-		String jsonString = "{ \"operation\" : \"addGeometry\", \"data\" : " + this.geometryToJSONString(name, geom, "#ff0000", -1, extraData) + "}";
+		String jsonString = "{ \"operation\" : \"addGeometry\", \"data\" : " + this.geometryToJSONString(name, geom, "#ff0000", -1, true, extraData) + "}";
 		enqueueMessage(jsonString);
 	}
 
 	@Override
 	public void displayDependency(RobotReport rrWaiting, RobotReport rrDriving, String dependencyDescriptor) {
 		Geometry arrow = createArrow(rrWaiting.getPose(), rrDriving.getPose());
-		String jsonString = "{ \"operation\" : \"addGeometry\", \"data\" : " + this.geometryToJSONString(dependencyDescriptor, arrow, "#ffffff", 1000, null) + "}";
+		String jsonString = "{ \"operation\" : \"addGeometry\", \"data\" : " + this.geometryToJSONString(dependencyDescriptor, arrow, "#adccff", 1000, true, null) + "}";
 		enqueueMessage(jsonString);
 	}
 	
-	private String geometryToJSONString(String name, Geometry geom, String color, long age, String extraData) {
+	private String geometryToJSONString(String name, Geometry geom, String color, long age, boolean filled, String extraData) {
 		String ret = "{ \"name\" : \"" + name + "\", \"color\" : \"" + color + "\", ";
 		if (age > 0) ret += " \"age\" : " + age + ", ";
-		if (extraData != null && !extraData.trim().equals("")) ret += " \"extraData\" : \"" + extraData + "\", ";
+		ret += " \"filled\" : " + filled + ", ";
+		if (extraData != null && !extraData.trim().equals("")) ret += " \"extraData\" : \"" + extraData + "\", ";		
 		ret += "\"coordinates\" : [";
 		Coordinate[] coords = geom.getCoordinates();
 		for (int i = 0; i < coords.length; i++) {
@@ -155,7 +156,7 @@ public class BrowserVisualization implements FleetVisualization {
 	public void addEnvelope(TrajectoryEnvelope te) {
 		GeometricShapeDomain dom = (GeometricShapeDomain)te.getEnvelopeVariable().getDomain();
 		Geometry geom = dom.getGeometry();
-		String jsonString = "{ \"operation\" : \"addGeometry\", \"data\" : " + this.geometryToJSONString("_"+te.getID(), geom, "#efe007", -1, null) + "}";
+		String jsonString = "{ \"operation\" : \"addGeometry\", \"data\" : " + this.geometryToJSONString("_"+te.getID(), geom, "#efe007", -1, false, null) + "}";
 		enqueueMessage(jsonString);
 	}
 

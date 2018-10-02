@@ -10,6 +10,7 @@ class Visualization {
 		document.addEventListener('DOMContentLoaded', this.init(), false);
 		this.geometries = {};
 		this.geometryColors = {};
+		this.geometryFilled = {};
 		this.geometryExtraData = {};
 		this.geometryTimeouts = {};
 		this.resizeCanvasToUserSpec();
@@ -123,6 +124,7 @@ class Visualization {
 		var timeNow = new Date().getTime();
 		this.geometries[geom.name] = geom.coordinates;
 		this.geometryColors[geom.name] = geom.color;
+		this.geometryFilled[geom.name] = geom.filled;
 		if (geom.age != null) this.geometryTimeouts[geom.name] = timeNow+geom.age;
 		if (geom.extraData != null) this.geometryExtraData[geom.name] = geom.extraData;
 	}
@@ -132,12 +134,12 @@ class Visualization {
 		//console.log("removing geom " + nameToRem);
 		delete this.geometries[nameToRem];
 		delete this.geometryColors[nameToRem];
+		delete this.geometryFilled[nameToRem];
 		delete this.geometryTimeouts[nameToRem];
 		delete this.geometryExtraData[nameToRem];
 	}
 	
 	refresh() {
-		
 		//Remove old geoms
 		var toRemove = [];
 		var timeNow = new Date().getTime();
@@ -179,7 +181,7 @@ class Visualization {
 			// key: the name of the object key
 			// index: the ordinal position of the key within the object
 			//console.log("drawing geom " + key);
-			viz.drawPolygon(viz.geometries[key], viz.geometryColors[key], !key.startsWith("R"));
+			viz.drawPolygon(viz.geometries[key], viz.geometryColors[key], !viz.geometryFilled[key]);
 			if (!key.startsWith("_")) {
 				var text = key;
 				if (viz.geometryExtraData[key] != null) {
@@ -205,7 +207,7 @@ class Visualization {
 	drawPolygon(coordinates, color, empty) {
 		this.ctx.fillStyle = color;
 		this.ctx.strokeStyle = color;
-		this.ctx.lineWidth=0.2;
+		this.ctx.lineWidth=0.1;
 		this.ctx.beginPath();
 		this.ctx.moveTo(coordinates[0].x, coordinates[0].y);
 		for (var i = 1; i < coordinates.length; i++) { 
