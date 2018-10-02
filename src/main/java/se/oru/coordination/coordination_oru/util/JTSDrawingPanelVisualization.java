@@ -182,4 +182,9 @@ public class JTSDrawingPanelVisualization implements FleetVisualization {
 		panel.setPermanent("_frame");
 	}
 
+	@Override
+	public void setMap(String yamlFile) {
+		panel.setMap(yamlFile);
+	}
+
 }

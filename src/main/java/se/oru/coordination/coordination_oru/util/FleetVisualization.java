@@ -15,5 +15,7 @@ public interface FleetVisualization {
 	public void removeEnvelope(TrajectoryEnvelope te);
 	
 	public void updateVisualization();
+	
+	public void setMap(String yamlFile);
 
 }

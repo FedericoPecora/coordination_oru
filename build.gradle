@@ -63,6 +63,11 @@ dependencies {
   compile 'org.ros.rosjava_core:rosjava:[0.3,0.4)'
   compile 'org.ros.rosjava_messages:visualization_msgs:[1.12,1.13)'
   
+  //For browser visualization
+  compile 'org.eclipse.jetty.websocket:websocket-api:9.4.12.v20180830'
+  compile 'org.eclipse.jetty.websocket:websocket-server:9.4.12.v20180830'
+  compile 'org.eclipse.jetty.websocket:websocket-client:9.4.12.v20180830'
+  
   // Add the following if you need to include jars that are not
   // in Maven Central and that you have places in the directory "lib"
   // (NOTE: you have to create this directory if you need it)

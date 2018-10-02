@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+PLACEHOLDER_STYLE
+</style>
+</head>
+
+<body>
+
+<script>
+PLACEHOLDER_SCRIPT
+</script>
+
+<script>
+	var viz = new Visualization();
+	var websocket = new WebSocket("ws://localhost:8081/fleet-events/");
+	websocket.binaryType = "arraybuffer";
+	window.onbeforeunload = function() {
+    	websocket.onclose = function () {}; // disable onclose handler first
+   		websocket.close();
+	};
+// 	websocket.onopen = function (event) {
+// 		websocket.send("Here's some text that the server is AAA urgently awaiting!"); 
+// 	};
+	websocket.onmessage = function (event) {
+		if (event.data instanceof ArrayBuffer) {
+			var arrayBuffer = event.data;
+	        var bytes = new Uint8Array(arrayBuffer);
+	        viz.setMap(bytes);
+		}
+		else {
+			var obj = JSON.parse(event.data);
+			var operation = obj.operation;
+			var data  = obj.data;
+			if (data != null) viz[operation](data);
+			else viz[operation]();
+		}
+		//viz.refresh();
+	}
+
+</script>
+
+</body>
+</html>

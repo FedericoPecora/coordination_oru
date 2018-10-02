@@ -203,6 +203,12 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
         return imgIn;
 	}
 
+	@Override
+	public void setMap(String yamlFile) {
+		String prefix = yamlFile.substring(0, yamlFile.indexOf(File.separator));
+		this.setMapFileName(yamlFile, prefix, false, true);
+	}
+	
 	public void setMapFileName(String mapYAMLFile, String prefix, boolean flipHorizontally, boolean flipVertically) {
 		this.mapFileName = Missions.getProperty("image", mapYAMLFile);
 		if (prefix != null) this.mapFileName = prefix + File.separator + this.mapFileName;

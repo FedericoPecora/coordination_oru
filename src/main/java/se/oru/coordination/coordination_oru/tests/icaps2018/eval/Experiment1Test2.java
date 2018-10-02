@@ -16,6 +16,7 @@ import se.oru.coordination.coordination_oru.Mission;
 import se.oru.coordination.coordination_oru.RobotAtCriticalSection;
 import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
+import se.oru.coordination.coordination_oru.util.BrowserVisualization;
 import se.oru.coordination.coordination_oru.util.Missions;
 import se.oru.coordination.coordination_oru.util.RVizVisualization;
 
@@ -101,7 +102,9 @@ public class Experiment1Test2 {
 
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
-		RVizVisualization viz = new RVizVisualization();
+//		RVizVisualization viz = new RVizVisualization();
+//		tec.setVisualization(viz);
+		BrowserVisualization viz = new BrowserVisualization();
 		tec.setVisualization(viz);
 
 		tec.setUseInternalCriticalPoints(false);

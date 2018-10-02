@@ -16,6 +16,7 @@ import se.oru.coordination.coordination_oru.RobotAtCriticalSection;
 import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
+import se.oru.coordination.coordination_oru.util.BrowserVisualization;
 import se.oru.coordination.coordination_oru.util.JTSDrawingPanelVisualization;
 import se.oru.coordination.coordination_oru.util.Missions;
 import se.oru.coordination.coordination_oru.util.RVizVisualization;
@@ -78,7 +79,9 @@ public class Experiment1Test1 {
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 //		String yamlFile = "../maps/map-empty.yaml";
 		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
-		RVizVisualization viz = new RVizVisualization();
+//		RVizVisualization viz = new RVizVisualization();
+//		tec.setVisualization(viz);
+		BrowserVisualization viz = new BrowserVisualization();
 		tec.setVisualization(viz);
 		tec.setBreakDeadlocks(false);
 		tec.setUseInternalCriticalPoints(false);

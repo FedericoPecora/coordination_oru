@@ -20,6 +20,8 @@ import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
+import se.oru.coordination.coordination_oru.util.BrowserVisualization;
+import se.oru.coordination.coordination_oru.util.JTSDrawingPanelVisualization;
 import se.oru.coordination.coordination_oru.util.Missions;
 import se.oru.coordination.coordination_oru.util.RVizVisualization;
 
@@ -98,9 +100,12 @@ public class Experiment2 {
 
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		String yamlFile = "maps/map-partial-2.yaml";
-		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization(yamlFile);
-		RVizVisualization viz = new RVizVisualization();
-		viz.setMapFileName(yamlFile, "maps", false, true);
+		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
+		//viz.setMap(yamlFile);
+		//RVizVisualization viz = new RVizVisualization();
+		//viz.setMap(yamlFile);
+		BrowserVisualization viz = new BrowserVisualization();
+		viz.setMap(yamlFile);
 		tec.setVisualization(viz);
 
 		tec.setUseInternalCriticalPoints(true);
