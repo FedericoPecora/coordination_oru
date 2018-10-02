@@ -187,4 +187,10 @@ public class JTSDrawingPanelVisualization implements FleetVisualization {
 		panel.setMap(yamlFile);
 	}
 
+	@Override
+	public int periodicEnvelopeRefreshInMillis() {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
 }

@@ -34,6 +34,7 @@ class Visualization {
 	    this.map = [];
 	    this.mapResolution = 1.0;
 	    this.mapOrigin = { x : 0, y : 0};
+	    this.footprintSize = 1;
 	}
 	
 	encode(input) {
@@ -182,12 +183,17 @@ class Visualization {
 			// index: the ordinal position of the key within the object
 			//console.log("drawing geom " + key);
 			viz.drawPolygon(viz.geometries[key], viz.geometryColors[key], !viz.geometryFilled[key]);
+			var textSize = 0.2;
+			if (key.startsWith("R")) {
+				var area = viz.calcPolygonArea(viz.geometries[key]);
+				textSize = Math.sqrt(area)/10;
+			}
 			if (!key.startsWith("_")) {
 				var text = key;
 				if (viz.geometryExtraData[key] != null) {
 					text += viz.geometryExtraData[key];
 				}
-				viz.drawText(text,viz.geometries[key][0],"#ffffff");
+				viz.drawText(text,viz.geometries[key][0],"#ffffff", textSize);
 			}
 		});
 		//console.log("num geoms: " + Object.keys(this.geometries).length);
@@ -204,13 +210,29 @@ class Visualization {
 		this.ctx.translate(this.dragDelta.x/100,-this.dragDelta.y/100);
 	}
 
+	calcPolygonArea(coordinates) {
+	    var total = 0;
+
+	    for (var i = 0, l = coordinates.length; i < l; i++) {
+	      var addX = coordinates[i].x;
+	      var addY = coordinates[i == coordinates.length - 1 ? 0 : i + 1].y;
+	      var subX = coordinates[i == coordinates.length - 1 ? 0 : i + 1].x;
+	      var subY = coordinates[i].y;
+
+	      total += (addX * addY * 0.5);
+	      total -= (subX * subY * 0.5);
+	    }
+
+	    return Math.abs(total);
+	}
+	
 	drawPolygon(coordinates, color, empty) {
 		this.ctx.fillStyle = color;
 		this.ctx.strokeStyle = color;
 		this.ctx.lineWidth=0.1;
 		this.ctx.beginPath();
 		this.ctx.moveTo(coordinates[0].x, coordinates[0].y);
-		for (var i = 1; i < coordinates.length; i++) { 
+		for (var i = 1; i < coordinates.length; i++) {
 			this.ctx.lineTo(coordinates[i].x, coordinates[i].y);
 		}
 		this.ctx.closePath();
@@ -218,8 +240,12 @@ class Visualization {
 		else this.ctx.fill();
 	}
 
-	drawText(text, coord, color) {
-		this.ctx.font = 'italic 2pt Calibri';
+	drawText(text, coord, color, size) {
+		this.ctx.font = 'italic ' + size*this.originalScale + 'pt Calibri';
+		console.log(size);
+		//var w = this.ctx.measureText(text).width;
+		//var h = w/text.length;
+		//console.log("approx h is " + h);
 		this.ctx.fillStyle = color;
 		this.ctx.strokeStyle = color;
 		this.ctx.lineWidth=0.2;

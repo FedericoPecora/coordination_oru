@@ -92,7 +92,7 @@ public class BrowserVisualization implements FleetVisualization {
 		}
 	}
 	
-	public void sendMessages() {
+	private void sendMessages() {
 		if (BrowserVisualizationSocket.ENDPOINTS != null && BrowserVisualizationSocket.ENDPOINTS.size() > 0) {
 			synchronized (BrowserVisualizationSocket.ENDPOINTS) {
 				for (String message : this.msgQueue) {
@@ -104,7 +104,7 @@ public class BrowserVisualization implements FleetVisualization {
 		}
 	}
 	
-	public void sendMessage(String text) {
+	private void sendMessage(String text) {
 		if (BrowserVisualizationSocket.ENDPOINTS != null) {
 			for (RemoteEndpoint rep : BrowserVisualizationSocket.ENDPOINTS) {
 				try {
@@ -228,6 +228,11 @@ public class BrowserVisualization implements FleetVisualization {
 			BrowserVisualizationSocket.map = ImageIO.read(new File(imageFileName));
 		}
 		catch (IOException e) { e.printStackTrace(); }
+	}
+
+	@Override
+	public int periodicEnvelopeRefreshInMillis() {
+		return 1000;
 	}
 
 }

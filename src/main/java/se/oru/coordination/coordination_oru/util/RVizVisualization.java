@@ -569,4 +569,10 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 		System.out.println("test");
 	}
 
+	@Override
+	public int periodicEnvelopeRefreshInMillis() {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
 }

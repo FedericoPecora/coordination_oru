@@ -17,5 +17,7 @@ public interface FleetVisualization {
 	public void updateVisualization();
 	
 	public void setMap(String yamlFile);
+	
+	public int periodicEnvelopeRefreshInMillis();
 
 }

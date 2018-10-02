@@ -1774,6 +1774,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				//Note: onStart is triggered only when earliest start of this tracker's envelope is < current time
 				TrackingCallback cb = new TrackingCallback(te) {
 					
+					private long lastEnvelopeRefresh = Calendar.getInstance().getTimeInMillis();
+					
 					@Override
 					public void beforeTrackingStart() {
 						
@@ -1870,6 +1872,13 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 					@Override
 					public String[] onPositionUpdate() {
+						if (viz != null && viz.periodicEnvelopeRefreshInMillis() > 0) {
+							long timeNow = Calendar.getInstance().getTimeInMillis();
+							if (timeNow-lastEnvelopeRefresh > viz.periodicEnvelopeRefreshInMillis()) {
+								viz.addEnvelope(myTE);
+								lastEnvelopeRefresh = timeNow;
+							}
+						}
 						if (trackingCallbacks.containsKey(myTE.getRobotID())) return trackingCallbacks.get(myTE.getRobotID()).onPositionUpdate();
 						return null;
 					}
