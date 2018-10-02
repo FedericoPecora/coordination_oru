@@ -137,13 +137,13 @@ public class Experiment1Test2 {
 			PoseSteering[] robotPath = getSinePath(period, mag, from, to);
 			PoseSteering[] robotPathInv = invertPath(robotPath);
 			if (robotID%2 == 0) {
-				Missions.putMission(new Mission(robotID, robotPath));
-				Missions.putMission(new Mission(robotID, robotPathInv));
+				Missions.enqueueMission(new Mission(robotID, robotPath));
+				Missions.enqueueMission(new Mission(robotID, robotPathInv));
 				tec.placeRobot(robotID, robotPath[0].getPose());
 			}
 			else {
-				Missions.putMission(new Mission(robotID, robotPathInv));
-				Missions.putMission(new Mission(robotID, robotPath));
+				Missions.enqueueMission(new Mission(robotID, robotPathInv));
+				Missions.enqueueMission(new Mission(robotID, robotPath));
 				tec.placeRobot(robotID, robotPathInv[0].getPose());				
 			}
 		}
@@ -154,9 +154,9 @@ public class Experiment1Test2 {
 			ArrayList<Mission> missionsToAdd = new ArrayList<Mission>();
 			for (int robotID : robotIDs) {
 				if (tec.isFree(robotID)) {
-					Mission m = Missions.popMission(robotID);
+					Mission m = Missions.dequeueMission(robotID);
 					missionsToAdd.add(m);
-					Missions.putMission(m);				
+					Missions.enqueueMission(m);				
 				}
 			}
 			tec.addMissions(missionsToAdd.toArray(new Mission[missionsToAdd.size()]));

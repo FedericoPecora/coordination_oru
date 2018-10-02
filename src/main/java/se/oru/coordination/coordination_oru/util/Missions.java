@@ -94,9 +94,19 @@ public class Missions {
 	}
 	
 	/**
-	 * Push a new {@link Mission} for a robot on the mission stack.
+	 * Enqueue a new {@link Mission} for a robot.
+	 * @param m The mission to enqueue.
+	 */
+	public static void enqueueMission(Mission m) {
+		if (!missions.containsKey(m.getRobotID())) missions.put(m.getRobotID(), new ArrayList<Mission>());
+		missions.get(m.getRobotID()).add(m);
+	}
+
+	/**
+	 * Push a new {@link Mission} for a robot on the mission queue.
 	 * @param m The mission to push
 	 */
+	@Deprecated
 	public static void pushMission(Mission m) {
 		if (!missions.containsKey(m.getRobotID())) missions.put(m.getRobotID(), new ArrayList<Mission>());
 		missions.get(m.getRobotID()).add(m);
@@ -113,10 +123,25 @@ public class Missions {
 	}
 	
 	/**
+	 * Dequeue the first mission from the queue of a given robot. 
+	 * @param robotID The ID of the robot.
+	 * @return The first mission from the queue of a given robot.
+	 */
+	public static Mission dequeueMission(int robotID) {
+		if (!missions.get(robotID).isEmpty()) {
+			Mission m = missions.get(robotID).get(0);
+			missions.get(robotID).remove(0);
+			return m;
+		}
+		return null;
+	}
+	
+	/**
 	 * Pop the first mission from the queue of a given robot. 
 	 * @param robotID The ID of the robot.
 	 * @return The first mission from the queue of a given robot.
 	 */
+	@Deprecated
 	public static Mission popMission(int robotID) {
 		if (!missions.get(robotID).isEmpty()) {
 			Mission m = missions.get(robotID).get(0);
@@ -476,6 +501,10 @@ public class Missions {
 													Missions.removeMissions(cm);
 												}
 											}
+										}
+										else {
+											Missions.dequeueMission(m.getRobotID());
+											Missions.enqueueMission(m);
 										}
 									}
 								}

@@ -92,7 +92,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner20 {
 		rsp.setStart(startRobot2);
 		rsp.setGoals(goalRobot2);
 		rsp.plan();
-		Missions.pushMission(new Mission(2,rsp.getPath()));
+		Missions.enqueueMission(new Mission(2,rsp.getPath()));
 		
 		System.out.println("Added missions " + Missions.getMissions());
 
@@ -111,7 +111,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner20 {
 		rsp.setGoals(goalRobot1);
 		//rsp.addObstacles(tec.getFootprintPolygon(2),tec.getRobotReport(2).getPose());
 		rsp.plan();
-		Missions.pushMission(new Mission(1,rsp.getPath()));
+		Missions.enqueueMission(new Mission(1,rsp.getPath()));
 
 		tec.addMissions(Missions.getMission(1, 0));
 		tec.computeCriticalSections();

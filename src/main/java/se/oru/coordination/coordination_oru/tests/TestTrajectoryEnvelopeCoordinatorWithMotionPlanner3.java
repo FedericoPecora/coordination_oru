@@ -138,10 +138,10 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner3 {
 		PoseSteering[] robot2path = rsp.getPath();
 		PoseSteering[] robot2pathInv = rsp.getPathInv();
 
-		Missions.putMission(new Mission(1, robot1path));
-		Missions.putMission(new Mission(1, robot1pathInv));
-		Missions.putMission(new Mission(2, robot2path));
-		Missions.putMission(new Mission(2, robot2pathInv));
+		Missions.enqueueMission(new Mission(1, robot1path));
+		Missions.enqueueMission(new Mission(1, robot1pathInv));
+		Missions.enqueueMission(new Mission(2, robot2path));
+		Missions.enqueueMission(new Mission(2, robot2pathInv));
 
 		System.out.println("Added missions " + Missions.getMissions());
 

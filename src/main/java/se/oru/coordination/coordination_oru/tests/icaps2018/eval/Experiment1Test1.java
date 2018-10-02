@@ -129,8 +129,8 @@ public class Experiment1Test1 {
 			PoseSteering[] robotPath = rsp.getPath();
 			PoseSteering[] robotPathInv = rsp.getPathInv();
 			
-			Missions.putMission(new Mission(robotID, robotPath));
-			Missions.putMission(new Mission(robotID, robotPathInv));
+			Missions.enqueueMission(new Mission(robotID, robotPath));
+			Missions.enqueueMission(new Mission(robotID, robotPathInv));
 		}
 
 		System.out.println("Added missions " + Missions.getMissions());

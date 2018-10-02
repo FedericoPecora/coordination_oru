@@ -96,16 +96,16 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner17 {
 		rsp.setStart(startRobot1);
 		rsp.setGoals(goalRobot11,goalRobot12,goalRobot13);
 		rsp.plan();
-		Missions.pushMission(new Mission(1,rsp.getPath()));
+		Missions.enqueueMission(new Mission(1,rsp.getPath()));
 
 		rsp.setStart(startRobot2);
 		rsp.setGoals(goalRobot21,goalRobot22,goalRobot23);
 		rsp.plan();
-		Missions.pushMission(new Mission(2,rsp.getPath()));
+		Missions.enqueueMission(new Mission(2,rsp.getPath()));
 		
 		System.out.println("Added missions " + Missions.getMissions());
 
-		tec.addMissions(Missions.popMission(1), Missions.popMission(2));
+		tec.addMissions(Missions.dequeueMission(1), Missions.dequeueMission(2));
 		
 		tec.computeCriticalSections();
 		tec.startTrackingAddedMissions();

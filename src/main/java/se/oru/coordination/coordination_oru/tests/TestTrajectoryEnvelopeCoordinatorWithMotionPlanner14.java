@@ -92,17 +92,17 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner14 {
 		rsp.setStart(startRobot1);
 		rsp.setGoals(goalRobot1);
 		rsp.plan();
-		Missions.putMission(new Mission(1,rsp.getPath()));
+		Missions.enqueueMission(new Mission(1,rsp.getPath()));
 		
 		rsp.setStart(startRobot2);
 		rsp.setGoals(goalRobot2);
 		rsp.plan();
-		Missions.putMission(new Mission(2,rsp.getPath()));
-		Missions.putMission(new Mission(2,rsp.getPathInv()));
+		Missions.enqueueMission(new Mission(2,rsp.getPath()));
+		Missions.enqueueMission(new Mission(2,rsp.getPathInv()));
 		rsp.setStart(startRobot2);
 		rsp.setGoals(goalRobot2Next);
 		rsp.plan();
-		Missions.putMission(new Mission(2,rsp.getPath()));
+		Missions.enqueueMission(new Mission(2,rsp.getPath()));
 		
 		System.out.println("Added missions " + Missions.getMissions());
 

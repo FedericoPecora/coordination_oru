@@ -107,13 +107,13 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlannerReplanNew {
 		Mission r2Mission = new Mission(2,rsp.getPath());
 
 		System.out.println("Added missions " + Missions.getMissions());
-		Missions.pushMission(r1Mission);
+		Missions.enqueueMission(r1Mission);
 
 		Missions.startMissionDispatchers(tec, false, 1 ,2);
 		
 		Thread.sleep(5000);
 		
-		Missions.pushMission(r2Mission);
+		Missions.enqueueMission(r2Mission);
 		
 		
 	}

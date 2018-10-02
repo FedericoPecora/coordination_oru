@@ -121,11 +121,11 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner {
 		if (!rsp.plan()) throw new Error ("No path between " + goalPoseRobot2 + " and " + startPoseRobot2);
 		PoseSteering[] pss2Inv = rsp.getPath();
 
-		Missions.putMission(new Mission(1, pss1));
-		Missions.putMission(new Mission(1, pss1Inv));
+		Missions.enqueueMission(new Mission(1, pss1));
+		Missions.enqueueMission(new Mission(1, pss1Inv));
 
-		Missions.putMission(new Mission(2, pss2));
-		Missions.putMission(new Mission(2, pss2Inv));
+		Missions.enqueueMission(new Mission(2, pss2));
+		Missions.enqueueMission(new Mission(2, pss2Inv));
 
 		System.out.println("Added missions " + Missions.getMissions());
 

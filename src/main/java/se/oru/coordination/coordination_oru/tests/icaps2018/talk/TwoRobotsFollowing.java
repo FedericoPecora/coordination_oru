@@ -92,12 +92,12 @@ public class TwoRobotsFollowing {
 		rsp.setStart(startRobot1);
 		rsp.setGoals(goalRobot11,goalRobot12,goalRobot13);
 		rsp.plan();
-		Missions.pushMission(new Mission(1,rsp.getPath()));
+		Missions.enqueueMission(new Mission(1,rsp.getPath()));
 
 		rsp.setStart(startRobot2);
 		rsp.setGoals(goalRobot21,goalRobot22,goalRobot23);
 		rsp.plan();
-		Missions.pushMission(new Mission(2,rsp.getPath()));
+		Missions.enqueueMission(new Mission(2,rsp.getPath()));
 		
 		System.out.println("Added missions " + Missions.getMissions());
 

@@ -83,37 +83,37 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner10 {
 			rsp.setStart(Missions.getLocation("a"+robotID));
 			rsp.setGoals(Missions.getLocation("b"+robotID));
 			rsp.plan();
-			Missions.putMission(new Mission(robotID,rsp.getPath()));
+			Missions.enqueueMission(new Mission(robotID,rsp.getPath()));
 			
 			rsp.setStart(Missions.getLocation("b"+robotID));
 			rsp.setGoals(Missions.getLocation("c"+robotID));
 			rsp.plan();
-			Missions.putMission(new Mission(robotID,rsp.getPath()));
+			Missions.enqueueMission(new Mission(robotID,rsp.getPath()));
 			
 			rsp.setStart(Missions.getLocation("c"+robotID));
 			rsp.setGoals(Missions.getLocation("d"+robotID));
 			rsp.plan();
-			Missions.putMission(new Mission(robotID,rsp.getPath()));
+			Missions.enqueueMission(new Mission(robotID,rsp.getPath()));
 			
 			rsp.setStart(Missions.getLocation("d"+robotID));
 			rsp.setGoals(Missions.getLocation("g"+robotID));
 			rsp.plan();
-			Missions.putMission(new Mission(robotID,rsp.getPath()));
+			Missions.enqueueMission(new Mission(robotID,rsp.getPath()));
 
 			rsp.setStart(Missions.getLocation("g"+robotID));
 			rsp.setGoals(Missions.getLocation("e"+robotID));
 			rsp.plan();
-			Missions.putMission(new Mission(robotID,rsp.getPath()));
+			Missions.enqueueMission(new Mission(robotID,rsp.getPath()));
 
 			rsp.setStart(Missions.getLocation("e"+robotID));
 			rsp.setGoals(Missions.getLocation("f"+robotID));
 			rsp.plan();
-			Missions.putMission(new Mission(robotID,rsp.getPath()));
+			Missions.enqueueMission(new Mission(robotID,rsp.getPath()));
 			
 			rsp.setStart(Missions.getLocation("f"+robotID));
 			rsp.setGoals(Missions.getLocation("a"+robotID));
 			rsp.plan();
-			Missions.putMission(new Mission(robotID,rsp.getPath()));
+			Missions.enqueueMission(new Mission(robotID,rsp.getPath()));
 
 		}
 		

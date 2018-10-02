@@ -96,22 +96,22 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner19 {
 		rsp.setStart(startRobot11);
 		rsp.setGoals(finalRobot11);
 		rsp.plan();
-		Missions.putMission(new Mission(1,rsp.getPath()));
+		Missions.enqueueMission(new Mission(1,rsp.getPath()));
 
 		rsp.setStart(startRobot12);
 		rsp.setGoals(finalRobot12);
 		rsp.plan();
-		Missions.putMission(new Mission(1,rsp.getPath()));
+		Missions.enqueueMission(new Mission(1,rsp.getPath()));
 
 		rsp.setStart(startRobot21);
 		rsp.setGoals(finalRobot21);
 		rsp.plan();
-		Missions.putMission(new Mission(2,rsp.getPath()));
+		Missions.enqueueMission(new Mission(2,rsp.getPath()));
 
 		rsp.setStart(startRobot22);
 		rsp.setGoals(finalRobot22);
 		rsp.plan();
-		Missions.putMission(new Mission(2,rsp.getPath()));
+		Missions.enqueueMission(new Mission(2,rsp.getPath()));
 
 		tec.placeRobot(1, startRobot11);
 		tec.placeRobot(2, startRobot21);
