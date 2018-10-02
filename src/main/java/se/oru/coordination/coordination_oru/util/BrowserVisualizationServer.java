@@ -13,6 +13,12 @@ import org.eclipse.jetty.server.handler.AbstractHandler;
 
 public class BrowserVisualizationServer extends AbstractHandler {
 
+	private String serverHostNameOrIP = null;
+	
+	public BrowserVisualizationServer(String serverHostNameOrIP) {
+		this.serverHostNameOrIP = serverHostNameOrIP;
+	}
+	
 	@Override
 	public void handle(String target, org.eclipse.jetty.server.Request baseRequest, HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
 		response.setContentType("text/html;charset=utf-8");
@@ -46,6 +52,7 @@ public class BrowserVisualizationServer extends AbstractHandler {
 		}
 		page = page.replace("PLACEHOLDER_STYLE", style);
 		page = page.replace("PLACEHOLDER_SCRIPT", script);
+		page = page.replace("PLACEHOLDER_IP", this.serverHostNameOrIP);
 
 		//System.out.println("###\n" + page + "\n###");
 		response.getWriter().println(page);

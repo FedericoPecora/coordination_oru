@@ -10,6 +10,7 @@ import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
+import se.oru.coordination.coordination_oru.util.BrowserVisualization;
 import se.oru.coordination.coordination_oru.util.JTSDrawingPanelVisualization;
 import se.oru.coordination.coordination_oru.util.Missions;
 
@@ -54,6 +55,8 @@ public class ThreeRobotsFast {
 		//Instantiate a simple motion planner (no map given here, otherwise provide yaml file)
 		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
 		tec.setVisualization(viz);
+		//BrowserVisualization viz = new BrowserVisualization();
+		//tec.setVisualization(viz);
 
 		//Load data file with locations and pointers to files containing paths between locations
 		Missions.loadLocationAndPathData("paths/test_poses2.txt");

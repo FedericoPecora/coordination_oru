@@ -14,7 +14,7 @@ PLACEHOLDER_SCRIPT
 
 <script>
 	var viz = new Visualization();
-	var websocket = new WebSocket("ws://localhost:8081/fleet-events/");
+	var websocket = new WebSocket("ws://PLACEHOLDER_IP:8081/fleet-events/");
 	websocket.binaryType = "arraybuffer";
 	window.onbeforeunload = function() {
     	websocket.onclose = function () {}; // disable onclose handler first

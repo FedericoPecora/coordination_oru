@@ -30,10 +30,29 @@ public class BrowserVisualization implements FleetVisualization {
 	
 	private ArrayList<String> msgQueue = new ArrayList<String>();
 	private static final int UPDATE_PERIOD = 10;
+
+	public BrowserVisualization() {
+		this("localhost");
+	}
 	
-	private static void setupVizServer() {
+	public BrowserVisualization(String serverHostNameOrIP) {
+		BrowserVisualization.setupVizMessageServer();
+        Thread updateThread = new Thread("Visualization update thread") {
+        	public void run() {
+        		while (true) {
+        			sendMessages();
+        			try { Thread.sleep(UPDATE_PERIOD); }
+        			catch (InterruptedException e) { e.printStackTrace(); }
+        		}
+        	}
+        };
+        updateThread.start();
+        BrowserVisualization.setupVizServer(serverHostNameOrIP);
+	}
+	
+	private static void setupVizServer(String serverHostNameOrIP) {
 		Server server = new Server(8080);
-		server.setHandler(new BrowserVisualizationServer());
+		server.setHandler(new BrowserVisualizationServer(serverHostNameOrIP));
 		try {
 			server.start();
 			//server.join();
@@ -63,21 +82,6 @@ public class BrowserVisualization implements FleetVisualization {
             //server.join();
         }
         catch (Throwable t) { t.printStackTrace(System.err); }		
-	}
-	
-	public BrowserVisualization() {
-		BrowserVisualization.setupVizMessageServer();
-        Thread updateThread = new Thread("Visualization update thread") {
-        	public void run() {
-        		while (true) {
-        			sendMessages();
-        			try { Thread.sleep(UPDATE_PERIOD); }
-        			catch (InterruptedException e) { e.printStackTrace(); }
-        		}
-        	}
-        };
-        updateThread.start();
-        BrowserVisualization.setupVizServer();
 	}
 	
 	private void enqueueMessage(String message) {
