@@ -25,6 +25,9 @@ public class BrowserVisualizationServer extends AbstractHandler {
 		response.setStatus(HttpServletResponse.SC_OK);
 		baseRequest.setHandled(true);
 		
+		ClassLoader loader = Thread.currentThread().getContextClassLoader();
+		System.out.println("RESOURCE: " + loader.getResourceAsStream("styles.css"));
+		
 		File file = new File("BrowserVisualizationResources" + File.separator + "styles.css"); 
 		BufferedReader br = new BufferedReader(new FileReader(file)); 
 		String style = "";
