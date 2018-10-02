@@ -4,6 +4,8 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -26,40 +28,42 @@ public class BrowserVisualizationServer extends AbstractHandler {
 		baseRequest.setHandled(true);
 		
 		ClassLoader loader = Thread.currentThread().getContextClassLoader();
-		System.out.println("RESOURCE: " + loader.getResourceAsStream("styles.css"));
 		
-		File file = new File("BrowserVisualizationResources" + File.separator + "styles.css"); 
-		BufferedReader br = new BufferedReader(new FileReader(file)); 
+		InputStream is = loader.getResourceAsStream("styles.css");
+		BufferedReader br = new BufferedReader(new InputStreamReader(is));
 		String style = "";
 		String oneLine = null;
 		while ((oneLine = br.readLine()) != null) {
 			style += (oneLine+"\n");  
 		}
 		br.close();
-
-		file = new File("BrowserVisualizationResources" + File.separator + "Visualization.js"); 
-		br = new BufferedReader(new FileReader(file)); 
+		is.close();
+		
+		is = loader.getResourceAsStream("Visualization.js");
+		br = new BufferedReader(new InputStreamReader(is));
 		String script = "";
 		oneLine = null;
 		while ((oneLine = br.readLine()) != null) {
 			script += (oneLine+"\n");  
 		}
 		br.close();
-		
-		file = new File("BrowserVisualizationResources" + File.separator + "index.html"); 
-		br = new BufferedReader(new FileReader(file)); 
+		is.close();
+
+		is = loader.getResourceAsStream("index.html");
+		br = new BufferedReader(new InputStreamReader(is));
 		String page = "";
 		oneLine = null;
 		while ((oneLine = br.readLine()) != null) {
 			page += (oneLine+"\n");  
 		}
+		br.close();
+		is.close();
+		
 		page = page.replace("PLACEHOLDER_STYLE", style);
 		page = page.replace("PLACEHOLDER_SCRIPT", script);
 		page = page.replace("PLACEHOLDER_IP", this.serverHostNameOrIP);
 
-		//System.out.println("###\n" + page + "\n###");
 		response.getWriter().println(page);
-		br.close();
 
 	}
 }
