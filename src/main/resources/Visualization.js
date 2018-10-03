@@ -13,6 +13,7 @@ class Visualization {
 		this.geometryFilled = {};
 		this.geometryExtraData = {};
 		this.geometryTimeouts = {};
+		this.deletedForever = [];
 		this.resizeCanvasToUserSpec();
 		this.canvas.addEventListener('mousedown', this.processMouseDown(this), false);
 		this.canvas.addEventListener('mouseup', this.processMouseUp(this), false);
@@ -122,12 +123,18 @@ class Visualization {
 	}
 
 	addGeometry(geom) {
-		var timeNow = new Date().getTime();
-		this.geometries[geom.name] = geom.coordinates;
-		this.geometryColors[geom.name] = geom.color;
-		this.geometryFilled[geom.name] = geom.filled;
-		if (geom.age != null) this.geometryTimeouts[geom.name] = timeNow+geom.age;
-		if (geom.extraData != null) this.geometryExtraData[geom.name] = geom.extraData;
+		if (!this.deletedForever.includes(geom.name)) {
+			var timeNow = new Date().getTime();
+			//if (geom.name.startsWith("_") && !(geom.name.includes("-"))) console.log(geom.name + " in geometries? " + (geom.name in this.geometries));
+			this.geometries[geom.name] = geom.coordinates;
+			this.geometryColors[geom.name] = geom.color;
+			this.geometryFilled[geom.name] = geom.filled;
+			if (geom.age != null) this.geometryTimeouts[geom.name] = timeNow+geom.age;
+			if (geom.extraData != null) this.geometryExtraData[geom.name] = geom.extraData;
+		}
+		else {
+			console.log("Ignored spurious geometry " + geom.name);
+		}
 	}
 
 	removeGeometry(geomName) {
@@ -138,6 +145,7 @@ class Visualization {
 		delete this.geometryFilled[nameToRem];
 		delete this.geometryTimeouts[nameToRem];
 		delete this.geometryExtraData[nameToRem];
+		if (nameToRem.startsWith("_") && !(nameToRem.includes("-")) && !this.deletedForever.includes(nameToRem)) this.deletedForever.push(nameToRem);
 	}
 	
 	refresh() {
@@ -182,10 +190,12 @@ class Visualization {
 			// key: the name of the object key
 			// index: the ordinal position of the key within the object
 			//console.log("drawing geom " + key);
-			viz.drawPolygon(viz.geometries[key], viz.geometryColors[key], !viz.geometryFilled[key]);
+			var area = viz.calcPolygonArea(viz.geometries[key]);
+			var linewidth = Math.sqrt(area)/70;
+			//var linewidth = 0.1;
+			viz.drawPolygon(viz.geometries[key], viz.geometryColors[key], !viz.geometryFilled[key], linewidth);
 			var textSize = 0.2;
 			if (key.startsWith("R")) {
-				var area = viz.calcPolygonArea(viz.geometries[key]);
 				textSize = Math.sqrt(area)/10;
 			}
 			if (!key.startsWith("_")) {
@@ -226,10 +236,11 @@ class Visualization {
 	    return Math.abs(total);
 	}
 	
-	drawPolygon(coordinates, color, empty) {
+	drawPolygon(coordinates, color, empty, linewidth) {
+		this.ctx.globalAlpha = 0.5;
 		this.ctx.fillStyle = color;
 		this.ctx.strokeStyle = color;
-		this.ctx.lineWidth=0.1;
+		this.ctx.lineWidth=linewidth;
 		this.ctx.beginPath();
 		this.ctx.moveTo(coordinates[0].x, coordinates[0].y);
 		for (var i = 1; i < coordinates.length; i++) {
@@ -238,11 +249,12 @@ class Visualization {
 		this.ctx.closePath();
 		if (empty) this.ctx.stroke();
 		else this.ctx.fill();
+		this.ctx.globalAlpha = 1.0;
 	}
 
 	drawText(text, coord, color, size) {
 		this.ctx.font = 'italic ' + size*this.originalScale + 'pt Calibri';
-		console.log(size);
+		//console.log(size);
 		//var w = this.ctx.measureText(text).width;
 		//var h = w/text.length;
 		//console.log("approx h is " + h);

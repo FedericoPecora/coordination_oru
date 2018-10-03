@@ -1389,6 +1389,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			//Get current envelope
 			TrajectoryEnvelope te = this.getCurrentTrajectoryEnvelope(robotID);
 					
+			if (viz != null) {
+				viz.removeEnvelope(te);
+			}
+			
 			//Remove CSs involving this robot
 			ArrayList<CriticalSection> toRemove = new ArrayList<CriticalSection>();
 			for (CriticalSection cs : allCriticalSections) {
@@ -1431,7 +1435,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			}
 			
 			if (viz != null) {
-				viz.removeEnvelope(te);
 				viz.addEnvelope(newTE);
 			}
 			
@@ -1775,6 +1778,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				TrackingCallback cb = new TrackingCallback(te) {
 					
 					private long lastEnvelopeRefresh = Calendar.getInstance().getTimeInMillis();
+					private boolean trackingFinished = false;
 					
 					@Override
 					public void beforeTrackingStart() {
@@ -1800,6 +1804,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 					@Override
 					public void beforeTrackingFinished() {
+						this.trackingFinished = true;
 						if (trackingCallbacks.containsKey(myTE.getRobotID())) trackingCallbacks.get(myTE.getRobotID()).beforeTrackingFinished();
 					}
 
@@ -1872,7 +1877,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 					@Override
 					public String[] onPositionUpdate() {
-						if (viz != null && viz.periodicEnvelopeRefreshInMillis() > 0) {
+						if (viz != null && !trackingFinished && viz.periodicEnvelopeRefreshInMillis() > 0) {
 							long timeNow = Calendar.getInstance().getTimeInMillis();
 							if (timeNow-lastEnvelopeRefresh > viz.periodicEnvelopeRefreshInMillis()) {
 								viz.addEnvelope(myTE);
