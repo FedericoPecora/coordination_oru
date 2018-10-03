@@ -30,9 +30,14 @@ public class BrowserVisualization implements FleetVisualization {
 	
 	private ArrayList<String> msgQueue = new ArrayList<String>();
 	private static final int UPDATE_PERIOD = 10;
+	private double robotFootprintArea = -1;
 
 	public BrowserVisualization() {
 		this("localhost");
+	}
+	
+	private void updateRobotFootprintArea(Geometry geom) {
+		if (robotFootprintArea == -1) robotFootprintArea = geom.getArea();
 	}
 	
 	public BrowserVisualization(String serverHostNameOrIP) {
@@ -129,7 +134,8 @@ public class BrowserVisualization implements FleetVisualization {
 		}
 		Geometry geom = null;
 		if (rr.getPathIndex() != -1) geom = TrajectoryEnvelope.getFootprint(te.getFootprint(), x, y, theta);
-		else geom = TrajectoryEnvelope.getFootprint(te.getFootprint(), te.getTrajectory().getPose()[0].getX(), te.getTrajectory().getPose()[0].getY(), te.getTrajectory().getPose()[0].getTheta()); 
+		else geom = TrajectoryEnvelope.getFootprint(te.getFootprint(), te.getTrajectory().getPose()[0].getX(), te.getTrajectory().getPose()[0].getY(), te.getTrajectory().getPose()[0].getTheta());
+		this.updateRobotFootprintArea(geom);
 		String jsonString = "{ \"operation\" : \"addGeometry\", \"data\" : " + this.geometryToJSONString(name, geom, "#ff0000", -1, true, extraData) + "}";
 		enqueueMessage(jsonString);
 	}
@@ -187,20 +193,23 @@ public class BrowserVisualization implements FleetVisualization {
 	private Geometry createArrow(Pose pose1, Pose pose2) {		
 		GeometryFactory gf = new GeometryFactory();
 		double aux = 1.8;
-		double distance = (1.6)*Math.sqrt(Math.pow((pose2.getX()-pose1.getX()),2)+Math.pow((pose2.getY()-pose1.getY()),2));
+		double aux1 = 0.8;
+		double aux2 = 0.3;
+		double factor = Math.sqrt(robotFootprintArea)*0.5;
+		double distance = Math.sqrt(Math.pow((pose2.getX()-pose1.getX()),2)+Math.pow((pose2.getY()-pose1.getY()),2))/factor;
 		double theta = Math.atan2(pose2.getY() - pose1.getY(), pose2.getX() - pose1.getX());
 		Coordinate[] coords = new Coordinate[8];
-		coords[0] = new Coordinate(0.0,-0.3);
-		coords[1] = new Coordinate(distance-aux,-0.3);
-		coords[2] = new Coordinate(distance-aux,-0.8);
+		coords[0] = new Coordinate(0.0,-aux2);
+		coords[1] = new Coordinate(distance-aux,-aux2);
+		coords[2] = new Coordinate(distance-aux,-aux1);
 		coords[3] = new Coordinate(distance,0.0);
-		coords[4] = new Coordinate(distance-aux,0.8);
-		coords[5] = new Coordinate(distance-aux,0.3);
-		coords[6] = new Coordinate(0.0,0.3);
-		coords[7] = new Coordinate(0.0,-0.3);
+		coords[4] = new Coordinate(distance-aux,aux1);
+		coords[5] = new Coordinate(distance-aux,aux2);
+		coords[6] = new Coordinate(0.0,aux2);
+		coords[7] = new Coordinate(0.0,-aux2);
 		Polygon arrow = gf.createPolygon(coords);
 		AffineTransformation at = new AffineTransformation();
-		at.scale(1/1.6, 1/1.6);
+		at.scale(factor, factor);
 		at.rotate(theta);
 		at.translate(pose1.getX(), pose1.getY());
 		Geometry ret = at.transform(arrow);
