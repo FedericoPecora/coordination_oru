@@ -11,6 +11,8 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
@@ -83,18 +85,20 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 
 	public static void writeRVizConfigFile(int ... robotIDs) {
 		try {
-			File filePre = new File(System.getProperty("user.home")+File.separator+"coordinator_default_config_pre.rviz");
-			File filePost = new File(System.getProperty("user.home")+File.separator+"coordinator_default_config_post.rviz");
 			File file = new File(System.getProperty("user.home")+File.separator+"config.rviz");
 			
+			ClassLoader loader = Thread.currentThread().getContextClassLoader();
+			
 			//Read pre
-			BufferedReader br = new BufferedReader(new FileReader(filePre));
+			InputStream is = loader.getResourceAsStream("coordinator_default_config_pre.rviz");
+			BufferedReader br = new BufferedReader(new InputStreamReader(is));
 			String output = "";
-			String st;
-			while((st=br.readLine()) != null){
-				output += st+"\n";
+			String oneLine = null;
+			while ((oneLine = br.readLine()) != null) {
+				output += (oneLine+"\n");  
 			}
 			br.close();
+			is.close();
 			
 			//Make robot specific entries
 			for (int robotID : robotIDs) {
@@ -102,12 +106,15 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
             }
 			
 			//Read post
-			br = new BufferedReader(new FileReader(filePost));
-			while((st=br.readLine()) != null){
-				output += st+"\n";
+			is = loader.getResourceAsStream("coordinator_default_config_pre.rviz");
+			br = new BufferedReader(new InputStreamReader(is));
+			oneLine = null;
+			while ((oneLine = br.readLine()) != null) {
+				output += (oneLine+"\n");  
 			}
 			br.close();
-		
+			is.close();
+			
 			//Dump it out
             PrintWriter writer = new PrintWriter(file);
             writer.write(output);

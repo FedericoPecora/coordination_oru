@@ -102,12 +102,12 @@ public class Experiment2 {
 		String yamlFile = "maps/map-partial-2.yaml";
 		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
 		//viz.setMap(yamlFile);
-		//RVizVisualization viz = new RVizVisualization();
-		//viz.setMap(yamlFile);
-		BrowserVisualization viz = new BrowserVisualization();
+		RVizVisualization viz = new RVizVisualization();
 		viz.setMap(yamlFile);
+		//BrowserVisualization viz = new BrowserVisualization();
+		//viz.setMap(yamlFile);
 		tec.setVisualization(viz);
-
+		
 		tec.setUseInternalCriticalPoints(true);
 		tec.setYieldIfParking(false);
 		tec.setBreakDeadlocks(true);
@@ -188,7 +188,7 @@ public class Experiment2 {
 
 		//Sleep a little so we can start Rviz and perhaps screencapture ;)
 		//Create rviz config file by uncommenting the following line
-		//RVizVisualization.writeRVizConfigFile(robotIDs);
+		RVizVisualization.writeRVizConfigFile(robotIDs);
 		//To visualize, run "rosrun rviz rviz -d ~/config.rviz"
 		Thread.sleep(5000);
 		
