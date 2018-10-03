@@ -23,6 +23,7 @@ class Visualization {
 		this.mousePos = { x : 0, y : 0 };
 		this.dragDelta = { x : 0, y : 0 };
 		this.scaleDelta = 1;
+		this.currentScale = 1;
 		// Create a custom fillText funciton that flips the canvas, draws the text, and then flips it back
 	    this.ctx.fillText = function(text, x, y) {
 	      this.save();       // Save the current canvas state
@@ -101,6 +102,7 @@ class Visualization {
 				if (e.ctrlKey) {
 					if (e.clientY-viz.mousePos.y < 0) viz.scaleDelta -= 0.001;
 					else viz.scaleDelta += 0.001;
+					viz.currentScale += viz.scaleDelta;
 				}
 				else {
 					viz.dragDelta.x = e.clientX-viz.mousePos.x;
@@ -216,8 +218,8 @@ class Visualization {
 	}
 
 	resizeCanvasToMouseMovement() {
-		this.ctx.scale(this.scaleDelta, this.scaleDelta);
 		this.ctx.translate(this.dragDelta.x/100,-this.dragDelta.y/100);
+		this.ctx.scale(this.scaleDelta, this.scaleDelta);
 	}
 
 	calcPolygonArea(coordinates) {
