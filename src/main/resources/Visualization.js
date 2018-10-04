@@ -2,7 +2,7 @@ class Visualization {
 
 	constructor() {
 		this.originalTranslate = { x : 0, y : 0 };
-		this.originalScale = 10;
+		this.originalScale = 1;
 		this.canvas = document.createElement("canvas"); 
 		this.canvas.id = "myCanvas";
 		document.getElementsByTagName('body')[0].appendChild(this.canvas);
@@ -15,11 +15,11 @@ class Visualization {
 		this.geometryTimeouts = {};
 		this.deletedForever = [];
 
-		this.currentScale = this.originalScale;
-		this.currentTranslate = {};
-		this.currentTranslate.x = this.originalTranslate.x;
-		this.currentTranslate.y = this.originalTranslate.y;
-
+		this.currentTextScale = this.originalScale;		
+		this.matrix = Matrix.from( 1, 0, 0, 1, 0, 0 );
+		this.matrix.scale(1,-1);
+		this.matrix.translate(0,-this.canvas.height);
+		
 		this.resizeCanvasToUserSpec();
 		this.canvas.addEventListener('mousedown', this.processMouseDown(this), false);
 		//this.canvas.addEventListener('mousemove', this.processMouseMove(this), false);
@@ -36,7 +36,7 @@ class Visualization {
 		this.dragDelta = { x : 0, y : 0 };
 		this.scaleDelta = 1;
 
-		// Create a custom fillText funciton that flips the canvas, draws the text, and then flips it back
+		// Create a custom fillText function that flips the canvas, draws the text, and then flips it back
 		this.ctx.fillText = function(text, x, y) {
 			this.save();       // Save the current canvas state
 			this.scale(1, -1); // Flip to draw the text
@@ -45,6 +45,7 @@ class Visualization {
 		}
 		// Create a dummy canvas context to use as a source for the original fillText function
 		this.ctx.fillText.dummyCtx = document.createElement('canvas').getContext('2d');
+		
 		this.map = [];
 		this.mapResolution = 1.0;
 		this.mapOrigin = { x : 0, y : 0 };
@@ -88,6 +89,13 @@ class Visualization {
 		this.mapOrigin.x = data.x;
 		this.mapOrigin.y = data.y;
 	}
+	
+	setInitialTransform(data) {
+		this.originalScale = data.scale;
+		this.originalTranslate.x = data.x;
+		this.originalTranslate.y = data.y;
+		this.resizeCanvasToUserSpec();
+	}
 
 	setMap(bytes) {
 		var image = new Image();
@@ -104,7 +112,12 @@ class Visualization {
 	}
 
 	updateOverlayText() {
-		this.overlayText.innerHTML = "Translate (x,y): (" + this.currentTranslate.x.toFixed(2) + "," + this.currentTranslate.y.toFixed(2) + ") Scale: " + this.currentScale.toFixed(2);
+		var decomp = this.matrix.decompose(true);
+		var scale = decomp.scale.x;
+		var transX = decomp.translate.x/scale;
+		var transY = -(decomp.translate.y-this.canvas.height)/scale;
+		
+		this.overlayText.innerHTML = "Translate (x,y): (" + transX.toFixed(2) + "," + transY.toFixed(2) + ") Scale: " + scale.toFixed(2);
 	}
 
 	processMouseDown(viz) {
@@ -228,11 +241,10 @@ class Visualization {
 			//console.log("drawing geom " + key);
 			var area = viz.calcPolygonArea(viz.geometries[key]);
 			var linewidth = Math.sqrt(area)/70;
-			//var linewidth = 0.1;
 			viz.drawPolygon(viz.geometries[key], viz.geometryColors[key], !viz.geometryFilled[key], linewidth);
 			var textSize = 0.2;
 			if (key.startsWith("R")) {
-				textSize = Math.sqrt(area)/20;
+				textSize = Math.sqrt(area)/2;
 			}
 			if (!key.startsWith("_")) {
 				var text = key;
@@ -242,31 +254,19 @@ class Visualization {
 				viz.drawText(text,viz.geometries[key][0],"#ffffff", textSize);
 			}
 		});
-
-		//Draw fixed text if not empty
-		//var coord = { x : 0, y : 0 };
-		//this.drawTextOverlay(this.fixedText, coord, "#ffffff", 0.3);
-		//console.log("num geoms: " + Object.keys(this.geometries).length);
 	}
 
 	resizeCanvasToUserSpec() {
-		this.ctx.resetTransform();
-		this.currentScale = this.originalScale;
-//		this.currentTranslate.x = this.canvas.width/2-this.originalTranslate.x*this.originalScale;
-//		this.currentTranslate.y = this.canvas.height/2+this.originalTranslate.y*this.originalScale;
-		this.currentTranslate.x = this.originalTranslate.x*this.currentScale;
-		this.currentTranslate.y = this.originalTranslate.y*this.currentScale;
-
-		this.ctx.translate(this.currentTranslate.x,this.canvas.height-this.currentTranslate.y);
-		this.ctx.scale(this.currentScale,-this.currentScale);
+		this.matrix.translate(this.originalTranslate.x*this.originalScale, this.originalTranslate.y*this.originalScale);
+		this.matrix.scale(this.originalScale,this.originalScale);		
+		this.matrix.applyToContext(this.ctx);
 	}
 
 	resizeCanvasToMouseMovement() {
-		this.currentScale *= this.scaleDelta;
-		this.currentTranslate.x += (this.dragDelta.x/100)*this.currentScale;
-		this.currentTranslate.y += (-this.dragDelta.y/100)*this.currentScale;
-		this.ctx.translate(this.dragDelta.x/100,-this.dragDelta.y/100);
-		this.ctx.scale(this.scaleDelta, this.scaleDelta);
+		this.matrix.scale(this.scaleDelta, this.scaleDelta);
+		this.matrix.translate((this.dragDelta.x/100),-(this.dragDelta.y/100));
+		this.matrix.applyToContext(this.ctx);		
+		this.currentTextScale *= this.scaleDelta;
 		this.updateOverlayText();
 	}
 
@@ -303,7 +303,7 @@ class Visualization {
 	}
 
 	drawText(text, coord, color, size) {
-		this.ctx.font = 'italic ' + size*this.currentScale + 'pt Calibri';
+		this.ctx.font = 'italic ' + size + 'pt Calibri';
 		//console.log(size);
 		//var w = this.ctx.measureText(text).width;
 		//var h = w/text.length;

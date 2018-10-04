@@ -48,6 +48,16 @@ public class BrowserVisualizationServer extends AbstractHandler {
 		}
 		br.close();
 		is.close();
+		
+		is = loader.getResourceAsStream("matrix.min.js");
+		br = new BufferedReader(new InputStreamReader(is));
+		String matrix = "";
+		oneLine = null;
+		while ((oneLine = br.readLine()) != null) {
+			matrix += (oneLine+"\n");  
+		}
+		br.close();
+		is.close();
 
 		is = loader.getResourceAsStream("index.html");
 		br = new BufferedReader(new InputStreamReader(is));
@@ -61,6 +71,7 @@ public class BrowserVisualizationServer extends AbstractHandler {
 		
 		page = page.replace("PLACEHOLDER_STYLE", style);
 		page = page.replace("PLACEHOLDER_SCRIPT", script);
+		page = page.replace("PLACEHOLDER_MATRIX", matrix);
 		page = page.replace("PLACEHOLDER_IP", this.serverHostNameOrIP);
 
 		response.getWriter().println(page);

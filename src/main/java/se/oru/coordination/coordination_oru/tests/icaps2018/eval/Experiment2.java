@@ -106,6 +106,7 @@ public class Experiment2 {
 		//viz.setMap(yamlFile);
 		BrowserVisualization viz = new BrowserVisualization();
 		viz.setMap(yamlFile);
+		viz.setInitialTransform(20.0, 9.0, 2.0);
 		tec.setVisualization(viz);
 		
 		tec.setUseInternalCriticalPoints(true);

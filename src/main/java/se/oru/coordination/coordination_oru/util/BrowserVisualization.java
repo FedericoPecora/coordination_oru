@@ -40,6 +40,11 @@ public class BrowserVisualization implements FleetVisualization {
 		if (robotFootprintArea == -1) robotFootprintArea = geom.getArea();
 	}
 	
+	public void setInitialTransform(double scale, double xTrans, double yTrans) {
+		BrowserVisualizationSocket.initialScale = scale;
+		BrowserVisualizationSocket.initialTranslation = new Coordinate(xTrans,yTrans);		
+	}
+	
 	public BrowserVisualization(String serverHostNameOrIP) {
 		BrowserVisualization.setupVizMessageServer();
         Thread updateThread = new Thread("Visualization update thread") {

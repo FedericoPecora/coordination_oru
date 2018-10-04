@@ -46,6 +46,7 @@ public class OneRobotPlacement {
 		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
 		//viz.setSize(1024, 768);
 		BrowserVisualization viz = new BrowserVisualization();
+		viz.setInitialTransform(10, 10, 10);
 		tec.setVisualization(viz);
 		
 		tec.setUseInternalCriticalPoints(false);

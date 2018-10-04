@@ -21,6 +21,8 @@ public class BrowserVisualizationSocket extends WebSocketAdapter {
 	public static BufferedImage map = null;
 	public static double resolution = 1;
 	public static Coordinate origin = null;
+	public static double initialScale = 1;
+	public static Coordinate initialTranslation = null;
 		
     @Override
     public void onWebSocketConnect(Session sess) {
@@ -46,6 +48,16 @@ public class BrowserVisualizationSocket extends WebSocketAdapter {
 					baos.close();
 					ByteBuffer bb = ByteBuffer.wrap(imageInBytes);
 					super.getRemote().sendBytes(bb);
+				}
+				catch(IOException e) { e.printStackTrace(); }
+	        }
+	        if (BrowserVisualizationSocket.initialTranslation != null) {
+				try {
+					System.out.println("Sending initial transform to newly connected client...");
+					String setInitialTransformString = "{ \"operation\" : \"setInitialTransform\","
+							+ "\"data\" : "
+							+ "{ \"scale\" : " + initialScale + ", \"x\" : " + initialTranslation.x + ", \"y\" : " + initialTranslation.y + "}}";
+					super.getRemote().sendString(setInitialTransformString);					
 				}
 				catch(IOException e) { e.printStackTrace(); }
 	        }
