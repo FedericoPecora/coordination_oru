@@ -102,10 +102,10 @@ public class Experiment2 {
 		String yamlFile = "maps/map-partial-2.yaml";
 		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
 		//viz.setMap(yamlFile);
-		RVizVisualization viz = new RVizVisualization();
-		viz.setMap(yamlFile);
-		//BrowserVisualization viz = new BrowserVisualization();
+		//RVizVisualization viz = new RVizVisualization();
 		//viz.setMap(yamlFile);
+		BrowserVisualization viz = new BrowserVisualization();
+		viz.setMap(yamlFile);
 		tec.setVisualization(viz);
 		
 		tec.setUseInternalCriticalPoints(true);

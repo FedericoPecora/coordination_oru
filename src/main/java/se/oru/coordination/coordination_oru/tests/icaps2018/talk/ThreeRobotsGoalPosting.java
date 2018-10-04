@@ -13,6 +13,7 @@ import se.oru.coordination.coordination_oru.RobotAtCriticalSection;
 import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
+import se.oru.coordination.coordination_oru.util.BrowserVisualization;
 import se.oru.coordination.coordination_oru.util.JTSDrawingPanelVisualization;
 import se.oru.coordination.coordination_oru.util.Missions;
 
@@ -60,7 +61,8 @@ public class ThreeRobotsGoalPosting {
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
 		
-		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
+		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
+		BrowserVisualization viz = new BrowserVisualization();
 		tec.setVisualization(viz);
 		
 		tec.setUseInternalCriticalPoints(false);

@@ -16,6 +16,7 @@ import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
+import se.oru.coordination.coordination_oru.util.BrowserVisualization;
 import se.oru.coordination.coordination_oru.util.JTSDrawingPanelVisualization;
 
 @DemoDescription(desc = "Coordination with heuristic that eliminates deadlock (paths obtained with the ReedsSheppCarPlanner).")
@@ -72,7 +73,8 @@ public class ThreeRobotsSimple {
 		tec.setupSolver(0, 100000000);
 		
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
-		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
+		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
+		BrowserVisualization viz = new BrowserVisualization();
 		tec.setVisualization(viz);
 		
 		tec.setUseInternalCriticalPoints(false);

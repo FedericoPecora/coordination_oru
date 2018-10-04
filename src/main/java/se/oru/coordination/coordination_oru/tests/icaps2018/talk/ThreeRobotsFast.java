@@ -53,11 +53,10 @@ public class ThreeRobotsFast {
 		tec.setupSolver(0, 100000000);
 
 		//Instantiate a simple motion planner (no map given here, otherwise provide yaml file)
-		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
+		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
+		BrowserVisualization viz = new BrowserVisualization();
 		tec.setVisualization(viz);
-		//BrowserVisualization viz = new BrowserVisualization();
-		//tec.setVisualization(viz);
-
+		
 		//Load data file with locations and pointers to files containing paths between locations
 		Missions.loadLocationAndPathData("paths/test_poses2.txt");
 

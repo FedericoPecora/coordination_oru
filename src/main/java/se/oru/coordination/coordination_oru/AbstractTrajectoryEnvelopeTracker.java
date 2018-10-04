@@ -71,10 +71,17 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 		startMonitoringThread();
 	}
 	
+	/**
+	 * Operations that should be performed when the {@link TrajectoryEnvelope} of this tracker
+	 * is updated online.
+	 * @param te The updated {@link TrajectoryEnvelope}.
+	 */
 	public abstract void onTrajectoryEnvelopeUpdate(TrajectoryEnvelope te);
 	
 	/**
-	 * Update the {@link TrajectoryEnvelope} of this tracker (used for truncating/reversing/replanning {@link TrajectoryEnvelope}s online).
+	 * Update the {@link TrajectoryEnvelope} of this tracker (used for truncating/reversing/re-planning {@link TrajectoryEnvelope}s online).
+	 * This method calls the {@link #onTrajectoryEnvelopeUpdate(TrajectoryEnvelope)} method of the particular implementation
+	 * of this {@link AbstractTrajectoryEnvelopeTracker} class.
 	 * @param te The new {@link TrajectoryEnvelope} of this tracker.
 	 */
 	public void updateTrajectoryEnvelope(TrajectoryEnvelope te) {

@@ -29,7 +29,7 @@ import se.oru.coordination.coordination_oru.RobotReport;
 public class BrowserVisualization implements FleetVisualization {
 	
 	private ArrayList<String> msgQueue = new ArrayList<String>();
-	private static final int UPDATE_PERIOD = 10;
+	private static final int UPDATE_PERIOD = 30;
 	private double robotFootprintArea = -1;
 
 	public BrowserVisualization() {

@@ -83,6 +83,7 @@ public class Experiment1Test1 {
 //		tec.setVisualization(viz);
 		BrowserVisualization viz = new BrowserVisualization();
 		tec.setVisualization(viz);
+		
 		tec.setBreakDeadlocks(false);
 		tec.setUseInternalCriticalPoints(false);
 		tec.setYieldIfParking(false);

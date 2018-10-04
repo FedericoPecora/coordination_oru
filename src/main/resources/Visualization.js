@@ -1,7 +1,7 @@
 class Visualization {
 
 	constructor() {
-		this.originalTranslate = { x : 10, y : 10 };
+		this.originalTranslate = { x : 0, y : 0 };
 		this.originalScale = 10;
 		this.canvas = document.createElement("canvas"); 
 		this.canvas.id = "myCanvas";
@@ -14,56 +14,73 @@ class Visualization {
 		this.geometryExtraData = {};
 		this.geometryTimeouts = {};
 		this.deletedForever = [];
+
+		this.currentScale = this.originalScale;
+		this.currentTranslate = {};
+		this.currentTranslate.x = this.originalTranslate.x;
+		this.currentTranslate.y = this.originalTranslate.y;
+
 		this.resizeCanvasToUserSpec();
 		this.canvas.addEventListener('mousedown', this.processMouseDown(this), false);
-		this.canvas.addEventListener('mouseup', this.processMouseUp(this), false);
-		this.canvas.addEventListener('mousemove', this.processMouseMove(this), false);
+		//this.canvas.addEventListener('mousemove', this.processMouseMove(this), false);
+		//this.canvas.addEventListener('mouseup', this.processMouseUp(this), false);
+
+		this.overlay = document.getElementById("overlay"); 
+		//this.overlay.addEventListener('mousedown' this.processMouseDown(this), false);
+		this.overlay.addEventListener('mousemove', this.processMouseMove(this), false);
+		this.overlay.addEventListener('mouseup', this.processMouseUp(this), false);
+
 		//this.canvas.addEventListener('wheel', this.processWheel(this), false);
 		this.isDragging = false;
 		this.mousePos = { x : 0, y : 0 };
 		this.dragDelta = { x : 0, y : 0 };
 		this.scaleDelta = 1;
-		this.currentScale = 1;
+
 		// Create a custom fillText funciton that flips the canvas, draws the text, and then flips it back
-	    this.ctx.fillText = function(text, x, y) {
-	      this.save();       // Save the current canvas state
-	      this.scale(1, -1); // Flip to draw the text
-	      this.fillText.dummyCtx.fillText.call(this, text, x, -y); // Draw the text, invert y to get coordinate right
-	      this.restore();    // Restore the initial canvas state
-	    }
-	    // Create a dummy canvas context to use as a source for the original fillText function
-	    this.ctx.fillText.dummyCtx = document.createElement('canvas').getContext('2d');
-	    this.map = [];
-	    this.mapResolution = 1.0;
-	    this.mapOrigin = { x : 0, y : 0};
-	    this.footprintSize = 1;
+		this.ctx.fillText = function(text, x, y) {
+			this.save();       // Save the current canvas state
+			this.scale(1, -1); // Flip to draw the text
+			this.fillText.dummyCtx.fillText.call(this, text, x, -y); // Draw the text, invert y to get coordinate right
+			this.restore();    // Restore the initial canvas state
+		}
+		// Create a dummy canvas context to use as a source for the original fillText function
+		this.ctx.fillText.dummyCtx = document.createElement('canvas').getContext('2d');
+		this.map = [];
+		this.mapResolution = 1.0;
+		this.mapOrigin = { x : 0, y : 0 };
+		this.footprintSize = 1;
+
+		this.overlayText = document.createElement('div');
+		this.overlayText.id = "overlayText";
+		this.overlayText.innerHTML = "";
+		this.overlay.appendChild(this.overlayText);
 	}
-	
+
 	encode(input) {
-	    var keyStr = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
-	    var output = "";
-	    var chr1, chr2, chr3, enc1, enc2, enc3, enc4;
-	    var i = 0;
+		var keyStr = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+		var output = "";
+		var chr1, chr2, chr3, enc1, enc2, enc3, enc4;
+		var i = 0;
 
-	    while (i < input.length) {
-	        chr1 = input[i++];
-	        chr2 = i < input.length ? input[i++] : Number.NaN; // Not sure if the index 
-	        chr3 = i < input.length ? input[i++] : Number.NaN; // checks are needed here
+		while (i < input.length) {
+			chr1 = input[i++];
+			chr2 = i < input.length ? input[i++] : Number.NaN; // Not sure if the index 
+			chr3 = i < input.length ? input[i++] : Number.NaN; // checks are needed here
 
-	        enc1 = chr1 >> 2;
-	        enc2 = ((chr1 & 3) << 4) | (chr2 >> 4);
-	        enc3 = ((chr2 & 15) << 2) | (chr3 >> 6);
-	        enc4 = chr3 & 63;
+			enc1 = chr1 >> 2;
+			enc2 = ((chr1 & 3) << 4) | (chr2 >> 4);
+			enc3 = ((chr2 & 15) << 2) | (chr3 >> 6);
+			enc4 = chr3 & 63;
 
-	        if (isNaN(chr2)) {
-	            enc3 = enc4 = 64;
-	        } else if (isNaN(chr3)) {
-	            enc4 = 64;
-	        }
-	        output += keyStr.charAt(enc1) + keyStr.charAt(enc2) +
-	                  keyStr.charAt(enc3) + keyStr.charAt(enc4);
-	    }
-	    return output;
+			if (isNaN(chr2)) {
+				enc3 = enc4 = 64;
+			} else if (isNaN(chr3)) {
+				enc4 = 64;
+			}
+			output += keyStr.charAt(enc1) + keyStr.charAt(enc2) +
+			keyStr.charAt(enc3) + keyStr.charAt(enc4);
+		}
+		return output;
 	}
 
 	setMapMetadata(data) {
@@ -74,16 +91,29 @@ class Visualization {
 
 	setMap(bytes) {
 		var image = new Image();
-	    image.src = 'data:image/png;base64,'+this.encode(bytes);
-	    this.map.push(image);
-	    //this.ctx.drawImage(image,0,0);
+		image.src = 'data:image/png;base64,'+this.encode(bytes);
+		this.map.push(image);
 	}
-	
+
+	overlayOn() {
+		this.overlay.style.display = "block";
+	}
+
+	overlayOff() {
+		this.overlay.style.display = "none";
+	}
+
+	updateOverlayText() {
+		this.overlayText.innerHTML = "Translate (x,y): (" + this.currentTranslate.x.toFixed(2) + "," + this.currentTranslate.y.toFixed(2) + ") Scale: " + this.currentScale.toFixed(2);
+	}
+
 	processMouseDown(viz) {
 		return function(e) {
 			viz.isDragging = true;
 			viz.mousePos.x = e.clientX;
 			viz.mousePos.y = e.clientY;
+			viz.overlayOn();
+			viz.updateOverlayText();
 		};
 	}
 
@@ -93,16 +123,28 @@ class Visualization {
 			viz.dragDelta.x = 0;
 			viz.dragDelta.y = 0;
 			viz.scaleDelta = 1;
+			viz.overlayOff();
 		};
 	}
 
 	processMouseMove(viz) {
 		return function(e) {
 			if (viz.isDragging) {
+				////
+//				var onmousestop = function() {
+//					viz.dragDelta.x = 0;
+//					viz.dragDelta.y = 0;
+//					viz.scaleDelta = 1;
+//					viz.mousePos.x = e.clientX;
+//					viz.mousePos.y = e.clientY;
+//				}, thread;
+//				clearTimeout(thread);
+//				thread = setTimeout(onmousestop, 10);
+//				viz.thread = setTimeout(viz.onMouseStop, 50);
+				////
 				if (e.ctrlKey) {
 					if (e.clientY-viz.mousePos.y < 0) viz.scaleDelta -= 0.001;
 					else viz.scaleDelta += 0.001;
-					viz.currentScale += viz.scaleDelta;
 				}
 				else {
 					viz.dragDelta.x = e.clientX-viz.mousePos.x;
@@ -111,14 +153,6 @@ class Visualization {
 			}
 		};
 	}
-	
-//	processWheel(viz) {
-//		return function(e) {
-//			if (e.deltaX == 0) viz.scaleDelta = 1;
-//			else viz.scaleDelta += 0.01;
-//		};
-//	}
-
 
 	init() {
 		this.resizeCanvasToDisplaySize();
@@ -149,7 +183,7 @@ class Visualization {
 		delete this.geometryExtraData[nameToRem];
 		if (nameToRem.startsWith("_") && !(nameToRem.includes("-")) && !this.deletedForever.includes(nameToRem)) this.deletedForever.push(nameToRem);
 	}
-	
+
 	refresh() {
 		//Remove old geoms
 		var toRemove = [];
@@ -170,7 +204,7 @@ class Visualization {
 
 		//Clear all
 		this.clearCanvas();
-		
+
 		//Draw map if necessary
 		if (this.map.length > 0) {
 			var mapW = this.map[0].width*this.mapResolution;
@@ -183,10 +217,10 @@ class Visualization {
 			this.ctx.globalAlpha = 1.0;
 			this.ctx.restore();
 		}
-		
+
 		//Resize properly
 		this.resizeCanvasToMouseMovement();
-		
+
 		//Draw all geoms
 		Object.keys(this.geometries).forEach(function(key,index) {
 			// key: the name of the object key
@@ -198,7 +232,7 @@ class Visualization {
 			viz.drawPolygon(viz.geometries[key], viz.geometryColors[key], !viz.geometryFilled[key], linewidth);
 			var textSize = 0.2;
 			if (key.startsWith("R")) {
-				textSize = Math.sqrt(area)/10;
+				textSize = Math.sqrt(area)/20;
 			}
 			if (!key.startsWith("_")) {
 				var text = key;
@@ -208,36 +242,50 @@ class Visualization {
 				viz.drawText(text,viz.geometries[key][0],"#ffffff", textSize);
 			}
 		});
+
+		//Draw fixed text if not empty
+		//var coord = { x : 0, y : 0 };
+		//this.drawTextOverlay(this.fixedText, coord, "#ffffff", 0.3);
 		//console.log("num geoms: " + Object.keys(this.geometries).length);
 	}
 
 	resizeCanvasToUserSpec() {
 		this.ctx.resetTransform();
-		this.ctx.translate(this.canvas.width/2-this.originalTranslate.x*this.originalScale,this.canvas.height/2+this.originalTranslate.y*this.originalScale);
-		this.ctx.scale(this.originalScale,-this.originalScale);
+		this.currentScale = this.originalScale;
+//		this.currentTranslate.x = this.canvas.width/2-this.originalTranslate.x*this.originalScale;
+//		this.currentTranslate.y = this.canvas.height/2+this.originalTranslate.y*this.originalScale;
+		this.currentTranslate.x = this.originalTranslate.x*this.currentScale;
+		this.currentTranslate.y = this.originalTranslate.y*this.currentScale;
+
+		this.ctx.translate(this.currentTranslate.x,this.canvas.height-this.currentTranslate.y);
+		this.ctx.scale(this.currentScale,-this.currentScale);
 	}
 
 	resizeCanvasToMouseMovement() {
+		this.currentScale *= this.scaleDelta;
+		this.currentTranslate.x += (this.dragDelta.x/100)*this.currentScale;
+		this.currentTranslate.y += (-this.dragDelta.y/100)*this.currentScale;
 		this.ctx.translate(this.dragDelta.x/100,-this.dragDelta.y/100);
 		this.ctx.scale(this.scaleDelta, this.scaleDelta);
+		this.updateOverlayText();
 	}
 
 	calcPolygonArea(coordinates) {
-	    var total = 0;
+		var total = 0;
 
-	    for (var i = 0, l = coordinates.length; i < l; i++) {
-	      var addX = coordinates[i].x;
-	      var addY = coordinates[i == coordinates.length - 1 ? 0 : i + 1].y;
-	      var subX = coordinates[i == coordinates.length - 1 ? 0 : i + 1].x;
-	      var subY = coordinates[i].y;
+		for (var i = 0, l = coordinates.length; i < l; i++) {
+			var addX = coordinates[i].x;
+			var addY = coordinates[i == coordinates.length - 1 ? 0 : i + 1].y;
+			var subX = coordinates[i == coordinates.length - 1 ? 0 : i + 1].x;
+			var subY = coordinates[i].y;
 
-	      total += (addX * addY * 0.5);
-	      total -= (subX * subY * 0.5);
-	    }
+			total += (addX * addY * 0.5);
+			total -= (subX * subY * 0.5);
+		}
 
-	    return Math.abs(total);
+		return Math.abs(total);
 	}
-	
+
 	drawPolygon(coordinates, color, empty, linewidth) {
 		this.ctx.globalAlpha = 0.5;
 		this.ctx.fillStyle = color;
@@ -255,7 +303,7 @@ class Visualization {
 	}
 
 	drawText(text, coord, color, size) {
-		this.ctx.font = 'italic ' + size*this.originalScale + 'pt Calibri';
+		this.ctx.font = 'italic ' + size*this.currentScale + 'pt Calibri';
 		//console.log(size);
 		//var w = this.ctx.measureText(text).width;
 		//var h = w/text.length;

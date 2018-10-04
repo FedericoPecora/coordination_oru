@@ -15,6 +15,7 @@ import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
+import se.oru.coordination.coordination_oru.util.BrowserVisualization;
 import se.oru.coordination.coordination_oru.util.JTSDrawingPanelVisualization;
 
 @DemoDescription(desc = "One-shot navigation of 3 robots coordinating on paths obtained with the ReedsSheppCarPlanner.")
@@ -61,9 +62,10 @@ public class ThreeRobotsLinear {
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
 		
-		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
+		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
+		//viz.setSize(1024, 768);
+		BrowserVisualization viz = new BrowserVisualization();
 		tec.setVisualization(viz);
-		viz.setSize(1024, 768);
 		
 		tec.setUseInternalCriticalPoints(false);
 		

@@ -91,6 +91,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 	public void onTrajectoryEnvelopeUpdate(TrajectoryEnvelope te) {
 		this.totalDistance = this.computeDistance(0, traj.getPose().length-1);
 		this.overallDistance = totalDistance;
+		this.internalCriticalPoints.clear();
 		this.computeInternalCriticalPoints();
 		this.positionToSlowDown = this.computePositionToSlowDown();
 	}
