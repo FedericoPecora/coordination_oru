@@ -29,23 +29,23 @@ import se.oru.coordination.coordination_oru.RobotReport;
 public class BrowserVisualization implements FleetVisualization {
 	
 	private ArrayList<String> msgQueue = new ArrayList<String>();
-	private static final int UPDATE_PERIOD = 30;
+	private static int UPDATE_PERIOD = 30;
 	private double robotFootprintArea = -1;
 
 	public BrowserVisualization() {
-		this("localhost");
+		this("localhost", 30);
 	}
-	
-	private void updateRobotFootprintArea(Geometry geom) {
-		if (robotFootprintArea == -1) robotFootprintArea = geom.getArea();
-	}
-	
-	public void setInitialTransform(double scale, double xTrans, double yTrans) {
-		BrowserVisualizationSocket.initialScale = scale;
-		BrowserVisualizationSocket.initialTranslation = new Coordinate(xTrans,yTrans);		
-	}
-	
+
 	public BrowserVisualization(String serverHostNameOrIP) {
+		this(serverHostNameOrIP, 30);
+	}
+
+	public BrowserVisualization(int updatePeriodInMillis) {
+		this("localhost", updatePeriodInMillis);
+	}
+	
+	public BrowserVisualization(String serverHostNameOrIP, int updatePeriodInMillis) {
+		UPDATE_PERIOD = updatePeriodInMillis;
 		BrowserVisualization.setupVizMessageServer();
         Thread updateThread = new Thread("Visualization update thread") {
         	public void run() {
@@ -59,7 +59,16 @@ public class BrowserVisualization implements FleetVisualization {
         updateThread.start();
         BrowserVisualization.setupVizServer(serverHostNameOrIP);
 	}
+
+	private void updateRobotFootprintArea(Geometry geom) {
+		if (robotFootprintArea == -1) robotFootprintArea = geom.getArea();
+	}
 	
+	public void setInitialTransform(double scale, double xTrans, double yTrans) {
+		BrowserVisualizationSocket.initialScale = scale;
+		BrowserVisualizationSocket.initialTranslation = new Coordinate(xTrans,yTrans);		
+	}
+
 	private static void setupVizServer(String serverHostNameOrIP) {
 		Server server = new Server(8080);
 		server.setHandler(new BrowserVisualizationServer(serverHostNameOrIP));

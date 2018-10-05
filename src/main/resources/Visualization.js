@@ -244,7 +244,8 @@ class Visualization {
 			viz.drawPolygon(viz.geometries[key], viz.geometryColors[key], !viz.geometryFilled[key], linewidth);
 			var textSize = 0.2;
 			if (key.startsWith("R")) {
-				textSize = Math.sqrt(area)/2;
+				//textSize = Math.sqrt(area)/2;
+				textSize = Math.sqrt(area);
 			}
 			if (!key.startsWith("_")) {
 				var text = key;
@@ -303,15 +304,20 @@ class Visualization {
 	}
 
 	drawText(text, coord, color, size) {
-		this.ctx.font = 'italic ' + size + 'pt Calibri';
+		var scale = size/10;
+		//this.ctx.font = 'italic ' + size + 'pt Calibri';
+		this.ctx.font = 'italic 12pt Calibri';
 		//console.log(size);
 		//var w = this.ctx.measureText(text).width;
 		//var h = w/text.length;
 		//console.log("approx h is " + h);
+		this.ctx.save();
+		this.ctx.scale(scale,scale);
 		this.ctx.fillStyle = color;
 		this.ctx.strokeStyle = color;
 		this.ctx.lineWidth=0.2;
-		this.ctx.fillText(text, coord.x, coord.y);
+		this.ctx.fillText(text, coord.x/scale, coord.y/scale);
+		this.ctx.restore();
 	}
 
 	clearCanvas() {

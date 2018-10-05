@@ -95,9 +95,6 @@ public class Waves {
 
 		double deltaY = 1.7;
 		
-		String setup = "Sine wave net test with "+numRobots+" robots"+" at "+LocalDateTime.now();
-		//tec.writeSetupLog("info", setup);
-		
 		final int[] robotIDs = new int[numRobots];
 		for (int i = 0; i < numRobots; i++) robotIDs[i] = i+1;
 		

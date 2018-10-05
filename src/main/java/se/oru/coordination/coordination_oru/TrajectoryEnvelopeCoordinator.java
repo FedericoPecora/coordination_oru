@@ -1556,7 +1556,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 								}
 								CriticalSection newCS = new CriticalSection(cs1.getTe1(), cs1.getTe2(), newStart1, newStart2, newEnd1, newEnd2); 
 								toAdd.add(newCS);
-								System.out.println("(Pass " + passNum + ") MERGED (ends-after-start): " + cs1 + " + " + cs2 + " = " + newCS);
+								metaCSPLogger.finest("(Pass " + passNum + ") MERGED (ends-after-start): " + cs1 + " + " + cs2 + " = " + newCS);
 							}
 							//distance CS1.end -> CS2.start too small
 							//(this is incorrect, leads to deadlocks!)
