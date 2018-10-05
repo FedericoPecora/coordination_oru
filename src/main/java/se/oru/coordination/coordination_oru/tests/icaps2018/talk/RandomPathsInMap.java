@@ -1,8 +1,7 @@
-package se.oru.coordination.coordination_oru.tests.icaps2018.eval;
+package se.oru.coordination.coordination_oru.tests.icaps2018.talk;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Calendar;
 import java.util.Comparator;
@@ -21,12 +20,11 @@ import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
 import se.oru.coordination.coordination_oru.util.BrowserVisualization;
-import se.oru.coordination.coordination_oru.util.JTSDrawingPanelVisualization;
 import se.oru.coordination.coordination_oru.util.Missions;
 import se.oru.coordination.coordination_oru.util.RVizVisualization;
 
-@DemoDescription(desc = "Coordination on paths obtained from the ReedsSheppCarPlanner for two robots navigating in the same direction.")
-public class Experiment2 {
+@DemoDescription(desc = "Coordination on paths obtained from the ReedsSheppCarPlanner for five robots navigating in a random map.")
+public class RandomPathsInMap {
 
 	private static boolean deleteDir(File dir) {
 	    if (dir.isDirectory()) {
