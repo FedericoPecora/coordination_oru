@@ -39,10 +39,10 @@ public class DemoLauncher {
 		HashMap<String,String> classDescriptions = new HashMap<String, String>();
 		for (Class<? extends Object> cl : classes) {
 			if (!cl.getSimpleName().equals("")) {
-				sortedClasses.add(cl.getSimpleName());
+				sortedClasses.add(cl.getName().replace(testsPackage+".",""));
 				String descString = "";
 				if (cl.getAnnotation(DemoDescription.class) != null) descString = cl.getAnnotation(DemoDescription.class).desc();
-				classDescriptions.put(cl.getSimpleName(),descString);
+				classDescriptions.put(cl.getName().replace(testsPackage+".",""),descString);
 			}
 		}
 		for (String className : sortedClasses) {

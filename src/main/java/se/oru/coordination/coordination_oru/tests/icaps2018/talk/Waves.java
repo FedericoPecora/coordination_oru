@@ -1,6 +1,5 @@
-package se.oru.coordination.coordination_oru.tests.icaps2018.eval;
+package se.oru.coordination.coordination_oru.tests.icaps2018.talk;
 
-import java.io.File;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -16,20 +15,13 @@ import se.oru.coordination.coordination_oru.Mission;
 import se.oru.coordination.coordination_oru.RobotAtCriticalSection;
 import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
+import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
 import se.oru.coordination.coordination_oru.util.BrowserVisualization;
 import se.oru.coordination.coordination_oru.util.Missions;
-import se.oru.coordination.coordination_oru.util.RVizVisualization;
 
-@DemoDescription(desc = "Coordination of robots along sine wave paths obtained without the ReedsSheppCarPlanner in opposing directions.")
-public class Experiment1Test2 {
+@DemoDescription(desc = "Coordination of robots along sine wave paths (obtained without the ReedsSheppCarPlanner) in opposing directions.")
+public class Waves {
 
-	public static int usedRobots = 0;
-	
-	public static boolean inUse(int robotID) {
-		if (robotID <= usedRobots) return true;
-		return false;
-	}
-	
 	private static PoseSteering[] getSinePath(double period, double magnitude, Pose from, Pose to) {
 		if (from.getY() != to.getY()) throw new Error("Can only do straight sine waves ;)");
 		ArrayList<Coordinate> coords = new ArrayList<Coordinate>();
@@ -63,15 +55,12 @@ public class Experiment1Test2 {
 		double MAX_ACCEL = 3.0;
 		double MAX_VEL = 14.0;
 		final int numRobots = (args != null && args.length > 0) ? Integer.parseInt(args[0]) : 10;
-		String logFile = System.getProperty("user.home")+File.separator+"icaps_test_3a_"+numRobots+"_robots.log";
-		String logHeading = "#Rob\t#DrvR\tT\tCS";
-		final ArrayList<Integer> robotsInUse = new ArrayList<Integer>();
 		//Instantiate a trajectory envelope coordinator.
 		//The TrajectoryEnvelopeCoordinatorSimulation implementation provides
 		// -- the factory method getNewTracker() which returns a trajectory envelope tracker
 		// -- the getCurrentTimeInMillis() method, which is used by the coordinator to keep time
 		//You still need to add one or more comparators to determine robot orderings thru critical sections (comparators are evaluated in the order in which they are added)
-		final TrajectoryEnvelopeCoordinatorSimulationICAPS tec = new TrajectoryEnvelopeCoordinatorSimulationICAPS(0, 1000.0, MAX_VEL, MAX_ACCEL, logFile, logHeading, robotsInUse);
+		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(MAX_VEL,MAX_ACCEL);
 		tec.addComparator(new Comparator<RobotAtCriticalSection> () {
 			@Override
 			public int compare(RobotAtCriticalSection o1, RobotAtCriticalSection o2) {
@@ -98,17 +87,9 @@ public class Experiment1Test2 {
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
 		
-		tec.setQuiet(true);
-
-		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
-		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
-		RVizVisualization viz = new RVizVisualization();
-		//BrowserVisualization viz = new BrowserVisualization();
-		//viz.setInitialTransform(19.64, 3.18, 16.49);
-		tec.setVisualization(viz);
-
 		tec.setUseInternalCriticalPoints(false);
 		tec.setYieldIfParking(false);
+		tec.setBreakDeadlocks(false);
 
 		//MetaCSPLogging.setLevel(tec.getClass().getSuperclass(), Level.FINEST);
 
@@ -118,11 +99,15 @@ public class Experiment1Test2 {
 		//tec.writeSetupLog("info", setup);
 		
 		final int[] robotIDs = new int[numRobots];
-		for (int i = 0; i < numRobots; i++) {
-			robotIDs[i] = i+1;
-			robotsInUse.add(robotIDs[usedRobots++]);
-		}
-		RVizVisualization.writeRVizConfigFile(robotIDs);
+		for (int i = 0; i < numRobots; i++) robotIDs[i] = i+1;
+		
+		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
+		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
+		//RVizVisualization viz = new RVizVisualization();
+		//RVizVisualization.writeRVizConfigFile(robotIDs);
+		BrowserVisualization viz = new BrowserVisualization();
+		viz.setInitialTransform(19.64, 3.18, 16.49);
+		tec.setVisualization(viz);
 		
 		for (int index = 0; index < robotIDs.length; index++) {
 			int robotID = robotIDs[index];
@@ -156,7 +141,7 @@ public class Experiment1Test2 {
 				if (tec.isFree(robotID)) {
 					Mission m = Missions.dequeueMission(robotID);
 					missionsToAdd.add(m);
-					Missions.enqueueMission(m);				
+					Missions.enqueueMission(m);
 				}
 			}
 			tec.addMissions(missionsToAdd.toArray(new Mission[missionsToAdd.size()]));

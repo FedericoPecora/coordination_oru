@@ -92,14 +92,14 @@ public abstract class TrajectoryEnvelopeTrackerDummy extends AbstractTrajectoryE
 	public void run() {
 
 		//Just do prolong the earliest end time until finished by external call to finishParking()
-		System.out.println("PARKING STARTS FOR ROBOT " + te.getRobotID());
+		metaCSPLogger.info("Parking starts for Robot " + te.getRobotID());
 		while (!parkingFinished) {
 			updateDeadline(this.te, DELTA_FUTURE);
 			onPositionUpdate();
 			try { Thread.sleep(trackingPeriodInMillis); }
 			catch (InterruptedException e) { e.printStackTrace(); }
 		}
-		System.out.println("PARKING IS FINISHED FOR ROBOT " + te.getRobotID());
+		metaCSPLogger.info("Parking finishes for Robot " + te.getRobotID());
 		
 		fixDeadline(te, 0);
 //		//Now wait until earliest end time (as there could be some driving envelope after this which should not start)

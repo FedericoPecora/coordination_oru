@@ -65,6 +65,7 @@ public class ThreeRobotsLinear {
 		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
 		//viz.setSize(1024, 768);
 		BrowserVisualization viz = new BrowserVisualization();
+		viz.setInitialTransform(54, 0, 0);
 		tec.setVisualization(viz);
 		
 		tec.setUseInternalCriticalPoints(false);

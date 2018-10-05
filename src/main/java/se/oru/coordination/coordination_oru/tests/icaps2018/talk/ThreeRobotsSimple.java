@@ -75,6 +75,7 @@ public class ThreeRobotsSimple {
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
 		BrowserVisualization viz = new BrowserVisualization();
+		viz.setInitialTransform(66, 8, 1);
 		tec.setVisualization(viz);
 		
 		tec.setUseInternalCriticalPoints(false);

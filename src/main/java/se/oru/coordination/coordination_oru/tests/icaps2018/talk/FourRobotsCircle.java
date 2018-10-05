@@ -65,6 +65,7 @@ public class FourRobotsCircle {
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
 		BrowserVisualization viz = new BrowserVisualization();
+		viz.setInitialTransform(43, 11, 1.6);
 		tec.setVisualization(viz);
 
 		tec.setUseInternalCriticalPoints(false);

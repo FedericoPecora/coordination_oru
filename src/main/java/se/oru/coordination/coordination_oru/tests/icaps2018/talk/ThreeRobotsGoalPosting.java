@@ -63,6 +63,7 @@ public class ThreeRobotsGoalPosting {
 		
 		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
 		BrowserVisualization viz = new BrowserVisualization();
+		viz.setInitialTransform(39, -1.8, 1.4);
 		tec.setVisualization(viz);
 		
 		tec.setUseInternalCriticalPoints(false);

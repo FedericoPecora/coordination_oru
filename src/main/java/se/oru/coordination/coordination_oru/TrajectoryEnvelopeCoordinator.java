@@ -356,13 +356,13 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			}
 			else {
 				if (!communicatedCPs.containsKey(trackers.get(robotID)) || !communicatedCPs.get(trackers.get(robotID)).equals(criticalPoint) ) {
-					System.out.println("NOT SKIPPING robot" + robotID + " CP: " + criticalPoint);
+					//System.out.println("NOT SKIPPING robot" + robotID + " CP: " + criticalPoint);
 					communicatedCPs.put(trackers.get(robotID), criticalPoint);
 					trackers.get(robotID).setCriticalPoint(criticalPoint);
 				}
-				else {
-					System.out.println("SKIPPING robot" + robotID + " CP: " + criticalPoint);					
-				}
+//				else {
+//					System.out.println("SKIPPING robot" + robotID + " CP: " + criticalPoint);					
+//				}
 			}
 		}
 	}
@@ -576,26 +576,21 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		int yieldingRobotStart = -1;
 		int leadingRobotEnd = -1;
 		int yieldingRobotEnd = -1;
+		TrajectoryEnvelope leadingRobotTE = null;
+		TrajectoryEnvelope yieldingRobotTE = null;
 		if (cs.getTe1().getRobotID() == yieldingRobotID) {
 			leadingRobotStart = cs.getTe2Start();
 			yieldingRobotStart = cs.getTe1Start();
 			leadingRobotEnd = cs.getTe2End();
 			yieldingRobotEnd = cs.getTe1End();
+			leadingRobotTE = cs.getTe2();
+			yieldingRobotTE = cs.getTe1();
 		}
 		else {
 			leadingRobotStart = cs.getTe1Start();
 			yieldingRobotStart = cs.getTe2Start();
 			leadingRobotEnd = cs.getTe1End();
 			yieldingRobotEnd = cs.getTe2End();
-		}
-
-		TrajectoryEnvelope leadingRobotTE = null;
-		TrajectoryEnvelope yieldingRobotTE = null;
-		if (cs.getTe1().getRobotID() == yieldingRobotID) {
-			leadingRobotTE = cs.getTe2();
-			yieldingRobotTE = cs.getTe1();
-		}
-		else {
 			leadingRobotTE = cs.getTe1();
 			yieldingRobotTE = cs.getTe2();			
 		}
@@ -687,12 +682,12 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			private long startTime = Calendar.getInstance().getTimeInMillis();
 			@Override
 			public void run() {
-				System.out.println("WAITING THREAD STARTS FOR " + robotID);
+				metaCSPLogger.info("Waiting thread starts for " + robotID);
 				while (Calendar.getInstance().getTimeInMillis()-startTime < duration) {
 					try { Thread.sleep(100); }
 					catch (InterruptedException e) { e.printStackTrace(); }
 				}
-				System.out.println("WAITING THREAD FINISHED FOR " + robotID);
+				metaCSPLogger.info("Waiting thread finishes for " + robotID);
 				synchronized(stoppingPoints) {
 					stoppingPoints.get(robotID).remove((int)index);
 					stoppingTimes.get(robotID).remove((int)index);
@@ -757,11 +752,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					}
 				}
 				if (safe) {
-					System.out.println("Cycle: " + edgesAlongCycle + " is deadlock-free");
+					metaCSPLogger.finest("Cycle: " + edgesAlongCycle + " is deadlock-free");
 					break;
 				}
 				if (i == edgesAlongCycle.size()-2) {
-					System.out.println("Cycle: " + edgesAlongCycle + " is NOT deadlock-free");
+					metaCSPLogger.info("Cycle: " + edgesAlongCycle + " is NOT deadlock-free");
 					spawnReplanning(edgesAlongCycle);
 					synchronized (disallowedDependencies) {
 						disallowedDependencies.add(anUnsafeDep);
@@ -1194,7 +1189,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							waitingCurrentIndex = robotReport2.getPathIndex();
 							waitingTE = cs.getTe2();
 							drivingTE = cs.getTe1();
-							metaCSPLogger.info("Both-out (1) and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID() + " and CS is: " + cs);
+							metaCSPLogger.finest("Both-out (1) and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID() + " and CS is: " + cs);
 						}
 
 						//If robot 2 has priority over robot 1
@@ -1203,7 +1198,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							waitingCurrentIndex = robotReport1.getPathIndex();
 							waitingTE = cs.getTe1();
 							drivingTE = cs.getTe2();
-							metaCSPLogger.info("Both-out (2) and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID() + " and CS is: " + cs);
+							metaCSPLogger.finest("Both-out (2) and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID() + " and CS is: " + cs);
 						}
 
 					}
@@ -1214,7 +1209,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						waitingCurrentIndex = robotReport1.getPathIndex();
 						waitingTE = cs.getTe1();
 						drivingTE = cs.getTe2();
-						metaCSPLogger.info("One-in-one-out (1) and Robot" + drivingTE.getRobotID() + " (in) is ahead of Robot" + waitingTE.getRobotID() + " (out) and CS is: " + cs);
+						metaCSPLogger.finest("One-in-one-out (1) and Robot" + drivingTE.getRobotID() + " (in) is ahead of Robot" + waitingTE.getRobotID() + " (out) and CS is: " + cs);
 					}
 
 					//Robot 2 has not reached critical section, robot 1 in critical section --> robot 2 waits
@@ -1223,7 +1218,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						waitingCurrentIndex = robotReport2.getPathIndex();
 						waitingTE = cs.getTe2();
 						drivingTE = cs.getTe1();
-						metaCSPLogger.info("One-in-one-out (2) and Robot" + drivingTE.getRobotID() + " (in) ahead of Robot" + waitingTE.getRobotID() + " (out) and CS is: " + cs);
+						metaCSPLogger.finest("One-in-one-out (2) and Robot" + drivingTE.getRobotID() + " (in) ahead of Robot" + waitingTE.getRobotID() + " (out) and CS is: " + cs);
 					}
 
 					//Both robots in critical section --> re-impose previously decided dependency
@@ -1252,7 +1247,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							waitingTE = cs.getTe1();
 							drivingTE = cs.getTe2();
 						}
-						metaCSPLogger.info("Both-in and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID() + " and CS is: " + cs);
+						metaCSPLogger.finest("Both-in and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID() + " and CS is: " + cs);
 					}
 
 					waitingRobotID = waitingTE.getRobotID();
@@ -1594,7 +1589,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					//CS1 and CS2 are identical
 					if (start11 == start21 && end11 == end21 && start12 == start22 && end12 == end22) {
 						toRemove.add(cs1);
-						System.out.println("(Pass " + passNum + ") REMOVED ONE OF " + cs1 + " and " + cs2);
+						metaCSPLogger.finest("(Pass " + passNum + ") Removed one of " + cs1 + " and " + cs2);
 					}
 				}
 			}
@@ -1766,7 +1761,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				AllenIntervalConstraint meets1 = new AllenIntervalConstraint(AllenIntervalConstraint.Type.Meets);
 				meets1.setFrom(te);
 				meets1.setTo(endParking);
-				System.out.println("Made end parking: " + endParking + " with con: " + meets1);
+				//System.out.println("Made end parking: " + endParking + " with con: " + meets1);
 
 				if (!solver.addConstraints(meets1)) {
 					metaCSPLogger.severe("ERROR: Could not add constraints " + meets1);
@@ -1986,7 +1981,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							stoppingTimes.get(robotID).add(DEFAULT_STOPPING_TIME);
 						}
 					}
-					metaCSPLogger.info("Stopping points along trajectory for Robot" + robotID + ": " + stoppingPoints.get(robotID));
+					if (stoppingPoints.get(robotID) != null) metaCSPLogger.info("Stopping points along trajectory for Robot" + robotID + ": " + stoppingPoints.get(robotID));
 				}
 
 				//Put in more realistic DTs computed with the RK4 integrator

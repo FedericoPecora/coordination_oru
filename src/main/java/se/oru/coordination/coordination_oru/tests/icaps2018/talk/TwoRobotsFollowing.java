@@ -65,6 +65,7 @@ public class TwoRobotsFollowing {
 		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
 		//viz.setSize(1800, 450);
 		BrowserVisualization viz = new BrowserVisualization();
+		viz.setInitialTransform(63, 0, 0);
 		tec.setVisualization(viz);
 
 		Pose startRobot1 = new Pose(25.0,5.0,0.0);

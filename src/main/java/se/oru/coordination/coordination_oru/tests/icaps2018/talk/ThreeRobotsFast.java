@@ -13,6 +13,7 @@ import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoord
 import se.oru.coordination.coordination_oru.util.BrowserVisualization;
 import se.oru.coordination.coordination_oru.util.JTSDrawingPanelVisualization;
 import se.oru.coordination.coordination_oru.util.Missions;
+import se.oru.coordination.coordination_oru.util.RVizVisualization;
 
 @DemoDescription(desc = "Three robots coordinating at high speed (paths obtained with the ReedsSheppCarPlanner).")
 public class ThreeRobotsFast {
@@ -54,7 +55,9 @@ public class ThreeRobotsFast {
 
 		//Instantiate a simple motion planner (no map given here, otherwise provide yaml file)
 		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
+		//RVizVisualization viz = new RVizVisualization();
 		BrowserVisualization viz = new BrowserVisualization();
+		viz.setInitialTransform(16, 20, -10);
 		tec.setVisualization(viz);
 		
 		//Load data file with locations and pointers to files containing paths between locations
