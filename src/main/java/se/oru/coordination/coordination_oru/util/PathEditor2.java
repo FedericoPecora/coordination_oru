@@ -83,6 +83,14 @@ public class PathEditor2 implements MouseMotionListener {
 	
 	private static String TEMP_MAP_DIR = ".tempMapsPathEditor";
 
+	public void setPanAcceleration(double accel) {
+		this.panel.setPanAcceleration(accel);
+	}
+	
+	public void setZoomIntensity(double intens) {
+		this.panel.setZoomIntensity(intens);
+	}
+	
 	public PathEditor2() {
 		this(null, null, null, 0.1, 0.1, 0.01, null);
 	}

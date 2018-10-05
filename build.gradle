@@ -38,6 +38,7 @@ task wrapper(type: Wrapper) {
 }
 
 repositories {
+  mavenLocal()
   jcenter()
   maven { url 'https://jitpack.io' }
   maven { url 'https://github.com/rosjava/rosjava_mvn_repo/raw/master/' }
@@ -57,13 +58,19 @@ dependencies {
   //compile 'org.metacsp:meta-csp-framework:1.3.4'
   //compile 'org.metacsp:meta-csp-framework:0.0.0-SNAPSHOT'
   compile 'com.github.FedericoPecora:meta-csp-framework:master-SNAPSHOT'
+
+  //For interface with OMPL
   compile 'net.java.dev.jna:jna:4.4.0'
   compile 'org.jgrapht:jgrapht-core:1.0.1'
+
+  //For demo infrastructure
   compile 'org.reflections:reflections:0.9.11'
+
+  //For RVizVisualization
   compile 'org.ros.rosjava_core:rosjava:[0.3,0.4)'
   compile 'org.ros.rosjava_messages:visualization_msgs:[1.12,1.13)'
   
-  //For browser visualization
+  //For BrowserVisualization
   compile 'org.eclipse.jetty.websocket:websocket-api:9.4.12.v20180830'
   compile 'org.eclipse.jetty.websocket:websocket-server:9.4.12.v20180830'
   compile 'org.eclipse.jetty.websocket:websocket-client:9.4.12.v20180830'
