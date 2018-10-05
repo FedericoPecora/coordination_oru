@@ -1,7 +1,9 @@
 package se.oru.coordination.coordination_oru;
 
 import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -11,6 +13,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.logging.Logger;
@@ -31,7 +34,6 @@ import org.metacsp.multi.spatioTemporal.paths.Trajectory;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelopeSolver;
 import org.metacsp.time.Bounds;
-import org.metacsp.utility.Combination;
 import org.metacsp.utility.PermutationsWithRepetition;
 import org.metacsp.utility.UI.Callback;
 import org.metacsp.utility.logging.MetaCSPLogging;
@@ -121,6 +123,21 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	
 	protected HashSet<HashSet<Integer>> replanningSpawned = new HashSet<HashSet<Integer>>();
 	protected boolean replanning = false;
+
+	/**
+	 * Utility method to treat internal resources from this library as filenames.
+	 * @param resource The internal resource to be loaded.
+	 * @return The absolute path of a temporary file which contains a copy of the resource.
+	 */
+	public static String getResourceAsFileName(String resource) {
+		Random rand = new Random(Calendar.getInstance().getTimeInMillis());
+		ClassLoader classLoader = TrajectoryEnvelopeCoordinator.class.getClassLoader();
+		File source = new File(classLoader.getResource(resource).getFile());
+		File dest = new File("." + 1+rand.nextInt(1000) + ".tempfile");
+		try { Files.copy(source.toPath(), dest.toPath()); }
+		catch (IOException e) { e.printStackTrace(); }
+		return dest.getAbsolutePath();
+	}
 	
 	/**
 	 * The default footprint used for robots if none is specified.
