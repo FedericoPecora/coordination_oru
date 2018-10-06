@@ -31,6 +31,7 @@ public class BrowserVisualization implements FleetVisualization {
 	private ArrayList<String> msgQueue = new ArrayList<String>();
 	private static int UPDATE_PERIOD = 30;
 	private double robotFootprintArea = -1;
+	private String overlayText = null;
 
 	public BrowserVisualization() {
 		this("localhost", 30);
@@ -58,6 +59,19 @@ public class BrowserVisualization implements FleetVisualization {
         };
         updateThread.start();
         BrowserVisualization.setupVizServer(serverHostNameOrIP);
+	}
+	
+	private void updateOverlayText() {
+		if (this.overlayText != null) {
+			String jsonString = "{ \"operation\" : \"setOverlayText\","
+					+ "\"data\" : "
+					+ "{ \"text\" : \""+ this.overlayText + "\" }}";
+			sendMessage(jsonString);
+		}
+	}
+	
+	public void setOverlayText(String text) {
+		this.overlayText = text;
 	}
 
 	private void updateRobotFootprintArea(Geometry geom) {
@@ -118,6 +132,7 @@ public class BrowserVisualization implements FleetVisualization {
 					sendMessage(message);
 				}
 				msgQueue.clear();
+				updateOverlayText();
 				sendUpdate();
 			}
 		}

@@ -21,14 +21,33 @@ class Visualization {
 		this.matrix.translate(0,-this.canvas.height);
 		
 		this.resizeCanvasToUserSpec();
-		this.canvas.addEventListener('mousedown', this.processMouseDown(this), false);
-		//this.canvas.addEventListener('mousemove', this.processMouseMove(this), false);
-		//this.canvas.addEventListener('mouseup', this.processMouseUp(this), false);
 
+		this.ctrlOverlay = document.getElementById("ctrl_overlay"); 
 		this.overlay = document.getElementById("overlay"); 
-		//this.overlay.addEventListener('mousedown' this.processMouseDown(this), false);
+		
+		this.overlay.addEventListener('mousedown', this.processMouseDown(this), false);
 		this.overlay.addEventListener('mousemove', this.processMouseMove(this), false);
 		this.overlay.addEventListener('mouseup', this.processMouseUp(this), false);
+
+		
+//		this.canvas.addEventListener('mousedown', this.processMouseDown(this), false);
+//		//this.canvas.addEventListener('mousemove', this.processMouseMove(this), false);
+//		//this.canvas.addEventListener('mouseup', this.processMouseUp(this), false);
+//
+//		//this.ctrlOverlay.addEventListener('mousedown' this.processMouseDown(this), false);
+//		this.ctrlOverlay.addEventListener('mousemove', this.processMouseMove(this), false);
+//		this.ctrlOverlay.addEventListener('mouseup', this.processMouseUp(this), false);
+
+
+		this.ctrlOverlayText = document.createElement('div');
+		this.ctrlOverlayText.id = "ctrl_overlay_text";
+		this.ctrlOverlayText.innerHTML = "";
+		this.ctrlOverlay.appendChild(this.ctrlOverlayText);
+		
+		this.overlayText = document.createElement('div');
+		this.overlayText.id = "overlay_text";
+		this.overlayText.innerHTML = "";
+		this.overlay.appendChild(this.overlayText);
 
 		//this.canvas.addEventListener('wheel', this.processWheel(this), false);
 		this.isDragging = false;
@@ -50,11 +69,6 @@ class Visualization {
 		this.mapResolution = 1.0;
 		this.mapOrigin = { x : 0, y : 0 };
 		this.footprintSize = 1;
-
-		this.overlayText = document.createElement('div');
-		this.overlayText.id = "overlayText";
-		this.overlayText.innerHTML = "";
-		this.overlay.appendChild(this.overlayText);
 	}
 
 	encode(input) {
@@ -103,6 +117,14 @@ class Visualization {
 		this.map.push(image);
 	}
 
+	ctrlOverlayOn() {
+		this.ctrlOverlay.style.display = "block";
+	}
+
+	ctrlOverlayOff() {
+		this.ctrlOverlay.style.display = "none";
+	}
+	
 	overlayOn() {
 		this.overlay.style.display = "block";
 	}
@@ -110,14 +132,18 @@ class Visualization {
 	overlayOff() {
 		this.overlay.style.display = "none";
 	}
+	
+	setOverlayText(data) {
+		this.overlayText.innerHTML = data.text;
+	}
 
-	updateOverlayText() {
+	updateCtrlOverlayText() {
 		var decomp = this.matrix.decompose(true);
 		var scale = decomp.scale.x;
 		var transX = decomp.translate.x/scale;
 		var transY = -(decomp.translate.y-this.canvas.height)/scale;
 		
-		this.overlayText.innerHTML = "Translate (x,y): (" + transX.toFixed(2) + "," + transY.toFixed(2) + ") Scale: " + scale.toFixed(2);
+		this.ctrlOverlayText.innerHTML = "Translate (x,y): (" + transX.toFixed(2) + "," + transY.toFixed(2) + ") Scale: " + scale.toFixed(2);
 	}
 
 	processMouseDown(viz) {
@@ -125,8 +151,8 @@ class Visualization {
 			viz.isDragging = true;
 			viz.mousePos.x = e.clientX;
 			viz.mousePos.y = e.clientY;
-			viz.overlayOn();
-			viz.updateOverlayText();
+			viz.ctrlOverlayOn();
+			viz.updateCtrlOverlayText();
 		};
 	}
 
@@ -136,7 +162,7 @@ class Visualization {
 			viz.dragDelta.x = 0;
 			viz.dragDelta.y = 0;
 			viz.scaleDelta = 1;
-			viz.overlayOff();
+			viz.ctrlOverlayOff();
 		};
 	}
 
@@ -268,7 +294,7 @@ class Visualization {
 		this.matrix.translate((this.dragDelta.x/100),-(this.dragDelta.y/100));
 		this.matrix.applyToContext(this.ctx);		
 		this.currentTextScale *= this.scaleDelta;
-		this.updateOverlayText();
+		this.updateCtrlOverlayText();
 	}
 
 	calcPolygonArea(coordinates) {
