@@ -72,29 +72,37 @@ public class Missions {
 			}	
 		}
 	}
-	
+
 	/**
-	 * Get the shortest path between two locations (computed with Dijkstra with edge weights = path lengths).
-	 * @param from The source location.
-	 * @param to The goal location.
-	 * @return The shortest path between the two given locations.
+	 * Get the shortest path connecting given locations (two or more). The path between successive pairs of locations
+	 * is computed with Dijkstra with edge weights = path lengths.
+	 * @param locations At least two locations.
+	 * @return The shortest path connecting given locations.
 	 */
-	public static PoseSteering[] getShortestMission(String from, String to) {
+	public static PoseSteering[] getShortestPath(String ... locations) {
+		if (locations.length < 2) throw new Error("Please provide at least two locations for path extraction!");
 		DijkstraShortestPath<String, DefaultWeightedEdge> dijkstraShortestPath = new DijkstraShortestPath<String, DefaultWeightedEdge>(graph);
-		//System.out.println("Getting path from -> to: " + from + " -> " + to);
-	    GraphPath<String, DefaultWeightedEdge> gp = dijkstraShortestPath.getPath(from, to);
-	    if (gp == null) return null;
-	    List<String> shortestPath = gp.getVertexList();
-	    ArrayList<PoseSteering> allPoses = new ArrayList<PoseSteering>();
-	    for (int i = 0; i < shortestPath.size()-1; i++) {
-	    	PoseSteering[] onePath = loadKnownPath(shortestPath.get(i),shortestPath.get(i+1));
-	    	if (i == 0) allPoses.add(onePath[0]);
-	    	for (int j = 1; j < onePath.length-1; j++) {
-	    		allPoses.add(onePath[j]);
-	    	}
-	    	if (i == shortestPath.size()-2) allPoses.add(onePath[onePath.length-1]);
-	    }
-		return allPoses.toArray(new PoseSteering[allPoses.size()]);
+		ArrayList<PoseSteering> overallShortestPath = new ArrayList<PoseSteering>();
+		for (int k = 0; k < locations.length-1; k++) {
+		    GraphPath<String, DefaultWeightedEdge> gp = dijkstraShortestPath.getPath(locations[k], locations[k+1]);			
+		    if (gp == null) return null;
+		    List<String> oneShortestPath = gp.getVertexList();
+		    ArrayList<PoseSteering> allPoses = new ArrayList<PoseSteering>();
+		    for (int i = 0; i < oneShortestPath.size()-1; i++) {
+		    	PoseSteering[] onePath = loadKnownPath(oneShortestPath.get(i),oneShortestPath.get(i+1));
+		    	if (i == 0) allPoses.add(onePath[0]);
+		    	for (int j = 1; j < onePath.length-1; j++) {
+		    		allPoses.add(onePath[j]);
+		    	}
+		    	if (i == oneShortestPath.size()-2) allPoses.add(onePath[onePath.length-1]);
+		    }
+		    if (k == 0) overallShortestPath.add(allPoses.get(0));
+		    for (int i = 1; i < allPoses.size()-1; i++) {
+		    	overallShortestPath.add(allPoses.get(i));
+		    }
+		    if (k == locations.length-2) overallShortestPath.add(allPoses.get(allPoses.size()-1));
+		}
+		return overallShortestPath.toArray(new PoseSteering[overallShortestPath.size()]);
 	}
 	
 	/**
