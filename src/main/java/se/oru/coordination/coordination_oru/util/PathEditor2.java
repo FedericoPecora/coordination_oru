@@ -265,14 +265,28 @@ public class PathEditor2 implements MouseMotionListener {
 		//Add envelopes of path connected to selected points
 		if (selectedLocationsInt.size() > 0) {
 			Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
-			for (int oneLocation : selectedLocationsInt) {
-				String locationName = locationIDs.get(oneLocation);
+			if (selectedLocationsInt.size() == 2) {
+				String from = locationIDs.get(selectedLocationsInt.get(0));
+				String to = locationIDs.get(selectedLocationsInt.get(1));
 				for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
-					if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
+					if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(from) && entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(to)) {
 						ArrayList<PoseSteering> path = entry.getValue();
 						Geometry env = createEnvelope(path);
 						//addGeometry(String id, Geometry geom, boolean empty, boolean thick, boolean transp, String color)
 						panel.addGeometry("_"+entry.getKey()+".env",env, false, false, true, "#ff4f4f");
+					}
+				}
+			}
+			else {
+				for (int oneLocation : selectedLocationsInt) {
+					String locationName = locationIDs.get(oneLocation);
+					for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
+						if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
+							ArrayList<PoseSteering> path = entry.getValue();
+							Geometry env = createEnvelope(path);
+							//addGeometry(String id, Geometry geom, boolean empty, boolean thick, boolean transp, String color)
+							panel.addGeometry("_"+entry.getKey()+".env",env, false, false, true, "#ff4f4f");
+						}
 					}
 				}
 			}
@@ -283,11 +297,25 @@ public class PathEditor2 implements MouseMotionListener {
 	public void deleteForwardAndInversePaths(ArrayList<Integer> selectedLocsInt) {
 		if (selectedLocsInt.size() > 0) {
 			ArrayList<String> toRemove = new ArrayList<String>();
-			for (int oneLocation : selectedLocsInt) {
-				String locationName = locationIDs.get(oneLocation);
+			if (selectedLocationsInt.size() == 2) {
+				String from = locationIDs.get(selectedLocationsInt.get(0));
+				String to = locationIDs.get(selectedLocationsInt.get(1));
 				for (Entry<String, ArrayList<PoseSteering>> entry : allPaths.entrySet()) {
-					if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
+					if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(from) && entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(to)) {
 						toRemove.add(entry.getKey());
+					}
+					if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(to) && entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(from)) {
+						toRemove.add(entry.getKey());
+					}
+				}
+			}
+			else {
+				for (int oneLocation : selectedLocsInt) {
+					String locationName = locationIDs.get(oneLocation);
+					for (Entry<String, ArrayList<PoseSteering>> entry : allPaths.entrySet()) {
+						if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
+							toRemove.add(entry.getKey());
+						}
 					}
 				}
 			}
@@ -298,7 +326,7 @@ public class PathEditor2 implements MouseMotionListener {
 				isInversePath.remove(rem);
 				System.out.println("Removed path " + rem);
 				updatePaths2();
-			}
+			}			
 		}
 	}
 	
@@ -1057,29 +1085,48 @@ public class PathEditor2 implements MouseMotionListener {
 					
 					/////
 					Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
-					for (int oneLocation : selectedLocationsInt) {
-						String locationName = locationIDs.get(oneLocation);
-						ArrayList<String> pathsToRecompute = new ArrayList<String>();
+					//
+					if (selectedLocationsInt.size() == 2) {
+						String from = locationIDs.get(selectedLocationsInt.get(0));
+						String to = locationIDs.get(selectedLocationsInt.get(1));
+						String pathToRecompute = null;
 						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
-							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
+							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(from) && entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(to)) {
 								if (!isInversePath.get(entry.getKey())) {
-									pathsToRecompute.add(entry.getKey());
+									pathToRecompute = entry.getKey();
 								}
 							}
 						}
-						ArrayList<Integer> newSelection = new ArrayList<Integer>();
-						newSelection.add(oneLocation);
-						deleteForwardAndInversePaths(newSelection);
-						for (String pathName : pathsToRecompute) {
-							System.out.println("Affected path: " + pathName);
-							String from = pathName.substring(0, pathName.indexOf("->"));
-							String to = pathName.substring(pathName.indexOf("->")+2);
-							int fromIndex = locationIDs.indexOf(from);
-							int toIndex = locationIDs.indexOf(to);
-							newSelection.clear();
-							newSelection.add(fromIndex);
-							newSelection.add(toIndex);
-							computeForwardAndInversePathsWithSpline(newSelection);
+						deleteForwardAndInversePaths(selectedLocationsInt);
+						System.out.println("Affected path: " + pathToRecompute);
+						computeForwardAndInversePathsWithSpline(selectedLocationsInt);
+					}
+					//
+					else {
+						for (int oneLocation : selectedLocationsInt) {
+							String locationName = locationIDs.get(oneLocation);
+							ArrayList<String> pathsToRecompute = new ArrayList<String>();
+							for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
+								if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
+									if (!isInversePath.get(entry.getKey())) {
+										pathsToRecompute.add(entry.getKey());
+									}
+								}
+							}
+							ArrayList<Integer> newSelection = new ArrayList<Integer>();
+							newSelection.add(oneLocation);
+							deleteForwardAndInversePaths(newSelection);
+							for (String pathName : pathsToRecompute) {
+								System.out.println("Affected path: " + pathName);
+								String from = pathName.substring(0, pathName.indexOf("->"));
+								String to = pathName.substring(pathName.indexOf("->")+2);
+								int fromIndex = locationIDs.indexOf(from);
+								int toIndex = locationIDs.indexOf(to);
+								newSelection.clear();
+								newSelection.add(fromIndex);
+								newSelection.add(toIndex);
+								computeForwardAndInversePathsWithSpline(newSelection);
+							}
 						}
 					}
 					/////
@@ -1109,29 +1156,48 @@ public class PathEditor2 implements MouseMotionListener {
 					
 					/////
 					Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
-					for (int oneLocation : selectedLocationsInt) {
-						String locationName = locationIDs.get(oneLocation);
-						ArrayList<String> pathsToRecompute = new ArrayList<String>();
+					//
+					if (selectedLocationsInt.size() == 2) {
+						String from = locationIDs.get(selectedLocationsInt.get(0));
+						String to = locationIDs.get(selectedLocationsInt.get(1));
+						String pathToRecompute = null;
 						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
-							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
+							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(from) && entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(to)) {
 								if (!isInversePath.get(entry.getKey())) {
-									pathsToRecompute.add(entry.getKey());
+									pathToRecompute = entry.getKey();
 								}
 							}
 						}
-						ArrayList<Integer> newSelection = new ArrayList<Integer>();
-						newSelection.add(oneLocation);
-						deleteForwardAndInversePaths(newSelection);
-						for (String pathName : pathsToRecompute) {
-							System.out.println("Affected path: " + pathName);
-							String from = pathName.substring(0, pathName.indexOf("->"));
-							String to = pathName.substring(pathName.indexOf("->")+2);
-							int fromIndex = locationIDs.indexOf(from);
-							int toIndex = locationIDs.indexOf(to);
-							newSelection.clear();
-							newSelection.add(fromIndex);
-							newSelection.add(toIndex);
-							computeForwardAndInversePathsWithSpline(newSelection);
+						deleteForwardAndInversePaths(selectedLocationsInt);
+						System.out.println("Affected path: " + pathToRecompute);
+						computeForwardAndInversePathsWithSpline(selectedLocationsInt);
+					}
+					//
+					else {
+						for (int oneLocation : selectedLocationsInt) {
+							String locationName = locationIDs.get(oneLocation);
+							ArrayList<String> pathsToRecompute = new ArrayList<String>();
+							for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
+								if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
+									if (!isInversePath.get(entry.getKey())) {
+										pathsToRecompute.add(entry.getKey());
+									}
+								}
+							}
+							ArrayList<Integer> newSelection = new ArrayList<Integer>();
+							newSelection.add(oneLocation);
+							deleteForwardAndInversePaths(newSelection);
+							for (String pathName : pathsToRecompute) {
+								System.out.println("Affected path: " + pathName);
+								String from = pathName.substring(0, pathName.indexOf("->"));
+								String to = pathName.substring(pathName.indexOf("->")+2);
+								int fromIndex = locationIDs.indexOf(from);
+								int toIndex = locationIDs.indexOf(to);
+								newSelection.clear();
+								newSelection.add(fromIndex);
+								newSelection.add(toIndex);
+								computeForwardAndInversePathsWithSpline(newSelection);
+							}
 						}
 					}
 					/////
@@ -1160,29 +1226,48 @@ public class PathEditor2 implements MouseMotionListener {
 					
 					/////
 					Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
-					for (int oneLocation : selectedLocationsInt) {
-						String locationName = locationIDs.get(oneLocation);
-						ArrayList<String> pathsToRecompute = new ArrayList<String>();
+					//
+					if (selectedLocationsInt.size() == 2) {
+						String from = locationIDs.get(selectedLocationsInt.get(0));
+						String to = locationIDs.get(selectedLocationsInt.get(1));
+						String pathToRecompute = null;
 						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
-							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
+							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(from) && entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(to)) {
 								if (!isInversePath.get(entry.getKey())) {
-									pathsToRecompute.add(entry.getKey());
+									pathToRecompute = entry.getKey();
 								}
 							}
 						}
-						ArrayList<Integer> newSelection = new ArrayList<Integer>();
-						newSelection.add(oneLocation);
-						deleteForwardAndInversePaths(newSelection);
-						for (String pathName : pathsToRecompute) {
-							System.out.println("Affected path: " + pathName);
-							String from = pathName.substring(0, pathName.indexOf("->"));
-							String to = pathName.substring(pathName.indexOf("->")+2);
-							int fromIndex = locationIDs.indexOf(from);
-							int toIndex = locationIDs.indexOf(to);
-							newSelection.clear();
-							newSelection.add(fromIndex);
-							newSelection.add(toIndex);
-							computeForwardAndInversePathsWithSpline(newSelection);
+						deleteForwardAndInversePaths(selectedLocationsInt);
+						System.out.println("Affected path: " + pathToRecompute);
+						computeForwardAndInversePathsWithSpline(selectedLocationsInt);
+					}
+					//
+					else {
+						for (int oneLocation : selectedLocationsInt) {
+							String locationName = locationIDs.get(oneLocation);
+							ArrayList<String> pathsToRecompute = new ArrayList<String>();
+							for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
+								if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
+									if (!isInversePath.get(entry.getKey())) {
+										pathsToRecompute.add(entry.getKey());
+									}
+								}
+							}
+							ArrayList<Integer> newSelection = new ArrayList<Integer>();
+							newSelection.add(oneLocation);
+							deleteForwardAndInversePaths(newSelection);
+							for (String pathName : pathsToRecompute) {
+								System.out.println("Affected path: " + pathName);
+								String from = pathName.substring(0, pathName.indexOf("->"));
+								String to = pathName.substring(pathName.indexOf("->")+2);
+								int fromIndex = locationIDs.indexOf(from);
+								int toIndex = locationIDs.indexOf(to);
+								newSelection.clear();
+								newSelection.add(fromIndex);
+								newSelection.add(toIndex);
+								computeForwardAndInversePathsWithSpline(newSelection);
+							}
 						}
 					}
 					/////
@@ -1211,29 +1296,48 @@ public class PathEditor2 implements MouseMotionListener {
 					
 					/////
 					Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
-					for (int oneLocation : selectedLocationsInt) {
-						String locationName = locationIDs.get(oneLocation);
-						ArrayList<String> pathsToRecompute = new ArrayList<String>();
+					//
+					if (selectedLocationsInt.size() == 2) {
+						String from = locationIDs.get(selectedLocationsInt.get(0));
+						String to = locationIDs.get(selectedLocationsInt.get(1));
+						String pathToRecompute = null;
 						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
-							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
+							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(from) && entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(to)) {
 								if (!isInversePath.get(entry.getKey())) {
-									pathsToRecompute.add(entry.getKey());
+									pathToRecompute = entry.getKey();
 								}
 							}
 						}
-						ArrayList<Integer> newSelection = new ArrayList<Integer>();
-						newSelection.add(oneLocation);
-						deleteForwardAndInversePaths(newSelection);
-						for (String pathName : pathsToRecompute) {
-							System.out.println("Affected path: " + pathName);
-							String from = pathName.substring(0, pathName.indexOf("->"));
-							String to = pathName.substring(pathName.indexOf("->")+2);
-							int fromIndex = locationIDs.indexOf(from);
-							int toIndex = locationIDs.indexOf(to);
-							newSelection.clear();
-							newSelection.add(fromIndex);
-							newSelection.add(toIndex);
-							computeForwardAndInversePathsWithSpline(newSelection);
+						deleteForwardAndInversePaths(selectedLocationsInt);
+						System.out.println("Affected path: " + pathToRecompute);
+						computeForwardAndInversePathsWithSpline(selectedLocationsInt);
+					}
+					//
+					else {
+						for (int oneLocation : selectedLocationsInt) {
+							String locationName = locationIDs.get(oneLocation);
+							ArrayList<String> pathsToRecompute = new ArrayList<String>();
+							for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
+								if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
+									if (!isInversePath.get(entry.getKey())) {
+										pathsToRecompute.add(entry.getKey());
+									}
+								}
+							}
+							ArrayList<Integer> newSelection = new ArrayList<Integer>();
+							newSelection.add(oneLocation);
+							deleteForwardAndInversePaths(newSelection);
+							for (String pathName : pathsToRecompute) {
+								System.out.println("Affected path: " + pathName);
+								String from = pathName.substring(0, pathName.indexOf("->"));
+								String to = pathName.substring(pathName.indexOf("->")+2);
+								int fromIndex = locationIDs.indexOf(from);
+								int toIndex = locationIDs.indexOf(to);
+								newSelection.clear();
+								newSelection.add(fromIndex);
+								newSelection.add(toIndex);
+								computeForwardAndInversePathsWithSpline(newSelection);
+							}
 						}
 					}
 					/////
@@ -1262,29 +1366,48 @@ public class PathEditor2 implements MouseMotionListener {
 					
 					/////
 					Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
-					for (int oneLocation : selectedLocationsInt) {
-						String locationName = locationIDs.get(oneLocation);
-						ArrayList<String> pathsToRecompute = new ArrayList<String>();
+					//
+					if (selectedLocationsInt.size() == 2) {
+						String from = locationIDs.get(selectedLocationsInt.get(0));
+						String to = locationIDs.get(selectedLocationsInt.get(1));
+						String pathToRecompute = null;
 						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
-							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
+							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(from) && entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(to)) {
 								if (!isInversePath.get(entry.getKey())) {
-									pathsToRecompute.add(entry.getKey());
+									pathToRecompute = entry.getKey();
 								}
 							}
 						}
-						ArrayList<Integer> newSelection = new ArrayList<Integer>();
-						newSelection.add(oneLocation);
-						deleteForwardAndInversePaths(newSelection);
-						for (String pathName : pathsToRecompute) {
-							System.out.println("Affected path: " + pathName);
-							String from = pathName.substring(0, pathName.indexOf("->"));
-							String to = pathName.substring(pathName.indexOf("->")+2);
-							int fromIndex = locationIDs.indexOf(from);
-							int toIndex = locationIDs.indexOf(to);
-							newSelection.clear();
-							newSelection.add(fromIndex);
-							newSelection.add(toIndex);
-							computeForwardAndInversePathsWithSpline(newSelection);
+						deleteForwardAndInversePaths(selectedLocationsInt);
+						System.out.println("Affected path: " + pathToRecompute);
+						computeForwardAndInversePathsWithSpline(selectedLocationsInt);
+					}
+					//
+					else {
+						for (int oneLocation : selectedLocationsInt) {
+							String locationName = locationIDs.get(oneLocation);
+							ArrayList<String> pathsToRecompute = new ArrayList<String>();
+							for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
+								if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
+									if (!isInversePath.get(entry.getKey())) {
+										pathsToRecompute.add(entry.getKey());
+									}
+								}
+							}
+							ArrayList<Integer> newSelection = new ArrayList<Integer>();
+							newSelection.add(oneLocation);
+							deleteForwardAndInversePaths(newSelection);
+							for (String pathName : pathsToRecompute) {
+								System.out.println("Affected path: " + pathName);
+								String from = pathName.substring(0, pathName.indexOf("->"));
+								String to = pathName.substring(pathName.indexOf("->")+2);
+								int fromIndex = locationIDs.indexOf(from);
+								int toIndex = locationIDs.indexOf(to);
+								newSelection.clear();
+								newSelection.add(fromIndex);
+								newSelection.add(toIndex);
+								computeForwardAndInversePathsWithSpline(newSelection);
+							}
 						}
 					}
 					/////
@@ -1314,29 +1437,48 @@ public class PathEditor2 implements MouseMotionListener {
 					
 					/////
 					Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
-					for (int oneLocation : selectedLocationsInt) {
-						String locationName = locationIDs.get(oneLocation);
-						ArrayList<String> pathsToRecompute = new ArrayList<String>();
+					//
+					if (selectedLocationsInt.size() == 2) {
+						String from = locationIDs.get(selectedLocationsInt.get(0));
+						String to = locationIDs.get(selectedLocationsInt.get(1));
+						String pathToRecompute = null;
 						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
-							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
+							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(from) && entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(to)) {
 								if (!isInversePath.get(entry.getKey())) {
-									pathsToRecompute.add(entry.getKey());
+									pathToRecompute = entry.getKey();
 								}
 							}
 						}
-						ArrayList<Integer> newSelection = new ArrayList<Integer>();
-						newSelection.add(oneLocation);
-						deleteForwardAndInversePaths(newSelection);
-						for (String pathName : pathsToRecompute) {
-							System.out.println("Affected path: " + pathName);
-							String from = pathName.substring(0, pathName.indexOf("->"));
-							String to = pathName.substring(pathName.indexOf("->")+2);
-							int fromIndex = locationIDs.indexOf(from);
-							int toIndex = locationIDs.indexOf(to);
-							newSelection.clear();
-							newSelection.add(fromIndex);
-							newSelection.add(toIndex);
-							computeForwardAndInversePathsWithSpline(newSelection);
+						deleteForwardAndInversePaths(selectedLocationsInt);
+						System.out.println("Affected path: " + pathToRecompute);
+						computeForwardAndInversePathsWithSpline(selectedLocationsInt);
+					}
+					//
+					else {
+						for (int oneLocation : selectedLocationsInt) {
+							String locationName = locationIDs.get(oneLocation);
+							ArrayList<String> pathsToRecompute = new ArrayList<String>();
+							for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
+								if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
+									if (!isInversePath.get(entry.getKey())) {
+										pathsToRecompute.add(entry.getKey());
+									}
+								}
+							}
+							ArrayList<Integer> newSelection = new ArrayList<Integer>();
+							newSelection.add(oneLocation);
+							deleteForwardAndInversePaths(newSelection);
+							for (String pathName : pathsToRecompute) {
+								System.out.println("Affected path: " + pathName);
+								String from = pathName.substring(0, pathName.indexOf("->"));
+								String to = pathName.substring(pathName.indexOf("->")+2);
+								int fromIndex = locationIDs.indexOf(from);
+								int toIndex = locationIDs.indexOf(to);
+								newSelection.clear();
+								newSelection.add(fromIndex);
+								newSelection.add(toIndex);
+								computeForwardAndInversePathsWithSpline(newSelection);
+							}
 						}
 					}
 					/////
@@ -1431,29 +1573,48 @@ public class PathEditor2 implements MouseMotionListener {
 					
 					/////
 					Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
-					for (int oneLocation : selectedLocationsInt) {
-						String locationName = locationIDs.get(oneLocation);
-						ArrayList<String> pathsToRecompute = new ArrayList<String>();
+					//
+					if (selectedLocationsInt.size() == 2) {
+						String from = locationIDs.get(selectedLocationsInt.get(0));
+						String to = locationIDs.get(selectedLocationsInt.get(1));
+						String pathToRecompute = null;
 						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
-							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
+							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(from) && entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(to)) {
 								if (!isInversePath.get(entry.getKey())) {
-									pathsToRecompute.add(entry.getKey());
+									pathToRecompute = entry.getKey();
 								}
 							}
 						}
-						ArrayList<Integer> newSelection = new ArrayList<Integer>();
-						newSelection.add(oneLocation);
-						deleteForwardAndInversePaths(newSelection);
-						for (String pathName : pathsToRecompute) {
-							System.out.println("Affected path: " + pathName);
-							String from = pathName.substring(0, pathName.indexOf("->"));
-							String to = pathName.substring(pathName.indexOf("->")+2);
-							int fromIndex = locationIDs.indexOf(from);
-							int toIndex = locationIDs.indexOf(to);
-							newSelection.clear();
-							newSelection.add(fromIndex);
-							newSelection.add(toIndex);
-							computeForwardAndInversePathsWithSpline(newSelection);
+						deleteForwardAndInversePaths(selectedLocationsInt);
+						System.out.println("Affected path: " + pathToRecompute);
+						computeForwardAndInversePathsWithSpline(selectedLocationsInt);
+					}
+					//
+					else {
+						for (int oneLocation : selectedLocationsInt) {
+							String locationName = locationIDs.get(oneLocation);
+							ArrayList<String> pathsToRecompute = new ArrayList<String>();
+							for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
+								if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
+									if (!isInversePath.get(entry.getKey())) {
+										pathsToRecompute.add(entry.getKey());
+									}
+								}
+							}
+							ArrayList<Integer> newSelection = new ArrayList<Integer>();
+							newSelection.add(oneLocation);
+							deleteForwardAndInversePaths(newSelection);
+							for (String pathName : pathsToRecompute) {
+								System.out.println("Affected path: " + pathName);
+								String from = pathName.substring(0, pathName.indexOf("->"));
+								String to = pathName.substring(pathName.indexOf("->")+2);
+								int fromIndex = locationIDs.indexOf(from);
+								int toIndex = locationIDs.indexOf(to);
+								newSelection.clear();
+								newSelection.add(fromIndex);
+								newSelection.add(toIndex);
+								computeForwardAndInversePathsWithSpline(newSelection);
+							}
 						}
 					}
 					/////
@@ -1482,29 +1643,48 @@ public class PathEditor2 implements MouseMotionListener {
 					
 					/////
 					Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
-					for (int oneLocation : selectedLocationsInt) {
-						String locationName = locationIDs.get(oneLocation);
-						ArrayList<String> pathsToRecompute = new ArrayList<String>();
+					//
+					if (selectedLocationsInt.size() == 2) {
+						String from = locationIDs.get(selectedLocationsInt.get(0));
+						String to = locationIDs.get(selectedLocationsInt.get(1));
+						String pathToRecompute = null;
 						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
-							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
+							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(from) && entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(to)) {
 								if (!isInversePath.get(entry.getKey())) {
-									pathsToRecompute.add(entry.getKey());
+									pathToRecompute = entry.getKey();
 								}
 							}
 						}
-						ArrayList<Integer> newSelection = new ArrayList<Integer>();
-						newSelection.add(oneLocation);
-						deleteForwardAndInversePaths(newSelection);
-						for (String pathName : pathsToRecompute) {
-							System.out.println("Affected path: " + pathName);
-							String from = pathName.substring(0, pathName.indexOf("->"));
-							String to = pathName.substring(pathName.indexOf("->")+2);
-							int fromIndex = locationIDs.indexOf(from);
-							int toIndex = locationIDs.indexOf(to);
-							newSelection.clear();
-							newSelection.add(fromIndex);
-							newSelection.add(toIndex);
-							computeForwardAndInversePathsWithSpline(newSelection);
+						deleteForwardAndInversePaths(selectedLocationsInt);
+						System.out.println("Affected path: " + pathToRecompute);
+						computeForwardAndInversePathsWithSpline(selectedLocationsInt);
+					}
+					//
+					else {
+						for (int oneLocation : selectedLocationsInt) {
+							String locationName = locationIDs.get(oneLocation);
+							ArrayList<String> pathsToRecompute = new ArrayList<String>();
+							for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
+								if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
+									if (!isInversePath.get(entry.getKey())) {
+										pathsToRecompute.add(entry.getKey());
+									}
+								}
+							}
+							ArrayList<Integer> newSelection = new ArrayList<Integer>();
+							newSelection.add(oneLocation);
+							deleteForwardAndInversePaths(newSelection);
+							for (String pathName : pathsToRecompute) {
+								System.out.println("Affected path: " + pathName);
+								String from = pathName.substring(0, pathName.indexOf("->"));
+								String to = pathName.substring(pathName.indexOf("->")+2);
+								int fromIndex = locationIDs.indexOf(from);
+								int toIndex = locationIDs.indexOf(to);
+								newSelection.clear();
+								newSelection.add(fromIndex);
+								newSelection.add(toIndex);
+								computeForwardAndInversePathsWithSpline(newSelection);
+							}
 						}
 					}
 					/////
@@ -1533,29 +1713,48 @@ public class PathEditor2 implements MouseMotionListener {
 					
 					/////
 					Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
-					for (int oneLocation : selectedLocationsInt) {
-						String locationName = locationIDs.get(oneLocation);
-						ArrayList<String> pathsToRecompute = new ArrayList<String>();
+					//
+					if (selectedLocationsInt.size() == 2) {
+						String from = locationIDs.get(selectedLocationsInt.get(0));
+						String to = locationIDs.get(selectedLocationsInt.get(1));
+						String pathToRecompute = null;
 						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
-							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
+							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(from) && entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(to)) {
 								if (!isInversePath.get(entry.getKey())) {
-									pathsToRecompute.add(entry.getKey());
+									pathToRecompute = entry.getKey();
 								}
 							}
 						}
-						ArrayList<Integer> newSelection = new ArrayList<Integer>();
-						newSelection.add(oneLocation);
-						deleteForwardAndInversePaths(newSelection);
-						for (String pathName : pathsToRecompute) {
-							System.out.println("Affected path: " + pathName);
-							String from = pathName.substring(0, pathName.indexOf("->"));
-							String to = pathName.substring(pathName.indexOf("->")+2);
-							int fromIndex = locationIDs.indexOf(from);
-							int toIndex = locationIDs.indexOf(to);
-							newSelection.clear();
-							newSelection.add(fromIndex);
-							newSelection.add(toIndex);
-							computeForwardAndInversePathsWithSpline(newSelection);
+						deleteForwardAndInversePaths(selectedLocationsInt);
+						System.out.println("Affected path: " + pathToRecompute);
+						computeForwardAndInversePathsWithSpline(selectedLocationsInt);
+					}
+					//
+					else {
+						for (int oneLocation : selectedLocationsInt) {
+							String locationName = locationIDs.get(oneLocation);
+							ArrayList<String> pathsToRecompute = new ArrayList<String>();
+							for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
+								if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
+									if (!isInversePath.get(entry.getKey())) {
+										pathsToRecompute.add(entry.getKey());
+									}
+								}
+							}
+							ArrayList<Integer> newSelection = new ArrayList<Integer>();
+							newSelection.add(oneLocation);
+							deleteForwardAndInversePaths(newSelection);
+							for (String pathName : pathsToRecompute) {
+								System.out.println("Affected path: " + pathName);
+								String from = pathName.substring(0, pathName.indexOf("->"));
+								String to = pathName.substring(pathName.indexOf("->")+2);
+								int fromIndex = locationIDs.indexOf(from);
+								int toIndex = locationIDs.indexOf(to);
+								newSelection.clear();
+								newSelection.add(fromIndex);
+								newSelection.add(toIndex);
+								computeForwardAndInversePathsWithSpline(newSelection);
+							}
 						}
 					}
 					/////
@@ -1584,29 +1783,48 @@ public class PathEditor2 implements MouseMotionListener {
 					
 					/////
 					Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
-					for (int oneLocation : selectedLocationsInt) {
-						String locationName = locationIDs.get(oneLocation);
-						ArrayList<String> pathsToRecompute = new ArrayList<String>();
+					//
+					if (selectedLocationsInt.size() == 2) {
+						String from = locationIDs.get(selectedLocationsInt.get(0));
+						String to = locationIDs.get(selectedLocationsInt.get(1));
+						String pathToRecompute = null;
 						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
-							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
+							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(from) && entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(to)) {
 								if (!isInversePath.get(entry.getKey())) {
-									pathsToRecompute.add(entry.getKey());
+									pathToRecompute = entry.getKey();
 								}
 							}
 						}
-						ArrayList<Integer> newSelection = new ArrayList<Integer>();
-						newSelection.add(oneLocation);
-						deleteForwardAndInversePaths(newSelection);
-						for (String pathName : pathsToRecompute) {
-							System.out.println("Affected path: " + pathName);
-							String from = pathName.substring(0, pathName.indexOf("->"));
-							String to = pathName.substring(pathName.indexOf("->")+2);
-							int fromIndex = locationIDs.indexOf(from);
-							int toIndex = locationIDs.indexOf(to);
-							newSelection.clear();
-							newSelection.add(fromIndex);
-							newSelection.add(toIndex);
-							computeForwardAndInversePathsWithSpline(newSelection);
+						deleteForwardAndInversePaths(selectedLocationsInt);
+						System.out.println("Affected path: " + pathToRecompute);
+						computeForwardAndInversePathsWithSpline(selectedLocationsInt);
+					}
+					//
+					else {
+						for (int oneLocation : selectedLocationsInt) {
+							String locationName = locationIDs.get(oneLocation);
+							ArrayList<String> pathsToRecompute = new ArrayList<String>();
+							for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
+								if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
+									if (!isInversePath.get(entry.getKey())) {
+										pathsToRecompute.add(entry.getKey());
+									}
+								}
+							}
+							ArrayList<Integer> newSelection = new ArrayList<Integer>();
+							newSelection.add(oneLocation);
+							deleteForwardAndInversePaths(newSelection);
+							for (String pathName : pathsToRecompute) {
+								System.out.println("Affected path: " + pathName);
+								String from = pathName.substring(0, pathName.indexOf("->"));
+								String to = pathName.substring(pathName.indexOf("->")+2);
+								int fromIndex = locationIDs.indexOf(from);
+								int toIndex = locationIDs.indexOf(to);
+								newSelection.clear();
+								newSelection.add(fromIndex);
+								newSelection.add(toIndex);
+								computeForwardAndInversePathsWithSpline(newSelection);
+							}
 						}
 					}
 					/////
@@ -1635,29 +1853,48 @@ public class PathEditor2 implements MouseMotionListener {
 					
 					/////
 					Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
-					for (int oneLocation : selectedLocationsInt) {
-						String locationName = locationIDs.get(oneLocation);
-						ArrayList<String> pathsToRecompute = new ArrayList<String>();
+					//
+					if (selectedLocationsInt.size() == 2) {
+						String from = locationIDs.get(selectedLocationsInt.get(0));
+						String to = locationIDs.get(selectedLocationsInt.get(1));
+						String pathToRecompute = null;
 						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
-							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
+							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(from) && entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(to)) {
 								if (!isInversePath.get(entry.getKey())) {
-									pathsToRecompute.add(entry.getKey());
+									pathToRecompute = entry.getKey();
 								}
 							}
 						}
-						ArrayList<Integer> newSelection = new ArrayList<Integer>();
-						newSelection.add(oneLocation);
-						deleteForwardAndInversePaths(newSelection);
-						for (String pathName : pathsToRecompute) {
-							System.out.println("Affected path: " + pathName);
-							String from = pathName.substring(0, pathName.indexOf("->"));
-							String to = pathName.substring(pathName.indexOf("->")+2);
-							int fromIndex = locationIDs.indexOf(from);
-							int toIndex = locationIDs.indexOf(to);
-							newSelection.clear();
-							newSelection.add(fromIndex);
-							newSelection.add(toIndex);
-							computeForwardAndInversePathsWithSpline(newSelection);
+						deleteForwardAndInversePaths(selectedLocationsInt);
+						System.out.println("Affected path: " + pathToRecompute);
+						computeForwardAndInversePathsWithSpline(selectedLocationsInt);
+					}
+					//
+					else {
+						for (int oneLocation : selectedLocationsInt) {
+							String locationName = locationIDs.get(oneLocation);
+							ArrayList<String> pathsToRecompute = new ArrayList<String>();
+							for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
+								if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
+									if (!isInversePath.get(entry.getKey())) {
+										pathsToRecompute.add(entry.getKey());
+									}
+								}
+							}
+							ArrayList<Integer> newSelection = new ArrayList<Integer>();
+							newSelection.add(oneLocation);
+							deleteForwardAndInversePaths(newSelection);
+							for (String pathName : pathsToRecompute) {
+								System.out.println("Affected path: " + pathName);
+								String from = pathName.substring(0, pathName.indexOf("->"));
+								String to = pathName.substring(pathName.indexOf("->")+2);
+								int fromIndex = locationIDs.indexOf(from);
+								int toIndex = locationIDs.indexOf(to);
+								newSelection.clear();
+								newSelection.add(fromIndex);
+								newSelection.add(toIndex);
+								computeForwardAndInversePathsWithSpline(newSelection);
+							}
 						}
 					}
 					/////
@@ -1686,29 +1923,48 @@ public class PathEditor2 implements MouseMotionListener {
 					
 					/////
 					Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
-					for (int oneLocation : selectedLocationsInt) {
-						String locationName = locationIDs.get(oneLocation);
-						ArrayList<String> pathsToRecompute = new ArrayList<String>();
+					//
+					if (selectedLocationsInt.size() == 2) {
+						String from = locationIDs.get(selectedLocationsInt.get(0));
+						String to = locationIDs.get(selectedLocationsInt.get(1));
+						String pathToRecompute = null;
 						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
-							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
+							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(from) && entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(to)) {
 								if (!isInversePath.get(entry.getKey())) {
-									pathsToRecompute.add(entry.getKey());
+									pathToRecompute = entry.getKey();
 								}
 							}
 						}
-						ArrayList<Integer> newSelection = new ArrayList<Integer>();
-						newSelection.add(oneLocation);
-						deleteForwardAndInversePaths(newSelection);
-						for (String pathName : pathsToRecompute) {
-							System.out.println("Affected path: " + pathName);
-							String from = pathName.substring(0, pathName.indexOf("->"));
-							String to = pathName.substring(pathName.indexOf("->")+2);
-							int fromIndex = locationIDs.indexOf(from);
-							int toIndex = locationIDs.indexOf(to);
-							newSelection.clear();
-							newSelection.add(fromIndex);
-							newSelection.add(toIndex);
-							computeForwardAndInversePathsWithSpline(newSelection);
+						deleteForwardAndInversePaths(selectedLocationsInt);
+						System.out.println("Affected path: " + pathToRecompute);
+						computeForwardAndInversePathsWithSpline(selectedLocationsInt);
+					}
+					//
+					else {
+						for (int oneLocation : selectedLocationsInt) {
+							String locationName = locationIDs.get(oneLocation);
+							ArrayList<String> pathsToRecompute = new ArrayList<String>();
+							for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
+								if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
+									if (!isInversePath.get(entry.getKey())) {
+										pathsToRecompute.add(entry.getKey());
+									}
+								}
+							}
+							ArrayList<Integer> newSelection = new ArrayList<Integer>();
+							newSelection.add(oneLocation);
+							deleteForwardAndInversePaths(newSelection);
+							for (String pathName : pathsToRecompute) {
+								System.out.println("Affected path: " + pathName);
+								String from = pathName.substring(0, pathName.indexOf("->"));
+								String to = pathName.substring(pathName.indexOf("->")+2);
+								int fromIndex = locationIDs.indexOf(from);
+								int toIndex = locationIDs.indexOf(to);
+								newSelection.clear();
+								newSelection.add(fromIndex);
+								newSelection.add(toIndex);
+								computeForwardAndInversePathsWithSpline(newSelection);
+							}
 						}
 					}
 					/////
@@ -1746,29 +2002,48 @@ public class PathEditor2 implements MouseMotionListener {
 				
 				/////
 				Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
-				for (int oneLocation : selectedLocationsInt) {
-					String locationName = locationIDs.get(oneLocation);
-					ArrayList<String> pathsToRecompute = new ArrayList<String>();
+				//
+				if (selectedLocationsInt.size() == 2) {
+					String from = locationIDs.get(selectedLocationsInt.get(0));
+					String to = locationIDs.get(selectedLocationsInt.get(1));
+					String pathToRecompute = null;
 					for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
-						if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
+						if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(from) && entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(to)) {
 							if (!isInversePath.get(entry.getKey())) {
-								pathsToRecompute.add(entry.getKey());
+								pathToRecompute = entry.getKey();
 							}
 						}
 					}
-					ArrayList<Integer> newSelection = new ArrayList<Integer>();
-					newSelection.add(oneLocation);
-					deleteForwardAndInversePaths(newSelection);
-					for (String pathName : pathsToRecompute) {
-						System.out.println("Affected path: " + pathName);
-						String from = pathName.substring(0, pathName.indexOf("->"));
-						String to = pathName.substring(pathName.indexOf("->")+2);
-						int fromIndex = locationIDs.indexOf(from);
-						int toIndex = locationIDs.indexOf(to);
-						newSelection.clear();
-						newSelection.add(fromIndex);
-						newSelection.add(toIndex);
-						computeForwardAndInversePathsWithSpline(newSelection);
+					deleteForwardAndInversePaths(selectedLocationsInt);
+					System.out.println("Affected path: " + pathToRecompute);
+					computeForwardAndInversePathsWithSpline(selectedLocationsInt);
+				}
+				//
+				else {
+					for (int oneLocation : selectedLocationsInt) {
+						String locationName = locationIDs.get(oneLocation);
+						ArrayList<String> pathsToRecompute = new ArrayList<String>();
+						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
+							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
+								if (!isInversePath.get(entry.getKey())) {
+									pathsToRecompute.add(entry.getKey());
+								}
+							}
+						}
+						ArrayList<Integer> newSelection = new ArrayList<Integer>();
+						newSelection.add(oneLocation);
+						deleteForwardAndInversePaths(newSelection);
+						for (String pathName : pathsToRecompute) {
+							System.out.println("Affected path: " + pathName);
+							String from = pathName.substring(0, pathName.indexOf("->"));
+							String to = pathName.substring(pathName.indexOf("->")+2);
+							int fromIndex = locationIDs.indexOf(from);
+							int toIndex = locationIDs.indexOf(to);
+							newSelection.clear();
+							newSelection.add(fromIndex);
+							newSelection.add(toIndex);
+							computeForwardAndInversePathsWithSpline(newSelection);
+						}
 					}
 				}
 				/////
@@ -1788,29 +2063,48 @@ public class PathEditor2 implements MouseMotionListener {
 				
 				/////
 				Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
-				for (int oneLocation : selectedLocationsInt) {
-					String locationName = locationIDs.get(oneLocation);
-					ArrayList<String> pathsToRecompute = new ArrayList<String>();
+				//
+				if (selectedLocationsInt.size() == 2) {
+					String from = locationIDs.get(selectedLocationsInt.get(0));
+					String to = locationIDs.get(selectedLocationsInt.get(1));
+					String pathToRecompute = null;
 					for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
-						if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
+						if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(from) && entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(to)) {
 							if (!isInversePath.get(entry.getKey())) {
-								pathsToRecompute.add(entry.getKey());
+								pathToRecompute = entry.getKey();
 							}
 						}
 					}
-					ArrayList<Integer> newSelection = new ArrayList<Integer>();
-					newSelection.add(oneLocation);
-					deleteForwardAndInversePaths(newSelection);
-					for (String pathName : pathsToRecompute) {
-						System.out.println("Affected path: " + pathName);
-						String from = pathName.substring(0, pathName.indexOf("->"));
-						String to = pathName.substring(pathName.indexOf("->")+2);
-						int fromIndex = locationIDs.indexOf(from);
-						int toIndex = locationIDs.indexOf(to);
-						newSelection.clear();
-						newSelection.add(fromIndex);
-						newSelection.add(toIndex);
-						computeForwardAndInversePathsWithSpline(newSelection);
+					deleteForwardAndInversePaths(selectedLocationsInt);
+					System.out.println("Affected path: " + pathToRecompute);
+					computeForwardAndInversePathsWithSpline(selectedLocationsInt);
+				}
+				//
+				else {
+					for (int oneLocation : selectedLocationsInt) {
+						String locationName = locationIDs.get(oneLocation);
+						ArrayList<String> pathsToRecompute = new ArrayList<String>();
+						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
+							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
+								if (!isInversePath.get(entry.getKey())) {
+									pathsToRecompute.add(entry.getKey());
+								}
+							}
+						}
+						ArrayList<Integer> newSelection = new ArrayList<Integer>();
+						newSelection.add(oneLocation);
+						deleteForwardAndInversePaths(newSelection);
+						for (String pathName : pathsToRecompute) {
+							System.out.println("Affected path: " + pathName);
+							String from = pathName.substring(0, pathName.indexOf("->"));
+							String to = pathName.substring(pathName.indexOf("->")+2);
+							int fromIndex = locationIDs.indexOf(from);
+							int toIndex = locationIDs.indexOf(to);
+							newSelection.clear();
+							newSelection.add(fromIndex);
+							newSelection.add(toIndex);
+							computeForwardAndInversePathsWithSpline(newSelection);
+						}
 					}
 				}
 				/////
@@ -1852,29 +2146,48 @@ public class PathEditor2 implements MouseMotionListener {
 
 				/////
 				Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
-				for (int oneLocation : selectedLocationsInt) {
-					String locationName = locationIDs.get(oneLocation);
-					ArrayList<String> pathsToRecompute = new ArrayList<String>();
+				//
+				if (selectedLocationsInt.size() == 2) {
+					String from = locationIDs.get(selectedLocationsInt.get(0));
+					String to = locationIDs.get(selectedLocationsInt.get(1));
+					String pathToRecompute = null;
 					for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
-						if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
+						if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(from) && entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(to)) {
 							if (!isInversePath.get(entry.getKey())) {
-								pathsToRecompute.add(entry.getKey());
+								pathToRecompute = entry.getKey();
 							}
 						}
 					}
-					ArrayList<Integer> newSelection = new ArrayList<Integer>();
-					newSelection.add(oneLocation);
-					deleteForwardAndInversePaths(newSelection);
-					for (String pathName : pathsToRecompute) {
-						System.out.println("Affected path: " + pathName);
-						String from = pathName.substring(0, pathName.indexOf("->"));
-						String to = pathName.substring(pathName.indexOf("->")+2);
-						int fromIndex = locationIDs.indexOf(from);
-						int toIndex = locationIDs.indexOf(to);
-						newSelection.clear();
-						newSelection.add(fromIndex);
-						newSelection.add(toIndex);
-						computeForwardAndInversePathsWithSpline(newSelection);
+					deleteForwardAndInversePaths(selectedLocationsInt);
+					System.out.println("Affected path: " + pathToRecompute);
+					computeForwardAndInversePathsWithSpline(selectedLocationsInt);
+				}
+				//
+				else {
+					for (int oneLocation : selectedLocationsInt) {
+						String locationName = locationIDs.get(oneLocation);
+						ArrayList<String> pathsToRecompute = new ArrayList<String>();
+						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
+							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
+								if (!isInversePath.get(entry.getKey())) {
+									pathsToRecompute.add(entry.getKey());
+								}
+							}
+						}
+						ArrayList<Integer> newSelection = new ArrayList<Integer>();
+						newSelection.add(oneLocation);
+						deleteForwardAndInversePaths(newSelection);
+						for (String pathName : pathsToRecompute) {
+							System.out.println("Affected path: " + pathName);
+							String from = pathName.substring(0, pathName.indexOf("->"));
+							String to = pathName.substring(pathName.indexOf("->")+2);
+							int fromIndex = locationIDs.indexOf(from);
+							int toIndex = locationIDs.indexOf(to);
+							newSelection.clear();
+							newSelection.add(fromIndex);
+							newSelection.add(toIndex);
+							computeForwardAndInversePathsWithSpline(newSelection);
+						}
 					}
 				}
 				/////
@@ -1894,29 +2207,48 @@ public class PathEditor2 implements MouseMotionListener {
 
 				/////
 				Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
-				for (int oneLocation : selectedLocationsInt) {
-					String locationName = locationIDs.get(oneLocation);
-					ArrayList<String> pathsToRecompute = new ArrayList<String>();
+				//
+				if (selectedLocationsInt.size() == 2) {
+					String from = locationIDs.get(selectedLocationsInt.get(0));
+					String to = locationIDs.get(selectedLocationsInt.get(1));
+					String pathToRecompute = null;
 					for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
-						if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
+						if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(from) && entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(to)) {
 							if (!isInversePath.get(entry.getKey())) {
-								pathsToRecompute.add(entry.getKey());
+								pathToRecompute = entry.getKey();
 							}
 						}
 					}
-					ArrayList<Integer> newSelection = new ArrayList<Integer>();
-					newSelection.add(oneLocation);
-					deleteForwardAndInversePaths(newSelection);
-					for (String pathName : pathsToRecompute) {
-						System.out.println("Affected path: " + pathName);
-						String from = pathName.substring(0, pathName.indexOf("->"));
-						String to = pathName.substring(pathName.indexOf("->")+2);
-						int fromIndex = locationIDs.indexOf(from);
-						int toIndex = locationIDs.indexOf(to);
-						newSelection.clear();
-						newSelection.add(fromIndex);
-						newSelection.add(toIndex);
-						computeForwardAndInversePathsWithSpline(newSelection);
+					deleteForwardAndInversePaths(selectedLocationsInt);
+					System.out.println("Affected path: " + pathToRecompute);
+					computeForwardAndInversePathsWithSpline(selectedLocationsInt);
+				}
+				//
+				else {
+					for (int oneLocation : selectedLocationsInt) {
+						String locationName = locationIDs.get(oneLocation);
+						ArrayList<String> pathsToRecompute = new ArrayList<String>();
+						for (Entry<String, ArrayList<PoseSteering>> entry : allEntries) {
+							if (entry.getKey().substring(0, entry.getKey().indexOf("->")).equals(locationName) || entry.getKey().substring(entry.getKey().indexOf("->")+2).equals(locationName)) {
+								if (!isInversePath.get(entry.getKey())) {
+									pathsToRecompute.add(entry.getKey());
+								}
+							}
+						}
+						ArrayList<Integer> newSelection = new ArrayList<Integer>();
+						newSelection.add(oneLocation);
+						deleteForwardAndInversePaths(newSelection);
+						for (String pathName : pathsToRecompute) {
+							System.out.println("Affected path: " + pathName);
+							String from = pathName.substring(0, pathName.indexOf("->"));
+							String to = pathName.substring(pathName.indexOf("->")+2);
+							int fromIndex = locationIDs.indexOf(from);
+							int toIndex = locationIDs.indexOf(to);
+							newSelection.clear();
+							newSelection.add(fromIndex);
+							newSelection.add(toIndex);
+							computeForwardAndInversePathsWithSpline(newSelection);
+						}
 					}
 				}
 				/////			
