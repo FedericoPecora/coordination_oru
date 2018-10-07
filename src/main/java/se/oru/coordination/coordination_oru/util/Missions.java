@@ -9,12 +9,23 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map.Entry;
 import java.util.Scanner;
 
+import org.jgrapht.DirectedGraph;
+import org.jgrapht.GraphPath;
+import org.jgrapht.alg.shortestpath.DijkstraShortestPath;
+import org.jgrapht.graph.DefaultDirectedGraph;
+import org.jgrapht.graph.DefaultDirectedWeightedGraph;
+import org.jgrapht.graph.DefaultEdge;
+import org.jgrapht.graph.DefaultWeightedEdge;
+import org.jgrapht.graph.SimpleDirectedWeightedGraph;
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 import org.metacsp.multi.spatioTemporal.paths.Trajectory;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
+import org.metacsp.utility.logging.MetaCSPLogging;
 
 import com.vividsolutions.jts.geom.Geometry;
 
@@ -39,6 +50,52 @@ public class Missions {
 	protected static HashMap<Integer,MissionDispatchingCallback> mdcs = new HashMap<Integer, MissionDispatchingCallback>();
 	protected static HashMap<Mission,ArrayList<Mission>> concatenatedMissions = new HashMap<Mission, ArrayList<Mission>>();
 	protected static String pathPrefix = "";
+	protected static SimpleDirectedWeightedGraph<String, DefaultWeightedEdge>  graph = new SimpleDirectedWeightedGraph<String, DefaultWeightedEdge>(DefaultWeightedEdge.class); 
+
+	private static void buildGraph() {
+		
+		for (String oneLoc : locations.keySet()) {
+			graph.addVertex(oneLoc);
+			//System.out.println("Added vertex " + oneLoc);
+		}
+		
+		for (String from : locations.keySet()) {
+			for (String to : locations.keySet()) {
+				if (!from.equals(to)) {
+					if (isKnownPath(from, to)) {
+						DefaultWeightedEdge e = graph.addEdge(from, to);
+						PoseSteering[] path = loadKnownPath(from, to);
+						graph.setEdgeWeight(e, path.length);
+						//System.out.println("Added edge " + e);
+					}
+				}
+			}	
+		}
+	}
+	
+	/**
+	 * Get the shortest path between two locations (computed with Dijkstra with edge weights = path lengths).
+	 * @param from The source location.
+	 * @param to The goal location.
+	 * @return The shortest path between the two given locations.
+	 */
+	public static PoseSteering[] getShortestMission(String from, String to) {
+		DijkstraShortestPath<String, DefaultWeightedEdge> dijkstraShortestPath = new DijkstraShortestPath<String, DefaultWeightedEdge>(graph);
+		//System.out.println("Getting path from -> to: " + from + " -> " + to);
+	    GraphPath<String, DefaultWeightedEdge> gp = dijkstraShortestPath.getPath(from, to);
+	    if (gp == null) return null;
+	    List<String> shortestPath = gp.getVertexList();
+	    ArrayList<PoseSteering> allPoses = new ArrayList<PoseSteering>();
+	    for (int i = 0; i < shortestPath.size()-1; i++) {
+	    	PoseSteering[] onePath = loadKnownPath(shortestPath.get(i),shortestPath.get(i+1));
+	    	if (i == 0) allPoses.add(onePath[0]);
+	    	for (int j = 1; j < onePath.length-1; j++) {
+	    		allPoses.add(onePath[j]);
+	    	}
+	    	if (i == shortestPath.size()-2) allPoses.add(onePath[onePath.length-1]);
+	    }
+		return allPoses.toArray(new PoseSteering[allPoses.size()]);
+	}
 	
 	/**
 	 * Get all the {@link Mission}s currently known for one robot
@@ -269,6 +326,7 @@ public class Missions {
 			in.close();
 		}
 		catch (FileNotFoundException e) { e.printStackTrace(); }
+		Missions.buildGraph();
 	}
 
 	/**
