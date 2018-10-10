@@ -18,6 +18,7 @@ import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
 import se.oru.coordination.coordination_oru.util.BrowserVisualization;
 import se.oru.coordination.coordination_oru.util.Missions;
+import se.oru.coordination.coordination_oru.util.RVizVisualization;
 
 @DemoDescription(desc = "Coordination of robots along sine wave paths (obtained without the ReedsSheppCarPlanner) in opposing directions.")
 public class Waves {
@@ -100,10 +101,10 @@ public class Waves {
 		
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
-		//RVizVisualization viz = new RVizVisualization();
+		RVizVisualization viz = new RVizVisualization();
 		//RVizVisualization.writeRVizConfigFile(robotIDs);
-		BrowserVisualization viz = new BrowserVisualization();
-		viz.setInitialTransform(19.64, 3.18, 16.49);
+		//BrowserVisualization viz = new BrowserVisualization();
+		//viz.setInitialTransform(19.64, 3.18, 16.49);
 		tec.setVisualization(viz);
 		
 		for (int index = 0; index < robotIDs.length; index++) {

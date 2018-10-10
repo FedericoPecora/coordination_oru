@@ -2,6 +2,7 @@ package se.oru.coordination.coordination_oru.simulation2D;
 
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.HashMap;
 import java.util.HashSet;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
@@ -117,18 +118,25 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 
 	@Override
 	public boolean addMissions(Mission... missions) {
+		HashMap<Mission, HashMap<Pose, Integer>> userStoppingPoints = new HashMap<Mission, HashMap<Pose,Integer>>();
 		if (this.useInternalCPs) {
 			for (Mission m : missions) {
 				PoseSteering[] path = m.getPath();
 				ArrayList<Integer> sps = computeStoppingPoints(path);
+				userStoppingPoints.put(m, m.getStoppingPoints());
 				for (Integer i : sps) m.setStoppingPoint(path[i-1].getPose(), 100);				
 			}
 		}
 		if (!super.addMissions(missions)) {
-			for (Mission m : missions) {
-				m.clearStoppingPoints();
-				return false;
-			}			
+			if (this.useInternalCPs) {
+				for (Mission m : missions) {
+					m.clearStoppingPoints();
+					for (Pose p : userStoppingPoints.get(m).keySet()) {
+						m.setStoppingPoint(p, userStoppingPoints.get(m).get(p));
+					}
+				}			
+			}
+			return false;
 		}
 		return true;
 	}

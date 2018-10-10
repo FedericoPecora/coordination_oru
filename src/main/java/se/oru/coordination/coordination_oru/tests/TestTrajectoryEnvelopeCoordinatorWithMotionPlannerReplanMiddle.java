@@ -15,6 +15,7 @@ import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
+import se.oru.coordination.coordination_oru.util.BrowserVisualization;
 import se.oru.coordination.coordination_oru.util.JTSDrawingPanelVisualization;
 import se.oru.coordination.coordination_oru.util.Missions;
 
@@ -78,8 +79,10 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlannerReplanMiddle {
 		tec.setupSolver(0, 100000000);
 
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
-		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
-		viz.setSize(1800, 450);
+		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
+		BrowserVisualization viz = new BrowserVisualization();
+		viz.setInitialTransform(44, 0, 0);
+		//viz.setSize(1800, 450);
 		tec.setVisualization(viz);
 
 		Pose startRobot1 = new Pose(10.0,5.0,0.0);

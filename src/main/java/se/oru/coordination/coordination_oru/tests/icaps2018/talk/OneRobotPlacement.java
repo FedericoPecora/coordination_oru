@@ -27,6 +27,19 @@ public class OneRobotPlacement {
 		double MAX_VEL = 4.0;
 		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(MAX_VEL,MAX_ACCEL);
 		
+		//ST-18 Footprint
+		Coordinate[] st18footprint = new Coordinate[] {
+				new Coordinate(-5.535,-1.450),
+				new Coordinate(-5.535,1.450),
+				new Coordinate(2.950,1.450),
+				new Coordinate(2.950,1.665),
+				new Coordinate(5.891,1.665),
+				new Coordinate(5.891,-1.665),
+				new Coordinate(2.950,-1.665),
+				new Coordinate(2.950,-1.450),
+				new Coordinate(-5.535,-1.450)
+		};
+				
 		//You can set a footprint that is specific for each robot
 		Coordinate[] fp1 = new Coordinate[] {
 				new Coordinate(0.0,0.0),
@@ -34,7 +47,7 @@ public class OneRobotPlacement {
 				new Coordinate(5.0,5.0),
 				new Coordinate(0.0,5.0)
 		};
-		tec.setFootprint(1,fp1);
+		tec.setFootprint(1,st18footprint);
 
 		//You probably also want to provide a non-trivial forward model
 		//(the default assumes that robots can always stop)
@@ -59,7 +72,7 @@ public class OneRobotPlacement {
 		rsp.setTurningRadius(4.0);
 		rsp.setDistanceBetweenPathPoints(0.5);
 
-		Pose startPoseRobot1 = new Pose(0.0,0.0,0.0);
+		Pose startPoseRobot1 = new Pose(0.0,0.0,Math.PI/2);
 		Pose goalPoseRobot1 = new Pose(10.0,0.0,0.0);
 
 		//Place robots in their initial locations (looked up in the data file that was loaded above)

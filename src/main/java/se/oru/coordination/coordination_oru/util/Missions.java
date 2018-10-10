@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Scanner;
+import java.util.logging.Logger;
 
 import org.jgrapht.DirectedGraph;
 import org.jgrapht.GraphPath;
@@ -44,7 +45,7 @@ public class Missions {
 
 	protected static HashMap<String,Pose> locations = new HashMap<String, Pose>();
 	protected static HashMap<String,String> paths = new HashMap<String, String>();
-	//private static Logger metaCSPLogger = MetaCSPLogging.getLogger(TestTrajectoryEnvelopeCoordinatorThreeRobots.class);
+	private static Logger metaCSPLogger = MetaCSPLogging.getLogger(Missions.class);
 	protected static HashMap<Integer,ArrayList<Mission>> missions = new HashMap<Integer, ArrayList<Mission>>();
 	protected static HashMap<Integer,Boolean> missionDispatcherFlags = new HashMap<Integer,Boolean>();
 	protected static HashMap<Integer,MissionDispatchingCallback> mdcs = new HashMap<Integer, MissionDispatchingCallback>();
@@ -56,7 +57,7 @@ public class Missions {
 		
 		for (String oneLoc : locations.keySet()) {
 			graph.addVertex(oneLoc);
-			//System.out.println("Added vertex " + oneLoc);
+			metaCSPLogger.info("Added vertex " + oneLoc);
 		}
 		
 		for (String from : locations.keySet()) {
@@ -66,7 +67,7 @@ public class Missions {
 						DefaultWeightedEdge e = graph.addEdge(from, to);
 						PoseSteering[] path = loadKnownPath(from, to);
 						graph.setEdgeWeight(e, path.length);
-						//System.out.println("Added edge " + e);
+						metaCSPLogger.info("Added edge " + e);
 					}
 				}
 			}	
@@ -97,10 +98,9 @@ public class Missions {
 		    	if (i == oneShortestPath.size()-2) allPoses.add(onePath[onePath.length-1]);
 		    }
 		    if (k == 0) overallShortestPath.add(allPoses.get(0));
-		    for (int i = 1; i < allPoses.size()-1; i++) {
+		    for (int i = 1; i < allPoses.size(); i++) {
 		    	overallShortestPath.add(allPoses.get(i));
 		    }
-		    if (k == locations.length-2) overallShortestPath.add(allPoses.get(allPoses.size()-1));
 		}
 		return overallShortestPath.toArray(new PoseSteering[overallShortestPath.size()]);
 	}
@@ -315,7 +315,7 @@ public class Missions {
 					Pose ps = null;
 					if (line.contains("->")) {
 						paths.put(oneline[0]+oneline[1]+oneline[2], oneline[3]);
-						System.out.println("Added to paths: " + oneline[0]+oneline[1]+oneline[2] + " --> " + oneline[3]);
+						//metaCSPLogger.info("Loaded path: " + oneline[0]+oneline[1]+oneline[2] + " --> " + oneline[3]);
 					}
 					else {
 						ArrayList<String> newLineContents = new ArrayList<String>();

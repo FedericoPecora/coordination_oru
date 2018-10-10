@@ -513,10 +513,13 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			}
 			metaCSPLogger.info("Placed " + parking.getComponent() + " in pose " + currentPose + ": " + parking);
 
-			TrackingCallback cb = new TrackingCallback() {
+			TrackingCallback cb = new TrackingCallback(parking) {
 				@Override
 				public void beforeTrackingStart() {
-					if (trackingCallbacks.containsKey(robotID)) trackingCallbacks.get(robotID).beforeTrackingStart();
+					if (trackingCallbacks.containsKey(robotID)) {
+						trackingCallbacks.get(robotID).myTE = this.myTE; 
+						trackingCallbacks.get(robotID).beforeTrackingStart();
+					}
 				}
 				@Override
 				public void onTrackingStart() {
@@ -540,7 +543,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					return null;
 				}
 			};
-
+			
 			//Now start the tracker for this parking (will be ended by call to addMissions for this robot)
 			final TrajectoryEnvelopeTrackerDummy tracker = new TrajectoryEnvelopeTrackerDummy(parking, 300, TEMPORAL_RESOLUTION, this, cb) {
 				@Override
@@ -1108,7 +1111,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						if (robotReport.getPathIndex() <= stoppingPoint) {
 							Dependency dep = new Dependency(robotTracker.getTrajectoryEnvelope(), null, stoppingPoint, 0, robotTracker, null);
 							if (!currentDeps.containsKey(robotID)) currentDeps.put(robotID, new TreeSet<Dependency>());
-							currentDeps.get(robotID).add(dep);					
+							currentDeps.get(robotID).add(dep);
 						}
 						//Start waiting thread if the stopping point has been reached
 						//if (Math.abs(robotReport.getPathIndex()-stoppingPoint) <= 1 && robotReport.getCriticalPoint() == stoppingPoint && !stoppingPointTimers.containsKey(robotID)) {
@@ -1795,7 +1798,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					@Override
 					public void beforeTrackingStart() {
 						
-						if (trackingCallbacks.containsKey(myTE.getRobotID())) trackingCallbacks.get(myTE.getRobotID()).beforeTrackingStart();
+						if (trackingCallbacks.containsKey(myTE.getRobotID())) {
+							trackingCallbacks.get(myTE.getRobotID()).myTE = this.myTE;
+							trackingCallbacks.get(myTE.getRobotID()).beforeTrackingStart();
+						}
 						
 						//Sleep for one control period
 						//(allows to impose critical points before tracking actually starts)

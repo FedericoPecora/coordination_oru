@@ -680,6 +680,18 @@ public class PathEditor2 implements MouseMotionListener {
 					Missions.setLocation(newName, oldPose);
 					System.out.println("Renamed " + oldName + " to " + newName);
 					panel.removeGeometry("LOC:"+oldName);
+					ArrayList<String> pathNamesToChange = new ArrayList<String>();
+					for (String pathName : allPaths.keySet()) {
+						if (pathName.contains(oldName)) {
+							pathNamesToChange.add(pathName);
+						}
+					}
+					for (String pathNameToChange : pathNamesToChange) {
+						ArrayList<PoseSteering> path = allPaths.get(pathNameToChange);
+						String newPathName = pathNameToChange.replace(oldName, newName);
+						allPaths.remove(pathNameToChange);
+						allPaths.put(newPathName, path);
+					}					
 					clearLocations();
 					highlightSelectedLocations();
 				}

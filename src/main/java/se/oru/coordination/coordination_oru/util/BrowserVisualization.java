@@ -162,11 +162,21 @@ public class BrowserVisualization implements FleetVisualization {
 			}
 		}
 		Geometry geom = null;
-		if (rr.getPathIndex() != -1) geom = TrajectoryEnvelope.getFootprint(te.getFootprint(), x, y, theta);
-		else geom = TrajectoryEnvelope.getFootprint(te.getFootprint(), te.getTrajectory().getPose()[0].getX(), te.getTrajectory().getPose()[0].getY(), te.getTrajectory().getPose()[0].getTheta());
-		this.updateRobotFootprintArea(geom);
+		Geometry arrowGeom = null;
+		if (rr.getPathIndex() != -1) {
+			geom = TrajectoryEnvelope.getFootprint(te.getFootprint(), x, y, theta);
+			this.updateRobotFootprintArea(geom);
+			arrowGeom = createArrow(rr.getPose(), Math.sqrt(robotFootprintArea)*0.5, Math.sqrt(robotFootprintArea)*0.2);
+		}
+		else {
+			geom = TrajectoryEnvelope.getFootprint(te.getFootprint(), te.getTrajectory().getPose()[0].getX(), te.getTrajectory().getPose()[0].getY(), te.getTrajectory().getPose()[0].getTheta());
+			this.updateRobotFootprintArea(geom);
+			arrowGeom = createArrow(te.getTrajectory().getPose()[0], Math.sqrt(robotFootprintArea)*0.5, Math.sqrt(robotFootprintArea)*0.2);
+		}		
 		String jsonString = "{ \"operation\" : \"addGeometry\", \"data\" : " + this.geometryToJSONString(name, geom, "#ff0000", -1, true, extraData) + "}";
+		String jsonStringArrow = "{ \"operation\" : \"addGeometry\", \"data\" : " + this.geometryToJSONString("_"+name, arrowGeom, "#ffffff", -1, true, null) + "}";
 		enqueueMessage(jsonString);
+		enqueueMessage(jsonStringArrow);
 	}
 
 	@Override
@@ -218,7 +228,38 @@ public class BrowserVisualization implements FleetVisualization {
 		String callRefresh = "{ \"operation\" : \"refresh\" }";
 		sendMessage(callRefresh);
 	}
+	
+	
+	private Geometry createArrow(Pose pose) {
+		return createArrow(pose, Math.sqrt(robotFootprintArea)*0.5, Math.sqrt(robotFootprintArea)*0.5);
 		
+	}
+	private Geometry createArrow(Pose pose, double length, double size) {		
+		GeometryFactory gf = new GeometryFactory();
+		double aux = 1.8;
+		double aux1 = 0.8;
+		double aux2 = 0.3;
+		//double factor = Math.sqrt(robotFootprintArea)*0.5;
+		//double distance = factor;
+		double theta = pose.getTheta();
+		Coordinate[] coords = new Coordinate[8];
+		coords[0] = new Coordinate(0.0,-aux2);
+		coords[1] = new Coordinate(length-aux,-aux2);
+		coords[2] = new Coordinate(length-aux,-aux1);
+		coords[3] = new Coordinate(length,0.0);
+		coords[4] = new Coordinate(length-aux,aux1);
+		coords[5] = new Coordinate(length-aux,aux2);
+		coords[6] = new Coordinate(0.0,aux2);
+		coords[7] = new Coordinate(0.0,-aux2);
+		Polygon arrow = gf.createPolygon(coords);
+		AffineTransformation at = new AffineTransformation();
+		at.scale(size, size);
+		at.rotate(theta);
+		at.translate(pose.getX(), pose.getY());
+		Geometry ret = at.transform(arrow);
+		return ret;
+	}
+	
 	private Geometry createArrow(Pose pose1, Pose pose2) {		
 		GeometryFactory gf = new GeometryFactory();
 		double aux = 1.8;
