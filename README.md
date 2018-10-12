@@ -43,13 +43,13 @@ $ ./gradlew run
 ```
 In the first demo, ```TestTrajectoryEnvelopeCoordinatorThreeRobots```, missions are continuously posted for three robots to reach locations along intersecting paths. The paths are stored in files provided in the ```paths``` directory. The poses of locations and pointers to relevant path files between locations are stored in the self-explanatory ```paths/test_poses_and_path_data.txt``` file.
 
+## Visualizations
 The examples start a visualization server implemented by class ```BrowserVisualization``` in package ```se.oru.coordination.coordination_oru.util```. The state of the fleet can be viewed from a browser at <a href="http://localhost:8080">http://localhost:8080</a>:
 
 ![BrowserVisualization GUI](images/browser-gui.png "Browser-based visualization")
 
 An arrow between two robots indicates that the source robot will yield to the target robot. Priorities are computed based on a heuristic (which can be provided by the user) and a forward model of robot dynamics (which can also be provided, and is assumed to be conservative - see the <a href="http://iliad-project.eu/wp-content/uploads/papers/PecoraEtAlICAPS2018.pdf">ICAPS 2018 paper</a> mentioned above). The specific poses at which robots yield are also updated online, based on the current positions of robots and the intersecting areas of their trajectory envelopes (critical sections). This makes it possible to achieve "following" behavior, that is, the yielding pose of a robot is updated online while the "leading" robot drives.
 
-## Other visualizations
 Two further visualization methods are provided. A Swing-based GUI is provided by class ```JTSDrawingPanelVisualization```, which looks like this:
 
 ![Swing-based GUI](images/coord.png "Swing-based visualization")
