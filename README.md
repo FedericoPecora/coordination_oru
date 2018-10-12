@@ -41,10 +41,10 @@ A number of examples are provided. Issue the following command from the source c
 ```
 $ ./gradlew run
 ```
-In the first demo, ```TestTrajectoryEnvelopeCoordinatorThreeRobots```, missions are continuously posted for three robots to reach locations along intersecting paths. The paths are stored in files provided in the ```paths``` directory. The poses of locations and pointers to relevant path files between locations are stored in the self-explanatory ```paths/test_poses_and_path_data.txt``` file.
+In the example ```TestTrajectoryEnvelopeCoordinatorThreeRobots```, missions are continuously posted for three robots to reach locations along intersecting paths. The paths are stored in files provided in the ```paths``` directory. The poses of locations and pointers to relevant path files between locations are stored in the self-explanatory ```paths/test_poses_and_path_data.txt``` file.
 
 ## Visualizations
-The examples start a visualization server implemented by class ```BrowserVisualization``` in package ```se.oru.coordination.coordination_oru.util```. The state of the fleet can be viewed from a browser at <a href="http://localhost:8080">http://localhost:8080</a>:
+Most examples start a visualization server implemented by class ```BrowserVisualization``` in package ```se.oru.coordination.coordination_oru.util```. The state of the fleet can be viewed from a browser at <a href="http://localhost:8080">http://localhost:8080</a>. The image below shows this visualization for the ```TestTrajectoryEnvelopeCoordinatorThreeRobots``` example:
 
 ![BrowserVisualization GUI](images/browser-gui.png "Browser-based visualization")
 
