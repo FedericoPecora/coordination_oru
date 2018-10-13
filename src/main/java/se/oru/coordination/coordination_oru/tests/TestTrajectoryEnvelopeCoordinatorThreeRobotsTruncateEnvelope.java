@@ -11,6 +11,7 @@ import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.TrackingCallback;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
+import se.oru.coordination.coordination_oru.util.BrowserVisualization;
 import se.oru.coordination.coordination_oru.util.JTSDrawingPanelVisualization;
 import se.oru.coordination.coordination_oru.util.Missions;
 
@@ -53,9 +54,11 @@ public class TestTrajectoryEnvelopeCoordinatorThreeRobotsTruncateEnvelope {
 		tec.setupSolver(0, 100000000);
 
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
-		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
+		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
 		//RVizVisualization.writeRVizConfigFile(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26);
 		//RVizVisualization viz = new RVizVisualization();
+		BrowserVisualization viz = new BrowserVisualization();
+		viz.setInitialTransform(19, 56.5, 35.17);
 		tec.setVisualization(viz);
 		
 		//Example of how you can add extra info Strings to the visualization of robot status

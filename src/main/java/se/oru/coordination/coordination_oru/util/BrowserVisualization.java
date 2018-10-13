@@ -31,6 +31,7 @@ public class BrowserVisualization implements FleetVisualization {
 	private ArrayList<String> msgQueue = new ArrayList<String>();
 	private static int UPDATE_PERIOD = 30;
 	private double robotFootprintArea = -1;
+	private double robotFootprintXDim = -1;
 	private String overlayText = null;
 
 	public BrowserVisualization() {
@@ -75,7 +76,16 @@ public class BrowserVisualization implements FleetVisualization {
 	}
 
 	private void updateRobotFootprintArea(Geometry geom) {
-		if (robotFootprintArea == -1) robotFootprintArea = geom.getArea();
+		if (robotFootprintArea == -1) {
+			robotFootprintArea = geom.getArea();
+			double minX = Double.MAX_VALUE;
+			double maxX = Double.MIN_VALUE;
+			for (Coordinate coord : geom.getCoordinates()) {
+				if (coord.x < minX) minX = coord.x;
+				if (coord.x > maxX) maxX = coord.x;
+			}
+			this.robotFootprintXDim = maxX-minX;
+		}
 	}
 	
 	public void setInitialTransform(double scale, double xTrans, double yTrans) {
@@ -151,9 +161,10 @@ public class BrowserVisualization implements FleetVisualization {
 
 	@Override
 	public void displayRobotState(TrajectoryEnvelope te, RobotReport rr, String... extraStatusInfo) {
-		double x = rr.getPose().getX();
-		double y = rr.getPose().getY();
-		double theta = rr.getPose().getTheta();
+		double x = rr.getPathIndex() != -1 ? rr.getPose().getX() : te.getTrajectory().getPose()[0].getX();
+		double y = rr.getPathIndex() != -1 ? rr.getPose().getY() : te.getTrajectory().getPose()[0].getY();
+		double theta = rr.getPathIndex() != -1 ? rr.getPose().getTheta() : te.getTrajectory().getPose()[0].getTheta();
+		
 		String name = "R"+te.getRobotID();
 		String extraData = " : " + rr.getPathIndex();
 		if (extraStatusInfo != null) {
@@ -161,18 +172,11 @@ public class BrowserVisualization implements FleetVisualization {
 				extraData += (" | " + st);
 			}
 		}
-		Geometry geom = null;
-		Geometry arrowGeom = null;
-		if (rr.getPathIndex() != -1) {
-			geom = TrajectoryEnvelope.getFootprint(te.getFootprint(), x, y, theta);
-			this.updateRobotFootprintArea(geom);
-			arrowGeom = createArrow(rr.getPose(), Math.sqrt(robotFootprintArea)*0.5, Math.sqrt(robotFootprintArea)*0.2);
-		}
-		else {
-			geom = TrajectoryEnvelope.getFootprint(te.getFootprint(), te.getTrajectory().getPose()[0].getX(), te.getTrajectory().getPose()[0].getY(), te.getTrajectory().getPose()[0].getTheta());
-			this.updateRobotFootprintArea(geom);
-			arrowGeom = createArrow(te.getTrajectory().getPose()[0], Math.sqrt(robotFootprintArea)*0.5, Math.sqrt(robotFootprintArea)*0.2);
-		}		
+		
+		Geometry geom = TrajectoryEnvelope.getFootprint(te.getFootprint(), x, y, theta);
+		this.updateRobotFootprintArea(geom);
+		double scale = Math.sqrt(robotFootprintArea)*0.2;
+		Geometry arrowGeom = createArrow(rr.getPose(), robotFootprintXDim/scale, scale);
 		String jsonString = "{ \"operation\" : \"addGeometry\", \"data\" : " + this.geometryToJSONString(name, geom, "#ff0000", -1, true, extraData) + "}";
 		String jsonStringArrow = "{ \"operation\" : \"addGeometry\", \"data\" : " + this.geometryToJSONString("_"+name, arrowGeom, "#ffffff", -1, true, null) + "}";
 		enqueueMessage(jsonString);
@@ -239,8 +243,6 @@ public class BrowserVisualization implements FleetVisualization {
 		double aux = 1.8;
 		double aux1 = 0.8;
 		double aux2 = 0.3;
-		//double factor = Math.sqrt(robotFootprintArea)*0.5;
-		//double distance = factor;
 		double theta = pose.getTheta();
 		Coordinate[] coords = new Coordinate[8];
 		coords[0] = new Coordinate(0.0,-aux2);

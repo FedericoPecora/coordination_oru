@@ -79,8 +79,8 @@ public class Experiment1Test1 {
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 //		String yamlFile = "../maps/map-empty.yaml";
 		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
-		//RVizVisualization viz = new RVizVisualization();
-		BrowserVisualization viz = new BrowserVisualization();
+		RVizVisualization viz = new RVizVisualization();
+		//BrowserVisualization viz = new BrowserVisualization();
 		//viz.setInitialTransform(25, -25, 15);
 		tec.setVisualization(viz);
 		

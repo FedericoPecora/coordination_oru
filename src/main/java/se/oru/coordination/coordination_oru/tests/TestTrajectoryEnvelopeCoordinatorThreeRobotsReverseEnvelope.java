@@ -58,7 +58,7 @@ public class TestTrajectoryEnvelopeCoordinatorThreeRobotsReverseEnvelope {
 		//RVizVisualization.writeRVizConfigFile(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26);
 		//RVizVisualization viz = new RVizVisualization();
 		BrowserVisualization viz = new BrowserVisualization();
-		viz.setInitialTransform(1, 10, 10);
+		viz.setInitialTransform(19, 56.5, 35.17);
 		tec.setVisualization(viz);
 		
 		//Example of how you can add extra info Strings to the visualization of robot status
