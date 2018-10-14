@@ -80,9 +80,7 @@ More detailed information about execution is posted in the terminal and saved to
 
 A simple motion planner is provided for testing the coordination framework without the need for pre-computed path files. The planner can be used to obtain paths for robots with Reeds-Shepp kinematics (Dubin's car-like robots that can move both forwards and backwards), and is used in several of the included demos.
 
-The provided motion planner depends on the <a href="http://ompl.kavrakilab.org/">Open Motion Planning Library (OMPL)</a>, and the <a href="http://www.mrpt.org/">Mobile Robot Programming Toolkit (MRPT)</a>.
-
-The motion planner and its Java interface are purposefully kept very simple. It performs rather poorly in terms of the quality of paths it returns, and is _not_ suited for anything beyond simple examples. Please consider developing a more performing and principled integration with your motion planning software of choice, as done in the <a href="https://github.com/FedericoPecora/coordination_oru_ros">coordination_oru_ros</a> package.
+The provided motion planner depends on the <a href="http://ompl.kavrakilab.org/">Open Motion Planning Library (OMPL)</a>, and the <a href="http://www.mrpt.org/">Mobile Robot Programming Toolkit (MRPT)</a>. The motion planner and its Java interface are purposefully kept very simple. It performs rather poorly in terms of the quality of paths it returns, and is _not_ suited for anything beyond simple examples. Please consider developing a more performing and principled integration with your motion planning software of choice, as done in the <a href="https://github.com/FedericoPecora/coordination_oru_ros">coordination_oru_ros</a> package.
 
 ## Installing the ```SimpleReedsSheppCarPlanner``` motion planner
 
