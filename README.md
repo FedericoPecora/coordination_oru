@@ -1,4 +1,4 @@
-# The coordination_oru Framework for Multi-Robot Motion Planning, Coordination and Control 
+# A Framework for Multi-Robot Motion Planning, Coordination and Control 
 
 This software implements an _online coordination method for multiple robots_. Its main features are:
 
