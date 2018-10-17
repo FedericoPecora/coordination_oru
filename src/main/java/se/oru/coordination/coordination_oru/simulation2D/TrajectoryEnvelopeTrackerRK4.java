@@ -249,7 +249,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 				}
 			}
 
-			//Critical point = current position, ignore
+			//Critical point <= current position, ignore -- WHY??
 			else if (criticalPointToSet != -1 && criticalPointToSet <= getRobotReport().getPathIndex()) {
 				metaCSPLogger.warning("Ignored critical point (" + te.getComponent() + "): " + criticalPointToSet + " because robot is already at " + getRobotReport().getPathIndex() + " (and current CP is " + this.criticalPoint + ")");
 			}

@@ -116,7 +116,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 	protected boolean yieldIfParking = true;
 	protected boolean checkEscapePoses = true;
-	protected boolean breakDeadlocks = true;
+	protected boolean breakDeadlocksByReordering = true;
+	protected boolean breakDeadlocksByReplanning = true;
 
 	protected HashMap<Integer,TrackingCallback> trackingCallbacks = new HashMap<Integer, TrackingCallback>();	
 	protected Callback inferenceCallback = null;
@@ -179,12 +180,32 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	}
 
 	/**
+	 * Set whether the coordinator should try to break deadlocks by attempting to re-plan
+	 * the path of one of the robots involved in an unsafe cycle.
+	 * @param value <code>true</code> if deadlocks should be broken by re-planning.
+	 */
+	public void setBreakDeadlocksByReplanning(boolean value) {
+		this.breakDeadlocksByReplanning = value;
+	}
+	
+	/**
 	 * Set whether the coordinator should try to break deadlocks by disallowing an arbitrary
 	 * ordering involved in a loop in the dependency multigraph.
 	 * @param value <code>true</code> if deadlocks should be broken.
 	 */
+	public void setBreakDeadlocksByReordering(boolean value) {
+		this.breakDeadlocksByReordering = value;
+	}
+
+	/**
+	 * Set whether the coordinator should try to break deadlocks by both arbitrary
+	 * re-ordering and re-planning.
+	 * @param value <code>true</code> if deadlocks should be broken.
+	 */
+	@Deprecated
 	public void setBreakDeadlocks(boolean value) {
-		this.breakDeadlocks = value;
+		this.setBreakDeadlocksByReordering(value);
+		this.setBreakDeadlocksByReplanning(value);
 	}
 
 	/**
@@ -381,6 +402,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 //					System.out.println("SKIPPING robot" + robotID + " CP: " + criticalPoint);					
 //				}
 			}
+			if (!trackers.get(robotID).canStartTracking()) trackers.get(robotID).setCanStartTracking();
 		}
 	}
 
@@ -777,9 +799,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				}
 				if (i == edgesAlongCycle.size()-2) {
 					metaCSPLogger.info("Cycle: " + edgesAlongCycle + " is NOT deadlock-free");
-					spawnReplanning(edgesAlongCycle);
-					synchronized (disallowedDependencies) {
-						disallowedDependencies.add(anUnsafeDep);
+					if (breakDeadlocksByReplanning) spawnReplanning(edgesAlongCycle);
+					if (breakDeadlocksByReordering) {
+						synchronized (disallowedDependencies) {
+							disallowedDependencies.add(anUnsafeDep);
+						}
 					}
 				}
 			}
@@ -1007,21 +1031,19 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	//returns false if robot2 should go before robot1
 	private boolean getOrder(AbstractTrajectoryEnvelopeTracker robotTracker1, RobotReport robotReport1, AbstractTrajectoryEnvelopeTracker robotTracker2, RobotReport robotReport2, CriticalSection cs) {
 
-		if (breakDeadlocks) {
-			synchronized (disallowedDependencies) {
-				for (Dependency dep : disallowedDependencies) {
-					if (dep.getWaitingRobotID() == robotTracker1.getTrajectoryEnvelope().getRobotID() && dep.getDrivingRobotID() == robotTracker2.getTrajectoryEnvelope().getRobotID() && cs.getTe2End() == dep.getReleasingPoint()) {
-						//System.out.println("DISALLOWED " + dep.getWaitingRobotID() + " waits for " + dep.getDrivingRobotID());
-						return true;
-					}
-					else if (dep.getWaitingRobotID() == robotTracker2.getTrajectoryEnvelope().getRobotID() && dep.getDrivingRobotID() == robotTracker1.getTrajectoryEnvelope().getRobotID() && cs.getTe1End() == dep.getReleasingPoint()) {
-						//System.out.println("DISALLOWED " + dep.getWaitingRobotID() + " waits for " + dep.getDrivingRobotID());
-						return false;
-					}
+		synchronized (disallowedDependencies) {
+			for (Dependency dep : disallowedDependencies) {
+				if (dep.getWaitingRobotID() == robotTracker1.getTrajectoryEnvelope().getRobotID() && dep.getDrivingRobotID() == robotTracker2.getTrajectoryEnvelope().getRobotID() && cs.getTe2End() == dep.getReleasingPoint()) {
+					//System.out.println("DISALLOWED " + dep.getWaitingRobotID() + " waits for " + dep.getDrivingRobotID());
+					return true;
+				}
+				else if (dep.getWaitingRobotID() == robotTracker2.getTrajectoryEnvelope().getRobotID() && dep.getDrivingRobotID() == robotTracker1.getTrajectoryEnvelope().getRobotID() && cs.getTe1End() == dep.getReleasingPoint()) {
+					//System.out.println("DISALLOWED " + dep.getWaitingRobotID() + " waits for " + dep.getDrivingRobotID());
+					return false;
 				}
 			}
 		}
-
+	
 		ForwardModel fm1 = getForwardModel(robotTracker1.getTrajectoryEnvelope().getRobotID());
 		ForwardModel fm2 = getForwardModel(robotTracker2.getTrajectoryEnvelope().getRobotID());
 		boolean canStopRobot1 = false;
@@ -1802,11 +1824,17 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							trackingCallbacks.get(myTE.getRobotID()).myTE = this.myTE;
 							trackingCallbacks.get(myTE.getRobotID()).beforeTrackingStart();
 						}
+
+						//canStratTracking becomes true when setCriticalPoint is called once
+						while (!trackers.containsKey(myTE.getRobotID()) || !trackers.get(myTE.getRobotID()).canStartTracking()) {
+							try { Thread.sleep(100); }
+							catch (InterruptedException e) { e.printStackTrace(); }							
+						}
 						
-						//Sleep for one control period
-						//(allows to impose critical points before tracking actually starts)
-						try { Thread.sleep(CONTROL_PERIOD); }
-						catch (InterruptedException e) { e.printStackTrace(); }
+//						//Sleep for one control period
+//						//(allows to impose critical points before tracking actually starts)
+//						try { Thread.sleep(CONTROL_PERIOD); }
+//						catch (InterruptedException e) { e.printStackTrace(); }
 					}
 
 					@Override
@@ -1908,10 +1936,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 				};
 
-				//Make a new tracker for the driving trajectory envelope
-				final AbstractTrajectoryEnvelopeTracker tracker = getNewTracker(te, cb);
-
 				synchronized (trackers) {
+					trackers.remove(te.getRobotID());
+					//Make a new tracker for the driving trajectory envelope
+					AbstractTrajectoryEnvelopeTracker tracker = getNewTracker(te, cb);
 					trackers.put(te.getRobotID(), tracker);
 				}
 

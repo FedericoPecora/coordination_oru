@@ -45,6 +45,7 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 	protected boolean calledOnTrackingStart = false;
 	protected boolean calledStartTracking = false;
 	protected Callback extraStatusCallback = null;
+	protected boolean canStartTracking = false;
 	
 	protected Logger metaCSPLogger = MetaCSPLogging.getLogger(AbstractTrajectoryEnvelopeTracker.class);
 
@@ -91,8 +92,24 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 		this.onTrajectoryEnvelopeUpdate(te);
 	}
 	
+	@Deprecated
 	public void setMapMetaConstraint(Map mapMetaConstraint) {
 		this.mapMetaConstraint = mapMetaConstraint;
+	}
+	
+	/**
+	 * Used by the {@link TrajectoryEnvelopeCoordinator} to indicate that this tracker can start the tracking thread.
+	 */
+	public void setCanStartTracking() {
+		this.canStartTracking = true;
+	}
+
+	/**
+	 * Indicates whether this tracker can start the tracking thread
+	 * (this is set to true by the {@link TrajectoryEnvelopeCoordinator} when appropriate).
+	 */
+	public boolean canStartTracking() {
+		return this.canStartTracking;
 	}
 	
 	/**

@@ -115,12 +115,12 @@ public class Missions {
 	}
 	
 	/**
-	 * Ascertain whether there is at least one {@link Mission} for a gitven robot. 
+	 * Ascertain whether there is at least one {@link Mission} for a given robot. 
 	 * @param robotID The ID of a robot.
 	 * @return <code>true</code> iff the robot with the given ID has a mission.
 	 */
 	public static boolean hasMissions(int robotID) {
-		return missions.containsKey(robotID);
+		return missions.containsKey(robotID) && !missions.get(robotID).isEmpty();
 	}
 	
 	/**
