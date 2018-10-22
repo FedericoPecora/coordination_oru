@@ -45,6 +45,7 @@ import com.vividsolutions.jts.geom.util.AffineTransformation;
 
 import se.oru.coordination.coordination_oru.util.FleetVisualization;
 import se.oru.coordination.coordination_oru.util.StringUtils;
+import se.oru.coordination.coordination_oru.util.Pair;
 
 /**
  * This class provides coordination for a fleet of robots. An instantiatable {@link TrajectoryEnvelopeCoordinator}
@@ -1109,8 +1110,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		for (int i = cs.getTe2Start(); i < rr2.getPathIndex()-1; i++) {
 			dist2 += pathRobot2[i].getPose().getPosition().distance(pathRobot2[i+1].getPose().getPosition());
 		}
-		if (dist1 > dist2) return true;
-		return false;
+		//metaCSPLogger.finest("Dist R" + rr1.getRobotID() + " = " + dist1 + "; Dist R" + rr2.getRobotID() + " = " + dist2);
+		return (dist1 > dist2);
 	}
 
 	//Update and set the critical points
@@ -1264,17 +1265,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					}
 
 					//Both robots in critical section --> re-impose previously decided dependency
-					else {
-						
-						//If one of the robots is position 0, then it is idle, hence neither robot should move (deadlock)
-						//(the other direction will also be evaluated, hence we will get a deadlock)
-//						if (robotReport1.getPathIndex() == 0 || robotReport2.getCriticalPoint() == 0) {
-//							drivingCurrentIndex = robotReport1.getPathIndex();
-//							waitingCurrentIndex = robotReport2.getPathIndex();
-//							waitingTE = cs.getTe2();
-//							drivingTE = cs.getTe1();
-//						}
-						
+					else {					
 						//Robot 1 is ahead --> make robot 2 follow
 						if (isAhead(cs, robotReport1, robotReport2)) {
 							drivingCurrentIndex = robotReport1.getPathIndex();
@@ -1331,6 +1322,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					setCriticalPoint(robotID, -1);
 				}
 				else {
+//					System.out.println("(" + robotID + ") FIRST IS   : " + currentDeps.get(robotID).first());
+//					System.out.println("(" + robotID + ") OTHERS ARE : " + currentDeps.get(robotID));
 					Dependency firstDep = currentDeps.get(robotID).first();
 					setCriticalPoint(firstDep.getWaitingTracker().getTrajectoryEnvelope().getRobotID(), firstDep.getWaitingPoint());
 					currentDependencies.add(firstDep);
@@ -1704,6 +1697,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			}
 
 			for (int i = 0; i < allIntersections.size(); i++) {
+				ArrayList<CriticalSection> cssOneIntersectionPiece = new ArrayList<CriticalSection>();
 				ArrayList<Integer> te1Starts = new ArrayList<Integer>();
 				ArrayList<Integer> te1Ends = new ArrayList<Integer>();
 				ArrayList<Integer> te2Starts = new ArrayList<Integer>();
@@ -1742,9 +1736,89 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				for (int k1 = 0; k1 < te1Starts.size(); k1++) {
 					for (int k2 = 0; k2 < te2Starts.size(); k2++) {
 						CriticalSection oneCS = new CriticalSection(te1, te2, te1Starts.get(k1), te2Starts.get(k2), te1Ends.get(k1), te2Ends.get(k2));
-						css.add(oneCS);
+						//css.add(oneCS);
+						cssOneIntersectionPiece.add(oneCS);
 					}					
 				}
+				
+//				if (te1Starts.size() != te2Starts.size()) {
+//					System.out.println("WARNING: starts for R" + te1.getRobotID() + " are " + te1Starts + ", starts for R" + te2.getRobotID() + " are " + te2Starts);
+//					System.out.println("ORIGINALS   : " + cssOneIntersectionPiece);
+//					cssOneIntersectionPiece.clear();
+//					if (te1Starts.size() > te2Starts.size()) {
+//						te2Starts.clear();
+//						te2Ends.clear();
+//						for (int k = 0; k < te1Starts.size(); k++) {
+//							//System.out.println("CHUNK " + k);
+//							int start = te1Starts.get(k);
+//							int end = te1Ends.get(k);
+//							Geometry partialGeom = te1.getPartialEnvelopeGeometry(start, end);
+//							started = false;
+//							for (int j = 0; j < path2.length; j++) {
+//								Geometry placement2 = te2.makeFootprint(path2[j]);
+//								if (!started && placement2.intersects(partialGeom)) {
+//									started = true;
+//									te2Starts.add(j);
+//								}
+//								else if (started && !placement2.intersects(partialGeom)) {
+//									te2Ends.add(j);
+//									started = false;
+//								}
+//								if (started && j == path2.length-1) {
+//									te2Ends.add(path2.length-1);
+//								}
+//							}
+//						}
+//					}
+//					else {
+//						te1Starts.clear();
+//						te1Ends.clear();
+//						for (int k = 0; k < te2Starts.size(); k++) {
+//							int start = te2Starts.get(k);
+//							int end = te2Ends.get(k);
+//							Geometry partialGeom = te2.getPartialEnvelopeGeometry(start, end);
+//							started = false;
+//							for (int j = 0; j < path1.length; j++) {
+//								Geometry placement1 = te1.makeFootprint(path1[j]);
+//								if (!started && placement1.intersects(partialGeom)) {
+//									started = true;
+//									te1Starts.add(j);
+//								}
+//								else if (started && !placement1.intersects(partialGeom)) {
+//									te1Ends.add(j);
+//									started = false;
+//								}
+//								if (started && j == path1.length-1) {
+//									te1Ends.add(path1.length-1);
+//								}
+//							}
+//						}
+//					}
+//
+//					//And again...
+//					for (int k1 = 0; k1 < te1Starts.size(); k1++) {
+//						for (int k2 = 0; k2 < te2Starts.size(); k2++) {
+//							CriticalSection oneCS = new CriticalSection(te1, te2, te1Starts.get(k1), te2Starts.get(k2), te1Ends.get(k1), te2Ends.get(k2));
+//							//css.add(oneCS);
+//							cssOneIntersectionPiece.add(oneCS);
+//						}					
+//					}
+//					System.out.println("REVISED     : " + cssOneIntersectionPiece);
+//				}
+
+				if (te1Starts.size() != te2Starts.size()) {
+					System.out.println("WARNING: starts for R" + te1.getRobotID() + " are " + te1Starts + ", starts for R" + te2.getRobotID() + " are " + te2Starts);
+					System.out.println("ORIGINALS   : " + cssOneIntersectionPiece);
+					CriticalSection oldCSFirst = cssOneIntersectionPiece.get(0);
+					CriticalSection oldCSLast = cssOneIntersectionPiece.get(cssOneIntersectionPiece.size()-1);
+					CriticalSection newCS = new CriticalSection(te1, te2, oldCSFirst.getTe1Start(), oldCSFirst.getTe2Start(), oldCSLast.getTe1End(), oldCSLast.getTe2End());
+					cssOneIntersectionPiece.clear();
+					cssOneIntersectionPiece.add(newCS);
+					System.out.println("REVISED     : " + cssOneIntersectionPiece);
+				}
+
+				css.addAll(cssOneIntersectionPiece);
+
 			}
 		}
 		
