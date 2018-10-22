@@ -6,20 +6,15 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map.Entry;
 import java.util.Scanner;
 import java.util.logging.Logger;
 
-import org.jgrapht.DirectedGraph;
 import org.jgrapht.GraphPath;
 import org.jgrapht.alg.shortestpath.DijkstraShortestPath;
-import org.jgrapht.graph.DefaultDirectedGraph;
-import org.jgrapht.graph.DefaultDirectedWeightedGraph;
-import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.DefaultWeightedEdge;
 import org.jgrapht.graph.SimpleDirectedWeightedGraph;
 import org.metacsp.multi.spatioTemporal.paths.Pose;
@@ -28,9 +23,12 @@ import org.metacsp.multi.spatioTemporal.paths.Trajectory;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 import org.metacsp.utility.logging.MetaCSPLogging;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
+import com.sun.jna.FromNativeContext;
 import com.vividsolutions.jts.geom.Geometry;
 
-import aima.core.search.nondeterministic.Path;
 import se.oru.coordination.coordination_oru.Mission;
 import se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator;
 import se.oru.coordination.coordination_oru.motionplanning.AbstractMotionPlanner;
@@ -51,8 +49,91 @@ public class Missions {
 	protected static HashMap<Integer,MissionDispatchingCallback> mdcs = new HashMap<Integer, MissionDispatchingCallback>();
 	protected static HashMap<Mission,ArrayList<Mission>> concatenatedMissions = new HashMap<Mission, ArrayList<Mission>>();
 	protected static String pathPrefix = "";
-	protected static SimpleDirectedWeightedGraph<String, DefaultWeightedEdge>  graph = new SimpleDirectedWeightedGraph<String, DefaultWeightedEdge>(DefaultWeightedEdge.class); 
+	protected static SimpleDirectedWeightedGraph<String, DefaultWeightedEdge> graph = new SimpleDirectedWeightedGraph<String, DefaultWeightedEdge>(DefaultWeightedEdge.class); 
 
+	private static class ScenarioContainer {
+		private String locationsJSON;
+		private String pathsJSON;
+		private String missionsJSON;
+		private ScenarioContainer() {
+			this.missionsJSON = Missions.getJSONString(Missions.missions);
+            this.pathsJSON = Missions.getJSONString(Missions.paths);
+            this.locationsJSON = Missions.getJSONString(Missions.locations);
+		}
+		public String getMissionsJSON() {
+			return this.missionsJSON;
+		}
+		public String getPathsJSON() {
+			return this.pathsJSON;
+		}
+		public String getLocationsJSON() {
+			return this.locationsJSON;
+		}
+	}
+	
+	public static void writeJSONString(String fileName) {
+        try {
+            File file = new File(fileName);
+            System.out.println("Saved scenario in JSON file: " + file.getAbsolutePath());
+            PrintWriter writer = new PrintWriter(file);
+            ScenarioContainer sc = new ScenarioContainer();
+            String scenarioJSON = Missions.getJSONString(sc);
+            writer.println(scenarioJSON);
+            writer.close();
+        }
+        catch (Exception e) { e.printStackTrace(); }		
+	}
+	
+	@SuppressWarnings("unchecked")
+	public static void loadJSONString(String fileName) {
+		try {
+			String json = "";
+			File file = new File(fileName);
+			BufferedReader br = new BufferedReader(new FileReader(file));
+			String st;
+			while((st=br.readLine()) != null){
+				json += st;
+			}
+			br.close();
+			Gson gson = new GsonBuilder().serializeSpecialFloatingPointValues().serializeNulls().create();
+			ScenarioContainer sc = gson.fromJson(json, ScenarioContainer.class);
+			Type collectionType = new TypeToken<HashMap<Integer,ArrayList<Mission>>>(){}.getType();
+			Missions.missions = (HashMap<Integer, ArrayList<Mission>>) parseJSONString(collectionType, sc.getMissionsJSON());
+			collectionType = new TypeToken<HashMap<String,Pose>>(){}.getType();
+			Missions.locations = (HashMap<String,Pose>) parseJSONString(collectionType, sc.getLocationsJSON());
+			collectionType = new TypeToken<HashMap<String,String>>(){}.getType();
+			Missions.paths = (HashMap<String,String>) parseJSONString(collectionType, sc.getPathsJSON());
+		}
+		catch (IOException e) { e.printStackTrace(); }		
+	}
+	
+	public static String getJSONString(Object o) {
+		Gson gson = new GsonBuilder().serializeSpecialFloatingPointValues().serializeNulls().create();
+		String json = gson.toJson(o);
+		return json;
+	}
+	
+	public static Object parseJSONString(Type t, String json) {
+		Gson gson = new GsonBuilder().serializeSpecialFloatingPointValues().serializeNulls().create();
+		return gson.fromJson(json, t);
+	}
+	
+	public static HashMap<Integer,String> getInitialLocations() {
+		HashMap<Integer,String> ret = new HashMap<Integer, String>();
+		for (Integer robotID : missions.keySet()) {
+			ret.put(robotID, Missions.peekMission(robotID).getFromLocation());
+		}
+		return ret;
+	}
+	
+	public static HashMap<Integer,Pose> getInitialPoses() {
+		HashMap<Integer,Pose> ret = new HashMap<Integer, Pose>();
+		for (Integer robotID : missions.keySet()) {
+			ret.put(robotID, Missions.peekMission(robotID).getFromPose());
+		}
+		return ret;
+	}
+	
 	private static void buildGraph() {
 		
 		for (String oneLoc : locations.keySet()) {

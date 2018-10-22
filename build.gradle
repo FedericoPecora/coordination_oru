@@ -74,6 +74,9 @@ dependencies {
   compile 'org.eclipse.jetty.websocket:websocket-api:9.4.12.v20180830'
   compile 'org.eclipse.jetty.websocket:websocket-server:9.4.12.v20180830'
   compile 'org.eclipse.jetty.websocket:websocket-client:9.4.12.v20180830'
+
+  //For JSON file handling
+  implementation 'com.google.code.gson:gson:2.8.5'
   
   // Add the following if you need to include jars that are not
   // in Maven Central and that you have places in the directory "lib"
