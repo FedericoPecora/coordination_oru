@@ -98,20 +98,19 @@ public class TestTrajectoryEnvelopeCoordinatorThreeRobots {
 		tec.placeRobot(2, Missions.getLocation("r2p"));
 		tec.placeRobot(3, Missions.getLocation("r3p"));
 
-		String prefix = "paths/";
 		//Make a mission for each robot, and store it in the global hashmap:
 		// -- from parking location of robot i (rip)
 		// -- to destination location of robot i (desti)
-		Missions.enqueueMission(new Mission(1, prefix+Missions.getPathFile("r1p", "dest1"), Missions.getLocation("r1p"), Missions.getLocation("dest1")));
-		Missions.enqueueMission(new Mission(2, prefix+Missions.getPathFile("r2p", "dest2"), Missions.getLocation("r2p"), Missions.getLocation("dest2")));
-		Missions.enqueueMission(new Mission(3, prefix+Missions.getPathFile("r3p", "dest3"), Missions.getLocation("r3p"), Missions.getLocation("dest3")));
+		Missions.enqueueMission(new Mission(1, Missions.getShortestPath("r1p", "dest1")));
+		Missions.enqueueMission(new Mission(2, Missions.getShortestPath("r2p", "dest2")));
+		Missions.enqueueMission(new Mission(3, Missions.getShortestPath("r3p", "dest3")));
 
 		//Make another mission for each robot, and store it in the global hashmap:
 		// -- from destination location of robot i (desti)
 		// -- to parking location of robot i (rip)
-		Missions.enqueueMission(new Mission(1, prefix+Missions.getPathFile("dest1", "r1p"), Missions.getLocation("dest1"), Missions.getLocation("r1p")));
-		Missions.enqueueMission(new Mission(2, prefix+Missions.getPathFile("dest2", "r2p"), Missions.getLocation("dest2"), Missions.getLocation("r2p")));
-		Missions.enqueueMission(new Mission(3, prefix+Missions.getPathFile("dest3", "r3p"), Missions.getLocation("dest3"), Missions.getLocation("r3p")));
+		Missions.enqueueMission(new Mission(1, Missions.getShortestPath("dest1", "r1p")));
+		Missions.enqueueMission(new Mission(2, Missions.getShortestPath("dest2", "r2p")));
+		Missions.enqueueMission(new Mission(3, Missions.getShortestPath("dest3", "r3p")));
 
 		System.out.println("Added missions " + Missions.getMissions());
 

@@ -1,17 +1,27 @@
 package se.oru.coordination.coordination_oru.util;
 
+import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Type;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Scanner;
 import java.util.logging.Logger;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
+
+import javax.imageio.ImageIO;
 
 import org.jgrapht.GraphPath;
 import org.jgrapht.alg.shortestpath.DijkstraShortestPath;
@@ -26,7 +36,7 @@ import org.metacsp.utility.logging.MetaCSPLogging;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
-import com.sun.jna.FromNativeContext;
+import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 
 import se.oru.coordination.coordination_oru.Mission;
@@ -42,7 +52,7 @@ import se.oru.coordination.coordination_oru.motionplanning.AbstractMotionPlanner
 public class Missions {
 
 	protected static HashMap<String,Pose> locations = new HashMap<String, Pose>();
-	protected static HashMap<String,String> paths = new HashMap<String, String>();
+	protected static HashMap<String,PoseSteering[]> paths = new HashMap<String, PoseSteering[]>();
 	private static Logger metaCSPLogger = MetaCSPLogging.getLogger(Missions.class);
 	protected static HashMap<Integer,ArrayList<Mission>> missions = new HashMap<Integer, ArrayList<Mission>>();
 	protected static HashMap<Integer,Boolean> missionDispatcherFlags = new HashMap<Integer,Boolean>();
@@ -50,72 +60,156 @@ public class Missions {
 	protected static HashMap<Mission,ArrayList<Mission>> concatenatedMissions = new HashMap<Mission, ArrayList<Mission>>();
 	protected static String pathPrefix = "";
 	protected static SimpleDirectedWeightedGraph<String, DefaultWeightedEdge> graph = new SimpleDirectedWeightedGraph<String, DefaultWeightedEdge>(DefaultWeightedEdge.class); 
+	protected static String mapYAML = null;
+	protected static String mapImageFilename = null;
+	protected static BufferedImage map = null;
+	protected static double mapResolution = -1;
+	protected static Coordinate mapOrigin = null;
 
+	public static BufferedImage getMap() {
+		return Missions.map;
+	}
+	
+	public static String getMapYAML() {
+		return Missions.mapYAML;
+	}
+
+	private static String extractZipFile(String fileName) {
+		String json = "";
+		try {
+	        byte[] buffer = new byte[1024];
+	        ZipInputStream zis = new ZipInputStream(new FileInputStream(fileName));
+	        ZipEntry zipEntry = zis.getNextEntry();
+	        while(zipEntry != null){
+	            String oneFileName = zipEntry.getName();
+	            int len;
+	            ArrayList<Byte> bytes = new ArrayList<Byte>();
+	            while ((len = zis.read(buffer)) > 0) {
+	                for (int i = 0; i < len; i++) bytes.add(buffer[i]);
+	            }
+            	byte[] dataBytes = new byte[bytes.size()];
+            	for (int i = 0; i < bytes.size(); i++) dataBytes[i] = bytes.get(i);
+	            if (oneFileName.endsWith(".json")) json = new String(dataBytes);
+	            else {
+	            	ByteArrayInputStream bais = new ByteArrayInputStream(dataBytes);
+	            	Missions.map = ImageIO.read(bais);
+	            	//Missions.mapImageFilename = oneFileName;
+	            }
+	            zipEntry = zis.getNextEntry();
+	        }
+	        zis.closeEntry();
+	        zis.close();
+		}
+		catch (IOException e) { e.printStackTrace(); }
+        return json;
+	}
+	
+	private static void makeZipFile(String ... fileNames) {
+		try {
+			File f = new File(fileNames[fileNames.length-1]);
+			ZipOutputStream out = new ZipOutputStream(new FileOutputStream(f));
+			for (int i = 0; i < fileNames.length-1; i++) {
+				ZipEntry e = new ZipEntry(fileNames[i]);
+				out.putNextEntry(e);
+				File entryFile = new File(fileNames[i]);
+				byte[] data = Files.readAllBytes(entryFile.toPath());
+				out.write(data, 0, data.length);
+				out.closeEntry();
+			}
+			out.close();
+		}
+		catch (IOException e) { e.printStackTrace(); }
+	}
+	
 	private static class ScenarioContainer {
 		private String locationsJSON;
 		private String pathsJSON;
 		private String missionsJSON;
+		private String mapYAMLJSON;
+		private String mapImageFilenameJSON;
+		private String mapResolutionJSON;
+		private String mapOriginJSON;
 		private ScenarioContainer() {
 			this.missionsJSON = Missions.getJSONString(Missions.missions);
             this.pathsJSON = Missions.getJSONString(Missions.paths);
             this.locationsJSON = Missions.getJSONString(Missions.locations);
-		}
-		public String getMissionsJSON() {
-			return this.missionsJSON;
-		}
-		public String getPathsJSON() {
-			return this.pathsJSON;
-		}
-		public String getLocationsJSON() {
-			return this.locationsJSON;
+            this.mapImageFilenameJSON = Missions.getJSONString(Missions.mapImageFilename);
+            this.mapYAMLJSON = Missions.getJSONString(Missions.mapYAML);
+            this.mapOriginJSON = Missions.getJSONString(Missions.mapOrigin);
+            this.mapResolutionJSON = Missions.getJSONString(Missions.mapResolution);
 		}
 	}
 	
-	public static void writeJSONString(String fileName) {
+	public static void saveScenario(String scenarioName) {
         try {
-            File file = new File(fileName);
-            System.out.println("Saved scenario in JSON file: " + file.getAbsolutePath());
-            PrintWriter writer = new PrintWriter(file);
+        	String zipFilename = scenarioName+".zip";
+            System.out.println("Saving scenario in ZIP file: " + zipFilename);
+            String jsonFilename = scenarioName + ".json";
+            PrintWriter writer = new PrintWriter(jsonFilename);
             ScenarioContainer sc = new ScenarioContainer();
             String scenarioJSON = Missions.getJSONString(sc);
             writer.println(scenarioJSON);
             writer.close();
+            if (Missions.mapImageFilename != null) makeZipFile(Missions.mapImageFilename,jsonFilename,zipFilename);
+            else makeZipFile(jsonFilename,zipFilename);
         }
-        catch (Exception e) { e.printStackTrace(); }		
+        catch (IOException e) { e.printStackTrace(); }		
 	}
 	
 	@SuppressWarnings("unchecked")
-	public static void loadJSONString(String fileName) {
-		try {
-			String json = "";
-			File file = new File(fileName);
-			BufferedReader br = new BufferedReader(new FileReader(file));
-			String st;
-			while((st=br.readLine()) != null){
-				json += st;
-			}
-			br.close();
-			Gson gson = new GsonBuilder().serializeSpecialFloatingPointValues().serializeNulls().create();
-			ScenarioContainer sc = gson.fromJson(json, ScenarioContainer.class);
-			Type collectionType = new TypeToken<HashMap<Integer,ArrayList<Mission>>>(){}.getType();
-			Missions.missions = (HashMap<Integer, ArrayList<Mission>>) parseJSONString(collectionType, sc.getMissionsJSON());
-			collectionType = new TypeToken<HashMap<String,Pose>>(){}.getType();
-			Missions.locations = (HashMap<String,Pose>) parseJSONString(collectionType, sc.getLocationsJSON());
-			collectionType = new TypeToken<HashMap<String,String>>(){}.getType();
-			Missions.paths = (HashMap<String,String>) parseJSONString(collectionType, sc.getPathsJSON());
-		}
-		catch (IOException e) { e.printStackTrace(); }		
+	public static void loadScenario(String scenarioName) {
+		String zipFilename = scenarioName+".zip";
+		System.out.println("Loading scenario from ZIP file: " + zipFilename);
+		String json = Missions.extractZipFile(zipFilename);
+		Gson gson = new GsonBuilder().serializeSpecialFloatingPointValues().serializeNulls().create();
+		ScenarioContainer sc = gson.fromJson(json, ScenarioContainer.class);
+		Type collectionType = new TypeToken<HashMap<Integer,ArrayList<Mission>>>(){}.getType();
+		Missions.missions = (HashMap<Integer, ArrayList<Mission>>) parseJSONString(collectionType, sc.missionsJSON);
+		collectionType = new TypeToken<HashMap<String,Pose>>(){}.getType();
+		Missions.locations = (HashMap<String,Pose>) parseJSONString(collectionType, sc.locationsJSON);
+		collectionType = new TypeToken<HashMap<String,PoseSteering[]>>(){}.getType();
+		Missions.paths = (HashMap<String,PoseSteering[]>) parseJSONString(collectionType, sc.pathsJSON);
+		Missions.mapImageFilename = (String)parseJSONString(String.class, sc.mapImageFilenameJSON);
+		//Missions.map = ImageIO.read(new File(Missions.mapImageFilename));
+		Missions.mapYAML = (String)parseJSONString(String.class, sc.mapYAMLJSON);
+		Missions.mapResolution = (Double)parseJSONString(Double.TYPE, sc.mapResolutionJSON);
+		Missions.mapOrigin = (Coordinate)parseJSONString(Coordinate.class, sc.mapOriginJSON);
+		Missions.buildGraph();
 	}
 	
-	public static String getJSONString(Object o) {
+	private static String getJSONString(Object o) {
 		Gson gson = new GsonBuilder().serializeSpecialFloatingPointValues().serializeNulls().create();
 		String json = gson.toJson(o);
 		return json;
 	}
 	
-	public static Object parseJSONString(Type t, String json) {
+	private static Object parseJSONString(Type t, String json) {
 		Gson gson = new GsonBuilder().serializeSpecialFloatingPointValues().serializeNulls().create();
 		return gson.fromJson(json, t);
+	}
+	
+	public static void setMap(String mapYAMLFile) {
+		try {
+			File file = new File(mapYAMLFile);
+			BufferedReader br = new BufferedReader(new FileReader(file));
+			String st;
+			Missions.mapYAML = "";
+			while((st=br.readLine()) != null){
+				Missions.mapYAML += st;
+				String key = st.substring(0, st.indexOf(":")).trim();
+				String value = st.substring(st.indexOf(":")+1).trim();
+				if (key.equals("image")) Missions.mapImageFilename = file.getParentFile()+File.separator+value;
+				else if (key.equals("resolution")) Missions.mapResolution = Double.parseDouble(value);
+				else if (key.equals("origin")) {
+					String x = value.substring(1, value.indexOf(",")).trim();
+					String y = value.substring(value.indexOf(",")+1, value.indexOf(",", value.indexOf(",")+1)).trim();
+					Missions.mapOrigin = new Coordinate(Double.parseDouble(x),Double.parseDouble(y));
+				}
+			}
+			br.close();
+			Missions.map = ImageIO.read(new File(Missions.mapImageFilename));
+		}
+		catch (IOException e) { e.printStackTrace(); }
 	}
 	
 	public static HashMap<Integer,String> getInitialLocations() {
@@ -136,6 +230,8 @@ public class Missions {
 	
 	private static void buildGraph() {
 		
+		graph = new SimpleDirectedWeightedGraph<String, DefaultWeightedEdge>(DefaultWeightedEdge.class);
+		
 		for (String oneLoc : locations.keySet()) {
 			graph.addVertex(oneLoc);
 			metaCSPLogger.info("Added vertex " + oneLoc);
@@ -146,7 +242,8 @@ public class Missions {
 				if (!from.equals(to)) {
 					if (isKnownPath(from, to)) {
 						DefaultWeightedEdge e = graph.addEdge(from, to);
-						PoseSteering[] path = loadKnownPath(from, to);
+						//PoseSteering[] path = loadKnownPath(from, to);
+						PoseSteering[] path = paths.get(from+"->"+to);
 						graph.setEdgeWeight(e, path.length);
 						metaCSPLogger.info("Added edge " + e);
 					}
@@ -171,7 +268,8 @@ public class Missions {
 		    List<String> oneShortestPath = gp.getVertexList();
 		    ArrayList<PoseSteering> allPoses = new ArrayList<PoseSteering>();
 		    for (int i = 0; i < oneShortestPath.size()-1; i++) {
-		    	PoseSteering[] onePath = loadKnownPath(oneShortestPath.get(i),oneShortestPath.get(i+1));
+		    	//PoseSteering[] onePath = loadKnownPath(oneShortestPath.get(i),oneShortestPath.get(i+1));
+		    	PoseSteering[] onePath = paths.get(oneShortestPath.get(i)+"->"+oneShortestPath.get(i+1));
 		    	if (i == 0) allPoses.add(onePath[0]);
 		    	for (int j = 1; j < onePath.length-1; j++) {
 		    		allPoses.add(onePath[j]);
@@ -395,7 +493,9 @@ public class Missions {
 					String[] oneline = line.split(" |\t");
 					Pose ps = null;
 					if (line.contains("->")) {
-						paths.put(oneline[0]+oneline[1]+oneline[2], oneline[3]);
+						PoseSteering[] knownPath = loadPathFromFile(pathPrefix+oneline[3]);
+						paths.put(oneline[0]+oneline[1]+oneline[2], knownPath);
+						//paths.put(oneline[0]+oneline[1]+oneline[2], oneline[3]);
 						//metaCSPLogger.info("Loaded path: " + oneline[0]+oneline[1]+oneline[2] + " --> " + oneline[3]);
 					}
 					else {
@@ -424,6 +524,13 @@ public class Missions {
 	 */
 	public static void removeLocation(String locationName) {
 		locations.remove(locationName);
+		ArrayList<String> toRemove = new ArrayList<String>();
+		for (String key : paths.keySet()) {
+			if (key.substring(0,key.indexOf("->")).equals(locationName)) toRemove.add(key);
+			else if (key.substring(key.indexOf("->")).equals(locationName)) toRemove.add(key);
+		}
+		for (String key : toRemove) paths.remove(key);
+		if (graph != null) graph.removeVertex(locationName);
 	}
 	
 	/**
@@ -471,10 +578,13 @@ public class Missions {
 	 * @return The name of the file where the path is stored 
 	 */
 	public static String getPathFile(String fromLocation, String toLocation) {
-		String ret = paths.get(fromLocation+"->"+toLocation);
+		//String ret = paths.get(fromLocation+"->"+toLocation);
+		String ret = pathPrefix+fromLocation+"->"+toLocation;
 		if (!locations.containsKey(fromLocation)) throw new Error("Unknown location " + fromLocation);
 		if (!locations.containsKey(toLocation)) throw new Error("Unknown location " + toLocation);
-		if (ret == null) throw new Error("No path between " + fromLocation + " and " + toLocation);
+		File f = new File(ret);
+		if(!f.exists() || f.isDirectory()) throw new Error("No path between " + fromLocation + " and " + toLocation);
+		//if (ret == null) throw new Error("No path between " + fromLocation + " and " + toLocation);
 		return ret;
 	}
 	
@@ -494,10 +604,10 @@ public class Missions {
 	 * @param toLocation The goal location
 	 * @return The path between the two (known) locations
 	 */
-	public static PoseSteering[] loadKnownPath(String fromLocation, String toLocation) {
-		if (!isKnownPath(fromLocation, toLocation)) throw new Error("No path between " + fromLocation + " and " + toLocation);
-		return loadPathFromFile(pathPrefix+getPathFile(fromLocation, toLocation));
-	}
+//	public static PoseSteering[] loadKnownPath(String fromLocation, String toLocation) {
+//		if (!isKnownPath(fromLocation, toLocation)) throw new Error("No path between " + fromLocation + " and " + toLocation);
+//		return loadPathFromFile(pathPrefix+getPathFile(fromLocation, toLocation));
+//	}
 
 	/**
 	 * Get a property from a YAML file
