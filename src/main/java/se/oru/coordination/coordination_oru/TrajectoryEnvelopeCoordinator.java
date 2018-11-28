@@ -57,6 +57,9 @@ import se.oru.coordination.coordination_oru.util.Pair;
  */
 public abstract class TrajectoryEnvelopeCoordinator {
 
+	//Calendar.getInstance().getTimeInMillis()
+	private Random rand = new Random(Calendar.getInstance().getTimeInMillis()); 
+	
 	public static String TITLE = "coordination_oru - Online coordination for multiple robots";
 	public static String COPYRIGHT = "Copyright \u00a9 2017-2018 Federico Pecora";
 
@@ -382,28 +385,33 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 * @param robotID The ID of the robot.
 	 * @param criticalPoint The index of the path pose beyond which the robot should not navigate.
 	 */
-	public void setCriticalPoint(int robotID, int criticalPoint) {
+	public void setCriticalPoint(final int robotID, final int criticalPoint) {
+		
+		final AbstractTrajectoryEnvelopeTracker tracker = trackers.get(robotID);
+		
 		//If the robot is not muted
-		if (!muted.contains(robotID)) {
-			//If not at the end of the trajectory (i.e., if the mission is not about to finish)
-			if (trackers.get(robotID).getRobotReport().getPathIndex() < trackers.get(robotID).getTrajectoryEnvelope().getSequenceNumberEnd()) {
-				//If I haven't communicated this CP already to the robot
-				if (!communicatedCPs.containsKey(trackers.get(robotID)) || !communicatedCPs.get(trackers.get(robotID)).equals(criticalPoint) ) {
-					communicatedCPs.put(trackers.get(robotID), criticalPoint);
-					trackers.get(robotID).setCriticalPoint(criticalPoint);
+		if (tracker != null && !muted.contains(robotID)) {
+			
+			final int delayTX = rand.nextInt(NetworkConfiguration.MAXIMUM_TX_DELAY > 0 ? NetworkConfiguration.MAXIMUM_TX_DELAY : 1);
+			
+			Thread waitToTXThread = new Thread("Wait to TX thread for robot " + robotID) {
+				public void run() {
+					
+					//Sleep for delay in communication
+					try { Thread.sleep(delayTX); }
+					catch (InterruptedException e) { e.printStackTrace(); }
+					
+					if (!communicatedCPs.containsKey(tracker) || !communicatedCPs.get(tracker).equals(criticalPoint) ) {
+						communicatedCPs.put(tracker, criticalPoint);
+						if (rand.nextDouble() < (1-NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS)) tracker.setCriticalPoint(criticalPoint);
+					}
+					if (!tracker.canStartTracking()) tracker.setCanStartTracking();
+					
 				}
-			}
-			else {
-				if (!communicatedCPs.containsKey(trackers.get(robotID)) || !communicatedCPs.get(trackers.get(robotID)).equals(criticalPoint) ) {
-					//System.out.println("NOT SKIPPING robot" + robotID + " CP: " + criticalPoint);
-					communicatedCPs.put(trackers.get(robotID), criticalPoint);
-					trackers.get(robotID).setCriticalPoint(criticalPoint);
-				}
-//				else {
-//					System.out.println("SKIPPING robot" + robotID + " CP: " + criticalPoint);					
-//				}
-			}
-			if (!trackers.get(robotID).canStartTracking()) trackers.get(robotID).setCanStartTracking();
+			};
+			waitToTXThread.start();
+			
+			
 		}
 	}
 
@@ -413,6 +421,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 * @return The current state of a given robot.
 	 */
 	public RobotReport getRobotReport(int robotID) {
+		//TODO: Add packet loss and delay here
 		return trackers.get(robotID).getRobotReport();
 	}
 
@@ -1319,6 +1328,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			currentDependencies.clear();
 			for (Integer robotID : robotIDs) {
 				if (!currentDeps.containsKey(robotID)) {
+					System.out.println("Robot " + robotID + " can proceed to the end and tracker is of type " + (trackers.get(robotID) instanceof TrajectoryEnvelopeTrackerDummy));
 					setCriticalPoint(robotID, -1);
 				}
 				else {
@@ -1327,6 +1337,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					Dependency firstDep = currentDeps.get(robotID).first();
 					setCriticalPoint(firstDep.getWaitingTracker().getTrajectoryEnvelope().getRobotID(), firstDep.getWaitingPoint());
 					currentDependencies.add(firstDep);
+					System.out.println("Robot " + robotID + " should stop at " + firstDep.getWaitingPoint() + " and tracker is of type " + (trackers.get(robotID) instanceof TrajectoryEnvelopeTrackerDummy));
 				}
 			}
 			findCycles();

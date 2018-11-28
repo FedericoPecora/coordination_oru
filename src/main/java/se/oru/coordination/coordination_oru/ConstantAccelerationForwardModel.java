@@ -13,6 +13,8 @@ public class ConstantAccelerationForwardModel implements ForwardModel {
 	private int CONTROL_PERIOD = -1;
 	private double TEMPORAL_RESOLUTION = -1;
 	private int numControlPeriodsFreeRun = 1;
+	private int addtionalDelayInMillis = 0;
+	private int delay = 0;
 
 	@Deprecated
 	public ConstantAccelerationForwardModel(double maxAccel, double maxVel) {
@@ -20,33 +22,52 @@ public class ConstantAccelerationForwardModel implements ForwardModel {
 		this.maxVel = maxVel;	
 	}
 	
-	public ConstantAccelerationForwardModel(double maxAccel, double maxVel, int CONTROL_PERIOD, double TEMPORAL_RESOLUTION, int numControlPeriodsFreeRun) {
+	@Deprecated
+	public ConstantAccelerationForwardModel(double maxAccel, double maxVel, int CONTROL_PERIOD, double TEMPORAL_RESOLUTION, int numControlPeriodsFreeRun, int additionalDelayInMillis) {
 		this.maxAccel = maxAccel;
 		this.maxVel = maxVel;	
 		this.CONTROL_PERIOD = CONTROL_PERIOD;
 		this.TEMPORAL_RESOLUTION = TEMPORAL_RESOLUTION;
 		this.numControlPeriodsFreeRun = numControlPeriodsFreeRun;
+		this.addtionalDelayInMillis = additionalDelayInMillis;
 	}
 
+	@Deprecated
 	public ConstantAccelerationForwardModel(double maxAccel, double maxVel, int CONTROL_PERIOD, double TEMPORAL_RESOLUTION) {
-		this(maxAccel,maxVel,CONTROL_PERIOD,TEMPORAL_RESOLUTION,1);
+		this(maxAccel,maxVel,CONTROL_PERIOD,TEMPORAL_RESOLUTION,2,2*NetworkConfiguration.MAXIMUM_TX_DELAY);
 	}
 
+	public ConstantAccelerationForwardModel(double maxAccel, double maxVel, int CONTROL_PERIOD, double TEMPORAL_RESOLUTION, int additionaDelayInMillis) {
+		this.maxAccel = maxAccel;
+		this.maxVel = maxVel;
+		this.TEMPORAL_RESOLUTION = TEMPORAL_RESOLUTION;
+		this.delay = 2*NetworkConfiguration.MAXIMUM_TX_DELAY+2*CONTROL_PERIOD+additionaDelayInMillis;
+	}
+
+
+	//TODO: Total delay before deceleration = 2*CONTROL_PEROID + TXDelay
+	//  -- One CONTROL_PERIOD because the state could be at most that old
+	//  -- One CONTROL_PERIOD because the coordinator may TX at end of CONTORL_PERIOD
+	//  -- TXDelay because that is the time it take for the message to arrive at the robot
 	@Override
 	public boolean canStop(TrajectoryEnvelope te, RobotReport currentState, int targetPathIndex) {
+		if (currentState.getVelocity() <= 0.0) return true;
 		double distance = se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeTrackerRK4.computeDistance(te.getTrajectory(), (currentState.getPathIndex() != -1 ? currentState.getPathIndex() : 0), targetPathIndex);
 		State state = new State(0.0, currentState.getVelocity());
 		double time = 0.0;
 		double deltaTime = 0.0001;
-		if (CONTROL_PERIOD != -1) {
-			while (time*TEMPORAL_RESOLUTION < Math.max(CONTROL_PERIOD*numControlPeriodsFreeRun,TrajectoryEnvelopeCoordinator.EFFECTIVE_CONTROL_PERIOD)) {
-				se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeTrackerRK4.integrateRK4(state, time, deltaTime, false, maxVel, 1.0, maxAccel*1.1);
+		//int delay = this.numControlPeriodsFreeRun*this.CONTROL_PERIOD+this.addtionalDelayInMillis;
+		//if (CONTROL_PERIOD != -1) {
+		if (this.delay > 0) {
+			//while (time*TEMPORAL_RESOLUTION < Math.max(CONTROL_PERIOD*numControlPeriodsFreeRun,TrajectoryEnvelopeCoordinator.EFFECTIVE_CONTROL_PERIOD)) {
+			while (time*TEMPORAL_RESOLUTION < this.delay) {
+				se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeTrackerRK4.integrateRK4(state, time, deltaTime, false, maxVel, 1.0, maxAccel);
 				time += deltaTime;
 			}
 		}
 		while (state.getVelocity() > 0) {
 			if (state.getPosition() > distance) return false;
-			se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeTrackerRK4.integrateRK4(state, time, deltaTime, true, maxVel, 1.0, maxAccel*0.9);
+			se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeTrackerRK4.integrateRK4(state, time, deltaTime, true, maxVel, 1.0, maxAccel);
 			time += deltaTime;
 		}
 		return true;
@@ -81,8 +102,10 @@ public class ConstantAccelerationForwardModel implements ForwardModel {
 		State state = new State(currentState.getDistanceTraveled(), currentState.getVelocity());
 		double time = 0.0;
 		double deltaTime = 0.0001;
-		if (CONTROL_PERIOD != -1) {
-			while (time*TEMPORAL_RESOLUTION < Math.max(CONTROL_PERIOD*numControlPeriodsFreeRun,TrajectoryEnvelopeCoordinator.EFFECTIVE_CONTROL_PERIOD)) {
+		//if (CONTROL_PERIOD != -1) {
+		if (this.delay > 0) {
+			//while (time*TEMPORAL_RESOLUTION < Math.max(CONTROL_PERIOD*numControlPeriodsFreeRun,TrajectoryEnvelopeCoordinator.EFFECTIVE_CONTROL_PERIOD)) {
+			while (time*TEMPORAL_RESOLUTION < this.delay) {
 				se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeTrackerRK4.integrateRK4(state, time, deltaTime, false, maxVel, 1.0, maxAccel*1.1);
 				time += deltaTime;
 			}

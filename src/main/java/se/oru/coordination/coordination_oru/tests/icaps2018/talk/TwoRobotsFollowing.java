@@ -6,17 +6,20 @@ import org.metacsp.multi.spatioTemporal.paths.Pose;
 
 import com.vividsolutions.jts.geom.Coordinate;
 
+import se.oru.coordination.coordination_oru.NetworkConfiguration;
 import se.oru.coordination.coordination_oru.ConstantAccelerationForwardModel;
 import se.oru.coordination.coordination_oru.CriticalSection;
 import se.oru.coordination.coordination_oru.Mission;
 import se.oru.coordination.coordination_oru.RobotAtCriticalSection;
 import se.oru.coordination.coordination_oru.RobotReport;
+import se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
 import se.oru.coordination.coordination_oru.util.BrowserVisualization;
 import se.oru.coordination.coordination_oru.util.JTSDrawingPanelVisualization;
 import se.oru.coordination.coordination_oru.util.Missions;
+import se.oru.coordination.coordination_oru.util.RVizVisualization;
 
 @DemoDescription(desc = "Example showing coordination in opposing directions (following should happen here).")
 public class TwoRobotsFollowing {
@@ -54,27 +57,31 @@ public class TwoRobotsFollowing {
 		Coordinate footprint4 = new Coordinate(0.7,0.5);
 		tec.setDefaultFootprint(footprint1, footprint2, footprint3, footprint4);
 		
+		NetworkConfiguration.MAXIMUM_TX_DELAY = 3000;
+		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0.0;
+		
 		//You probably also want to provide a non-trivial forward model
 		//(the default assumes that robots can always stop)
-		tec.setForwardModel(1, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTrackingPeriod(), tec.getTemporalResolution()));
-		tec.setForwardModel(2, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTrackingPeriod(), tec.getTemporalResolution()));
+		tec.setForwardModel(1, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getControlPeriod(), tec.getTemporalResolution(), 30));
+		tec.setForwardModel(2, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getControlPeriod(), tec.getTemporalResolution(), 30));
 
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
 
 		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
 		//viz.setSize(1800, 450);
-		BrowserVisualization viz = new BrowserVisualization();
-		viz.setInitialTransform(63, 0, 0);
+		//BrowserVisualization viz = new BrowserVisualization();
+		//viz.setInitialTransform(40.6, -1.26, 4.5);
+		RVizVisualization viz = new RVizVisualization();
 		tec.setVisualization(viz);
 
-		Pose startRobot1 = new Pose(25.0,5.0,0.0);
-		Pose goalRobot11 = new Pose(20.0,7.0,0.0);
+		Pose startRobot1 = new Pose(45.0,5.0,0.0);
+		Pose goalRobot11 = new Pose(40.0,7.0,0.0);
 		Pose goalRobot12 = new Pose(10.0,7.0,0.0);
 		Pose goalRobot13 = new Pose(5.0,5.0,0.0);
 		
-		Pose startRobot2 = new Pose(25.0,9.0,Math.PI);
-		Pose goalRobot21 = new Pose(20.0,7.0,Math.PI);
+		Pose startRobot2 = new Pose(45.0,9.0,Math.PI);
+		Pose goalRobot21 = new Pose(40.0,7.0,Math.PI);
 		Pose goalRobot22 = new Pose(10.0,7.0,Math.PI);
 		Pose goalRobot23 = new Pose(5.0,9.0,Math.PI);
 
