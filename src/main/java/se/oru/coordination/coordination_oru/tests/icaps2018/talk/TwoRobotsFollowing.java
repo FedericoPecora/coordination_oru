@@ -68,11 +68,11 @@ public class TwoRobotsFollowing {
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
 
-		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
-		//viz.setSize(1800, 450);
+		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
+		viz.setSize(1800, 450);
 		//BrowserVisualization viz = new BrowserVisualization();
 		//viz.setInitialTransform(40.6, -1.26, 4.5);
-		RVizVisualization viz = new RVizVisualization();
+		//RVizVisualization viz = new RVizVisualization();
 		tec.setVisualization(viz);
 
 		Pose startRobot1 = new Pose(45.0,5.0,0.0);

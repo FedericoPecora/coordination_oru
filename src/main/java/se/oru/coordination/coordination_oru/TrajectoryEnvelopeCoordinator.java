@@ -57,7 +57,6 @@ import se.oru.coordination.coordination_oru.util.Pair;
  */
 public abstract class TrajectoryEnvelopeCoordinator {
 
-	//Calendar.getInstance().getTimeInMillis()
 	private Random rand = new Random(Calendar.getInstance().getTimeInMillis()); 
 	
 	public static String TITLE = "coordination_oru - Online coordination for multiple robots";
@@ -128,6 +127,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	
 	protected HashSet<HashSet<Integer>> replanningSpawned = new HashSet<HashSet<Integer>>();
 	protected boolean replanning = false;
+	
+	protected HashMap<Integer,ArrayList<RobotReport>> currentReports = new HashMap<Integer, ArrayList<RobotReport>>();
+	protected HashMap<Integer,ArrayList<Long>> currentReportTimes = new HashMap<Integer, ArrayList<Long>>();
+	protected static final int MAX_STACK_SIZE = 100;
 
 	/**
 	 * Utility method to treat internal resources from this library as filenames.
@@ -422,7 +425,31 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 */
 	public RobotReport getRobotReport(int robotID) {
 		//TODO: Add packet loss and delay here
-		return trackers.get(robotID).getRobotReport();
+		
+		//Index in the stack of report to return
+		int index = 0;
+		boolean firstTime = false;
+		
+		long timeNow = Calendar.getInstance().getTimeInMillis();
+		if (!currentReports.containsKey(robotID)) {
+			currentReports.put(robotID, new ArrayList<RobotReport>());
+			currentReportTimes.put(robotID, new ArrayList<Long>());
+			firstTime = true;
+		}
+		if (firstTime || rand.nextDouble() < (1.0-NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS)) {
+			currentReports.get(robotID).add(0,trackers.get(robotID).getRobotReport());
+			currentReportTimes.get(robotID).add(0,timeNow);
+			if (currentReports.get(robotID).size() == MAX_STACK_SIZE) {
+				currentReports.get(robotID).remove(currentReports.get(robotID).size()-1);
+				currentReportTimes.get(robotID).remove(currentReportTimes.get(robotID).size()-1);
+			}
+			if (NetworkConfiguration.MAXIMUM_TX_DELAY > 0) {
+				int delay = rand.nextInt(NetworkConfiguration.MAXIMUM_TX_DELAY);
+				while (delay < timeNow-currentReportTimes.get(robotID).get(index) && index < currentReports.get(robotID).size()-1) { index++; }
+				if (index > 0 && delay > timeNow-currentReportTimes.get(robotID).get(index)) index--;
+			}
+		}
+		return currentReports.get(robotID).get(index);
 	}
 
 	/**
@@ -1328,7 +1355,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			currentDependencies.clear();
 			for (Integer robotID : robotIDs) {
 				if (!currentDeps.containsKey(robotID)) {
-					System.out.println("Robot " + robotID + " can proceed to the end and tracker is of type " + (trackers.get(robotID) instanceof TrajectoryEnvelopeTrackerDummy));
+					//System.out.println("Robot " + robotID + " can proceed to the end and tracker is of type " + (trackers.get(robotID) instanceof TrajectoryEnvelopeTrackerDummy));
 					setCriticalPoint(robotID, -1);
 				}
 				else {
@@ -1337,7 +1364,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					Dependency firstDep = currentDeps.get(robotID).first();
 					setCriticalPoint(firstDep.getWaitingTracker().getTrajectoryEnvelope().getRobotID(), firstDep.getWaitingPoint());
 					currentDependencies.add(firstDep);
-					System.out.println("Robot " + robotID + " should stop at " + firstDep.getWaitingPoint() + " and tracker is of type " + (trackers.get(robotID) instanceof TrajectoryEnvelopeTrackerDummy));
+					//System.out.println("Robot " + robotID + " should stop at " + firstDep.getWaitingPoint() + " and tracker is of type " + (trackers.get(robotID) instanceof TrajectoryEnvelopeTrackerDummy));
 				}
 			}
 			findCycles();
