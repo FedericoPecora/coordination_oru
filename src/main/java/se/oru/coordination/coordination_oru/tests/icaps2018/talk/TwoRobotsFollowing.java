@@ -57,7 +57,7 @@ public class TwoRobotsFollowing {
 		Coordinate footprint4 = new Coordinate(0.7,0.5);
 		tec.setDefaultFootprint(footprint1, footprint2, footprint3, footprint4);
 		
-		NetworkConfiguration.MAXIMUM_TX_DELAY = 3000;
+		NetworkConfiguration.MAXIMUM_TX_DELAY = 5000;
 		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0.0;
 		
 		//You probably also want to provide a non-trivial forward model

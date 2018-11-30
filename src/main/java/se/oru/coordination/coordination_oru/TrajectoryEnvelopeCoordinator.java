@@ -406,9 +406,16 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					
 					if (!communicatedCPs.containsKey(tracker) || !communicatedCPs.get(tracker).equals(criticalPoint) ) {
 						communicatedCPs.put(tracker, criticalPoint);
-						if (rand.nextDouble() < (1-NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS)) tracker.setCriticalPoint(criticalPoint);
+						if (rand.nextDouble() < (1-NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS)) {
+							metaCSPLogger.info("PACKET to Robot" + robotID + " SENT");
+							tracker.setCriticalPoint(criticalPoint);
+							if (!tracker.canStartTracking()) tracker.setCanStartTracking();
+						}
+						else {
+							metaCSPLogger.info("PACKET to Robot" + robotID + " LOST");
+						}
 					}
-					if (!tracker.canStartTracking()) tracker.setCanStartTracking();
+					//if (!tracker.canStartTracking()) tracker.setCanStartTracking();
 					
 				}
 			};
