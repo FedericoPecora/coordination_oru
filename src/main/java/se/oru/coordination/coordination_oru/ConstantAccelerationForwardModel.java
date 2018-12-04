@@ -51,7 +51,9 @@ public class ConstantAccelerationForwardModel implements ForwardModel {
 	//  -- TXDelay because that is the time it take for the message to arrive at the robot
 	@Override
 	public boolean canStop(TrajectoryEnvelope te, RobotReport currentState, int targetPathIndex) {
-		if (currentState.getVelocity() <= 0.0) return true;
+		//Due to temporal delay we cannot trust the velocity.
+		//The consideration about a robot to be already stop are done externally considering if it is parked.
+		//if (currentState.getVelocity() <= 0.0) return true;
 		double distance = se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeTrackerRK4.computeDistance(te.getTrajectory(), (currentState.getPathIndex() != -1 ? currentState.getPathIndex() : 0), targetPathIndex);
 		State state = new State(0.0, currentState.getVelocity());
 		double time = 0.0;

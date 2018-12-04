@@ -43,7 +43,10 @@ public abstract class TrajectoryEnvelopeTrackerDummy extends AbstractTrajectoryE
 	public void startTracking() {  }
 	
 	@Override
-	public void setCriticalPoint(int criticalPointToSet) { }
+	protected void setCriticalPoint(int criticalPointToSet) { }
+	
+	@Override
+	public void setCriticalPoint(int criticalPointToSet, int externalCPCounter) { }
 	
 	@Override
 	public RobotReport getRobotReport() {

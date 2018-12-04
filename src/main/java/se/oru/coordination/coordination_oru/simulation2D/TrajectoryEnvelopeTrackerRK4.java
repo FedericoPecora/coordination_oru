@@ -103,7 +103,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 			catch (InterruptedException e) { e.printStackTrace(); }
 		}
 		this.th.start();
-		if (useInternalCPs) this.startInternalCPThread();
+		if (useInternalCPs) this.startInternalCPThread();		
 	}
 
 	public static double computeDistance(Trajectory traj, int startIndex, int endIndex) {
@@ -221,8 +221,19 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 	}
 			
 	@Override
-	public void setCriticalPoint(int criticalPointToSet) {
+	public void setCriticalPoint(int criticalPointToSet, int externalCPCounter) {
 		
+		if (this.externalCPCounter > externalCPCounter) {
+			metaCSPLogger.warning("Ignored critical point " + criticalPointToSet + " related to counter " + externalCPCounter + " because counter is already at " + this.externalCPCounter + ".");
+			return;
+		}
+		setCriticalPoint(criticalPointToSet);
+		this.externalCPCounter = externalCPCounter;		
+	}
+	
+	@Override
+	protected void setCriticalPoint(int criticalPointToSet) {
+				
 		if (this.criticalPoint != criticalPointToSet) {
 			
 			//A new intermediate index to stop at has been given

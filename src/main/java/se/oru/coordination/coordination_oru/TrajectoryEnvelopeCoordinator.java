@@ -104,6 +104,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected String logDirName = null;
 
 	protected HashMap<AbstractTrajectoryEnvelopeTracker,Integer> communicatedCPs = new HashMap<AbstractTrajectoryEnvelopeTracker, Integer>();
+	protected HashMap<AbstractTrajectoryEnvelopeTracker,Integer> externalCPCounters = new HashMap<AbstractTrajectoryEnvelopeTracker, Integer>();
 
 	protected Map mapMetaConstraint = null;
 
@@ -395,31 +396,45 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		//If the robot is not muted
 		if (tracker != null && !muted.contains(robotID)) {
 			
-			final int delayTX = rand.nextInt(NetworkConfiguration.MAXIMUM_TX_DELAY > 0 ? NetworkConfiguration.MAXIMUM_TX_DELAY : 1);
+			//if not already communicated, increment the counter and transmit
+			if (!externalCPCounters.containsKey(tracker)) externalCPCounters.put(tracker, -1);
 			
-			Thread waitToTXThread = new Thread("Wait to TX thread for robot " + robotID) {
-				public void run() {
+			if (!communicatedCPs.containsKey(tracker) || !communicatedCPs.get(tracker).equals(criticalPoint) ) {
+				communicatedCPs.put(tracker, criticalPoint);
+				final int externalCPCounter = externalCPCounters.get(tracker)+1;
+				externalCPCounters.put(tracker,externalCPCounter);
+				
+				int delayTmp = 0;
+				if (NetworkConfiguration.MAXIMUM_TX_DELAY > 0 && !(tracker instanceof TrajectoryEnvelopeTrackerDummy))
+						delayTmp = rand.nextInt(NetworkConfiguration.MAXIMUM_TX_DELAY);
+				final int delayTX = delayTmp;
 					
-					//Sleep for delay in communication
-					try { Thread.sleep(delayTX); }
-					catch (InterruptedException e) { e.printStackTrace(); }
-					
-					if (!communicatedCPs.containsKey(tracker) || !communicatedCPs.get(tracker).equals(criticalPoint) ) {
-						communicatedCPs.put(tracker, criticalPoint);
+				//Define a thread that will send the information
+				Thread waitToTXThread = new Thread("Wait to TX thread for robot " + robotID) {
+					public void run() {
+						
+						//Sleep for delay in communication
+						try { Thread.sleep(delayTX); }
+						catch (InterruptedException e) { e.printStackTrace(); }
+						
+						//if possible (according to packet loss, send
 						if (rand.nextDouble() < (1-NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS)) {
-							metaCSPLogger.info("PACKET to Robot" + robotID + " SENT");
-							tracker.setCriticalPoint(criticalPoint);
-							if (!tracker.canStartTracking()) tracker.setCanStartTracking();
+							metaCSPLogger.info("PACKET to Robot" + robotID + " SENT, criticalPoint: " + communicatedCPs.get(tracker) + ", externalCPCounter: " + externalCPCounters.get(tracker));
+							tracker.setCriticalPoint(criticalPoint, externalCPCounter);
+							if (!tracker.canStartTracking()) {
+								tracker.setCanStartTracking();
+								//metaCSPLogger.info("Can start tracking " + robotID + " with critical point real: " + tracker.criticalPoint + ", commanded: "+ communicatedCPs.get(tracker));
+							}
 						}
 						else {
-							metaCSPLogger.info("PACKET to Robot" + robotID + " LOST");
+							metaCSPLogger.info("PACKET to Robot" + robotID + " LOST, criticalPoint: " + communicatedCPs.get(tracker) + ", externalCPCounter: " + externalCPCounters.get(tracker));
 						}
 					}
 					//if (!tracker.canStartTracking()) tracker.setCanStartTracking();
-					
-				}
-			};
+				};
+			//let's start the thread
 			waitToTXThread.start();
+		}
 			
 			
 		}
@@ -431,8 +446,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 * @return The current state of a given robot.
 	 */
 	public RobotReport getRobotReport(int robotID) {
-		//TODO: Add packet loss and delay here
-		
+
 		//Index in the stack of report to return
 		int index = 0;
 		boolean firstTime = false;
@@ -456,7 +470,13 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				if (index > 0 && delay > timeNow-currentReportTimes.get(robotID).get(index)) index--;
 			}
 		}
-		return currentReports.get(robotID).get(index);
+		
+		//@New: ok in this way?
+		if (timeNow-currentReportTimes.get(robotID).get(index) > this.CONTROL_PERIOD) {
+			metaCSPLogger.severe("Last known status of Robot" + robotID + " is older than one control period.");
+			throw new Error("Status lost! Unable to coordinate robots.");
+		}
+		else return currentReports.get(robotID).get(index);
 	}
 
 	/**
@@ -1092,9 +1112,32 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		ForwardModel fm2 = getForwardModel(robotTracker2.getTrajectoryEnvelope().getRobotID());
 		boolean canStopRobot1 = false;
 		boolean canStopRobot2 = false;
-		if (robotTracker1.getCriticalPoint() != -1 && robotTracker1.getCriticalPoint() <= cs.getTe1Start()) canStopRobot1 = true;
+		
+		//@Deprecated
+		//if (robotTracker1.getCriticalPoint() != -1 && robotTracker1.getCriticalPoint() <= cs.getTe1Start()) canStopRobot1 = true;
+		
+		//@New
+		if (	//1. the robot is parked
+				robotTracker1 instanceof TrajectoryEnvelopeTrackerDummy 
+				//2. the last critical point was before the critical section (can stop by induction)
+				//note that due to delay robotTracker1.getCriticalPoint() could be different to the last communicated one,
+				//but the algorithm cares about the maximum delay so it will be communicated before the robot will enter the critical section (if the packed wont be lost).
+				|| (communicatedCPs.containsKey(robotTracker1) && communicatedCPs.get(robotTracker1) != -1 && communicatedCPs.get(robotTracker1) <= cs.getTe1Start())
+				//if we haven't communicated anything to the robot, it is assumed that it cannot move
+				|| !communicatedCPs.containsKey(robotTracker1))
+			canStopRobot1 = true;
+		
+		
 		else canStopRobot1 = fm1.canStop(robotTracker1.getTrajectoryEnvelope(), robotReport1, cs.getTe1Start());
-		if (robotTracker2.getCriticalPoint() != -1 && robotTracker2.getCriticalPoint() <= cs.getTe2Start()) canStopRobot2 = true;
+		
+		//@Deprecated
+		//if (robotTracker2.getCriticalPoint() != -1 && robotTracker2.getCriticalPoint() <= cs.getTe2Start()) canStopRobot2 = true;
+		
+		//@New with the same considerations
+		if(robotTracker2 instanceof TrajectoryEnvelopeTrackerDummy || 
+				(communicatedCPs.containsKey(robotTracker2) && communicatedCPs.get(robotTracker2) != -1 && communicatedCPs.get(robotTracker2) <= cs.getTe2Start()) ||
+				!communicatedCPs.containsKey(robotTracker2))
+			canStopRobot2 = true;
 		else canStopRobot2 = fm2.canStop(robotTracker2.getTrajectoryEnvelope(), robotReport2, cs.getTe2Start());
 
 		if (!canStopRobot1 && !canStopRobot2) {
@@ -1333,6 +1376,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 					//Compute waiting path index point for waiting robot
 					int waitingPoint = getCriticalPoint(waitingRobotID, cs, drivingCurrentIndex);
+					metaCSPLogger.info("Waiting point Robot" + waitingRobotID + ": " + waitingPoint);
 					if (waitingPoint >= 0) {		
 						//Make new dependency
 						int drivingCSEnd = -1;
@@ -1341,6 +1385,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd, waitingTracker, drivingTracker);
 						if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
 						currentDeps.get(waitingRobotID).add(dep);
+						metaCSPLogger.info("New dependancy: waiting Robot" + dep.getWaitingRobotID() + " at " + dep.getWaitingPoint() + " till Robot" + dep.getDrivingRobotID() + " will be at " + dep.getReleasingPoint());
 						criticalSectionsToDeps.put(cs, dep);
 					}
 					else {
@@ -1362,7 +1407,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			currentDependencies.clear();
 			for (Integer robotID : robotIDs) {
 				if (!currentDeps.containsKey(robotID)) {
-					//System.out.println("Robot " + robotID + " can proceed to the end and tracker is of type " + (trackers.get(robotID) instanceof TrajectoryEnvelopeTrackerDummy));
+					metaCSPLogger.info("Robot " + robotID + " can proceed to the end and tracker is of type " + (trackers.get(robotID) instanceof TrajectoryEnvelopeTrackerDummy));
 					setCriticalPoint(robotID, -1);
 				}
 				else {
@@ -1371,7 +1416,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					Dependency firstDep = currentDeps.get(robotID).first();
 					setCriticalPoint(firstDep.getWaitingTracker().getTrajectoryEnvelope().getRobotID(), firstDep.getWaitingPoint());
 					currentDependencies.add(firstDep);
-					//System.out.println("Robot " + robotID + " should stop at " + firstDep.getWaitingPoint() + " and tracker is of type " + (trackers.get(robotID) instanceof TrajectoryEnvelopeTrackerDummy));
+					metaCSPLogger.info("Robot " + robotID + " should stop at " + firstDep.getWaitingPoint() + " and tracker is of type " + (trackers.get(robotID) instanceof TrajectoryEnvelopeTrackerDummy));
 				}
 			}
 			findCycles();
@@ -1521,7 +1566,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			updateDependencies();
 			
 			communicatedCPs.remove(trackers.get(robotID));
-	
+		
 			envelopesToTrack.remove(newTE);
 		}
 	}
@@ -1889,14 +1934,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		return trackers.get(robotID).getTrajectoryEnvelope();
 	}
 
-	public void computeCriticalSectionsAndStartTrackingAddedMission() {
-		synchronized(solver) {
-			computeCriticalSections();
-			updateDependencies();
-			startTrackingAddedMissions();
-		}
-	}
-	
 	/**
 	 * Add a {@link TrackingCallback} that will be called by the tracker of a given robot.
 	 * @param robotID The ID of the robot to which the callback should be attached.

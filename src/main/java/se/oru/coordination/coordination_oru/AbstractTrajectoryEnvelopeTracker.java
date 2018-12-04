@@ -34,6 +34,7 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 	protected TrajectoryEnvelope te = null;
 	protected Trajectory traj = null;
 	protected double temporalResolution = 0.0;
+	protected int externalCPCounter = -1;
 	protected int criticalPoint = -1;
 	protected HashSet<TrajectoryEnvelope> startedGroundEnvelopes = new HashSet<TrajectoryEnvelope>();
 	protected HashSet<TrajectoryEnvelope> finishedGroundEnvelopes = new HashSet<TrajectoryEnvelope>();
@@ -63,6 +64,7 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 	public AbstractTrajectoryEnvelopeTracker(TrajectoryEnvelope te, double temporalResolution, TrajectoryEnvelopeCoordinator tec, int trackingPeriodInMillis, TrackingCallback cb) {
 		this.te = te;
 		this.traj = te.getTrajectory();
+		this.externalCPCounter = -1;
 		this.criticalPoint = -1;
 		this.temporalResolution = temporalResolution;
 		this.tec = tec;
@@ -148,7 +150,16 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 	 * @param criticalPoint The critical point to set (index of pose along the reference trajectory
 	 * beyond which the robot may not navigate). 
 	 */
-	public abstract void setCriticalPoint(int criticalPoint);
+	protected abstract void setCriticalPoint(int criticalPoint);
+	
+	/**
+	 * This method should implement the mechanisms for notifying a robot of a new critical point, caring about network delays.
+	 * Critical point are "timestamped" so that only critical points more recent than the already known will be notified.
+	 * @param criticalPoint The critical point to set (index of pose along the reference trajectory
+	 * beyond which the robot may not navigate). 
+	 * @param externalCPCounter A counter related to the current notification ("timestamp").
+	 */
+	public abstract void setCriticalPoint(int criticalPointToSet, int externalCPCounter);
 	
 	/**
 	 * Returns the current critical point.
