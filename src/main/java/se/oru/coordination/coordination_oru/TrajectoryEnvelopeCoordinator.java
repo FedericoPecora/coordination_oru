@@ -420,7 +420,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						//if possible (according to packet loss, send
 						if (rand.nextDouble() < (1-NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS)) {
 							metaCSPLogger.info("PACKET to Robot" + robotID + " SENT, criticalPoint: " + communicatedCPs.get(tracker) + ", externalCPCounter: " + externalCPCounters.get(tracker));
-							tracker.setCriticalPoint(criticalPoint, externalCPCounter);
+							tracker.setCriticalPoint(criticalPoint, externalCPCounter%Integer.MAX_VALUE);
 							if (!tracker.canStartTracking()) {
 								tracker.setCanStartTracking();
 								//metaCSPLogger.info("Can start tracking " + robotID + " with critical point real: " + tracker.criticalPoint + ", commanded: "+ communicatedCPs.get(tracker));
@@ -875,12 +875,12 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	}
 	
 	private boolean atCP(int robotID) {
-		if (getRobotReport(robotID).getPathIndex() == -1) return false;
-		return (Math.abs(getRobotReport(robotID).getCriticalPoint() - getRobotReport(robotID).getPathIndex()) <= 1);
+		if (this.getRobotReport(robotID).getPathIndex() == -1) return false;
+		return (Math.abs(this.getRobotReport(robotID).getCriticalPoint() - this.getRobotReport(robotID).getPathIndex()) <= 1);
 	}
 	
 	private boolean inParkingPose(int robotID) {
-		return getRobotReport(robotID).getPathIndex() == -1;
+		return this.getRobotReport(robotID).getPathIndex() == -1;
 	}
 	
 	private void spawnReplanning(ArrayList<ArrayList<Dependency>> deadlockedDeps) {
@@ -982,7 +982,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					Geometry currentFP = makeObstacles(waitingID, waitingPose)[0]; 
 
 					//In case the robot has stopped a little beyond the critical point
-					int currentPoint = getRobotReport(robotID).getPathIndex();
+					int currentPoint = this.getRobotReport(robotID).getPathIndex();
 					if (currentPoint != -1 && currentPoint > waitingPoint) {
 						Pose currentPose = dep.getWaitingTrajectoryEnvelope().getTrajectory().getPose()[currentPoint];
 						currentFP = makeObstacles(waitingID, currentPose)[0];
@@ -1097,19 +1097,19 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 		synchronized (disallowedDependencies) {
 			for (Dependency dep : disallowedDependencies) {
-				if (dep.getWaitingRobotID() == robotTracker1.getTrajectoryEnvelope().getRobotID() && dep.getDrivingRobotID() == robotTracker2.getTrajectoryEnvelope().getRobotID() && cs.getTe2End() == dep.getReleasingPoint()) {
+				if (dep.getWaitingRobotID() == robotReport1.getRobotID() && dep.getDrivingRobotID() == robotReport2.getRobotID() && cs.getTe2End() == dep.getReleasingPoint()) {
 					//System.out.println("DISALLOWED " + dep.getWaitingRobotID() + " waits for " + dep.getDrivingRobotID());
 					return true;
 				}
-				else if (dep.getWaitingRobotID() == robotTracker2.getTrajectoryEnvelope().getRobotID() && dep.getDrivingRobotID() == robotTracker1.getTrajectoryEnvelope().getRobotID() && cs.getTe1End() == dep.getReleasingPoint()) {
+				else if (dep.getWaitingRobotID() == robotReport2.getRobotID() && dep.getDrivingRobotID() == robotReport1.getRobotID() && cs.getTe1End() == dep.getReleasingPoint()) {
 					//System.out.println("DISALLOWED " + dep.getWaitingRobotID() + " waits for " + dep.getDrivingRobotID());
 					return false;
 				}
 			}
 		}
 	
-		ForwardModel fm1 = getForwardModel(robotTracker1.getTrajectoryEnvelope().getRobotID());
-		ForwardModel fm2 = getForwardModel(robotTracker2.getTrajectoryEnvelope().getRobotID());
+		ForwardModel fm1 = getForwardModel(robotReport1.getRobotID());
+		ForwardModel fm2 = getForwardModel(robotReport2.getRobotID());
 		boolean canStopRobot1 = false;
 		boolean canStopRobot2 = false;
 		
@@ -1164,14 +1164,14 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				}
 			}
 			
-			RobotAtCriticalSection r1atcs = new RobotAtCriticalSection(robotTracker1, cs);
-			RobotAtCriticalSection r2atcs = new RobotAtCriticalSection(robotTracker2, cs);
+			RobotAtCriticalSection r1atcs = new RobotAtCriticalSection(robotReport1, cs);
+			RobotAtCriticalSection r2atcs = new RobotAtCriticalSection(robotReport2, cs);
 			boolean ret = false;
 			if (this.comparators.size() > 0) ret = (this.comparators.compare(r1atcs,r2atcs) < 0);
 			//No ordering function, decide an ordering based on distance (closest goes first)
 			else ret = ((cs.getTe2Start()-robotReport2.getPathIndex()) > (cs.getTe1Start()-robotReport1.getPathIndex()));
-			if (ret && muted.contains(robotTracker2.getTrajectoryEnvelope().getRobotID())) return false;
-			if (!ret && muted.contains(robotTracker1.getTrajectoryEnvelope().getRobotID())) return true;
+			if (ret && muted.contains(robotReport2.getRobotID())) return false;
+			if (!ret && muted.contains(robotReport1.getRobotID())) return true;
 			return ret;
 		}
 		else if (!canStopRobot1) {
@@ -1252,9 +1252,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				TrajectoryEnvelope drivingTE = null;
 
 				AbstractTrajectoryEnvelopeTracker robotTracker1 = trackers.get(cs.getTe1().getRobotID());
-				RobotReport robotReport1 = robotTracker1.getRobotReport();
+				//RobotReport robotReport1 = robotTracker1.getRobotReport();
+				RobotReport robotReport1 = this.getRobotReport(cs.getTe1().getRobotID());
 				AbstractTrajectoryEnvelopeTracker robotTracker2 = trackers.get(cs.getTe2().getRobotID());
-				RobotReport robotReport2 = robotTracker2.getRobotReport();
+				//RobotReport robotReport2 = robotTracker2.getRobotReport();
+				RobotReport robotReport2 = this.getRobotReport(cs.getTe2().getRobotID());
 
 				//One or both robots past end of the critical section --> critical section is obsolete
 				if (robotReport1.getPathIndex() > cs.getTe1End() || robotReport2.getPathIndex() > cs.getTe2End()) {
@@ -2093,6 +2095,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				};
 
 				synchronized (trackers) {
+					externalCPCounters.remove(trackers.get(te.getRobotID()));
 					trackers.remove(te.getRobotID());
 					//Make a new tracker for the driving trajectory envelope
 					AbstractTrajectoryEnvelopeTracker tracker = getNewTracker(te, cb);

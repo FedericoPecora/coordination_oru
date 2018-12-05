@@ -159,7 +159,19 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 	 * beyond which the robot may not navigate). 
 	 * @param externalCPCounter A counter related to the current notification ("timestamp").
 	 */
-	public abstract void setCriticalPoint(int criticalPointToSet, int externalCPCounter);
+	public void setCriticalPoint(int criticalPointToSet, int externalCPCounter) {
+
+		if (
+				(externalCPCounter < this.externalCPCounter && externalCPCounter-this.externalCPCounter > Integer.MAX_VALUE/2.0) ||
+				(this.externalCPCounter > externalCPCounter && this.externalCPCounter-externalCPCounter < Integer.MAX_VALUE/2.0)) {
+			metaCSPLogger.warning("Ignored critical point " + criticalPointToSet + " related to counter " + externalCPCounter + " because counter is already at " + this.externalCPCounter + ".");
+			return;
+		}
+		setCriticalPoint(criticalPointToSet);
+		this.externalCPCounter = externalCPCounter;
+		
+		
+	}
 	
 	/**
 	 * Returns the current critical point.

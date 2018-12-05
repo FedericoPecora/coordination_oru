@@ -32,8 +32,8 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner6 {
 		tec.addComparator(new Comparator<RobotAtCriticalSection> () {
 			@Override
 			public int compare(RobotAtCriticalSection o1, RobotAtCriticalSection o2) {
-				int robot1ID = o1.getTrajectoryEnvelopeTracker().getTrajectoryEnvelope().getRobotID();
-				int robot2ID = o2.getTrajectoryEnvelopeTracker().getTrajectoryEnvelope().getRobotID();
+				int robot1ID = o1.getRobotReport().getRobotID();
+				int robot2ID = o2.getRobotReport().getRobotID();
 				if (robot1ID == 1 && robot2ID == 2) return -1;
 				if (robot1ID == 2 && robot2ID == 1) return 1;
 				if (robot1ID == 1 && robot2ID == 3) return 1;

@@ -44,10 +44,7 @@ public abstract class TrajectoryEnvelopeTrackerDummy extends AbstractTrajectoryE
 	
 	@Override
 	protected void setCriticalPoint(int criticalPointToSet) { }
-	
-	@Override
-	public void setCriticalPoint(int criticalPointToSet, int externalCPCounter) { }
-	
+		
 	@Override
 	public RobotReport getRobotReport() {
 		return new RobotReport(te.getRobotID(), traj.getPose()[0], currentIndex, 0.0, 0.0, -1);

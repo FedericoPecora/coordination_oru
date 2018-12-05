@@ -2,16 +2,16 @@ package se.oru.coordination.coordination_oru;
 
 public class RobotAtCriticalSection {
 	
-	private AbstractTrajectoryEnvelopeTracker tet;
+	private RobotReport rr;
 	private CriticalSection cs;
 	
-	public RobotAtCriticalSection(AbstractTrajectoryEnvelopeTracker tet, CriticalSection cs) {
-		this.tet = tet;
+	public RobotAtCriticalSection(RobotReport rr, CriticalSection cs) {
+		this.rr = rr;
 		this.cs = cs;
 	}
 	
-	public AbstractTrajectoryEnvelopeTracker getTrajectoryEnvelopeTracker() {
-		return this.tet;
+	public RobotReport getRobotReport() {
+		return this.rr;
 	}
 	
 	public CriticalSection getCriticalSection() {

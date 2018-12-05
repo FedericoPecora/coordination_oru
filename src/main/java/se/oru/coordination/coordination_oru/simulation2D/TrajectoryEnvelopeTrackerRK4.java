@@ -220,16 +220,6 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 		}
 	}
 			
-	@Override
-	public void setCriticalPoint(int criticalPointToSet, int externalCPCounter) {
-		
-		if (this.externalCPCounter > externalCPCounter) {
-			metaCSPLogger.warning("Ignored critical point " + criticalPointToSet + " related to counter " + externalCPCounter + " because counter is already at " + this.externalCPCounter + ".");
-			return;
-		}
-		setCriticalPoint(criticalPointToSet);
-		this.externalCPCounter = externalCPCounter;		
-	}
 	
 	@Override
 	protected void setCriticalPoint(int criticalPointToSet) {
