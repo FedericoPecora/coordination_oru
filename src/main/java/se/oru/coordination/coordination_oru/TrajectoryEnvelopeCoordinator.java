@@ -2366,5 +2366,13 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		}
 		System.out.println();
 	}
+	
+	public void computeCriticalSectionsAndStartTrackingAddedMission() {
+		synchronized(solver) {
+			computeCriticalSections();
+			updateDependencies();
+			startTrackingAddedMissions();
+		}
+	}
 
 }
