@@ -182,6 +182,14 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 	}
 	
 	/**
+	 * Returns the tracking period in millis.
+	 * @return The the tracking period in millis.
+	 */
+	public int getTrackingPeriodInMillis() {
+		return this.trackingPeriodInMillis;
+	}
+	
+	/**
 	 * This method should return a {@link RobotReport}, describing the current state of the robot.
 	 * @return A {@link RobotReport}, describing the current state of the robot.
 	 */
