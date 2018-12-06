@@ -130,8 +130,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected HashSet<HashSet<Integer>> replanningSpawned = new HashSet<HashSet<Integer>>();
 	protected boolean replanning = false;
 	
-	protected HashMap<Integer,ArrayList<RobotReport>> currentReports = new HashMap<Integer, ArrayList<RobotReport>>();
-	protected HashMap<Integer,ArrayList<Long>> currentReportTimes = new HashMap<Integer, ArrayList<Long>>();
+	protected HashMap<Integer,RobotReport> currentReports = new HashMap<Integer, RobotReport>();
 	protected static final int MAX_STACK_SIZE = 100;
 
 	/**
@@ -448,39 +447,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 */
 	public RobotReport getRobotReport(int robotID) {
 
-		//Index in the stack of report to return
-		/*int index = 0;
-		boolean firstTime = false;
-		
-		long timeNow = Calendar.getInstance().getTimeInMillis();
-		if (!currentReports.containsKey(robotID)) {
-			currentReports.put(robotID, new ArrayList<RobotReport>());
-			currentReportTimes.put(robotID, new ArrayList<Long>());
-			firstTime = true;
-		}
-		if (firstTime || rand.nextDouble() < (1.0-NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS)) {
-			currentReports.get(robotID).add(0,trackers.get(robotID).getRobotReport());
-			currentReportTimes.get(robotID).add(0,timeNow);
-			if (currentReports.get(robotID).size() == MAX_STACK_SIZE) {
-				currentReports.get(robotID).remove(currentReports.get(robotID).size()-1);
-				currentReportTimes.get(robotID).remove(currentReportTimes.get(robotID).size()-1);
-			}
-			if (NetworkConfiguration.MAXIMUM_TX_DELAY > 0) {
-				int delay = rand.nextInt(NetworkConfiguration.MAXIMUM_TX_DELAY);
-				while (delay < timeNow-currentReportTimes.get(robotID).get(index) && index < currentReports.get(robotID).size()-1) { index++; }
-				if (index > 0 && delay > timeNow-currentReportTimes.get(robotID).get(index)) index--;
-			}
-		}
-		
-		//@New: ok in this way?
-		if (timeNow-currentReportTimes.get(robotID).get(index) > this.CONTROL_PERIOD) {
-			metaCSPLogger.severe("Last known status of Robot" + robotID + " is older than one control period.");
-			throw new Error("Status lost! Unable to coordinate robots.");
-		}
-		else return currentReports.get(robotID).get(index);*/
+		//Read the last message received
 		synchronized (currentReports.get(robotID)) {
-			return currentReports.get(robotID).get(currentReports.get(robotID).size()-1);
+			return currentReports.get(robotID);
 		}
+		
 	}
 
 	/**
@@ -652,121 +623,115 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			if (!robotReportListeners.containsKey(robotID)) {
 				
 				//Define a thread for listening robot position
-				
-				//Before starting
-				synchronized (currentReports) {
-					if (!currentReports.containsKey(robotID)) {
-						currentReports.put(robotID, new ArrayList<RobotReport>());
-					}
-				}
-				
-				synchronized (currentReportTimes) {
-					if (!currentReportTimes.containsKey(robotID)) {
-						currentReportTimes.put(robotID, new ArrayList<Long>());
-					}
-				}
-				
+
 				Thread listener = new Thread("Listener thread for robot " + robotID) {
 					
+					protected ArrayList<RobotReport> reportsList = new ArrayList<RobotReport>();
+					protected ArrayList<Long> reportTimeLists = new ArrayList<Long>();
+							
 					@Override
 					public void run() {
 						
-						boolean firstTime = true;
 						int sleepingTime;
+						long timeNow = Calendar.getInstance().getTimeInMillis();
+						
+						//Before starting, sample a report.
+						synchronized (trackers.get(robotID))
+						{
+							synchronized (currentReports) {
+								if (!currentReports.containsKey(robotID)) {
+									reportsList.add(0,trackers.get(robotID).getRobotReport());
+									reportTimeLists.add(0,timeNow);
+									currentReports.put(robotID,reportsList.get(0));
+								}
+							}
+						}
 
 						while (true) {
 							
-							long timeNow = Calendar.getInstance().getTimeInMillis();
+							timeNow = Calendar.getInstance().getTimeInMillis();
 							long timeOfArrival = timeNow;
+							
 							synchronized (trackers.get(robotID)) {
 								if (NetworkConfiguration.MAXIMUM_TX_DELAY > 0 && !(trackers.get(robotID) instanceof TrajectoryEnvelopeTrackerDummy))
-									timeOfArrival = timeOfArrival+rand.nextInt(NetworkConfiguration.MAXIMUM_TX_DELAY);
+									timeOfArrival = timeOfArrival + rand.nextInt(NetworkConfiguration.MAXIMUM_TX_DELAY);
 								sleepingTime = trackers.get(robotID).getTrackingPeriodInMillis();
 							}
 																	
-							if (firstTime || rand.nextDouble() < (1-NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS))
+							if (rand.nextDouble() < (1-NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS))
 							{		
-								
-								//lock the report list
-								synchronized (currentReports.get(robotID)) {
-								
-									if (!firstTime)
-									{
-										//Delete older messages that will arrive after this one								
-										int last_before = -1;
-										boolean found = false;
-										while (last_before < currentReportTimes.get(robotID).size()-1 && !found)
-										{
-											last_before++;
-											//find the first earlier time. The list after that index should not be removed
-											if (timeOfArrival > currentReportTimes.get(robotID).get(last_before)) {
-												found = true;
-											}		
-										}
-										if (last_before > 0) {
-											//delete till last_before (excluded)
-											currentReports.get(robotID).subList(0,last_before).clear();
-											currentReportTimes.get(robotID).subList(0,last_before).clear();
-										}
-										//else all the reports will arrive before, so nothing should be removed.
-										//If last_before == currentReportTimes.get(robotID).size()-1, 
-										//then all should be removed because will be replaced by this new information.
+								//Delete older messages that will arrive after this one								
+								int last_before = -1;
+								boolean found = false;
+								while (last_before < reportTimeLists.size()-1 && !found)
+								{
+									last_before++;
+									//find the first earlier time. The list after that index should not be removed
+									if (timeOfArrival > reportTimeLists.get(last_before)) {
+										found = true;
+									}		
+								}
+								if (last_before > 0) {
+									//delete till last_before (excluded)
+									reportsList.subList(0,last_before).clear();
+									reportTimeLists.subList(0,last_before).clear();
+								}
+								//else all the reports will arrive before, so nothing should be removed.
+								//If last_before == currentReportTimes.get(robotID).size()-1, 
+								//then all should be removed because will be replaced by this new information.
+														
+								//Add the message to the list (as first)
+								synchronized (trackers.get(robotID)) {
+									reportsList.add(0, trackers.get(robotID).getRobotReport());
+									reportTimeLists.add(0, timeOfArrival);
+								}
+							}
+							
+							//Keep alive just one message related to the present or to the past.						
+							//take the last one (the one with lower arrivalTime). 
+							//If it will arrive after now, then the present and the past is lost (we have just future informations)
+							int last_before = reportTimeLists.size()-1;
+							if (reportTimeLists.get(last_before) > timeNow) {
+								metaCSPLogger.severe("* ERROR * Unknown status Robot"+robotID);
+								throw new Error("Status lost! Unable to coordinate robots.");
+							}
+							else {
+								//we have almost a status in the present or in the past
+								last_before = reportTimeLists.size();
+								boolean found = false;
+								while (last_before > 0 && !found) {
+									last_before--;
+									//starting from the less recent, find the first that will be in the future.				
+									if (reportTimeLists.get(last_before) > timeNow) {
+										found = true;
 									}
-																		
-									//Add the message to the list (as first)
-									synchronized (trackers.get(robotID)) {
-										currentReports.get(robotID).add(0, trackers.get(robotID).getRobotReport());
+								}
+								if (found) //not necessary, almost one will be found (otherwise the error has been thrown)
+								{
+									//the last_before is the first in the future
+									//adding one we find the one that should be maintained
+									last_before++;											
+									if (last_before < reportTimeLists.size()-1) {
+										//adding one again we find the first that should be removed
+										last_before++;
+										reportsList.subList(last_before,reportsList.size()).clear();
+										reportTimeLists.subList(last_before,reportTimeLists.size()).clear();
 									}
-									currentReportTimes.get(robotID).add(0, timeOfArrival);
-									
-									if (!firstTime)
-									{
-										//Keep alive just one message related to the present or to the past.
-										
-										//take the last one (the one with lower arrivalTime). 
-										//If it will arrive after now, then the present and the past is lost (we have just future informations)
-										int last_before = currentReportTimes.get(robotID).size()-1;
-										if (currentReportTimes.get(robotID).get(last_before) > timeNow) {
-											metaCSPLogger.severe("* ERROR * Unknown status Robot"+robotID);
-											throw new Error("Status lost! Unable to coordinate robots.");
-										}
-										else {
-											//we have almost a status in the present or in the past
-											last_before = currentReportTimes.get(robotID).size();
-											boolean found = false;
-											while (last_before > 0 && !found) {
-												last_before--;
-												//starting from the less recent, find the first that will be in the future.				
-												if (currentReportTimes.get(robotID).get(last_before) > timeNow) {
-													found = true;
-												}
-											}
-											if (found) //not necessary, almost one will be found (otherwise the error has been thrown)
-											{
-												//the last_before is the first in the future
-												//adding one we find the one that should be maintained
-												last_before++;											
-												if (last_before < currentReportTimes.get(robotID).size()-1) {
-													//adding one again we find the first that should be removed
-													last_before++;
-													currentReports.get(robotID).subList(last_before,currentReports.get(robotID).size()).clear();
-													currentReportTimes.get(robotID).subList(last_before,currentReportTimes.get(robotID).size()).clear();
-												}
-											}
-										}
-									}
-									else
-										firstTime = false;
-								}								
-								//metaCSPLogger.info("Robot"+ robotID + " status at Time: " + timeNow +", Last arrival: " + currentReportTimes.get(robotID).get(0)+", First: "+currentReportTimes.get(robotID).get(currentReportTimes.get(robotID).size()-1)+", Capacity: " + currentReportTimes.get(robotID).size()+".");
+								}
+							}
+							
+							//lock the current report for writing
+							synchronized (currentReports.get(robotID)) {	
+								currentReports.put(robotID, reportsList.get(reportsList.size()-1));
 							}
 							
 							//Sleep for the robot period
 							try { Thread.sleep(sleepingTime-Calendar.getInstance().getTimeInMillis()+timeNow); }
 							catch (InterruptedException e) { e.printStackTrace(); }
-						}
-					}
-				};
+							
+						}//close while
+					}//close run
+				}; //close thread def
 				listener.start();
 				robotReportListeners.put(robotID, listener);
 			}
