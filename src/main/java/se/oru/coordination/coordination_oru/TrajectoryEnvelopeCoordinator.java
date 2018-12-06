@@ -131,8 +131,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected boolean replanning = false;
 	
 	protected HashMap<Integer,RobotReport> currentReports = new HashMap<Integer, RobotReport>();
-	protected static final int MAX_STACK_SIZE = 100;
-
+	
 	/**
 	 * Utility method to treat internal resources from this library as filenames.
 	 * @param resource The internal resource to be loaded.
@@ -392,6 +391,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	public void setCriticalPoint(final int robotID, final int criticalPoint) {
 		
 		final AbstractTrajectoryEnvelopeTracker tracker = trackers.get(robotID);
+		final int numberOfSends = (NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS > 0 && NetworkConfiguration.MAXIMUM_PROBABILITY_OF_FAULTS > 0) ? (int)Math.ceil(Math.log(NetworkConfiguration.MAXIMUM_PROBABILITY_OF_FAULTS)/Math.log(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS)) : 1;
+		
+		metaCSPLogger.info("Number of send: " + numberOfSends);
 		
 		//If the robot is not muted
 		if (tracker != null && !muted.contains(robotID)) {
@@ -418,7 +420,14 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						catch (InterruptedException e) { e.printStackTrace(); }
 						
 						//if possible (according to packet loss, send
-						if (rand.nextDouble() < (1-NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS)) {
+						boolean send = false;
+						int trial = 0;
+						while(!send && trial < numberOfSends) {
+							if (rand.nextDouble() < (1-NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS))
+								send = true;
+							trial++;
+						}
+						if (send) {
 							metaCSPLogger.info("PACKET to Robot" + robotID + " SENT, criticalPoint: " + communicatedCPs.get(tracker) + ", externalCPCounter: " + externalCPCounters.get(tracker));
 							tracker.setCriticalPoint(criticalPoint, externalCPCounter%Integer.MAX_VALUE);
 							if (!tracker.canStartTracking()) {
