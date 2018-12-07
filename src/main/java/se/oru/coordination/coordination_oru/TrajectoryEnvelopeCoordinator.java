@@ -662,7 +662,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					@Override
 					public void run() {
 						
-						int sleepingTime;
+						int robotPeriod;
 						long timeNow = Calendar.getInstance().getTimeInMillis();
 						
 						//Before starting, sample a report.
@@ -690,13 +690,14 @@ public abstract class TrajectoryEnvelopeCoordinator {
 									if (maxTxDelay > 0)
 										timeOfArrival = timeOfArrival + rand.nextInt(maxTxDelay);
 								}
-								sleepingTime = trackers.get(robotID).getTrackingPeriodInMillis();
+								robotPeriod = trackers.get(robotID).getTrackingPeriodInMillis();
 							}
 							
 							//Get the message according to packet loss probability (numberOfReplicas trials)
 							boolean received = (packetLossProbabilityLocal > 0) ? false : true;
 							int trial = 0;
-							while(!received && trial < numberOfReplicas) {
+							int numberOfReplicasReceiving = Math.max(1, (int)Math.ceil(numberOfReplicas*(double)robotPeriod/CONTROL_PERIOD));
+							while(!received && trial < numberOfReplicasReceiving) {
 								if (rand.nextDouble() < (1-packetLossProbabilityLocal))
 									received = true;
 								trial++;
@@ -768,13 +769,13 @@ public abstract class TrajectoryEnvelopeCoordinator {
 								currentReports.put(robotID, reportsList.get(reportsList.size()-1));
 							}
 							
-							//Sleep for the robot period
-							try { Thread.sleep(sleepingTime-Calendar.getInstance().getTimeInMillis()+timeNow); }
+							//Sleep for the residual part of the robot period
+							try { Thread.sleep(robotPeriod-Calendar.getInstance().getTimeInMillis()+timeNow); }
 							catch (InterruptedException e) { e.printStackTrace(); }
 							
-						}//close while
-					}//close run
-				}; //close thread def
+						}
+					}
+				};
 				listener.start();
 				robotReportListeners.put(robotID, listener);
 			}
