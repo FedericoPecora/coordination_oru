@@ -103,7 +103,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner4 {
 			int robotID = robotIDs[index];
 			//You probably also want to provide a non-trivial forward model
 			//(the default assumes that robots can always stop)
-			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getControlPeriod(), tec.getTemporalResolution()));
+			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), 2*(tec.getMaxTxDelay()+tec.getControlPeriod())+tec.getTrackingPeriod()));
 			ArrayList<Pose> posesRobot = new ArrayList<Pose>();
 			//if (index%2==0) {
 			if (robotID%2==0) {

@@ -133,9 +133,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected HashMap<Integer,RobotReport> currentReports = new HashMap<Integer, RobotReport>();
 	
 	//Network knowledge
-	protected double packetLossProbability = 0.0;
-	protected int maxTxDelay = 0;
-	protected double maxFaultsProbability = 0.0;
+	protected double packetLossProbability = NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS;
+	protected int maxTxDelay = NetworkConfiguration.MAXIMUM_TX_DELAY;
+	protected double maxFaultsProbability = NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS;
 	protected int numberOfReplicas = 1;
 	
 	/**
@@ -443,7 +443,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						//Messages may be delayed or lost only if the tracker is not dummy
 						if (!(tracker instanceof TrajectoryEnvelopeTrackerDummy)) {
 							packetLossProbabilityLocal = NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS; //the real one
-							delayTx = rand.nextInt(NetworkConfiguration.MAXIMUM_TX_DELAY); //the real one
+							if (NetworkConfiguration.MAXIMUM_TX_DELAY > 0)
+								delayTx = rand.nextInt(NetworkConfiguration.MAXIMUM_TX_DELAY); //the real one
 						}
 						
 						//Sleep for delay in communication
@@ -760,7 +761,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 										found = true;
 									}
 								}
-								if (found) //not necessary, almost one will be found (otherwise the error has been thrown)
+								if (found) //almost one will be found (otherwise the error has been thrown)
 								{
 									//the index is the first in the future
 									//adding one we find the one that should be maintained
@@ -775,7 +776,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							}
 							
 							//Check if the current status message is too old.
-							if (!isDummy && (timeNow - reportTimeLists.get(reportTimeLists.size()-1) > CONTROL_PERIOD + maxTxDelay)) { //the known delay
+							if (!isDummy && (NetworkConfiguration.MAXIMUM_TX_DELAY > 0) && (timeNow - reportTimeLists.get(reportTimeLists.size()-1) > CONTROL_PERIOD + maxTxDelay)) { //the known delay
 								metaCSPLogger.severe("* ERROR * Status of Robot"+ robotID + " is too old.");
 								throw new Error("Status is lost."); //FIXME: does not stop the execution
 							}

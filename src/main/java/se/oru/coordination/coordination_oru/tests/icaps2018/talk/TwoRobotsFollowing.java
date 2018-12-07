@@ -51,9 +51,9 @@ public class TwoRobotsFollowing {
 		});
 		tec.setUseInternalCriticalPoints(false);
 		
-		NetworkConfiguration.MAXIMUM_TX_DELAY = 500;
-		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0.1;
-		tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, NetworkConfiguration.MAXIMUM_TX_DELAY, 0.01);
+		NetworkConfiguration.MAXIMUM_TX_DELAY = 3000;
+		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0.0;
+		tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, NetworkConfiguration.MAXIMUM_TX_DELAY, 0);
 		
 		Coordinate footprint1 = new Coordinate(-0.5,0.5);
 		Coordinate footprint2 = new Coordinate(-0.5,-0.5);
@@ -63,8 +63,8 @@ public class TwoRobotsFollowing {
 		
 		//You probably also want to provide a non-trivial forward model
 		//(the default assumes that robots can always stop)
-		tec.setForwardModel(1, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getControlPeriod(), tec.getTemporalResolution(), 30));
-		tec.setForwardModel(2, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getControlPeriod(), tec.getTemporalResolution(), 30));
+		tec.setForwardModel(1, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), 2*(tec.getMaxTxDelay()+tec.getControlPeriod())+tec.getTrackingPeriod()));
+		tec.setForwardModel(2, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), 2*(tec.getMaxTxDelay()+tec.getControlPeriod())+tec.getTrackingPeriod()));
 
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);

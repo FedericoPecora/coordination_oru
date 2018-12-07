@@ -10,6 +10,7 @@ import com.vividsolutions.jts.geom.Coordinate;
 import se.oru.coordination.coordination_oru.ConstantAccelerationForwardModel;
 import se.oru.coordination.coordination_oru.CriticalSection;
 import se.oru.coordination.coordination_oru.Mission;
+import se.oru.coordination.coordination_oru.NetworkConfiguration;
 import se.oru.coordination.coordination_oru.RobotAtCriticalSection;
 import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
@@ -46,6 +47,10 @@ public class ThreeDifferentRobotsLinear {
 				return (o2.getRobotReport().getRobotID()-o1.getRobotReport().getRobotID());
 			}
 		});
+		
+		NetworkConfiguration.MAXIMUM_TX_DELAY = 3000;
+		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0.1;
+		tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, NetworkConfiguration.MAXIMUM_TX_DELAY, 0.01);
 
 		//You can set a footprint that is specific for each robot
 		Coordinate[] fp1 = new Coordinate[] {
@@ -74,9 +79,9 @@ public class ThreeDifferentRobotsLinear {
 
 		//You probably also want to provide a non-trivial forward model
 		//(the default assumes that robots can always stop)
-		tec.setForwardModel(1, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getControlPeriod(), tec.getTemporalResolution()));
-		tec.setForwardModel(2, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getControlPeriod(), tec.getTemporalResolution()));
-		tec.setForwardModel(3, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getControlPeriod(), tec.getTemporalResolution()));
+		tec.setForwardModel(1, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), 2*(tec.getMaxTxDelay()+tec.getControlPeriod())+tec.getTrackingPeriod()));
+		tec.setForwardModel(2, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), 2*(tec.getMaxTxDelay()+tec.getControlPeriod())+tec.getTrackingPeriod()));
+		tec.setForwardModel(3, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), 2*(tec.getMaxTxDelay()+tec.getControlPeriod())+tec.getTrackingPeriod()));
 
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);

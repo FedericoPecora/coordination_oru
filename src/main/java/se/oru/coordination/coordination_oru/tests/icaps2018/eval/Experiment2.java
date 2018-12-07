@@ -142,7 +142,7 @@ public class Experiment2 {
 		int locationCounter = 0;
 		//int[] robotIDs = new int[] {1,2};
 		for (int robotID : robotIDs) {
-			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, CONTROL_PERIOD, tec.getTemporalResolution(), 3));
+			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), 2*tec.getMaxTxDelay()+3*tec.getControlPeriod()+tec.getTrackingPeriod()));;
 			String startLocName = "L_"+locationCounter;
 			Pose startLoc = Missions.getLocation(startLocName);
 			String endLocName = "R_"+locationCounter;
