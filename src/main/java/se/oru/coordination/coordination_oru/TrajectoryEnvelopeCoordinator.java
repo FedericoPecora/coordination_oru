@@ -676,16 +676,18 @@ public abstract class TrajectoryEnvelopeCoordinator {
 								}
 							}
 						}
-
+						
 						while (true) {
 							
 							timeNow = Calendar.getInstance().getTimeInMillis();
 							long timeOfArrival = timeNow;
 							double packetLossProbabilityLocal = 0;
+							boolean isDummy = false;
 							
 							synchronized (trackers.get(robotID)) {
 								//Messages may be delayed or lost only if the tracker is not dummy
-								if (!(trackers.get(robotID) instanceof TrajectoryEnvelopeTrackerDummy)) {
+								isDummy = trackers.get(robotID) instanceof TrajectoryEnvelopeTrackerDummy;
+								if (!isDummy) {
 									packetLossProbabilityLocal = packetLossProbability;
 									if (maxTxDelay > 0)
 										timeOfArrival = timeOfArrival + rand.nextInt(maxTxDelay);
@@ -701,7 +703,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 								if (rand.nextDouble() < (1-packetLossProbabilityLocal))
 									received = true;
 								trial++;
-							}										
+							}
 							if (received)
 							{		
 								//Delete older messages that will arrive after this one								
@@ -732,12 +734,12 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							}
 							
 							//Keep alive just one message related to the present or to the past.						
-							//take the last one (the one with lower arrivalTime). 
-							//If it will arrive after now, then the present and the past is lost (we have just future informations)
+							//Take the last one (the one with lower arrivalTime); if it will arrive after now,
+							//then the present and the past is lost (we have just future informations).
 							int index = reportTimeLists.size()-1;
 							if (reportTimeLists.get(index) > timeNow) {
 								metaCSPLogger.severe("* ERROR * Unknown status Robot"+robotID);
-								throw new Error("Status lost! Unable to coordinate robots.");
+								throw new Error("Status lost! Unable to coordinate robots."); //FIXME: does not stop the execution
 							}
 							else {
 								//we have almost a status in the present or in the past
@@ -762,6 +764,12 @@ public abstract class TrajectoryEnvelopeCoordinator {
 										reportTimeLists.subList(index,reportTimeLists.size()).clear();
 									}
 								}
+							}
+							
+							//Check if the current status message is too old.
+							if (!isDummy && (timeNow - reportTimeLists.get(reportTimeLists.size()-1) > CONTROL_PERIOD + maxTxDelay)) {
+								metaCSPLogger.severe("* ERROR * Status of Robot"+ robotID + " is too old.");
+								throw new Error("Status is lost."); //FIXME: does not stop the execution
 							}
 							
 							//lock the current report for writing
