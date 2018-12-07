@@ -210,6 +210,14 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	}
 
 	/**
+	 * Get the known transmission delay.
+	 * @return the known transmission delay (in milliseconds) of this {@link TrajectoryEnvelopeCoordinator}.
+	 */
+	public int getMaxTxDelay() {
+		return this.maxTxDelay;
+	}
+
+	/**
 	 * Set whether the coordinator should try to break deadlocks by attempting to re-plan
 	 * the path of one of the robots involved in an unsafe cycle.
 	 * @param value <code>true</code> if deadlocks should be broken by re-planning.
@@ -434,8 +442,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						int delayTx = 0;
 						//Messages may be delayed or lost only if the tracker is not dummy
 						if (!(tracker instanceof TrajectoryEnvelopeTrackerDummy)) {
-							packetLossProbabilityLocal = packetLossProbability;
-							delayTx = rand.nextInt(maxTxDelay);
+							packetLossProbabilityLocal = NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS; //the real one
+							delayTx = rand.nextInt(NetworkConfiguration.MAXIMUM_TX_DELAY); //the real one
 						}
 						
 						//Sleep for delay in communication
@@ -688,9 +696,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 								//Messages may be delayed or lost only if the tracker is not dummy
 								isDummy = trackers.get(robotID) instanceof TrajectoryEnvelopeTrackerDummy;
 								if (!isDummy) {
-									packetLossProbabilityLocal = packetLossProbability;
-									if (maxTxDelay > 0)
-										timeOfArrival = timeOfArrival + rand.nextInt(maxTxDelay);
+									packetLossProbabilityLocal = NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS; //the real packet loss probability
+									if (NetworkConfiguration.MAXIMUM_TX_DELAY > 0) //the real delay
+										timeOfArrival = timeOfArrival + rand.nextInt(NetworkConfiguration.MAXIMUM_TX_DELAY);
 								}
 								robotPeriod = trackers.get(robotID).getTrackingPeriodInMillis();
 							}
@@ -767,7 +775,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							}
 							
 							//Check if the current status message is too old.
-							if (!isDummy && (timeNow - reportTimeLists.get(reportTimeLists.size()-1) > CONTROL_PERIOD + maxTxDelay)) {
+							if (!isDummy && (timeNow - reportTimeLists.get(reportTimeLists.size()-1) > CONTROL_PERIOD + maxTxDelay)) { //the known delay
 								metaCSPLogger.severe("* ERROR * Status of Robot"+ robotID + " is too old.");
 								throw new Error("Status is lost."); //FIXME: does not stop the execution
 							}
