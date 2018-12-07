@@ -486,6 +486,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 */
 	public RobotReport getRobotReport(int robotID) {
 
+		if (!currentReports.containsKey(robotID)) return null;
 		//Read the last message received
 		synchronized (currentReports.get(robotID)) {
 			return currentReports.get(robotID);

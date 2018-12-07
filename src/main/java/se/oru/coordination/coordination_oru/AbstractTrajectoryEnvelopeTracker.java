@@ -368,7 +368,8 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 						//if (!startedGroundEnvelopes.isEmpty()) printStartedGroundEnvelopes();
 						
 						RobotReport rr = null;
-						while ((rr = getRobotReport()) == null) {
+						//while ((rr = getRobotReport()) == null) {
+						while ((rr = tec.getRobotReport(te.getRobotID())) == null) {
 							metaCSPLogger.info("(waiting for "+te.getComponent()+"'s tracker to come online)");
 							try { Thread.sleep(100); }
 							catch (InterruptedException e) { e.printStackTrace(); }
