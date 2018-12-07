@@ -412,9 +412,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 * @param criticalPoint The index of the path pose beyond which the robot should not navigate.
 	 */
 	public void setCriticalPoint(final int robotID, final int criticalPoint) {
-		
-		final AbstractTrajectoryEnvelopeTracker tracker = trackers.get(robotID); //FIXME: synchronized?
-		
+			
+		final AbstractTrajectoryEnvelopeTracker tracker = trackers.get(robotID);
+	
 		//If the robot is not muted
 		if (tracker != null && !muted.contains(robotID)) {
 			
@@ -425,25 +425,28 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				communicatedCPs.put(tracker, criticalPoint);
 				final int externalCPCounter = externalCPCounters.get(tracker)+1;
 				externalCPCounters.put(tracker,externalCPCounter);
-				
-				int delayTmp = 0;
-				if (this.maxTxDelay > 0 && !(tracker instanceof TrajectoryEnvelopeTrackerDummy))
-						delayTmp = rand.nextInt(this.maxTxDelay);
-				final int delayTX = delayTmp;
-					
+								
 				//Define a thread that will send the information
 				Thread waitToTXThread = new Thread("Wait to TX thread for robot " + robotID) {
 					public void run() {
 						
+						double packetLossProbabilityLocal = 0;
+						int delayTx = 0;
+						//Messages may be delayed or lost only if the tracker is not dummy
+						if (!(tracker instanceof TrajectoryEnvelopeTrackerDummy)) {
+							packetLossProbabilityLocal = packetLossProbability;
+							delayTx = rand.nextInt(maxTxDelay);
+						}
+						
 						//Sleep for delay in communication
-						try { Thread.sleep(delayTX); }
+						try { Thread.sleep(delayTx); }
 						catch (InterruptedException e) { e.printStackTrace(); }
 						
 						//if possible (according to packet loss, send
 						boolean send = false;
 						int trial = 0;
 						while(!send && trial < numberOfReplicas) {
-							if (rand.nextDouble() < (1-packetLossProbability))
+							if (rand.nextDouble() < (1-packetLossProbabilityLocal))
 								send = true;
 							trial++;
 						}
@@ -461,11 +464,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					}
 					//if (!tracker.canStartTracking()) tracker.setCanStartTracking();
 				};
-			//let's start the thread
-			waitToTXThread.start();
-		}
-			
-			
+				//let's start the thread
+				waitToTXThread.start();
+			}	
 		}
 	}
 
@@ -565,7 +566,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	/**
 	 * Place a robot with a given ID in the first {@link Pose} of a given {@link TrajectoryEnvelope}.
 	 * @param robotID The ID of the robot.
-	 * @param parking The {@link TrajectoryEnvelope} in whci the robot is parked.
+	 * @param parking The {@link TrajectoryEnvelope} in which the robot is parked.
 	 */
 	public void placeRobot(final int robotID, TrajectoryEnvelope parking) {
 		this.placeRobot(robotID, null, parking, null);
