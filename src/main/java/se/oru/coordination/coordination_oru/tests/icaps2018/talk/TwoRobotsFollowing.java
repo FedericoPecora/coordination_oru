@@ -51,15 +51,15 @@ public class TwoRobotsFollowing {
 		});
 		tec.setUseInternalCriticalPoints(false);
 		
+		NetworkConfiguration.MAXIMUM_TX_DELAY = 500;
+		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0.1;
+		tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, NetworkConfiguration.MAXIMUM_TX_DELAY, 0.01);
+		
 		Coordinate footprint1 = new Coordinate(-0.5,0.5);
 		Coordinate footprint2 = new Coordinate(-0.5,-0.5);
 		Coordinate footprint3 = new Coordinate(0.7,-0.5);
 		Coordinate footprint4 = new Coordinate(0.7,0.5);
 		tec.setDefaultFootprint(footprint1, footprint2, footprint3, footprint4);
-		
-		NetworkConfiguration.MAXIMUM_TX_DELAY = 500;
-		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0.1;
-		NetworkConfiguration.MAXIMUM_PROBABILITY_OF_FAULTS = 0.01;
 		
 		//You probably also want to provide a non-trivial forward model
 		//(the default assumes that robots can always stop)

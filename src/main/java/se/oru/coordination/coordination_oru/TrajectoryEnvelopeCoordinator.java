@@ -132,6 +132,12 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	
 	protected HashMap<Integer,RobotReport> currentReports = new HashMap<Integer, RobotReport>();
 	
+	//Network knowledge
+	protected double packetLossProbability = 0.0;
+	protected int maxTxDelay = 0;
+	protected double maxFaultsProbability = 0.0;
+	protected int numberOfReplicas = 1;
+	
 	/**
 	 * Utility method to treat internal resources from this library as filenames.
 	 * @param resource The internal resource to be loaded.
@@ -170,6 +176,23 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	public void setQuiet(boolean value) {
 		this.quiet = value;
 	}
+	
+	/**
+	 * Set the network parameters (packet loss probability, max delay and max faults probability).
+	 * Then, compute the number of messages numberOfReplicas required for each send to be effective
+	 * (the probability of receiving a message after numberOfReplicas trials is assumed to have a geometric distribution).
+	 * @param packetLossProbability The probability for a message to be lost.
+	 * @param maxTxDelay The maximum transmission delay.
+	 * @param maxFaultsProbability The maximum admitted probability for an information to be lost.
+	 */
+	public void setNetworkParameters(double packetLossProbability, int maxTxDelay, double maxFaultsProbability) {
+		this.packetLossProbability = packetLossProbability;
+		this.maxTxDelay = maxTxDelay;
+		this.maxFaultsProbability = maxFaultsProbability;	
+		this.numberOfReplicas =  (packetLossProbability > 0 && maxFaultsProbability > 0) ? (int)Math.ceil(Math.log(maxFaultsProbability)/Math.log(packetLossProbability)) : 1;
+		metaCSPLogger.info("Number of replicas for each send: " + numberOfReplicas);
+	}
+	
 	/**
 	 * Set a {@link Callback} that will be called at every cycle.
 	 * @param cb A {@link Callback} that will be called at every cycle.
@@ -390,10 +413,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 */
 	public void setCriticalPoint(final int robotID, final int criticalPoint) {
 		
-		final AbstractTrajectoryEnvelopeTracker tracker = trackers.get(robotID);
-		final int numberOfSends = (NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS > 0 && NetworkConfiguration.MAXIMUM_PROBABILITY_OF_FAULTS > 0) ? (int)Math.ceil(Math.log(NetworkConfiguration.MAXIMUM_PROBABILITY_OF_FAULTS)/Math.log(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS)) : 1;
-		
-		metaCSPLogger.info("Number of send: " + numberOfSends);
+		final AbstractTrajectoryEnvelopeTracker tracker = trackers.get(robotID); //FIXME: synchronized?
 		
 		//If the robot is not muted
 		if (tracker != null && !muted.contains(robotID)) {
@@ -407,8 +427,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				externalCPCounters.put(tracker,externalCPCounter);
 				
 				int delayTmp = 0;
-				if (NetworkConfiguration.MAXIMUM_TX_DELAY > 0 && !(tracker instanceof TrajectoryEnvelopeTrackerDummy))
-						delayTmp = rand.nextInt(NetworkConfiguration.MAXIMUM_TX_DELAY);
+				if (this.maxTxDelay > 0 && !(tracker instanceof TrajectoryEnvelopeTrackerDummy))
+						delayTmp = rand.nextInt(this.maxTxDelay);
 				final int delayTX = delayTmp;
 					
 				//Define a thread that will send the information
@@ -422,8 +442,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						//if possible (according to packet loss, send
 						boolean send = false;
 						int trial = 0;
-						while(!send && trial < numberOfSends) {
-							if (rand.nextDouble() < (1-NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS))
+						while(!send && trial < numberOfReplicas) {
+							if (rand.nextDouble() < (1-packetLossProbability))
 								send = true;
 							trial++;
 						}
@@ -660,33 +680,46 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							
 							timeNow = Calendar.getInstance().getTimeInMillis();
 							long timeOfArrival = timeNow;
+							double packetLossProbabilityLocal = 0;
 							
 							synchronized (trackers.get(robotID)) {
-								if (NetworkConfiguration.MAXIMUM_TX_DELAY > 0 && !(trackers.get(robotID) instanceof TrajectoryEnvelopeTrackerDummy))
-									timeOfArrival = timeOfArrival + rand.nextInt(NetworkConfiguration.MAXIMUM_TX_DELAY);
+								//Messages may be delayed or lost only if the tracker is not dummy
+								if (!(trackers.get(robotID) instanceof TrajectoryEnvelopeTrackerDummy)) {
+									packetLossProbabilityLocal = packetLossProbability;
+									if (maxTxDelay > 0)
+										timeOfArrival = timeOfArrival + rand.nextInt(maxTxDelay);
+								}
 								sleepingTime = trackers.get(robotID).getTrackingPeriodInMillis();
 							}
-																	
-							if (rand.nextDouble() < (1-NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS))
+							
+							//Get the message according to packet loss probability (numberOfReplicas trials)
+							boolean received = (packetLossProbabilityLocal > 0) ? false : true;
+							int trial = 0;
+							while(!received && trial < numberOfReplicas) {
+								if (rand.nextDouble() < (1-packetLossProbabilityLocal))
+									received = true;
+								trial++;
+							}										
+							if (received)
 							{		
 								//Delete older messages that will arrive after this one								
-								int last_before = -1;
+								int index = -1;
 								boolean found = false;
-								while (last_before < reportTimeLists.size()-1 && !found)
+								while (index < reportTimeLists.size()-1 && !found)
 								{
-									last_before++;
+									index++;
 									//find the first earlier time. The list after that index should not be removed
-									if (timeOfArrival > reportTimeLists.get(last_before)) {
+									if (timeOfArrival > reportTimeLists.get(index)) {
 										found = true;
 									}		
 								}
-								if (last_before > 0) {
-									//delete till last_before (excluded)
-									reportsList.subList(0,last_before).clear();
-									reportTimeLists.subList(0,last_before).clear();
+								if (index > 0) {
+									//delete till index (excluded)
+									reportsList.subList(0,index).clear();
+									reportTimeLists.subList(0,index).clear();
 								}
 								//else all the reports will arrive before, so nothing should be removed.
-								//If last_before == currentReportTimes.get(robotID).size()-1, 
+								//If index == currentReportTimes.get(robotID).size()-1, 
 								//then all should be removed because will be replaced by this new information.
 														
 								//Add the message to the list (as first)
@@ -699,32 +732,32 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							//Keep alive just one message related to the present or to the past.						
 							//take the last one (the one with lower arrivalTime). 
 							//If it will arrive after now, then the present and the past is lost (we have just future informations)
-							int last_before = reportTimeLists.size()-1;
-							if (reportTimeLists.get(last_before) > timeNow) {
+							int index = reportTimeLists.size()-1;
+							if (reportTimeLists.get(index) > timeNow) {
 								metaCSPLogger.severe("* ERROR * Unknown status Robot"+robotID);
 								throw new Error("Status lost! Unable to coordinate robots.");
 							}
 							else {
 								//we have almost a status in the present or in the past
-								last_before = reportTimeLists.size();
+								index = reportTimeLists.size();
 								boolean found = false;
-								while (last_before > 0 && !found) {
-									last_before--;
+								while (index > 0 && !found) {
+									index--;
 									//starting from the less recent, find the first that will be in the future.				
-									if (reportTimeLists.get(last_before) > timeNow) {
+									if (reportTimeLists.get(index) > timeNow) {
 										found = true;
 									}
 								}
 								if (found) //not necessary, almost one will be found (otherwise the error has been thrown)
 								{
-									//the last_before is the first in the future
+									//the index is the first in the future
 									//adding one we find the one that should be maintained
-									last_before++;											
-									if (last_before < reportTimeLists.size()-1) {
+									index++;											
+									if (index < reportTimeLists.size()-1) {
 										//adding one again we find the first that should be removed
-										last_before++;
-										reportsList.subList(last_before,reportsList.size()).clear();
-										reportTimeLists.subList(last_before,reportTimeLists.size()).clear();
+										index++;
+										reportsList.subList(index,reportsList.size()).clear();
+										reportTimeLists.subList(index,reportTimeLists.size()).clear();
 									}
 								}
 							}
@@ -1510,7 +1543,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			currentDependencies.clear();
 			for (Integer robotID : robotIDs) {
 				if (!currentDeps.containsKey(robotID)) {
-					metaCSPLogger.info("Robot " + robotID + " can proceed to the end and tracker is of type " + (trackers.get(robotID) instanceof TrajectoryEnvelopeTrackerDummy));
+					//metaCSPLogger.info("Robot " + robotID + " can proceed to the end and tracker is of type " + (trackers.get(robotID) instanceof TrajectoryEnvelopeTrackerDummy));
 					setCriticalPoint(robotID, -1);
 				}
 				else {
@@ -1519,7 +1552,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					Dependency firstDep = currentDeps.get(robotID).first();
 					setCriticalPoint(firstDep.getWaitingTracker().getTrajectoryEnvelope().getRobotID(), firstDep.getWaitingPoint());
 					currentDependencies.add(firstDep);
-					metaCSPLogger.info("Robot " + robotID + " should stop at " + firstDep.getWaitingPoint() + " and tracker is of type " + (trackers.get(robotID) instanceof TrajectoryEnvelopeTrackerDummy));
+					//metaCSPLogger.info("Robot " + robotID + " should stop at " + firstDep.getWaitingPoint() + " and tracker is of type " + (trackers.get(robotID) instanceof TrajectoryEnvelopeTrackerDummy));
 				}
 			}
 			findCycles();
