@@ -142,6 +142,13 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected int numberOfReplicas = 1;
 	
 	/**
+	 * FIXME parameter to be defined in the constructor?
+	 */
+	public void setCheckCollisions(boolean checkCollision) {
+		this.checkCollisions = checkCollision;
+	}
+	
+	/**
 	 * Utility method to treat internal resources from this library as filenames.
 	 * @param resource The internal resource to be loaded.
 	 * @return The absolute path of a temporary file which contains a copy of the resource.
@@ -1616,6 +1623,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 */
 	public void computeCriticalSections() {
 
+		int numberOfCriticalSections = 0;
+		
 		synchronized(allCriticalSections) {
 
 			//Collect all driving envelopes
@@ -1670,7 +1679,35 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			
 			filterCriticalSections();
 			
-			metaCSPLogger.info("There are now " + allCriticalSections.size() + " critical sections");
+			numberOfCriticalSections = allCriticalSections.size();
+			metaCSPLogger.info("There are now " + numberOfCriticalSections + " critical sections");
+		}
+		
+		if ( checkCollisions && (collisionThread == null) && (numberOfCriticalSections > 0)) {
+			// Start the collision checking thread. 
+			// The tread will be alive until there will be almost one critical section.
+			collisionThread = new Thread("Collision checking thread.") {
+				@Override
+				public void run() {
+					metaCSPLogger.info("Starting the collision checking thread.");
+					
+					while(true) {
+						//check if breaking the collision checker
+						synchronized (allCriticalSections) {
+							if(allCriticalSections.isEmpty())
+								break;						
+						}
+					
+						//do things!!
+						
+						try { Thread.sleep(100); }
+						catch (InterruptedException e) { e.printStackTrace(); }
+					}
+					metaCSPLogger.info("Ending the collision checking thread.");
+				}
+					
+			};
+			collisionThread.start();
 		}
 	}
 	
