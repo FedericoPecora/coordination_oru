@@ -21,10 +21,8 @@ public class ConstantAccelerationForwardModel implements ForwardModel {
 	}
 
 	@Override
-	public boolean canStop(TrajectoryEnvelope te, RobotReport currentState, int targetPathIndex) {
-		//ATTENTION: Due to temporal delay we cannot trust the velocity.
-		//The consideration about a robot to be already stop are done externally considering if it is parked.
-		//if (currentState.getVelocity() <= 0.0) return true;
+	public boolean canStop(TrajectoryEnvelope te, RobotReport currentState, int targetPathIndex, boolean useVelocity) {
+		if (useVelocity && currentState.getVelocity() <= 0.0) return true;
 		double distance = se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeTrackerRK4.computeDistance(te.getTrajectory(), (currentState.getPathIndex() != -1 ? currentState.getPathIndex() : 0), targetPathIndex);
 		State state = new State(0.0, currentState.getVelocity());
 		double time = 0.0;
@@ -73,9 +71,7 @@ public class ConstantAccelerationForwardModel implements ForwardModel {
 		State state = new State(currentState.getDistanceTraveled(), currentState.getVelocity());
 		double time = 0.0;
 		double deltaTime = 0.0001;
-		//if (CONTROL_PERIOD != -1) {
 		if (this.lookaheadInMillis > 0) {
-			//while (time*TEMPORAL_RESOLUTION < Math.max(CONTROL_PERIOD*numControlPeriodsFreeRun,TrajectoryEnvelopeCoordinator.EFFECTIVE_CONTROL_PERIOD)) {
 			while (time*temporalResolution < this.lookaheadInMillis) {
 				se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeTrackerRK4.integrateRK4(state, time, deltaTime, false, maxVel, 1.0, maxAccel*1.1);
 				time += deltaTime;

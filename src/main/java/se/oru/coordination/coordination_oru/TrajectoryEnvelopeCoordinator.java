@@ -359,7 +359,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		System.out.println("Returning default FM for " + robotID);
 		return new ForwardModel() {
 			@Override
-			public boolean canStop(TrajectoryEnvelope te, RobotReport currentState, int targetPathIndex) {
+			public boolean canStop(TrajectoryEnvelope te, RobotReport currentState, int targetPathIndex, boolean useVelocity) {
 				return true;
 			}
 			@Override
@@ -1282,7 +1282,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			canStopRobot1 = true;
 		
 		
-		else canStopRobot1 = fm1.canStop(robotTracker1.getTrajectoryEnvelope(), robotReport1, cs.getTe1Start());
+		else
+			//Due to temporal delays we cannot trust the velocity.
+			canStopRobot1 = fm1.canStop(robotTracker1.getTrajectoryEnvelope(), robotReport1, cs.getTe1Start(), false);
 		
 		//@Deprecated
 		//if (robotTracker2.getCriticalPoint() != -1 && robotTracker2.getCriticalPoint() <= cs.getTe2Start()) canStopRobot2 = true;
@@ -1292,7 +1294,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				(communicatedCPs.containsKey(robotTracker2) && communicatedCPs.get(robotTracker2) != -1 && communicatedCPs.get(robotTracker2) <= cs.getTe2Start()) ||
 				!communicatedCPs.containsKey(robotTracker2))
 			canStopRobot2 = true;
-		else canStopRobot2 = fm2.canStop(robotTracker2.getTrajectoryEnvelope(), robotReport2, cs.getTe2Start());
+		else canStopRobot2 = fm2.canStop(robotTracker2.getTrajectoryEnvelope(), robotReport2, cs.getTe2Start(), false);
 
 		if (!canStopRobot1 && !canStopRobot2) {
 			metaCSPLogger.severe("** WARNING ** Neither robot can stop at " + cs);
