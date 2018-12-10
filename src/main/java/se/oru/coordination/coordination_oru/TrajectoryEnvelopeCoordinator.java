@@ -2139,7 +2139,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							trackingCallbacks.get(myTE.getRobotID()).beforeTrackingStart();
 						}
 
-						//canStratTracking becomes true when setCriticalPoint is called once
+						//canStartTracking becomes true when setCriticalPoint is called once
 						while (!trackers.containsKey(myTE.getRobotID()) || !trackers.get(myTE.getRobotID()).canStartTracking()) {
 							try { Thread.sleep(100); }
 							catch (InterruptedException e) { e.printStackTrace(); }							

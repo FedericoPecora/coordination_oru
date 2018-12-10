@@ -88,7 +88,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 	}
 	
 	@Override
-	public void onTrajectoryEnvelopeUpdate(TrajectoryEnvelope te) {
+	protected void onTrajectoryEnvelopeUpdate(TrajectoryEnvelope te) {
 		this.totalDistance = this.computeDistance(0, traj.getPose().length-1);
 		this.overallDistance = totalDistance;
 		this.internalCriticalPoints.clear();

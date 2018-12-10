@@ -79,7 +79,7 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 	 * is updated online.
 	 * @param te The updated {@link TrajectoryEnvelope}.
 	 */
-	public abstract void onTrajectoryEnvelopeUpdate(TrajectoryEnvelope te);
+	protected abstract void onTrajectoryEnvelopeUpdate(TrajectoryEnvelope te);
 	
 	/**
 	 * Update the {@link TrajectoryEnvelope} of this tracker (used for truncating/reversing/re-planning {@link TrajectoryEnvelope}s online).
