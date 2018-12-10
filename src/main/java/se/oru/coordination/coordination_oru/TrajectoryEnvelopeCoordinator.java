@@ -16,7 +16,6 @@ import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
 import javax.swing.SwingUtilities;
@@ -86,8 +85,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 	protected boolean overlay = false;
 	protected boolean quiet = false;
+	protected boolean checkCollisions = false;
 
 	protected TrajectoryEnvelopeSolver solver = null;
+	protected Thread collisionThread = null;
+	
 	//protected JTSDrawingPanel panel = null;
 	protected FleetVisualization viz = null;
 	protected ArrayList<TrajectoryEnvelope> envelopesToTrack = new ArrayList<TrajectoryEnvelope>();
@@ -98,7 +100,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected HashMap<Integer,ArrayList<Integer>> stoppingTimes = new HashMap<Integer,ArrayList<Integer>>();
 	protected HashMap<Integer,Thread> stoppingPointTimers = new HashMap<Integer,Thread>();
 
-	protected ConcurrentHashMap<Integer,AbstractTrajectoryEnvelopeTracker> trackers = new ConcurrentHashMap<Integer, AbstractTrajectoryEnvelopeTracker>();
+	protected HashMap<Integer,AbstractTrajectoryEnvelopeTracker> trackers = new HashMap<Integer, AbstractTrajectoryEnvelopeTracker>();
 	protected HashSet<Dependency> currentDependencies = new HashSet<Dependency>();
 
 	protected Logger metaCSPLogger = MetaCSPLogging.getLogger(TrajectoryEnvelopeCoordinator.class);
@@ -655,14 +657,16 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			};
 
 			currentParkingEnvelopes.add(tracker.getTrajectoryEnvelope());				
-			trackers.put(robotID, tracker);
+
+			synchronized (trackers) {
+				trackers.put(robotID, tracker);
+			}
 			
 			//Start a listener if not yet
 			if (!robotReportListeners.containsKey(robotID)) {
 				
 				//Define a thread for listening robot position
-
-				Thread listener = new Thread("Listener thread for robot " + robotID) {
+				Thread listener = new Thread("Listener thread of Robot" + robotID + ".") {
 					
 					protected ArrayList<RobotReport> reportsList = new ArrayList<RobotReport>();
 					protected ArrayList<Long> reportTimeLists = new ArrayList<Long>();
@@ -674,11 +678,14 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						long timeNow = Calendar.getInstance().getTimeInMillis();
 						
 						//Before starting, sample a report.
-						synchronized (currentReports) {
-							if (!currentReports.containsKey(robotID)) {
-								reportsList.add(0,trackers.get(robotID).getRobotReport());
-								reportTimeLists.add(0,timeNow);
-								currentReports.put(robotID,reportsList.get(0));
+						synchronized (trackers.get(robotID))
+						{
+							synchronized (currentReports) {
+								if (!currentReports.containsKey(robotID)) {
+									reportsList.add(0,trackers.get(robotID).getRobotReport());
+									reportTimeLists.add(0,timeNow);
+									currentReports.put(robotID,reportsList.get(0));
+								}
 							}
 						}
 						
@@ -687,14 +694,35 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							timeNow = Calendar.getInstance().getTimeInMillis();
 							long timeOfArrival = timeNow;
 							double packetLossProbabilityLocal = 0;
-							boolean isDummy = trackers.get(robotID) instanceof TrajectoryEnvelopeTrackerDummy;
-							if (!isDummy) {
-								packetLossProbabilityLocal = NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS; //the real packet loss probability
-								if (NetworkConfiguration.MAXIMUM_TX_DELAY > 0) //the real delay
-									timeOfArrival = timeOfArrival + rand.nextInt(NetworkConfiguration.MAXIMUM_TX_DELAY);
+							boolean isDummy = false;
+							
+							//FIXME The tracker is shared: synchronization is needed every time 
+							//there will be an access to the tracker object
+							try {
+								
+								//Exceptions are possible during transitions between trackers
+								synchronized (trackers.get(robotID)) {
+									//Messages may be delayed or lost only if the tracker is not dummy
+									isDummy = trackers.get(robotID) instanceof TrajectoryEnvelopeTrackerDummy;
+									if (!isDummy) {
+										packetLossProbabilityLocal = NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS; //the real packet loss probability
+										if (NetworkConfiguration.MAXIMUM_TX_DELAY > 0) //the real delay
+											timeOfArrival = timeOfArrival + rand.nextInt(NetworkConfiguration.MAXIMUM_TX_DELAY);
+									}
+									robotPeriod = trackers.get(robotID).getTrackingPeriodInMillis();
+								}
 							}
-							robotPeriod = trackers.get(robotID).getTrackingPeriodInMillis();
-													
+							catch (NullPointerException ex) { 
+								//ex.printStackTrace();
+								metaCSPLogger.info("Listener exception.");
+								
+								//Sleep a little to allow the tracker to be updated. Retry the next cycle.
+								try { Thread.sleep(100); }
+								catch (InterruptedException e) { e.printStackTrace(); }
+								continue;								
+							}
+							
+							
 							//Get the message according to packet loss probability (numberOfReplicas trials)
 							boolean received = (packetLossProbabilityLocal > 0) ? false : true;
 							int trial = 0;
@@ -727,8 +755,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 								//then all should be removed because will be replaced by this new information.
 														
 								//Add the message to the list (as first)
-								reportsList.add(0, trackers.get(robotID).getRobotReport());
-								reportTimeLists.add(0, timeOfArrival);
+								synchronized (trackers.get(robotID)) {
+									reportsList.add(0, trackers.get(robotID).getRobotReport());
+									reportTimeLists.add(0, timeOfArrival);
+								}
 							}
 							
 							//Keep alive just one message related to the present or to the past.						
@@ -737,7 +767,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							int index = reportTimeLists.size()-1;
 							if (reportTimeLists.get(index) > timeNow) {
 								metaCSPLogger.severe("* ERROR * Unknown status Robot"+robotID);
-								throw new Error("Status lost! Unable to coordinate robots."); //FIXME: does not stop the execution
+								//FIXME add a function for stopping pausing the fleet and eventually restart
 							}
 							else {
 								//we have almost a status in the present or in the past
@@ -767,7 +797,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							//Check if the current status message is too old.
 							if (!isDummy && (NetworkConfiguration.MAXIMUM_TX_DELAY > 0) && (timeNow - reportTimeLists.get(reportTimeLists.size()-1) > CONTROL_PERIOD + maxTxDelay)) { //the known delay
 								metaCSPLogger.severe("* ERROR * Status of Robot"+ robotID + " is too old.");
-								throw new Error("Status is lost."); //FIXME: does not stop the execution
+								//FIXME add a function for stopping pausing the fleet and eventually restart
 							}
 							
 							//lock the current report for writing
@@ -2238,10 +2268,13 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 				};
 
-				externalCPCounters.remove(trackers.get(te.getRobotID()));
-				//Make a new tracker for the driving trajectory envelope
-				AbstractTrajectoryEnvelopeTracker tracker = getNewTracker(te, cb);
-				trackers.put(te.getRobotID(), tracker);
+				synchronized (trackers) {
+					externalCPCounters.remove(trackers.get(te.getRobotID()));
+					trackers.remove(te.getRobotID());
+					//Make a new tracker for the driving trajectory envelope
+					AbstractTrajectoryEnvelopeTracker tracker = getNewTracker(te, cb);
+					trackers.put(te.getRobotID(), tracker);
+				}
 
 				//Now we can signal the parking that it can end (i.e., its deadline will no longer be prolonged)
 				//Note: the parking tracker will anyway wait to exit until earliest end time has been reached
@@ -2394,6 +2427,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	}
 
 	protected String[] getStatistics() {
+		synchronized (trackers) {
 			String CONNECTOR_BRANCH = (char)0x251C + "" + (char)0x2500 + " ";
 			String CONNECTOR_LEAF = (char)0x2514 + "" + (char)0x2500 + " ";
 			ArrayList<String> ret = new ArrayList<String>();
@@ -2420,6 +2454,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			ret.add(st);
 			ret.add(CONNECTOR_LEAF + "Dependencies ... " + currentDependencies);
 			return ret.toArray(new String[ret.size()]);
+		}
 	}
 
 	protected void overlayStatistics() {
