@@ -1551,8 +1551,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 								}
 								
 								if (
-								(robotReport1.getPathIndex() < cs.getTe1End()) && (robotReport1.getPathIndex() < cs.getTe1End()) && //robot1 is inside
-								(robotReport2.getPathIndex() < cs.getTe2End()) && (robotReport2.getPathIndex() < cs.getTe2End())  	//robot2 is inside
+								(robotReport1.getPathIndex() < cs.getTe1End()) && (robotReport1.getPathIndex() > cs.getTe1Start()) && //robot1 is inside
+								(robotReport2.getPathIndex() < cs.getTe2End()) && (robotReport2.getPathIndex() > cs.getTe2Start())  	//robot2 is inside
 								) {
 									//place robot  in pose and get geometry
 									PoseSteering[] path1 = cs.getTe1().getTrajectory().getPoseSteering();
