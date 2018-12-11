@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Map.Entry;
 import java.util.Random;
 import java.util.TreeMap;
 
@@ -29,6 +28,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 	protected double positionToSlowDown = -1.0;
 	protected double elapsedTrackingTime = 0.0;
 	private Thread th = null;
+	private Thread listener = null;
 	protected State state = null;
 	protected double[] curvatureDampening = null;
 	private ArrayList<Integer> internalCriticalPoints = new ArrayList<Integer>();
@@ -104,7 +104,14 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 		if (useInternalCPs) this.startInternalCPThread();	
 		this.startListeningThread();
 	}
+	
+	@Override
+	protected void finishTracking() {
+		if (listener != null)
+			listener.interrupt();
+		metaCSPLogger.info("<<<< Finished (super envelope) " + this.te);
 		
+	}
 
 	public static double computeDistance(Trajectory traj, int startIndex, int endIndex) {
 		double ret = 0.0;
@@ -119,13 +126,32 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 	}
 	
 	private void startListeningThread() {
-			Thread t = new Thread("Listener thread of Robot" + te.getRobotID() + ".") {
+		
+			if (listener != null) 
+				return;
 			
+			listener = new Thread("Listener thread of Robot" + te.getRobotID() + ".") {
+			
+			protected boolean isShutdown = true;
+			protected boolean shutdown = false;
 			protected ArrayList<RobotReport> reportsList = new ArrayList<RobotReport>();
 			protected ArrayList<Long> reportTimeLists = new ArrayList<Long>();
+			
+			@Override
+			public void interrupt() {
+				shutdown = true;
+				while (!isShutdown) {
+					try {Thread.sleep(100);}
+					catch (Exception e) {};
+				}
+				metaCSPLogger.info("Shutdown listener Robot" + te.getRobotID()+".");
+				listener = null;
+			}
 					
 			@Override
 			public void run() {
+				
+				isShutdown = false;
 
 				long timeNow = Calendar.getInstance().getTimeInMillis();
 				final int numberOfReplicasReceiving = Math.max(1, (int)Math.ceil(tec.getNumberOfReplicas()*(double)trackingPeriodInMillis/tec.getControlPeriod()));
@@ -135,7 +161,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 				reportTimeLists.add(0, timeNow);
 				tec.updateCurrentReport(te.getRobotID(),reportsList.get(0));
 
-				while (true) {				
+				while (!shutdown) {				
 					timeNow = Calendar.getInstance().getTimeInMillis();
 					long timeOfArrival = timeNow;
 					if (NetworkConfiguration.MAXIMUM_TX_DELAY > 0) //the real delay
@@ -223,9 +249,10 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 					catch (InterruptedException e) { e.printStackTrace(); }
 					
 				}
+				isShutdown = true;
 			}
 		};
-		t.start();
+		listener.start();
 	}
 
 	private void startInternalCPThread() {
