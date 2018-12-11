@@ -16,6 +16,7 @@ import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
 import javax.swing.SwingUtilities;
@@ -38,6 +39,7 @@ import org.metacsp.utility.PermutationsWithRepetition;
 import org.metacsp.utility.UI.Callback;
 import org.metacsp.utility.logging.MetaCSPLogging;
 
+import com.google.common.util.concurrent.AtomicDouble;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
@@ -84,6 +86,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected boolean overlay = false;
 	protected boolean quiet = false;
 	protected boolean checkCollisions = false;
+	protected AtomicDouble totalCollisionTimeInSec = new AtomicDouble(0);
+	protected AtomicInteger numberOfCollisions = new AtomicInteger(0);
 
 	protected TrajectoryEnvelopeSolver solver = null;
 	protected Thread collisionThread = null;
@@ -1507,24 +1511,75 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			metaCSPLogger.info("There are now " + numberOfCriticalSections + " critical sections");
 		}
 		
-		if ( checkCollisions && (collisionThread == null) && (numberOfCriticalSections > 0)) {
+		if (checkCollisions && (collisionThread == null) && (numberOfCriticalSections > 0)) {
 			// Start the collision checking thread. 
 			// The tread will be alive until there will be almost one critical section.
 			collisionThread = new Thread("Collision checking thread.") {
+				
+				private ArrayList<CriticalSection> previousCollidingCriticalSections = new ArrayList<CriticalSection>();
+				private ArrayList<CriticalSection> newCollidingCriticalSections = new ArrayList<CriticalSection>();
+				private final int checkingPeriodinMillis = 100;
+				
 				@Override
 				public void run() {
 					metaCSPLogger.info("Starting the collision checking thread.");
 					
 					while(true) {
-						//check if breaking the collision checker
-						synchronized (allCriticalSections) {
-							if(allCriticalSections.isEmpty())
-								break;						
-						}
-					
-						//do things!!
 						
-						try { Thread.sleep(100); }
+						newCollidingCriticalSections.clear();
+						
+						//collisions can happen only in critical sections
+						
+						synchronized (allCriticalSections) {
+							if (allCriticalSections.isEmpty())
+								break; //break the thread if there are no critical sections to control
+							
+							//if there is almost a critical section alive, check collision
+							for (CriticalSection cs : allCriticalSections) {
+								//check if both the robots are inside the critical section
+								
+								//FIXME sample the real pose of the robots (ok in simulation, but not otherwise)
+								RobotReport robotReport1, robotReport2;
+								try {
+									synchronized (trackers)	{
+										robotReport1 = trackers.get(cs.getTe1().getRobotID()).getRobotReport();
+										robotReport2 = trackers.get(cs.getTe2().getRobotID()).getRobotReport();
+									}
+								}
+								catch (NullPointerException e) {
+									continue; //skip this cycle
+								}
+								
+								if (
+								(robotReport1.getPathIndex() < cs.getTe1End()) && (robotReport1.getPathIndex() < cs.getTe1End()) && //robot1 is inside
+								(robotReport2.getPathIndex() < cs.getTe2End()) && (robotReport2.getPathIndex() < cs.getTe2End())  	//robot2 is inside
+								) {
+									//place robot  in pose and get geometry
+									PoseSteering[] path1 = cs.getTe1().getTrajectory().getPoseSteering();
+									Geometry placement1 = cs.getTe1().makeFootprint(path1[robotReport1.getPathIndex()]);
+									
+									PoseSteering[] path2 = cs.getTe2().getTrajectory().getPoseSteering();
+									Geometry placement2 = cs.getTe2().makeFootprint(path2[robotReport2.getPathIndex()]);
+									
+									//check intersection
+									if (placement1.intersects(placement2)) {
+										//if yes, increment the timer and eventually the counter
+										metaCSPLogger.info("intersect!!");
+										double prevTime = totalCollisionTimeInSec.get();
+										totalCollisionTimeInSec.set(prevTime + .001*checkingPeriodinMillis);
+										if (!previousCollidingCriticalSections.isEmpty() && !previousCollidingCriticalSections.contains(cs)) {
+											int prevNumb = numberOfCollisions.get();
+											numberOfCollisions.set(prevNumb+1);
+											newCollidingCriticalSections.add(cs);
+										}											
+									}
+								}
+							}
+							previousCollidingCriticalSections.clear();
+							previousCollidingCriticalSections.addAll(newCollidingCriticalSections);
+						}
+						
+						try { Thread.sleep(checkingPeriodinMillis); }
 						catch (InterruptedException e) { e.printStackTrace(); }
 					}
 					metaCSPLogger.info("Ending the collision checking thread.");
@@ -2313,7 +2368,12 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				st += ": " + currentPP + "   ";
 			}
 			ret.add(st);
-			ret.add(CONNECTOR_LEAF + "Dependencies ... " + currentDependencies);
+			if (checkCollisions) {
+				ret.add(CONNECTOR_BRANCH + "Dependencies ... " + currentDependencies);
+				ret.add(CONNECTOR_LEAF + "Collisions ..... Number: " + numberOfCollisions.get() + ", Time: " + totalCollisionTimeInSec.get() + " (sec)");
+			}
+			else
+				ret.add(CONNECTOR_LEAF + "Dependencies ... " + currentDependencies);
 			return ret.toArray(new String[ret.size()]);
 		}
 	}
