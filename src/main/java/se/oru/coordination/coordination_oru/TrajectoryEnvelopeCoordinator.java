@@ -106,7 +106,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected Logger metaCSPLogger = MetaCSPLogging.getLogger(TrajectoryEnvelopeCoordinator.class);
 	protected String logDirName = null;
 
-	protected HashMap<Integer, Thread> robotReportListeners = new HashMap<Integer, Thread>();
 	protected HashMap<AbstractTrajectoryEnvelopeTracker,Integer> communicatedCPs = new HashMap<AbstractTrajectoryEnvelopeTracker, Integer>();
 	protected HashMap<AbstractTrajectoryEnvelopeTracker,Integer> externalCPCounters = new HashMap<AbstractTrajectoryEnvelopeTracker, Integer>();
 
@@ -147,6 +146,29 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	public void setCheckCollisions(boolean checkCollision) {
 		this.checkCollisions = checkCollision;
 	}
+	
+	/**
+	 * Method used by trackers to update the current robot report.
+	 */
+	public void updateCurrentReport(int robotID, RobotReport report) {
+		
+		synchronized (currentReports) {
+			if (!currentReports.containsKey(robotID))
+				currentReports.put(robotID, report);
+			else
+				currentReports.replace(robotID, report);
+		}
+		
+	}
+	
+	/**
+	 * Returning the number of messages required by each send to be effective
+	 * (i.e. the probability of unsuccessful delivery will be lower than the threshold maxFaultsProbability)
+	 */
+	public int getNumberOfReplicas() {
+		return numberOfReplicas;
+	}
+	
 	
 	/**
 	 * Utility method to treat internal resources from this library as filenames.
@@ -441,51 +463,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			
 			if (!communicatedCPs.containsKey(tracker) || !communicatedCPs.get(tracker).equals(criticalPoint) ) {
 				communicatedCPs.put(tracker, criticalPoint);
-				final int externalCPCounter = externalCPCounters.get(tracker)+1;
-				externalCPCounters.put(tracker,externalCPCounter);
-								
-				//Define a thread that will send the information
-				Thread waitToTXThread = new Thread("Wait to TX thread for robot " + robotID) {
-					public void run() {
-						
-						double packetLossProbabilityLocal = 0;
-						int delayTx = 0;
-						//Messages may be delayed or lost only if the tracker is not dummy
-						if (!(tracker instanceof TrajectoryEnvelopeTrackerDummy)) {
-							packetLossProbabilityLocal = NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS; //the real one
-							if (NetworkConfiguration.MAXIMUM_TX_DELAY > 0)
-								delayTx = rand.nextInt(NetworkConfiguration.MAXIMUM_TX_DELAY); //the real one
-						}
-						
-						//Sleep for delay in communication
-						try { Thread.sleep(delayTx); }
-						catch (InterruptedException e) { e.printStackTrace(); }
-						
-						//if possible (according to packet loss, send
-						boolean send = false;
-						int trial = 0;
-						while(!send && trial < numberOfReplicas) {
-							if (rand.nextDouble() < (1-packetLossProbabilityLocal))
-								send = true;
-							trial++;
-						}
-						if (send) {
-							metaCSPLogger.info("PACKET to Robot" + robotID + " SENT, criticalPoint: " + communicatedCPs.get(tracker) + ", externalCPCounter: " + externalCPCounters.get(tracker));
-							tracker.setCriticalPoint(criticalPoint, externalCPCounter%Integer.MAX_VALUE);
-							if (!tracker.canStartTracking()) {
-								tracker.setCanStartTracking();
-								//metaCSPLogger.info("Can start tracking " + robotID + " with critical point real: " + tracker.criticalPoint + ", commanded: "+ communicatedCPs.get(tracker));
-							}
-						}
-						else {
-							metaCSPLogger.info("PACKET to Robot" + robotID + " LOST, criticalPoint: " + communicatedCPs.get(tracker) + ", externalCPCounter: " + externalCPCounters.get(tracker));
-						}
-					}
-					//if (!tracker.canStartTracking()) tracker.setCanStartTracking();
-				};
-				//let's start the thread
-				waitToTXThread.start();
-			}	
+				externalCPCounters.replace(tracker,externalCPCounters.get(tracker)+1);
+				tracker.setCriticalPoint(criticalPoint, externalCPCounters.get(tracker)%Integer.MAX_VALUE);
+			}
 		}
 	}
 
@@ -667,161 +647,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 			synchronized (trackers) {
 				trackers.put(robotID, tracker);
-			}
-			
-			//Start a listener if not yet
-			if (!robotReportListeners.containsKey(robotID)) {
-				
-				//Define a thread for listening robot position
-				Thread listener = new Thread("Listener thread of Robot" + robotID + ".") {
-					
-					protected ArrayList<RobotReport> reportsList = new ArrayList<RobotReport>();
-					protected ArrayList<Long> reportTimeLists = new ArrayList<Long>();
-							
-					@Override
-					public void run() {
-						
-						int robotPeriod;
-						long timeNow = Calendar.getInstance().getTimeInMillis();
-						
-						//Before starting, sample a report.
-						synchronized (trackers.get(robotID))
-						{
-							synchronized (currentReports) {
-								if (!currentReports.containsKey(robotID)) {
-									reportsList.add(0,trackers.get(robotID).getRobotReport());
-									reportTimeLists.add(0,timeNow);
-									currentReports.put(robotID,reportsList.get(0));
-								}
-							}
-						}
-						
-						while (true) {
-							
-							timeNow = Calendar.getInstance().getTimeInMillis();
-							long timeOfArrival = timeNow;
-							double packetLossProbabilityLocal = 0;
-							boolean isDummy = false;
-							
-							//FIXME The tracker is shared: synchronization is needed every time 
-							//there will be an access to the tracker object
-							try {
-								
-								//Exceptions are possible during transitions between trackers
-								synchronized (trackers.get(robotID)) {
-									//Messages may be delayed or lost only if the tracker is not dummy
-									isDummy = trackers.get(robotID) instanceof TrajectoryEnvelopeTrackerDummy;
-									if (!isDummy) {
-										packetLossProbabilityLocal = NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS; //the real packet loss probability
-										if (NetworkConfiguration.MAXIMUM_TX_DELAY > 0) //the real delay
-											timeOfArrival = timeOfArrival + rand.nextInt(NetworkConfiguration.MAXIMUM_TX_DELAY);
-									}
-									robotPeriod = trackers.get(robotID).getTrackingPeriodInMillis();
-								}
-							}
-							catch (NullPointerException ex) { 
-								//ex.printStackTrace();
-								metaCSPLogger.info("Listener exception.");
-								
-								//Sleep a little to allow the tracker to be updated. Retry the next cycle.
-								try { Thread.sleep(100); }
-								catch (InterruptedException e) { e.printStackTrace(); }
-								continue;								
-							}
-							
-							
-							//Get the message according to packet loss probability (numberOfReplicas trials)
-							boolean received = (packetLossProbabilityLocal > 0) ? false : true;
-							int trial = 0;
-							int numberOfReplicasReceiving = Math.max(1, (int)Math.ceil(numberOfReplicas*(double)robotPeriod/CONTROL_PERIOD));
-							while(!received && trial < numberOfReplicasReceiving) {
-								if (rand.nextDouble() < (1-packetLossProbabilityLocal))
-									received = true;
-								trial++;
-							}
-							if (received)
-							{		
-								//Delete older messages that will arrive after this one								
-								int index = -1;
-								boolean found = false;
-								while (index < reportTimeLists.size()-1 && !found)
-								{
-									index++;
-									//find the first earlier time. The list after that index should not be removed
-									if (timeOfArrival > reportTimeLists.get(index)) {
-										found = true;
-									}		
-								}
-								if (index > 0) {
-									//delete till index (excluded)
-									reportsList.subList(0,index).clear();
-									reportTimeLists.subList(0,index).clear();
-								}
-								//else all the reports will arrive before, so nothing should be removed.
-								//If index == currentReportTimes.get(robotID).size()-1, 
-								//then all should be removed because will be replaced by this new information.
-														
-								//Add the message to the list (as first)
-								synchronized (trackers.get(robotID)) {
-									reportsList.add(0, trackers.get(robotID).getRobotReport());
-									reportTimeLists.add(0, timeOfArrival);
-								}
-							}
-							
-							//Keep alive just one message related to the present or to the past.						
-							//Take the last one (the one with lower arrivalTime); if it will arrive after now,
-							//then the present and the past is lost (we have just future informations).
-							int index = reportTimeLists.size()-1;
-							if (reportTimeLists.get(index) > timeNow) {
-								metaCSPLogger.severe("* ERROR * Unknown status Robot"+robotID);
-								//FIXME add a function for stopping pausing the fleet and eventually restart
-							}
-							else {
-								//we have almost a status in the present or in the past
-								index = reportTimeLists.size();
-								boolean found = false;
-								while (index > 0 && !found) {
-									index--;
-									//starting from the less recent, find the first that will be in the future.				
-									if (reportTimeLists.get(index) > timeNow) {
-										found = true;
-									}
-								}
-								if (found) //almost one will be found (otherwise the error has been thrown)
-								{
-									//the index is the first in the future
-									//adding one we find the one that should be maintained
-									index++;											
-									if (index < reportTimeLists.size()-1) {
-										//adding one again we find the first that should be removed
-										index++;
-										reportsList.subList(index,reportsList.size()).clear();
-										reportTimeLists.subList(index,reportTimeLists.size()).clear();
-									}
-								}
-							}
-							
-							//Check if the current status message is too old.
-							if (!isDummy && (NetworkConfiguration.MAXIMUM_TX_DELAY > 0) && (timeNow - reportTimeLists.get(reportTimeLists.size()-1) > CONTROL_PERIOD + maxTxDelay)) { //the known delay
-								metaCSPLogger.severe("* ERROR * Status of Robot"+ robotID + " is too old.");
-								//FIXME add a function for stopping pausing the fleet and eventually restart
-							}
-							
-							//lock the current report for writing
-							synchronized (currentReports.get(robotID)) {	
-								currentReports.put(robotID, reportsList.get(reportsList.size()-1));
-							}
-							
-							//Sleep for the residual part of the robot period
-							try { Thread.sleep(robotPeriod-Calendar.getInstance().getTimeInMillis()+timeNow); }
-							catch (InterruptedException e) { e.printStackTrace(); }
-							
-						}
-					}
-				};
-				listener.start();
-				robotReportListeners.put(robotID, listener);
-			}
+			}			
 		}
 			
 	}
