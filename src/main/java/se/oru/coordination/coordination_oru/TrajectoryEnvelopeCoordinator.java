@@ -56,8 +56,6 @@ import se.oru.coordination.coordination_oru.util.Pair;
  *
  */
 public abstract class TrajectoryEnvelopeCoordinator {
-
-	private Random rand = new Random(Calendar.getInstance().getTimeInMillis()); 
 	
 	public static String TITLE = "coordination_oru - Online coordination for multiple robots";
 	public static String COPYRIGHT = "Copyright \u00a9 2017-2018 Federico Pecora";
