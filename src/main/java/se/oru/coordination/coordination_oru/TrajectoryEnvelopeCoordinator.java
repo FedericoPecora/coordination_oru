@@ -478,9 +478,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 */
 	public RobotReport getRobotReport(int robotID) {
 
-		if (!currentReports.containsKey(robotID)) return null;
 		//Read the last message received
-		synchronized (currentReports.get(robotID)) {
+		synchronized (currentReports) {
+			if (!currentReports.containsKey(robotID)) return null;
 			return currentReports.get(robotID);
 		}
 		
@@ -2357,10 +2357,21 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			for (Integer robotID : trackers.keySet()) {
 				allRobots.add(robotID);
 			}
-			String st = CONNECTOR_BRANCH + "Robots ......... ";
+			String st = CONNECTOR_BRANCH + "Robots really .. ";
 			for (Integer robotID : allRobots) {
 				AbstractTrajectoryEnvelopeTracker tracker = trackers.get(robotID);
 				RobotReport rr = tracker.getRobotReport(); 
+				int currentPP = rr.getPathIndex();
+				st += tracker.te.getComponent();
+				if (tracker instanceof TrajectoryEnvelopeTrackerDummy) st += " (P)";
+				else st += " (D)";
+				st += ": " + currentPP + "   ";
+			}
+			ret.add(st);
+			st = CONNECTOR_BRANCH + "Robots view .... ";
+			for (Integer robotID : allRobots) {
+				AbstractTrajectoryEnvelopeTracker tracker = trackers.get(robotID);
+				RobotReport rr = getRobotReport(robotID); 
 				int currentPP = rr.getPathIndex();
 				st += tracker.te.getComponent();
 				if (tracker instanceof TrajectoryEnvelopeTrackerDummy) st += " (P)";
