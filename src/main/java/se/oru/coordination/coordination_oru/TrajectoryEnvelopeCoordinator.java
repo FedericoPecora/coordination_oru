@@ -77,7 +77,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected static final int DEFAULT_STOPPING_TIME = 5000;
 	protected int CONTROL_PERIOD;
 	protected double TEMPORAL_RESOLUTION;
-
 	public static int EFFECTIVE_CONTROL_PERIOD = 0;
 
 	protected boolean overlay = false;
@@ -1517,8 +1516,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				@Override
 				public void run() {
 					metaCSPLogger.info("Starting the collision checking thread.");
+					ArrayList<CriticalSection> previousCollidingCS = new ArrayList<CriticalSection>();
+					ArrayList<CriticalSection> newCollidingCS = new ArrayList<CriticalSection>();
 					
 					while(true) {
+						newCollidingCS.clear();
 						
 						//collisions can happen only in critical sections						
 						synchronized (allCriticalSections) {
@@ -1556,16 +1558,21 @@ public abstract class TrajectoryEnvelopeCoordinator {
 									
 									//check intersection
 									if (placement1.intersects(placement2)) {
-										//if yes, add the collision event to the list (to be filtered a posteriori).
-										metaCSPLogger.info(" * COLLISION *");
-										CollisionEvent ce = new CollisionEvent(Calendar.getInstance().getTimeInMillis(),robotReport1,robotReport2);
-										synchronized (collisionsList) {
-											collisionsList.add(ce);
-										}										
+										if (!previousCollidingCS.contains(cs)) {
+											metaCSPLogger.info(" * NEW COLLISION *");
+											CollisionEvent ce = new CollisionEvent(Calendar.getInstance().getTimeInMillis(),robotReport1,robotReport2);
+											synchronized (collisionsList) {
+												collisionsList.add(ce);
+											}		
+											newCollidingCS.add(cs);
+										}
 									}
+									else if (previousCollidingCS.contains(cs))
+										previousCollidingCS.remove(cs); //remove the ones that are not colliding anymore
 								}
 							}
 						}
+						previousCollidingCS.addAll(newCollidingCS);
 						
 						try { Thread.sleep(checkingPeriodinMillis); }
 						catch (InterruptedException e) { e.printStackTrace(); }
@@ -2376,7 +2383,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						ret.add(CONNECTOR_BRANCH + "Number of collisions ... " + numberOfCollisions + ".");
 						for (int i = 0; i < numberOfCollisions; i++) {
 							String connector = (i == (numberOfCollisions-1)) ? CONNECTOR_LEAF : CONNECTOR_BRANCH;
-							ret.add(connector + " ....................... " + collisionsList.get(i).toString()+"\n");
+							ret.add(connector + " ....................... " + collisionsList.get(i).toString());
 						}
 					}
 					else
