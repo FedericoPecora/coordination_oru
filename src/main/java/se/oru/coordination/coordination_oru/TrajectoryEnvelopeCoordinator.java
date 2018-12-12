@@ -2382,8 +2382,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					if (numberOfCollisions>0) {
 						ret.add(CONNECTOR_BRANCH + "Number of collisions ... " + numberOfCollisions + ".");
 						for (int i = 0; i < numberOfCollisions; i++) {
-							String connector = (i == (numberOfCollisions-1)) ? CONNECTOR_LEAF : CONNECTOR_BRANCH;
-							ret.add(connector + " ....................... " + collisionsList.get(i).toString());
+							String connector = (i == (numberOfCollisions-1)) ? CONNECTOR_BRANCH : CONNECTOR_LEAF;
+							ret.add(connector + " ....................... " + collisionsList.get(i).toString()+"\n");
 						}
 					}
 					else
