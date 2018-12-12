@@ -176,34 +176,26 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 						trial++;
 					}
 					if (received) {		
-						//Delete older messages that will arrive after this one			
+						//Delete old messages that, due to the communication delay, will arrive after this one.			
 						ArrayList<Long> reportTimeListsTmp = reportTimeLists; 
-						//metaCSPLogger.info("Time: " + timeNow + ", arrival: " + timeOfArrival + ".");
-						//metaCSPLogger.info("List:      " + reportTimeLists);
 						for (int index = 0; index < reportTimeLists.size(); index++)
 						{
 							if (reportTimeListsTmp.get(index) < timeOfArrival) break;
-							//find the first earlier time. The list after that index should not be removed
 							if (reportTimeListsTmp.get(index) >= timeOfArrival) {
 								reportsList.remove(index);
 								reportTimeLists.remove(index);
 							}	
 						}
-						//metaCSPLogger.info("Cleared 1: " + reportTimeLists);
 						reportsList.add(0, getRobotReport());
 						reportTimeLists.add(0, timeOfArrival);
-						//metaCSPLogger.info("Add:       " + reportTimeLists);
 					}
 					
-					//Keep alive just one message related to the present or to the past.						
-					//Take the last one (the one with lower arrivalTime); if it will arrive after now,
-					//then the present and the past is lost (we have just future informations).
+					//Keep alive just the most recent message before now.
 					if (reportTimeLists.get(reportTimeLists.size()-1) > timeNow) {
 						metaCSPLogger.severe("* ERROR * Unknown status Robot"+te.getRobotID());
 						//FIXME add a function for stopping pausing the fleet and eventually restart
 					}
 					else {
-						//we have almost a status in the present or in the past
 						ArrayList<Long> reportTimeListsTmp = reportTimeLists; 
 						for (int index = reportTimeListsTmp.size()-1; index > 0; index--)
 						{
@@ -213,8 +205,13 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 								reportTimeLists.remove(index);
 							}
 						}
-						//metaCSPLogger.info("Cleared 2: " + reportTimeLists);
 					}
+					
+					//Check if the current status message is too old.
+					if (timeNow - reportTimeLists.get(reportTimeLists.size()-1) > tec.getControlPeriod() + tec.getMaxTxDelay()) { //the known delay
+						metaCSPLogger.severe("* ERROR * Status of Robot"+ te.getRobotID() + " is too old.");
+						//FIXME add a function for stopping pausing the fleet and eventually restart
+ 					}
 					
 					//Update the current
 					tec.updateCurrentReport(te.getRobotID(), reportsList.get(reportsList.size()-1));
