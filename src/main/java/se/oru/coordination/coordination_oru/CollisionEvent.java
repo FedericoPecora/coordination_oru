@@ -35,7 +35,7 @@ public class CollisionEvent {
 	 * Get an informative string related to the collision event.
 	 * @return The critical section where the collision happens.
 	 */
-	public String print() {
+	public String toString() {
 		return "Robots: [" + this.reports[0].getRobotID() +"," + this.reports[1].getRobotID()+"], time: "+ this.time + ".";
 	};
 }

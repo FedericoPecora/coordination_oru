@@ -16,7 +16,6 @@ import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
 import javax.swing.SwingUtilities;
@@ -39,7 +38,6 @@ import org.metacsp.utility.PermutationsWithRepetition;
 import org.metacsp.utility.UI.Callback;
 import org.metacsp.utility.logging.MetaCSPLogging;
 
-import com.google.common.util.concurrent.AtomicDouble;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
@@ -47,7 +45,6 @@ import com.vividsolutions.jts.geom.util.AffineTransformation;
 
 import se.oru.coordination.coordination_oru.util.FleetVisualization;
 import se.oru.coordination.coordination_oru.util.StringUtils;
-import se.oru.coordination.coordination_oru.util.Pair;
 
 /**
  * This class provides coordination for a fleet of robots. An instantiatable {@link TrajectoryEnvelopeCoordinator}
@@ -2374,9 +2371,18 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				ret.add(CONNECTOR_BRANCH + "Dependencies ... " + currentDependencies);
 				int numberOfCollisions = 0;
 				synchronized (collisionsList) {
-					numberOfCollisions = collisionsList.size();					
+					numberOfCollisions = collisionsList.size();		
+					if (numberOfCollisions>0) {
+						ret.add(CONNECTOR_BRANCH + "Number of collisions ... " + numberOfCollisions + ".");
+						for (int i = 0; i < numberOfCollisions; i++) {
+							String connector = (i == (numberOfCollisions-1)) ? CONNECTOR_LEAF : CONNECTOR_BRANCH;
+							ret.add(connector + " ....................... " + collisionsList.get(i).toString()+"\n");
+						}
+					}
+					else
+						ret.add(CONNECTOR_LEAF + "Number of collisions ... " + numberOfCollisions + ".");
 				}
-				ret.add(CONNECTOR_LEAF + "Number of collisions ... " + numberOfCollisions + ".");
+				
 			}
 			else
 				ret.add(CONNECTOR_LEAF + "Dependencies ... " + currentDependencies);
