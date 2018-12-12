@@ -1386,7 +1386,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 					//Compute waiting path index point for waiting robot
 					int waitingPoint = getCriticalPoint(waitingRobotID, cs, drivingCurrentIndex);
-					metaCSPLogger.info("Waiting point Robot" + waitingRobotID + ": " + waitingPoint);
+					//metaCSPLogger.info("Waiting point Robot" + waitingRobotID + ": " + waitingPoint);
 					if (waitingPoint >= 0) {		
 						//Make new dependency
 						int drivingCSEnd = -1;
@@ -1395,7 +1395,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd, waitingTracker, drivingTracker);
 						if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
 						currentDeps.get(waitingRobotID).add(dep);
-						metaCSPLogger.info("New dependancy: waiting Robot" + dep.getWaitingRobotID() + " at " + dep.getWaitingPoint() + " till Robot" + dep.getDrivingRobotID() + " will be at " + dep.getReleasingPoint());
+						//metaCSPLogger.info("New dependancy: waiting Robot" + dep.getWaitingRobotID() + " at " + dep.getWaitingPoint() + " till Robot" + dep.getDrivingRobotID() + " will be at " + dep.getReleasingPoint());
 						criticalSectionsToDeps.put(cs, dep);
 					}
 					else {
