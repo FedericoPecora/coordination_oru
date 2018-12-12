@@ -1444,28 +1444,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		this.comparators.addComparator(c);
 	}
 	
-	protected boolean checkIntersection(AbstractTrajectoryEnvelopeTracker tracker1, AbstractTrajectoryEnvelopeTracker tracker2, CriticalSection cs)	{
-		
-		RobotReport robotReport1 = tracker1.getRobotReport();
-		RobotReport robotReport2 = tracker2.getRobotReport();
-		
-		if (
-		(robotReport1.getPathIndex() < cs.getTe1End()) && (robotReport1.getPathIndex() > cs.getTe1Start()) && //robot1 is inside
-		(robotReport2.getPathIndex() < cs.getTe2End()) && (robotReport2.getPathIndex() > cs.getTe2Start())  	//robot2 is inside
-		) {
-			//place robot  in pose and get geometry
-			PoseSteering[] path1 = cs.getTe1().getTrajectory().getPoseSteering();
-			Geometry placement1 = cs.getTe1().makeFootprint(path1[robotReport1.getPathIndex()]);
-			
-			PoseSteering[] path2 = cs.getTe2().getTrajectory().getPoseSteering();
-			Geometry placement2 = cs.getTe2().makeFootprint(path2[robotReport2.getPathIndex()]);
-			
-			//check intersection
-			return placement1.intersects(placement2);
-		}
-		return false;
-	}
-
 	/**
 	 * Update the set of current critical sections. This should be called every time
 	 * a new set of {@link Mission}s has been successfully added.
@@ -1536,7 +1514,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			// Start the collision checking thread. 
 			// The tread will be alive until there will be almost one critical section.
 			collisionThread = new Thread("Collision checking thread.") {
-				
+
 				private final int checkingPeriodinMillis = 100;
 				
 				@Override
@@ -1544,14 +1522,12 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					metaCSPLogger.info("Starting the collision checking thread.");
 					
 					while(true) {
-												
-						//collisions can happen only in critical sections
 						
+						//collisions can happen only in critical sections						
 						synchronized (allCriticalSections) {
 							if (allCriticalSections.isEmpty())
 								break; //break the thread if there are no critical sections to control
 							
-							//if there is almost a critical section alive, check collision
 							for (CriticalSection cs : allCriticalSections) {
 								//check if both the robots are inside the critical section
 								
@@ -1569,47 +1545,27 @@ public abstract class TrajectoryEnvelopeCoordinator {
 								catch (NullPointerException e) {
 									continue; //skip this cycle
 								}
+								
+								if (
+								(robotReport1.getPathIndex() < cs.getTe1End()) && (robotReport1.getPathIndex() > cs.getTe1Start()) && //robot1 is inside
+								(robotReport2.getPathIndex() < cs.getTe2End()) && (robotReport2.getPathIndex() > cs.getTe2Start())  	//robot2 is inside
+								) {
+									//place robot  in pose and get geometry
+									PoseSteering[] path1 = cs.getTe1().getTrajectory().getPoseSteering();
+									Geometry placement1 = cs.getTe1().makeFootprint(path1[robotReport1.getPathIndex()]);
 									
-								//check intersection
-								if (checkIntersection(tracker1, tracker2, cs)) {
-									metaCSPLogger.info(" * COLLISION * ");
-
-									final long startTime = Calendar.getInstance().getTimeInMillis();
-									final CriticalSection csf = cs;
-									final CollisionEvent ce = new CollisionEvent(startTime, robotReport1, robotReport2, cs);
+									PoseSteering[] path2 = cs.getTe2().getTrajectory().getPoseSteering();
+									Geometry placement2 = cs.getTe2().makeFootprint(path2[robotReport2.getPathIndex()]);
 									
-									Thread t = new Thread("Collision tracker time: " + startTime + "."){
-										@Override
-										public void run() {
-											metaCSPLogger.info("Start collision tracker time: " + startTime + ".");
-											
-											boolean exit = false;
-											while (!exit) {	
-												RobotReport robotReport1, robotReport2;
-												AbstractTrajectoryEnvelopeTracker tracker1, tracker2;
-												try {
-													synchronized (trackers)	{
-														tracker1 = trackers.get(csf.getTe1().getRobotID());
-														robotReport1 = tracker1.getRobotReport();
-														tracker2 = trackers.get(csf.getTe2().getRobotID());
-														robotReport2 = tracker2.getRobotReport();
-													}
-												}
-												catch (NullPointerException e) {
-													try { Thread.sleep(100); }
-													catch (Exception ex) {ex.printStackTrace();}
-													continue; //skip this cycle
-												}
-												exit = !checkIntersection(tracker1, tracker2, csf);
-											}
-											metaCSPLogger.info("Exit collision tracker time: " + startTime + ".");
-											
-											synchronized (collisionsList) {
-												collisionsList.add(ce);
-											}
-										}
-									};
-									t.start();		
+									//check intersection
+									if (placement1.intersects(placement2)) {
+										//if yes, add the collision event to the list (to be filtered a posteriori).
+										metaCSPLogger.info(" * COLLISION *");
+										CollisionEvent ce = new CollisionEvent(Calendar.getInstance().getTimeInMillis(),robotReport1,robotReport2);
+										synchronized (collisionsList) {
+											collisionsList.add(ce);
+										}										
+									}
 								}
 							}
 						}
@@ -2420,7 +2376,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				synchronized (collisionsList) {
 					numberOfCollisions = collisionsList.size();					
 				}
-				ret.add(CONNECTOR_LEAF + "Collisions ..... Number: " + numberOfCollisions + ".");
+				ret.add(CONNECTOR_LEAF + "Number of collisions ... " + numberOfCollisions + ".");
 			}
 			else
 				ret.add(CONNECTOR_LEAF + "Dependencies ... " + currentDependencies);

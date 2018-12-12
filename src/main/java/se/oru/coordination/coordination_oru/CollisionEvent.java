@@ -2,20 +2,17 @@ package se.oru.coordination.coordination_oru;
 
 public class CollisionEvent {
 	protected long time = 0;
-	protected CriticalSection cs;
 	protected RobotReport[] reports = new RobotReport[2];
 	
 	/**
 	 * Create a {@link CollisionEvent} with information on time and robots involved.
 	 * @param time The time when the collision happens.
-	 * @param cs The critical section where the collision happens. 
 	 * @param reports The reports of the robots where the collision happens (the current ones, without delays).
 	 */
-	public CollisionEvent(long time, RobotReport report1, RobotReport report2, CriticalSection cs) {
+	public CollisionEvent(long time, RobotReport report1, RobotReport report2) {
 		this.time = time;
 		this.reports[0] = report1;
 		this.reports[1] = report2;
-		this.cs = cs;
 	};
 	
 	/**
@@ -33,12 +30,13 @@ public class CollisionEvent {
 	public RobotReport[] getReports() {
 		return this.reports;
 	};
-	
+		
 	/**
-	 * Get the critical section where the collision happens.
+	 * Get an informative string related to the collision event.
 	 * @return The critical section where the collision happens.
 	 */
-	public CriticalSection getCriticalSection() {
-		return this.cs;
+	public String print() {
+		return "Robots: [" + this.reports[0].getRobotID() +"," + this.reports[1].getRobotID()+"], time: "+ this.time + ".";
 	};
 }
+
