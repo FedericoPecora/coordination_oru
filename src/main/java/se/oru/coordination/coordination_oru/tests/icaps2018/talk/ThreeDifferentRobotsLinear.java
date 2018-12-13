@@ -48,9 +48,9 @@ public class ThreeDifferentRobotsLinear {
 			}
 		});
 		
-		NetworkConfiguration.MAXIMUM_TX_DELAY = 3000;
+		NetworkConfiguration.setDelays(0,3000);
 		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0.1;
-		tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, NetworkConfiguration.MAXIMUM_TX_DELAY, 0.01);
+		tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, NetworkConfiguration.getMaximumTxDelay(), 0.01);
 
 		//You can set a footprint that is specific for each robot
 		Coordinate[] fp1 = new Coordinate[] {
