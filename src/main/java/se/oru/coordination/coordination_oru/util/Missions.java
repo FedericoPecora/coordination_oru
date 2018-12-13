@@ -517,6 +517,18 @@ public class Missions {
 		catch (FileNotFoundException e) { e.printStackTrace(); }
 		Missions.buildGraph();
 	}
+	
+	/**
+	 * Add a path to the set of known paths.
+	 * @param start The starting location of the path.
+	 * @param goal The goal location of the path.
+	 * @param path The path to add.
+	 */
+	public static void addKnownPath(String start, String goal, PoseSteering[] path) {
+		if (!locations.containsKey(start) || !locations.containsKey(goal) || path == null || path.length == 0) throw new Error("Locations unknown or path is invalid!");
+		paths.put(start+"->"+goal, path);
+		Missions.buildGraph();
+	}
 
 	/**
 	 * Remove a location.
