@@ -164,8 +164,8 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 				while (!shutdown) {				
 					timeNow = Calendar.getInstance().getTimeInMillis();
 					long timeOfArrival = timeNow;
-					if (NetworkConfiguration.MAXIMUM_TX_DELAY > 0) //the real delay
-						timeOfArrival = timeOfArrival + rand.nextInt(NetworkConfiguration.MAXIMUM_TX_DELAY);
+					if (NetworkConfiguration.getMaximumTxDelay() > 0) //the real delay
+						timeOfArrival = timeOfArrival + NetworkConfiguration.getMinimumTxDelay() + rand.nextInt(NetworkConfiguration.getMaximumTxDelay());
 									
 					//Get the message according to packet loss probability (numberOfReplicas trials)
 					boolean received = (NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS > 0) ? false : true;
@@ -341,7 +341,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 		Thread waitToTXThread = new Thread("Wait to TX thread for robot " + te.getRobotID()) {
 			public void run() {
 
-				int delayTx = (NetworkConfiguration.MAXIMUM_TX_DELAY > 0) ? rand.nextInt(NetworkConfiguration.MAXIMUM_TX_DELAY) : 0; //the real one
+				int delayTx = (NetworkConfiguration.getMaximumTxDelay() > 0) ? NetworkConfiguration.getMinimumTxDelay() + rand.nextInt(NetworkConfiguration.getMaximumTxDelay()) : 0; //the real one
 				
 				//Sleep for delay in communication
 				try { Thread.sleep(delayTx); }

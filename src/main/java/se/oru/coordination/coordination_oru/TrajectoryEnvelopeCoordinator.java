@@ -139,7 +139,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	
 	//Network knowledge
 	protected double packetLossProbability = NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS;
-	protected int maxTxDelay = NetworkConfiguration.MAXIMUM_TX_DELAY;
+	protected int maxTxDelay = NetworkConfiguration.getMaximumTxDelay();
 	protected double maxFaultsProbability = NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS;
 	protected int numberOfReplicas = 1;
 	
