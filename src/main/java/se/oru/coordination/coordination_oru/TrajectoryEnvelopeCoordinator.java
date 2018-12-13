@@ -16,6 +16,7 @@ import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
 import javax.swing.SwingUtilities;
@@ -43,6 +44,7 @@ import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.util.AffineTransformation;
 
+import aima.core.util.datastructure.Pair;
 import se.oru.coordination.coordination_oru.util.FleetVisualization;
 import se.oru.coordination.coordination_oru.util.StringUtils;
 
@@ -81,12 +83,16 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 	protected boolean overlay = false;
 	protected boolean quiet = false;
+	
 	protected boolean checkCollisions = false;
 	protected ArrayList<CollisionEvent> collisionsList = new ArrayList<CollisionEvent>();
-
-	protected TrajectoryEnvelopeSolver solver = null;
 	protected Thread collisionThread = null;
 	
+	protected AtomicInteger totalMsgsSent = new AtomicInteger(0);
+	protected AtomicInteger totalMsgsRetransmitted = new AtomicInteger(0);
+																			
+	protected TrajectoryEnvelopeSolver solver = null;
+
 	//protected JTSDrawingPanel panel = null;
 	protected FleetVisualization viz = null;
 	protected ArrayList<TrajectoryEnvelope> envelopesToTrack = new ArrayList<TrajectoryEnvelope>();
@@ -103,7 +109,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected Logger metaCSPLogger = MetaCSPLogging.getLogger(TrajectoryEnvelopeCoordinator.class);
 	protected String logDirName = null;
 
-	protected HashMap<AbstractTrajectoryEnvelopeTracker,Integer> communicatedCPs = new HashMap<AbstractTrajectoryEnvelopeTracker, Integer>();
+	protected HashMap<AbstractTrajectoryEnvelopeTracker,Pair<Integer,Long>> communicatedCPs = new HashMap<AbstractTrajectoryEnvelopeTracker, Pair<Integer,Long>>();
 	protected HashMap<AbstractTrajectoryEnvelopeTracker,Integer> externalCPCounters = new HashMap<AbstractTrajectoryEnvelopeTracker, Integer>();
 
 	protected Map mapMetaConstraint = null;
@@ -458,10 +464,19 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			//if not already communicated, increment the counter and transmit
 			if (!externalCPCounters.containsKey(tracker)) externalCPCounters.put(tracker, -1);
 			
-			if (!communicatedCPs.containsKey(tracker) || !communicatedCPs.get(tracker).equals(criticalPoint) ) {
-				communicatedCPs.put(tracker, criticalPoint);
+			long timeNow = Calendar.getInstance().getTimeInMillis();
+			
+			//UDP transmission -> we can assume the message to be lost
+			boolean retransmitt = communicatedCPs.containsKey(tracker) && communicatedCPs.get(tracker).getFirst().equals(criticalPoint) && ((int)(timeNow-communicatedCPs.get(tracker).getSecond()) > 2*(maxTxDelay+CONTROL_PERIOD+tracker.getTrackingPeriodInMillis()));
+			
+			if (!communicatedCPs.containsKey(tracker) || !communicatedCPs.get(tracker).getFirst().equals(criticalPoint) || retransmitt ) {
+				communicatedCPs.put(tracker, new Pair<Integer,Long>(criticalPoint, timeNow));
 				externalCPCounters.replace(tracker,externalCPCounters.get(tracker)+1);
 				tracker.setCriticalPoint(criticalPoint, externalCPCounters.get(tracker)%Integer.MAX_VALUE);
+				
+				//for statistics
+				totalMsgsSent.set(totalMsgsSent.get()+1); 
+				if (retransmitt) totalMsgsRetransmitted.set(totalMsgsRetransmitted.get()+1);
 			}
 		}
 	}
@@ -1124,7 +1139,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				//2. the last critical point was before the critical section (can stop by induction)
 				//note that due to delay robotTracker1.getCriticalPoint() could be different to the last communicated one,
 				//but the algorithm cares about the maximum delay so it will be communicated before the robot will enter the critical section (if the packed wont be lost).
-				|| (communicatedCPs.containsKey(robotTracker1) && communicatedCPs.get(robotTracker1) != -1 && communicatedCPs.get(robotTracker1) <= cs.getTe1Start())
+				|| (communicatedCPs.containsKey(robotTracker1) && communicatedCPs.get(robotTracker1).getFirst() != -1 && communicatedCPs.get(robotTracker1).getFirst() <= cs.getTe1Start())
 				//if we haven't communicated anything to the robot, it is assumed that it cannot move
 				|| !communicatedCPs.containsKey(robotTracker1))
 			canStopRobot1 = true;
@@ -1139,7 +1154,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		
 		//@New with the same considerations
 		if(robotTracker2 instanceof TrajectoryEnvelopeTrackerDummy || 
-				(communicatedCPs.containsKey(robotTracker2) && communicatedCPs.get(robotTracker2) != -1 && communicatedCPs.get(robotTracker2) <= cs.getTe2Start()) ||
+				(communicatedCPs.containsKey(robotTracker2) && communicatedCPs.get(robotTracker2).getFirst() != -1 && communicatedCPs.get(robotTracker2).getFirst() <= cs.getTe2Start()) ||
 				!communicatedCPs.containsKey(robotTracker2))
 			canStopRobot2 = true;
 		else canStopRobot2 = fm2.canStop(robotTracker2.getTrajectoryEnvelope(), robotReport2, cs.getTe2Start(), false);
@@ -1295,7 +1310,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					}
 
 					int waitingPoint = getCriticalPoint(waitingRobotID, cs, drivingCurrentIndex);
-					boolean alreadyCommunicated = (communicatedCPs.containsKey(waitingTracker) && communicatedCPs.get(waitingTracker) == waitingPoint); 
+					boolean alreadyCommunicated = (communicatedCPs.containsKey(waitingTracker) && communicatedCPs.get(waitingTracker).getFirst() == waitingPoint); 
 					if (alreadyCommunicated || waitingPoint >= waitingCurrentIndex) {
 						metaCSPLogger.finest("Robot" + drivingRobotID + " is parked, so Robot" + waitingRobotID + " will have to wait");	
 						//Make new dependency
@@ -2374,16 +2389,15 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				st += ": " + currentPP + "   ";
 			}
 			ret.add(st);
+			ret.add(CONNECTOR_BRANCH + "Dependencies ... " + currentDependencies);
 			if (checkCollisions) {
-				ret.add(CONNECTOR_BRANCH + "Dependencies ... " + currentDependencies);
 				int numberOfCollisions = 0;
 				synchronized (collisionsList) {
 					numberOfCollisions = collisionsList.size();		
 					if (numberOfCollisions>0) {
 						ret.add(CONNECTOR_BRANCH + "Number of collisions ... " + numberOfCollisions + ".");
-						for (int i = 0; i < numberOfCollisions; i++) {
-							String connector = (i == (numberOfCollisions-1)) ? CONNECTOR_BRANCH : CONNECTOR_LEAF;
-							ret.add(connector + " ....................... " + collisionsList.get(i).toString()+"\n");
+						for (CollisionEvent ce : collisionsList) {
+							ret.add(CONNECTOR_BRANCH + " ....................... " + ce.toString());
 						}
 					}
 					else
@@ -2391,8 +2405,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				}
 				
 			}
-			else
-				ret.add(CONNECTOR_LEAF + "Dependencies ... " + currentDependencies);
+			int totReTx = totalMsgsRetransmitted.get();
+			int totTx = totalMsgsSent.get();
+			ret.add(CONNECTOR_LEAF + "Transmission ..... reTx:" + totReTx + ", Tx: " + totTx + ", rate: " + ((totTx > 0) ? (float)totReTx/totTx : 0) + ".");
 			return ret.toArray(new String[ret.size()]);
 		}
 	}
