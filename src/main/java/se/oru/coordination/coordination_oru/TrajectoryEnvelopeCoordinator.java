@@ -2353,14 +2353,16 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	}
 
 	protected String[] getStatistics() {
+		
+		String CONNECTOR_BRANCH = (char)0x251C + "" + (char)0x2500 + " ";
+		String CONNECTOR_LEAF = (char)0x2514 + "" + (char)0x2500 + " ";
+		ArrayList<String> ret = new ArrayList<String>();
+		int numVar = solver.getConstraintNetwork().getVariables().length;
+		int numCon = solver.getConstraintNetwork().getConstraints().length;
+		
 		synchronized (trackers) {
-			String CONNECTOR_BRANCH = (char)0x251C + "" + (char)0x2500 + " ";
-			String CONNECTOR_LEAF = (char)0x2514 + "" + (char)0x2500 + " ";
-			ArrayList<String> ret = new ArrayList<String>();
-			int numVar = solver.getConstraintNetwork().getVariables().length;
-			int numCon = solver.getConstraintNetwork().getConstraints().length;
-			ret.add("Status @ "  + getCurrentTimeInMillis() + " ms");
 
+			ret.add("Status @ "  + getCurrentTimeInMillis() + " ms");
 			ret.add(CONNECTOR_BRANCH + "Eff period ..... " + EFFECTIVE_CONTROL_PERIOD + " ms");
 			ret.add(CONNECTOR_BRANCH + "Network ........ " + numVar + " variables, " + numCon + " constriants");
 			HashSet<Integer> allRobots = new HashSet<Integer>();
@@ -2389,6 +2391,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				st += ": " + currentPP + "   ";
 			}
 			ret.add(st);
+		}
+		synchronized (currentDependencies) {
 			ret.add(CONNECTOR_BRANCH + "Dependencies ... " + currentDependencies);
 			if (checkCollisions) {
 				int numberOfCollisions = 0;
