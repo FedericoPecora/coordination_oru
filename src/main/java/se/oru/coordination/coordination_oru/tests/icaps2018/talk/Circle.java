@@ -1,9 +1,5 @@
 package se.oru.coordination.coordination_oru.tests.icaps2018.talk;
 
-import java.io.File;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Random;
 
@@ -11,12 +7,10 @@ import org.metacsp.multi.spatioTemporal.paths.Pose;
 
 import com.vividsolutions.jts.geom.Coordinate;
 
+import aima.core.util.datastructure.Pair;
 import se.oru.coordination.coordination_oru.ConstantAccelerationForwardModel;
-import se.oru.coordination.coordination_oru.CriticalSection;
 import se.oru.coordination.coordination_oru.Mission;
 import se.oru.coordination.coordination_oru.NetworkConfiguration;
-import se.oru.coordination.coordination_oru.RobotAtCriticalSection;
-import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
@@ -49,14 +43,14 @@ public class Circle {
 		
 		tec.setUseInternalCriticalPoints(false);
 		tec.setYieldIfParking(false);
-		tec.setBreakDeadlocksByReordering(true);
-		tec.setBreakDeadlocksByReplanning(true);
+		tec.setBreakDeadlocksByReordering(false);
+		tec.setBreakDeadlocksByReplanning(false);
 		//Enable checking for collisions
-		tec.setCheckCollisions(true);
+		tec.setCheckCollisions(false);
 		
 		//Setup the network parameters
-		//NetworkConfiguration.setDelays(50, 3000);
-		//NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0.5;
+		NetworkConfiguration.setDelays(0, 0);
+		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0;
 		tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, NetworkConfiguration.getMaximumTxDelay(), 0.1);
 		
 		//Set the footprint
@@ -126,14 +120,18 @@ public class Circle {
 			initialLocations[i] = newLocation;
 		}
 		
-		//System.out.println(">>>>>>>>>>>>>" + Arrays.toString(initialLocations));
+		HashSet<Pair<String,String>> assigned = new HashSet<Pair<String,String>>(); 
 		
+		//Set the goals such that two paths cannot overlap
 		for (int i = 0; i < initialLocations.length; i++) {
 			int robotID = robotIDs[i];
 			String initialLocation = initialLocations[i];
 			tec.placeRobot(robotID, Missions.getLocation(initialLocation));
 			String goalLocation = "loc_"+rand.nextInt(numLocations);
-			while (initialLocation.equals(goalLocation)) goalLocation = "loc_"+rand.nextInt(numLocations);
+			while (initialLocation.equals(goalLocation) || assigned.contains(new Pair<String,String>(goalLocation,initialLocation))) {
+				goalLocation = "loc_"+rand.nextInt(numLocations);
+			}
+			assigned.add(new Pair<String,String>(initialLocation,goalLocation));
 			Mission mFW = new Mission(robotID, Missions.getShortestPath(initialLocation, goalLocation));
 			Mission mBW = new Mission(robotID, Missions.getShortestPath(goalLocation, initialLocation));
 			Missions.enqueueMission(mFW);
