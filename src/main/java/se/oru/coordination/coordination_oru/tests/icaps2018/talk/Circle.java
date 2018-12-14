@@ -1,8 +1,12 @@
 package se.oru.coordination.coordination_oru.tests.icaps2018.talk;
 
+import java.util.Calendar;
+import java.util.HashSet;
 import java.util.Random;
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import com.vividsolutions.jts.geom.Coordinate;
+
+import aima.core.util.datastructure.Pair;
 import se.oru.coordination.coordination_oru.ConstantAccelerationForwardModel;
 import se.oru.coordination.coordination_oru.Mission;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
@@ -23,7 +27,7 @@ public class Circle {
 		//Define the radius of the circle
 		double radius = 15.0;
 		int numLocations = 8;
-		int numRobots = 8;
+		int numRobots = 4;
 				
 		//Instantiate a trajectory envelope coordinator.
 		//The TrajectoryEnvelopeCoordinatorSimulation implementation provides
@@ -38,7 +42,7 @@ public class Circle {
 		tec.setUseInternalCriticalPoints(false);
 		tec.setYieldIfParking(false);
 		tec.setBreakDeadlocksByReordering(true);
-		tec.setBreakDeadlocksByReplanning(true);
+		tec.setBreakDeadlocksByReplanning(false);
 
 		
 		//Set the footprint
@@ -64,7 +68,7 @@ public class Circle {
 		
 		
 		//Determine locations around the circle, with random orientation
-		Random rand = new Random(123123);
+		Random rand = new Random(Calendar.getInstance().getTimeInMillis());
 		double angle = 2*Math.PI/numLocations;
 		for (int i = 0; i < numLocations; i++) {
 			double theta = 2*Math.PI*rand.nextDouble();
@@ -110,12 +114,17 @@ public class Circle {
 			initialLocations[i] = newLocation;
 		}
 		
+		HashSet<Pair<String,String>> assigned = new HashSet<Pair<String,String>>(); 
+		//Set the goals such that two paths cannot overlap
 		for (int i = 0; i < initialLocations.length; i++) {
 			int robotID = robotIDs[i];
 			String initialLocation = initialLocations[i];
 			tec.placeRobot(robotID, Missions.getLocation(initialLocation));
 			String goalLocation = "loc_"+rand.nextInt(numLocations);
-			while (initialLocation.equals(goalLocation)) goalLocation = "loc_"+rand.nextInt(numLocations);
+			while (initialLocation.equals(goalLocation) || assigned.contains(new Pair<String,String>(goalLocation,initialLocation))) {
+				goalLocation = "loc_"+rand.nextInt(numLocations);
+			}
+			assigned.add(new Pair<String,String>(initialLocation,goalLocation));
 			Mission mFW = new Mission(robotID, Missions.getShortestPath(initialLocation, goalLocation));
 			Mission mBW = new Mission(robotID, Missions.getShortestPath(goalLocation, initialLocation));
 			Missions.enqueueMission(mFW);
