@@ -613,7 +613,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	private int getCriticalPoint(int yieldingRobotID, CriticalSection cs, int leadingRobotCurrentPathIndex) {
 
 		//Number of additional path points robot 2 should stay behind robot 1
-		int TRAILING_PATH_POINTS = 3;
+		int TRAILING_PATH_POINTS = 5;
 
 		int leadingRobotStart = -1;
 		int yieldingRobotStart = -1;
@@ -645,9 +645,13 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		//Compute sweep of robot 1's footprint from current position to LOOKAHEAD
 		Pose leadingRobotPose = leadingRobotTE.getTrajectory().getPose()[leadingRobotCurrentPathIndex];
 		Geometry leadingRobotInPose = TrajectoryEnvelope.getFootprint(leadingRobotTE.getFootprint(), leadingRobotPose.getX(), leadingRobotPose.getY(), leadingRobotPose.getTheta());
-		for (int i = leadingRobotCurrentPathIndex+1; i <= leadingRobotEnd; i++) {
-			Pose leadingRobotNextPose = leadingRobotTE.getTrajectory().getPose()[i];
-			leadingRobotInPose = leadingRobotInPose.union(TrajectoryEnvelope.getFootprint(leadingRobotTE.getFootprint(), leadingRobotNextPose.getX(), leadingRobotNextPose.getY(), leadingRobotNextPose.getTheta()));			
+		if (leadingRobotCurrentPathIndex < leadingRobotEnd) {
+			for (int i = leadingRobotCurrentPathIndex+1; i <= leadingRobotEnd; i++) {
+				Pose leadingRobotNextPose = leadingRobotTE.getTrajectory().getPose()[i];
+				try {
+					leadingRobotInPose = leadingRobotInPose.union(TrajectoryEnvelope.getFootprint(leadingRobotTE.getFootprint(), leadingRobotNextPose.getX(), leadingRobotNextPose.getY(), leadingRobotNextPose.getTheta()));			
+				} catch (Exception e) { e.printStackTrace(); }
+			}
 		}
 
 		//Return pose at which yielding robot should stop given driving robot's projected sweep
