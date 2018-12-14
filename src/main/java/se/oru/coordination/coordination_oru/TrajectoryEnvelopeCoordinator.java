@@ -460,10 +460,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	
 		//If the robot is not muted
 		if (tracker != null && !muted.contains(robotID)) {
-			
-			//if not already communicated, increment the counter and transmit
-			if (!externalCPCounters.containsKey(tracker)) externalCPCounters.put(tracker, -1);
-			
 			long timeNow = Calendar.getInstance().getTimeInMillis();
 			
 			//UDP transmission -> we can assume the message to be lost
@@ -659,6 +655,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 			synchronized (trackers) {
 				trackers.put(robotID, tracker);
+				externalCPCounters.put(tracker, -1);
 			}			
 		}
 			
@@ -2197,9 +2194,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				synchronized (trackers) {
 					externalCPCounters.remove(trackers.get(te.getRobotID()));
 					trackers.remove(te.getRobotID());
+
 					//Make a new tracker for the driving trajectory envelope
 					AbstractTrajectoryEnvelopeTracker tracker = getNewTracker(te, cb);
 					trackers.put(te.getRobotID(), tracker);
+					externalCPCounters.put(tracker, -1);
 				}
 
 				//Now we can signal the parking that it can end (i.e., its deadline will no longer be prolonged)
