@@ -1,5 +1,6 @@
 package se.oru.coordination.coordination_oru.tests.icaps2018.talk;
 
+import java.util.Calendar;
 import java.util.HashSet;
 import java.util.Random;
 
@@ -46,7 +47,7 @@ public class Circle {
 		tec.setBreakDeadlocksByReordering(false);
 		tec.setBreakDeadlocksByReplanning(false);
 		//Enable checking for collisions
-		tec.setCheckCollisions(false);
+		tec.setCheckCollisions(true);
 		
 		//Setup the network parameters
 		NetworkConfiguration.setDelays(0, 0);
@@ -64,7 +65,7 @@ public class Circle {
 		final int[] robotIDs = new int[numRobots];
 		for (int i = 0; i < numRobots; i++) {
 			robotIDs[i] = i+1;
-			tec.setForwardModel(i+1, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), 2*(tec.getControlPeriod()+tec.getMaxTxDelay()+tec.getTrackingPeriod())));
+			tec.setForwardModel(i+1, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getTrackingPeriod()));
 		}
 
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
@@ -75,13 +76,12 @@ public class Circle {
 		tec.setVisualization(viz);
 		
 		//Determine locations around the circle, with random orientation
-		Random rand = new Random(123123);
+		Random rand = new Random(Calendar.getInstance().getTimeInMillis());
 		double angle = 2*Math.PI/numLocations;
 		for (int i = 0; i < numLocations; i++) {
 			double theta = 2*Math.PI*rand.nextDouble();
 			Missions.setLocation("loc_"+i, new Pose(radius*Math.cos(angle*i), radius*Math.sin(angle*i), theta));
 		}
-		//System.out.println(">>>>>>>>>>>>>" + Arrays.toString(initialLocations));
 		
 		//Set up motion planner
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();

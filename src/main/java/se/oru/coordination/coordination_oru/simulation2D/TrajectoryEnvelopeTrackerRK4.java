@@ -208,7 +208,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 					}
 					
 					//Check if the current status message is too old.
-					if (timeNow - reportTimeLists.get(reportTimeLists.size()-1) > tec.getControlPeriod() + tec.getMaxTxDelay()) { //the known delay
+					if (timeNow - reportTimeLists.get(reportTimeLists.size()-1) > tec.getControlPeriod() + TrajectoryEnvelopeCoordinator.MAX_TX_DELAY) { //the known delay
 						metaCSPLogger.severe("* ERROR * Status of Robot"+ te.getRobotID() + " is too old.");
 						//FIXME add a function for stopping pausing the fleet and eventually restart
  					}
@@ -535,7 +535,9 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 								
 				//Vel < 0 hence we are at CP, thus we need to skip integration
 				if (!atCP /*&& getRobotReport().getPathIndex() == criticalPoint*/) {
-					metaCSPLogger.info("At critical point (" + te.getComponent() + "): " + criticalPoint + " (" + getRobotReport().getPathIndex() + ")");
+					int pathIndex = getRobotReport().getPathIndex();
+					metaCSPLogger.info("At critical point (" + te.getComponent() + "): " + criticalPoint + " (" + pathIndex + ")");
+					if (pathIndex > criticalPoint) metaCSPLogger.severe("* ATTENTION! STOPPED AFTER!! *");
 					atCP = true;
 				}
 				

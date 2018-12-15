@@ -139,7 +139,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	
 	//Network knowledge
 	protected double packetLossProbability = NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS;
-	protected int maxTxDelay = NetworkConfiguration.getMaximumTxDelay();
+	public static int MAX_TX_DELAY = NetworkConfiguration.getMaximumTxDelay();
 	protected double maxFaultsProbability = NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS;
 	protected int numberOfReplicas = 1;
 	
@@ -217,12 +217,12 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 * Then, compute the number of messages numberOfReplicas required for each send to be effective
 	 * (the probability of receiving a message after numberOfReplicas trials is assumed to have a geometric distribution).
 	 * @param packetLossProbability The probability for a message to be lost.
-	 * @param maxTxDelay The maximum transmission delay.
+	 * @param MAX_TX_DELAY The maximum transmission delay.
 	 * @param maxFaultsProbability The maximum admitted probability for an information to be lost.
 	 */
-	public void setNetworkParameters(double packetLossProbability, int maxTxDelay, double maxFaultsProbability) {
+	public void setNetworkParameters(double packetLossProbability, int MAX_TX_DELAY, double maxFaultsProbability) {
 		this.packetLossProbability = packetLossProbability;
-		this.maxTxDelay = maxTxDelay;
+		this.MAX_TX_DELAY = MAX_TX_DELAY;
 		this.maxFaultsProbability = maxFaultsProbability;	
 		this.numberOfReplicas =  (packetLossProbability > 0 && maxFaultsProbability > 0) ? (int)Math.ceil(Math.log(maxFaultsProbability)/Math.log(packetLossProbability)) : 1;
 		metaCSPLogger.info("Number of replicas for each send: " + numberOfReplicas);
@@ -242,14 +242,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 */
 	public int getControlPeriod() {
 		return this.CONTROL_PERIOD;
-	}
-
-	/**
-	 * Get the known transmission delay.
-	 * @return the known transmission delay (in milliseconds) of this {@link TrajectoryEnvelopeCoordinator}.
-	 */
-	public int getMaxTxDelay() {
-		return this.maxTxDelay;
 	}
 
 	/**
