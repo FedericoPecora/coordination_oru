@@ -2155,15 +2155,15 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							//Make a new parking tracker for the found end parking (park the robot)
 							placeRobot(myTE.getRobotID(), null, myEndParking, null);
 
-							synchronized (disallowedDependencies) {
-								ArrayList<Dependency> toRemove = new ArrayList<Dependency>();
-								for (Dependency dep : disallowedDependencies) {
-									if (dep.getDrivingRobotID() == myTE.getRobotID() || dep.getWaitingRobotID() == myTE.getRobotID()) {
-										toRemove.add(dep);
-									}
-								}
-								for (Dependency dep : toRemove) disallowedDependencies.remove(dep);
-							}
+//							synchronized (disallowedDependencies) {
+//								ArrayList<Dependency> toRemove = new ArrayList<Dependency>();
+//								for (Dependency dep : disallowedDependencies) {
+//									if (dep.getDrivingRobotID() == myTE.getRobotID() || dep.getWaitingRobotID() == myTE.getRobotID()) {
+//										toRemove.add(dep);
+//									}
+//								}
+//								for (Dependency dep : toRemove) disallowedDependencies.remove(dep);
+//							}
 
 							computeCriticalSections();
 							updateDependencies();							
