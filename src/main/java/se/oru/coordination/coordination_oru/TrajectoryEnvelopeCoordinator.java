@@ -1519,7 +1519,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			// The tread will be alive until there will be almost one critical section.
 			collisionThread = new Thread("Collision checking thread.") {
 
-				private final int checkingPeriodinMillis = 100;
 				
 				@Override
 				public void run() {
@@ -1553,7 +1552,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 									continue; //skip this cycle
 								}
 								
-								if (
+								if ( robotReport1 != null && robotReport2 != null &&
 								(robotReport1.getPathIndex() < cs.getTe1End()) && (robotReport1.getPathIndex() > cs.getTe1Start()) && //robot1 is inside
 								(robotReport2.getPathIndex() < cs.getTe2End()) && (robotReport2.getPathIndex() > cs.getTe2Start())  	//robot2 is inside
 								) {
@@ -1582,7 +1581,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						}
 						previousCollidingCS.addAll(newCollidingCS);
 						
-						try { Thread.sleep(checkingPeriodinMillis); }
+						try { Thread.sleep(500); }
 						catch (InterruptedException e) { e.printStackTrace(); }
 					}
 					metaCSPLogger.info("Ending the collision checking thread.");
