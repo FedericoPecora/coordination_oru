@@ -1311,7 +1311,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				//Both robots are driving, let's determine an ordering for them thru this critical section
 				else {
 										
-					//Neither robot has reached the critical section --> follow ordering heuristic if FW model allows it
+					//Neither robot has communicated to having reached the critical section,
+					//but due to delays they may have --> follow ordering heuristic if FW model allows it
 					if (robotReport1.getPathIndex() < cs.getTe1Start() && robotReport2.getPathIndex() < cs.getTe2Start()) {
 
 						//If robot 1 has priority over robot 2
