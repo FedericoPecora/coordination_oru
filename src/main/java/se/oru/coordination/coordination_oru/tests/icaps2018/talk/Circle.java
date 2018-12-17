@@ -1,5 +1,7 @@
 package se.oru.coordination.coordination_oru.tests.icaps2018.talk;
 
+import java.io.File;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashSet;
 import java.util.Random;
@@ -28,7 +30,7 @@ public class Circle {
 		double MAX_VEL = 4.0;
 		
 		//Define the radius of the circle
-		double radius = 15.0;
+		double radius = 10.0;
 		int numLocations = 8;
 		int numRobots = 8;
 				
@@ -45,7 +47,7 @@ public class Circle {
 		tec.setUseInternalCriticalPoints(false);
 		tec.setYieldIfParking(false);
 		tec.setBreakDeadlocksByReordering(false);
-		tec.setBreakDeadlocksByReplanning(false);
+		tec.setBreakDeadlocksByReplanning(true);
 		//Enable checking for collisions
 		tec.setCheckCollisions(true);
 		
@@ -67,27 +69,35 @@ public class Circle {
 			robotIDs[i] = i+1;
 			tec.setForwardModel(i+1, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getTrackingPeriod()));
 		}
-
+		
+		//Set a map
+		String yamlFile = "maps/map-empty-circle.yaml";
+		
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
-		//RVizVisualization viz = new RVizVisualization();
+		RVizVisualization viz = new RVizVisualization();
 		//RVizVisualization.writeRVizConfigFile(robotIDs);
-		BrowserVisualization viz = new BrowserVisualization();
-		viz.setInitialTransform(60, 33.58, 13.49);
+		//BrowserVisualization viz = new BrowserVisualization();
+		//viz.setMap(yamlFile);
+		//viz.setInitialTransform(60, 33.58, 13.49);
 		tec.setVisualization(viz);
 		
 		//Determine locations around the circle, with random orientation
-		long seed = Calendar.getInstance().getTimeInMillis();
+		long seed = 123123;// Calendar.getInstance().getTimeInMillis();
 		System.out.println("Seed random generator: " + seed);
 		Random rand = new Random(seed);
 		double angle = 2*Math.PI/numLocations;
+		ArrayList<String> locations = new ArrayList<String>();
 		for (int i = 0; i < numLocations; i++) {
 			double theta = 2*Math.PI*rand.nextDouble();
-			Missions.setLocation("loc_"+i, new Pose(radius*Math.cos(angle*i), radius*Math.sin(angle*i), theta));
+			locations.add(i,"loc_"+i);
+			Missions.setLocation(locations.get(i), new Pose(radius*(2+Math.cos(angle*i)), radius*(2+Math.sin(angle*i)), theta));
 		}
 		
 		//Set up motion planner
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-		rsp.setMapFilename(null);
+		rsp.setMapFilename("maps"+File.separator+Missions.getProperty("image", yamlFile));
+		double res = Double.parseDouble(Missions.getProperty("resolution", yamlFile));
+		rsp.setMapResolution(res);
 		rsp.setRadius(0.1);
 		rsp.setFootprint(tec.getDefaultFootprint());
 		rsp.setTurningRadius(4.0);
