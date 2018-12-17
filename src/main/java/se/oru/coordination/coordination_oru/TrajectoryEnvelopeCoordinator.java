@@ -845,6 +845,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			//    v.dep2.waitingpoint <= v.dep1.releasingpoint
 			//  And if so mark cycle as deadlock
 			Dependency anUnsafeDep = null;
+			if (breakDeadlocksByReordering) {
+				synchronized (disallowedDependencies) {
+					disallowedDependencies.clear();
+				}
+			}
 			for (int i = 0; i < edgesAlongCycle.size()-1; i++) {
 				boolean safe = true;
 				for (Dependency dep1 : edgesAlongCycle.get(i)) {
@@ -1092,19 +1097,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	//returns true if robot1 should go before robot2
 	//returns false if robot2 should go before robot1
 	private boolean getOrder(AbstractTrajectoryEnvelopeTracker robotTracker1, RobotReport robotReport1, AbstractTrajectoryEnvelopeTracker robotTracker2, RobotReport robotReport2, CriticalSection cs) {
-
-		synchronized (disallowedDependencies) {
-			for (Dependency dep : disallowedDependencies) {
-				if (dep.getWaitingRobotID() == robotReport1.getRobotID() && dep.getDrivingRobotID() == robotReport2.getRobotID() && cs.getTe2End() == dep.getReleasingPoint()) {
-					//System.out.println("DISALLOWED " + dep.getWaitingRobotID() + " waits for " + dep.getDrivingRobotID());
-					return true;
-				}
-				else if (dep.getWaitingRobotID() == robotReport2.getRobotID() && dep.getDrivingRobotID() == robotReport1.getRobotID() && cs.getTe1End() == dep.getReleasingPoint()) {
-					//System.out.println("DISALLOWED " + dep.getWaitingRobotID() + " waits for " + dep.getDrivingRobotID());
-					return false;
-				}
-			}
-		}
 	
 		ForwardModel fm1 = getForwardModel(robotReport1.getRobotID());
 		ForwardModel fm2 = getForwardModel(robotReport2.getRobotID());
@@ -1162,6 +1154,28 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					metaCSPLogger.info("Robot" + cs.getTe2().getRobotID() + " will park in " + cs + ", letting Robot" + cs.getTe1().getRobotID() + " go first");
 					return true;
 				}
+			}
+			
+			//one possible ordering
+			synchronized (disallowedDependencies) {
+				for (Dependency dep : disallowedDependencies) {			
+					//due to delays, the robot may have already entered the critical section, so the precedence cannot be disallowed
+					boolean canBeRemoved1 = communicatedCPs.containsKey(robotTracker1) && communicatedCPs.get(robotTracker1).getFirst() != -1 && (communicatedCPs.get(robotTracker1).getFirst() < cs.getTe1Start());
+					boolean canBeRemoved2 = communicatedCPs.containsKey(robotTracker2) && communicatedCPs.get(robotTracker2).getFirst() != -1 && (communicatedCPs.get(robotTracker2).getFirst() < cs.getTe2Start());
+					if (canBeRemoved1 && canBeRemoved2) {
+						if (dep.getWaitingRobotID() == robotReport1.getRobotID() &&
+									dep.getDrivingRobotID() == robotReport2.getRobotID() && 
+									cs.getTe2End() == dep.getReleasingPoint()) {
+								metaCSPLogger.info("DISALLOWED " + dep.getWaitingRobotID() + " waits for " + dep.getDrivingRobotID());
+								return true;
+							}
+							else if (dep.getWaitingRobotID() == robotReport2.getRobotID() &&
+									dep.getDrivingRobotID() == robotReport1.getRobotID() && cs.getTe1End() == dep.getReleasingPoint()) {
+								metaCSPLogger.info("DISALLOWED " + dep.getWaitingRobotID() + " waits for " + dep.getDrivingRobotID());
+								return false;
+							}
+						}
+					}
 			}
 			
 			RobotAtCriticalSection r1atcs = new RobotAtCriticalSection(robotReport1, cs);
