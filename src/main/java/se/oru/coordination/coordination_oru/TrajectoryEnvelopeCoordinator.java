@@ -845,11 +845,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			//    v.dep2.waitingpoint <= v.dep1.releasingpoint
 			//  And if so mark cycle as deadlock
 			Dependency anUnsafeDep = null;
-			if (breakDeadlocksByReordering) {
-				synchronized (disallowedDependencies) {
-					disallowedDependencies.clear();
-				}
-			}
 			for (int i = 0; i < edgesAlongCycle.size()-1; i++) {
 				boolean safe = true;
 				for (Dependency dep1 : edgesAlongCycle.get(i)) {
@@ -2158,15 +2153,15 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							//Make a new parking tracker for the found end parking (park the robot)
 							placeRobot(myTE.getRobotID(), null, myEndParking, null);
 
-//							synchronized (disallowedDependencies) {
-//								ArrayList<Dependency> toRemove = new ArrayList<Dependency>();
-//								for (Dependency dep : disallowedDependencies) {
-//									if (dep.getDrivingRobotID() == myTE.getRobotID() || dep.getWaitingRobotID() == myTE.getRobotID()) {
-//										toRemove.add(dep);
-//									}
-//								}
-//								for (Dependency dep : toRemove) disallowedDependencies.remove(dep);
-//							}
+							synchronized (disallowedDependencies) {
+								ArrayList<Dependency> toRemove = new ArrayList<Dependency>();
+								for (Dependency dep : disallowedDependencies) {
+									if (dep.getDrivingRobotID() == myTE.getRobotID() || dep.getWaitingRobotID() == myTE.getRobotID()) {
+										toRemove.add(dep);
+									}
+								}
+								for (Dependency dep : toRemove) disallowedDependencies.remove(dep);
+							}
 							computeCriticalSections();
 							updateDependencies();							
 						}
