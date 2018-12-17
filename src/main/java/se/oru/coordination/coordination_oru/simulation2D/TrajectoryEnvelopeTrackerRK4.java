@@ -28,7 +28,6 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 	protected double positionToSlowDown = -1.0;
 	protected double elapsedTrackingTime = 0.0;
 	private Thread th = null;
-	private Thread listener = null;
 	protected State state = null;
 	protected double[] curvatureDampening = null;
 	private ArrayList<Integer> internalCriticalPoints = new ArrayList<Integer>();
@@ -37,6 +36,8 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 	private TreeMap<Double,Double> slowDownProfile = null;
 	private boolean slowingDown = false;
 	private boolean useInternalCPs = true;
+	protected ArrayList<RobotReport> reportsList = new ArrayList<RobotReport>();
+	protected ArrayList<Long> reportTimeLists = new ArrayList<Long>();
 	
 	private HashMap<Integer,Integer> userCPReplacements = null;
 
@@ -95,22 +96,13 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 	}
 	
 	@Override
-	public void startTracking() {
+	public void startTracking() {		
 		while (this.th == null) {
 			try { Thread.sleep(10); }
 			catch (InterruptedException e) { e.printStackTrace(); }
 		}
 		this.th.start();
 		if (useInternalCPs) this.startInternalCPThread();	
-		this.startListeningThread();
-	}
-	
-	@Override
-	protected void finishTracking() {
-		if (listener != null)
-			listener.interrupt();
-		metaCSPLogger.info("<<<< Finished (super envelope) " + this.te);
-		
 	}
 
 	public static double computeDistance(Trajectory traj, int startIndex, int endIndex) {
@@ -124,107 +116,82 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 	private double computeDistance(int startIndex, int endIndex) {
 		return computeDistance(this.traj, startIndex, endIndex);
 	}
-	
-	private void startListeningThread() {
 		
-			if (listener != null) 
+	private void enqueueOneReport() {
+			
+		synchronized (reportsList) {
+			
+			//Before start, initialize the position
+			if (reportsList.isEmpty()) {
+				if (getRobotReport() != null) {
+					reportsList.add(0, getRobotReport());
+					reportTimeLists.add(0, Calendar.getInstance().getTimeInMillis());
+				}
 				return;
-			
-			listener = new Thread("Listener thread of Robot" + te.getRobotID() + ".") {
-			
-			protected boolean isShutdown = true;
-			protected boolean shutdown = false;
-			protected ArrayList<RobotReport> reportsList = new ArrayList<RobotReport>();
-			protected ArrayList<Long> reportTimeLists = new ArrayList<Long>();
-			
-			@Override
-			public void interrupt() {
-				shutdown = true;
-				while (!isShutdown) {
-					try {Thread.sleep(100);}
-					catch (Exception e) {};
-				}
-				metaCSPLogger.info("Shutdown listener Robot" + te.getRobotID()+".");
-				listener = null;
 			}
-					
-			@Override
-			public void run() {
+			
+			long timeNow = Calendar.getInstance().getTimeInMillis();
+			final int numberOfReplicasReceiving = Math.max(1, (int)Math.ceil(tec.getNumberOfReplicas()*(double)trackingPeriodInMillis/tec.getControlPeriod()));
 				
-				isShutdown = false;
-
-				long timeNow = Calendar.getInstance().getTimeInMillis();
-				final int numberOfReplicasReceiving = Math.max(1, (int)Math.ceil(tec.getNumberOfReplicas()*(double)trackingPeriodInMillis/tec.getControlPeriod()));
-				
-				//Before starting, sample a report.		
+			timeNow = Calendar.getInstance().getTimeInMillis();
+			long timeOfArrival = timeNow;
+			if (NetworkConfiguration.getMaximumTxDelay() > 0) //the real delay
+				timeOfArrival = timeOfArrival + NetworkConfiguration.getMinimumTxDelay() + rand.nextInt(NetworkConfiguration.getMaximumTxDelay()-NetworkConfiguration.getMinimumTxDelay());
+							
+			//Get the message according to packet loss probability (numberOfReplicas trials)
+			boolean received = (NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS > 0) ? false : true;
+			int trial = 0;
+			while(!received && trial < numberOfReplicasReceiving) {
+				if (rand.nextDouble() < (1-NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS)) //the real packet loss probability
+					received = true;
+				trial++;
+			}
+			if (received) {		
+				//Delete old messages that, due to the communication delay, will arrive after this one.			
+				ArrayList<Long> reportTimeListsTmp = reportTimeLists; 
+				for (int index = 0; index < reportTimeLists.size(); index++)
+				{
+					if (reportTimeListsTmp.get(index) < timeOfArrival) break;
+					if (reportTimeListsTmp.get(index) >= timeOfArrival) {
+						reportsList.remove(index);
+						reportTimeLists.remove(index);
+					}	
+				}
 				reportsList.add(0, getRobotReport());
-				reportTimeLists.add(0, timeNow);
-				tec.updateCurrentReport(te.getRobotID(),reportsList.get(0));
-
-				while (!shutdown) {				
-					timeNow = Calendar.getInstance().getTimeInMillis();
-					long timeOfArrival = timeNow;
-					if (NetworkConfiguration.getMaximumTxDelay() > 0) //the real delay
-						timeOfArrival = timeOfArrival + NetworkConfiguration.getMinimumTxDelay() + rand.nextInt(NetworkConfiguration.getMaximumTxDelay()-NetworkConfiguration.getMinimumTxDelay());
-									
-					//Get the message according to packet loss probability (numberOfReplicas trials)
-					boolean received = (NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS > 0) ? false : true;
-					int trial = 0;
-					while(!received && trial < numberOfReplicasReceiving) {
-						if (rand.nextDouble() < (1-NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS)) //the real packet loss probability
-							received = true;
-						trial++;
-					}
-					if (received) {		
-						//Delete old messages that, due to the communication delay, will arrive after this one.			
-						ArrayList<Long> reportTimeListsTmp = reportTimeLists; 
-						for (int index = 0; index < reportTimeLists.size(); index++)
-						{
-							if (reportTimeListsTmp.get(index) < timeOfArrival) break;
-							if (reportTimeListsTmp.get(index) >= timeOfArrival) {
-								reportsList.remove(index);
-								reportTimeLists.remove(index);
-							}	
-						}
-						reportsList.add(0, getRobotReport());
-						reportTimeLists.add(0, timeOfArrival);
-					}
-					
-					//Keep alive just the most recent message before now.
-					if (reportTimeLists.get(reportTimeLists.size()-1) > timeNow) {
-						metaCSPLogger.severe("* ERROR * Unknown status Robot"+te.getRobotID());
-						//FIXME add a function for stopping pausing the fleet and eventually restart
-					}
-					else {
-						ArrayList<Long> reportTimeListsTmp = reportTimeLists; 
-						for (int index = reportTimeListsTmp.size()-1; index > 0; index--)
-						{
-							if (reportTimeListsTmp.get(index) > timeNow) break;
-							if (reportTimeListsTmp.get(index) < timeNow && reportTimeListsTmp.get(index-1) <= timeNow) {
-								reportsList.remove(index);
-								reportTimeLists.remove(index);
-							}
-						}
-					}
-					
-					//Check if the current status message is too old.
-					if (timeNow - reportTimeLists.get(reportTimeLists.size()-1) > tec.getControlPeriod() + TrajectoryEnvelopeCoordinator.MAX_TX_DELAY) { //the known delay
-						metaCSPLogger.severe("* ERROR * Status of Robot"+ te.getRobotID() + " is too old.");
-						//FIXME add a function for stopping pausing the fleet and eventually restart
- 					}
-					
-					//Update the current
-					tec.updateCurrentReport(te.getRobotID(), reportsList.get(reportsList.size()-1));
-					
-					//Sleep for the robot period
-					try { Thread.sleep(trackingPeriodInMillis); }
-					catch (InterruptedException e) { e.printStackTrace(); }
-					
-				}
-				isShutdown = true;
+				reportTimeLists.add(0, timeOfArrival);
 			}
-		};
-		listener.start();
+			
+			//Keep alive just the most recent message before now.
+			if (reportTimeLists.get(reportTimeLists.size()-1) > timeNow) {
+				metaCSPLogger.severe("* ERROR * Unknown status Robot"+te.getRobotID());
+				//FIXME add a function for stopping pausing the fleet and eventually restart
+			}
+			else {
+				ArrayList<Long> reportTimeListsTmp = reportTimeLists; 
+				for (int index = reportTimeListsTmp.size()-1; index > 0; index--)
+				{
+					if (reportTimeListsTmp.get(index) > timeNow) break;
+					if (reportTimeListsTmp.get(index) < timeNow && reportTimeListsTmp.get(index-1) <= timeNow) {
+						reportsList.remove(index);
+						reportTimeLists.remove(index);
+					}
+				}
+			}
+			
+			//Check if the current status message is too old.
+			if (timeNow - reportTimeLists.get(reportTimeLists.size()-1) > tec.getControlPeriod() + TrajectoryEnvelopeCoordinator.MAX_TX_DELAY) { //the known delay
+				metaCSPLogger.severe("* ERROR * Status of Robot"+ te.getRobotID() + " is too old.");
+				//FIXME add a function for stopping pausing the fleet and eventually restart
+				}
+		}
+	}
+	
+	@Override
+	public RobotReport getLastRobotReport() {
+		synchronized (reportsList) {
+			if (reportsList.isEmpty()) return getRobotReport();
+			return reportsList.get(reportsList.size()-1);
+		}
 	}
 
 	private void startInternalCPThread() {
@@ -232,6 +199,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 			@Override
 			public void run() {
 				userCPReplacements = new HashMap<Integer, Integer>();
+				
 				while (th.isAlive()) {
 					ArrayList<Integer> toRemove = new ArrayList<Integer>();
 					for (Integer i : internalCriticalPoints) {
@@ -253,6 +221,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 					for (Integer i : toRemove) {
 						internalCriticalPoints.remove(i);
 					}
+					
 					try { Thread.sleep(trackingPeriodInMillis); }
 					catch (InterruptedException e) { e.printStackTrace(); }
 				}
@@ -358,7 +327,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 						trial++;
 					}
 					if (send) {
-						//metaCSPLogger.info("PACKET to Robot" + te.getRobotID() + " SENT, criticalPoint: " + criticalPoint + ", externalCPCounter: " + externalCPCount);
+						metaCSPLogger.info("PACKET to Robot" + te.getRobotID() + " SENT, criticalPoint: " + criticalPoint + ", externalCPCounter: " + externalCPCount);
 						if (
 								(externalCPCount < externalCPCounter && externalCPCount-externalCPCounter > Integer.MAX_VALUE/2.0) ||
 								(externalCPCounter > externalCPCount && externalCPCounter-externalCPCount < Integer.MAX_VALUE/2.0)) {
@@ -563,6 +532,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 			
 			//Do some user function on position update
 			onPositionUpdate();
+			enqueueOneReport();
 						
 			//Sleep for tracking period
 			int delay = trackingPeriodInMillis;
@@ -574,6 +544,14 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 			long deltaTimeInMillis = Calendar.getInstance().getTimeInMillis()-timeStart;
 			deltaTime = deltaTimeInMillis/this.temporalResolution;
 			elapsedTrackingTime += deltaTime;
+		}
+		
+		//continue transmitting until the coordinator will be informed of having reached the last position.
+		while (tec.getRobotReport(te.getRobotID()).getPathIndex() != -1)
+		{
+			enqueueOneReport();
+			try { Thread.sleep(trackingPeriodInMillis); }
+			catch (InterruptedException e) { e.printStackTrace(); }
 		}
 		
 		//persevere with last path point in case listeners didn't catch it!

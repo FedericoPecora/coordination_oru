@@ -190,6 +190,14 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 	}
 	
 	/**
+	 * This method should return a {@link RobotReport}, describing the last known state of the robot.
+	 * @return A {@link RobotReport}, describing the last known state state of the robot.
+	 */
+	public RobotReport getLastRobotReport() {
+		return getRobotReport();
+	}
+	
+	/**
 	 * This method should return a {@link RobotReport}, describing the current state of the robot.
 	 * @return A {@link RobotReport}, describing the current state of the robot.
 	 */

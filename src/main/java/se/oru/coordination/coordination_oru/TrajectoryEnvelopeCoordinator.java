@@ -135,8 +135,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected HashSet<HashSet<Integer>> replanningSpawned = new HashSet<HashSet<Integer>>();
 	protected boolean replanning = false;
 	
-	protected HashMap<Integer,RobotReport> currentReports = new HashMap<Integer, RobotReport>();
-	
 	//Network knowledge
 	protected double packetLossProbability = NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS;
 	public static int MAX_TX_DELAY = NetworkConfiguration.getMaximumTxDelay();
@@ -149,21 +147,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	public void setCheckCollisions(boolean checkCollision) {
 		this.checkCollisions = checkCollision;
 	}
-	
-	/**
-	 * Method used by trackers to update the current robot report.
-	 */
-	public void updateCurrentReport(int robotID, RobotReport report) {
 		
-		synchronized (currentReports) {
-			if (!currentReports.containsKey(robotID))
-				currentReports.put(robotID, report);
-			else
-				currentReports.replace(robotID, report);
-		}
-		
-	}
-	
 	/**
 	 * Returning the number of messages required by each send to be effective
 	 * (i.e. the probability of unsuccessful delivery will be lower than the threshold maxFaultsProbability)
@@ -454,8 +438,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		if (tracker != null && !muted.contains(robotID)) {
 			long timeNow = Calendar.getInstance().getTimeInMillis();
 			
-			//UDP transmission -> we can assume the message to be lost
-			boolean retransmitt = communicatedCPs.containsKey(tracker) && communicatedCPs.get(tracker).getFirst().equals(criticalPoint) && ((int)(timeNow-communicatedCPs.get(tracker).getSecond()) > 2*(maxTxDelay+CONTROL_PERIOD+tracker.getTrackingPeriodInMillis()));
+			//UDP transmission -> we can assume the message to be lost FIXME
+			boolean retransmitt = false;//communicatedCPs.containsKey(tracker) && communicatedCPs.get(tracker).getFirst().equals(criticalPoint) && ((int)(timeNow-communicatedCPs.get(tracker).getSecond()) > 2*(MAX_TX_DELAY+CONTROL_PERIOD+tracker.getTrackingPeriodInMillis()));
 			
 			if (!communicatedCPs.containsKey(tracker) || !communicatedCPs.get(tracker).getFirst().equals(criticalPoint) || retransmitt ) {
 				communicatedCPs.put(tracker, new Pair<Integer,Long>(criticalPoint, timeNow));
@@ -476,10 +460,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 */
 	public RobotReport getRobotReport(int robotID) {
 
+		
 		//Read the last message received
-		synchronized (currentReports) {
-			if (!currentReports.containsKey(robotID)) return null;
-			return currentReports.get(robotID);
+		synchronized (trackers) {
+			if (!trackers.containsKey(robotID)) return null;
+			return trackers.get(robotID).getLastRobotReport();
 		}
 		
 	}
@@ -646,6 +631,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			currentParkingEnvelopes.add(tracker.getTrajectoryEnvelope());				
 
 			synchronized (trackers) {
+				externalCPCounters.remove(trackers.get(robotID));
+				trackers.remove(robotID);
+				
 				trackers.put(robotID, tracker);
 				externalCPCounters.put(tracker, -1);
 			}			
@@ -682,7 +670,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	private int getCriticalPoint(int yieldingRobotID, CriticalSection cs, int leadingRobotCurrentPathIndex) {
 
 		//Number of additional path points robot 2 should stay behind robot 1
-		int TRAILING_PATH_POINTS = 5;
+		int TRAILING_PATH_POINTS = 3;
 
 		int leadingRobotStart = -1;
 		int yieldingRobotStart = -1;
@@ -1581,7 +1569,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						}
 						previousCollidingCS.addAll(newCollidingCS);
 						
-						try { Thread.sleep(500); }
+						try { Thread.sleep((long)(1000.0/30.0)); }
 						catch (InterruptedException e) { e.printStackTrace(); }
 					}
 					metaCSPLogger.info("Ending the collision checking thread.");
@@ -2164,7 +2152,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 //								}
 //								for (Dependency dep : toRemove) disallowedDependencies.remove(dep);
 //							}
-
 							computeCriticalSections();
 							updateDependencies();							
 						}
@@ -2378,11 +2365,13 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			for (Integer robotID : allRobots) {
 				AbstractTrajectoryEnvelopeTracker tracker = trackers.get(robotID);
 				RobotReport rr = getRobotReport(robotID); 
-				int currentPP = rr.getPathIndex();
-				st += tracker.te.getComponent();
-				if (tracker instanceof TrajectoryEnvelopeTrackerDummy) st += " (P)";
-				else st += " (D)";
-				st += ": " + currentPP + "   ";
+				if (rr != null ) {
+					int currentPP = rr.getPathIndex();
+					st += tracker.te.getComponent();
+					if (tracker instanceof TrajectoryEnvelopeTrackerDummy) st += " (P)";
+					else st += " (D)";
+					st += ": " + currentPP + "   ";
+				}
 			}
 			ret.add(st);
 		}

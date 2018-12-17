@@ -34,7 +34,6 @@ public abstract class TrajectoryEnvelopeTrackerDummy extends AbstractTrajectoryE
 		this.temporalResolution = temporalResolution;
 		this.th = new Thread(this, "Parking tracker " + te.getComponent());
 		this.th.start();
-		tec.updateCurrentReport(te.getRobotID(), getRobotReport());
 	}
 	
 	@Override

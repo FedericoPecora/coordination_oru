@@ -76,7 +76,9 @@ public class Circle {
 		tec.setVisualization(viz);
 		
 		//Determine locations around the circle, with random orientation
-		Random rand = new Random(Calendar.getInstance().getTimeInMillis());
+		long seed = Calendar.getInstance().getTimeInMillis();
+		System.out.println("Seed random generator: " + seed);
+		Random rand = new Random(seed);
 		double angle = 2*Math.PI/numLocations;
 		for (int i = 0; i < numLocations; i++) {
 			double theta = 2*Math.PI*rand.nextDouble();
