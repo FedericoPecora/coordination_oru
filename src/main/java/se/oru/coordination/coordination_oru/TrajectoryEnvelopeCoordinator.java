@@ -1120,7 +1120,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				//2. the last critical point was before the critical section (can stop by induction)
 				//note that due to delay robotTracker1.getCriticalPoint() could be different to the last communicated one,
 				//but the algorithm cares about the maximum delay so it will be communicated before the robot will enter the critical section (if the packed wont be lost).
-				|| (communicatedCPs.containsKey(robotTracker1) && communicatedCPs.get(robotTracker1).getFirst() != -1 && communicatedCPs.get(robotTracker1).getFirst() <= cs.getTe1Start())
+				|| (communicatedCPs.containsKey(robotTracker1) && communicatedCPs.get(robotTracker1).getFirst() != -1 && (communicatedCPs.get(robotTracker1).getFirst() <= cs.getTe1Start()))
 				//if we haven't communicated anything to the robot, it is assumed that it cannot move
 				|| !communicatedCPs.containsKey(robotTracker1))
 			canStopRobot1 = true;
@@ -1135,7 +1135,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		
 		//@New with the same considerations
 		if(robotTracker2 instanceof TrajectoryEnvelopeTrackerDummy || 
-				(communicatedCPs.containsKey(robotTracker2) && communicatedCPs.get(robotTracker2).getFirst() != -1 && communicatedCPs.get(robotTracker2).getFirst() <= cs.getTe2Start()) ||
+				(communicatedCPs.containsKey(robotTracker2) && communicatedCPs.get(robotTracker2).getFirst() != -1 && (communicatedCPs.get(robotTracker2).getFirst() <= cs.getTe2Start())) ||
 				!communicatedCPs.containsKey(robotTracker2))
 			canStopRobot2 = true;
 		else canStopRobot2 = fm2.canStop(robotTracker2.getTrajectoryEnvelope(), robotReport2, cs.getTe2Start(), false);
