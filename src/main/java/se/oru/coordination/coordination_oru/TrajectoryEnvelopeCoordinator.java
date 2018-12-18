@@ -1810,16 +1810,17 @@ public abstract class TrajectoryEnvelopeCoordinator {
 //					System.out.println("REVISED     : " + cssOneIntersectionPiece);
 //				}
 
-				if (te1Starts.size() != te2Starts.size()) {
-					System.out.println("WARNING: starts for R" + te1.getRobotID() + " are " + te1Starts + ", starts for R" + te2.getRobotID() + " are " + te2Starts);
-					System.out.println("ORIGINALS   : " + cssOneIntersectionPiece);
-					CriticalSection oldCSFirst = cssOneIntersectionPiece.get(0);
-					CriticalSection oldCSLast = cssOneIntersectionPiece.get(cssOneIntersectionPiece.size()-1);
-					CriticalSection newCS = new CriticalSection(te1, te2, oldCSFirst.getTe1Start(), oldCSFirst.getTe2Start(), oldCSLast.getTe1End(), oldCSLast.getTe2End());
-					cssOneIntersectionPiece.clear();
-					cssOneIntersectionPiece.add(newCS);
-					System.out.println("REVISED     : " + cssOneIntersectionPiece);
-				}
+				// SEEMS NECESSARY FOR EPIROC SCENARIO!
+//				if (te1Starts.size() != te2Starts.size()) {
+//					System.out.println("WARNING: starts for R" + te1.getRobotID() + " are " + te1Starts + ", starts for R" + te2.getRobotID() + " are " + te2Starts);
+//					System.out.println("ORIGINALS   : " + cssOneIntersectionPiece);
+//					CriticalSection oldCSFirst = cssOneIntersectionPiece.get(0);
+//					CriticalSection oldCSLast = cssOneIntersectionPiece.get(cssOneIntersectionPiece.size()-1);
+//					CriticalSection newCS = new CriticalSection(te1, te2, oldCSFirst.getTe1Start(), oldCSFirst.getTe2Start(), oldCSLast.getTe1End(), oldCSLast.getTe2End());
+//					cssOneIntersectionPiece.clear();
+//					cssOneIntersectionPiece.add(newCS);
+//					System.out.println("REVISED     : " + cssOneIntersectionPiece);
+//				}
 
 				css.addAll(cssOneIntersectionPiece);
 
