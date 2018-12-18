@@ -47,6 +47,7 @@ public class Circle {
 		tec.setYieldIfParking(false);
 		tec.setBreakDeadlocksByReordering(false);
 		tec.setBreakDeadlocksByReplanning(true);
+		tec.setCheckCollisions(true);
 				
 		//Set the footprint
 		Coordinate footprint1 = new Coordinate(-0.5,0.5);
