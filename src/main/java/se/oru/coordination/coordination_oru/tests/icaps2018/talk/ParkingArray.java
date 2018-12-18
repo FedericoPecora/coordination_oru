@@ -2,6 +2,7 @@ package se.oru.coordination.coordination_oru.tests.icaps2018.talk;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Random;
 
@@ -17,6 +18,7 @@ import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPla
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
 import se.oru.coordination.coordination_oru.util.BrowserVisualization;
 import se.oru.coordination.coordination_oru.util.Missions;
+import se.oru.coordination.coordination_oru.util.RVizVisualization;
 
 public class ParkingArray {
 
@@ -25,9 +27,9 @@ public class ParkingArray {
 		double MAX_ACCEL = 3.0;
 		double MAX_VEL = 4.0;
 		
-		//Define the radius of the circle
-		int numLocations = 8;
-		int numRobots = 8;
+		//Define the radius of the circle	
+		int numRobots = 7;
+		int numLocations = ((numRobots%2) == 0) ? numRobots/2 : (numRobots+1)/2;
 				
 		//Instantiate a trajectory envelope coordinator.
 		//The TrajectoryEnvelopeCoordinatorSimulation implementation provides
@@ -66,27 +68,27 @@ public class ParkingArray {
 		}
 		
 		//Set a map
-		String yamlFile = "maps/map-empty-circle.yaml";
+		String yamlFile = "maps/map-empty.yaml";
 		
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
-		//RVizVisualization viz = new RVizVisualization();
+		RVizVisualization viz = new RVizVisualization();
 		//RVizVisualization.writeRVizConfigFile(robotIDs);
-		BrowserVisualization viz = new BrowserVisualization();
+		//BrowserVisualization viz = new BrowserVisualization();
 		//viz.setMap(yamlFile);
 //		viz.setInitialTransform(60, 33.58, 13.49);
-		viz.setInitialTransform(60, 15, 0.5);
+		//viz.setInitialTransform(60, 15, 0.5);
 		tec.setVisualization(viz);
 		
 		//Determine locations around the circle, with random orientation
 		long seed = 123123;// Calendar.getInstance().getTimeInMillis();
 		System.out.println("Seed random generator: " + seed);
 		Random rand = new Random(seed);
-		double dx = 1;
-		double dy = 10;
-		double[] origin = {0,10};
+		double dx = 1.5;
+		double dy = 15;
+		double[] origin = {10,5};
 		for (int i = 0; i < numLocations; i++) {
-			Missions.setLocation("start_"+i, new Pose(origin[0]+i*dx, origin[1], 0));
-			Missions.setLocation("goal_"+i, new Pose(origin[0]+i*dx, origin[1]+dy, 0));
+			Missions.setLocation("line0_"+i, new Pose(origin[0]+i*dx, origin[1], Math.PI/2));
+			Missions.setLocation("line1_"+i, new Pose(origin[0]+i*dx, origin[1]+dy, Math.PI/2));
 		}
 		
 		//Set up motion planner
@@ -104,7 +106,7 @@ public class ParkingArray {
 		
 		for (String loc1 : Missions.getLocations().keySet()) {
 			for (String loc2 : Missions.getLocations().keySet()) {
-				if (loc1.contains("start_") && loc1.contains("goal_")) {
+				if (loc1.contains("line0_") && loc2.contains("line1_")) {
 					//Compute path in both directions
 					rsp.setStart(Missions.getLocation(loc1));
 					rsp.setGoals(Missions.getLocation(loc2));
@@ -118,38 +120,40 @@ public class ParkingArray {
 		// Decide initial poses for robots, place the robots, and create missions
 		String[] initialLocations = new String[numRobots];
 		for (int i = 0; i < numRobots; i++) {
-			String newLocation = "start_"+rand.nextInt(numLocations);
+			boolean even = (i%2) == 0;
+			String str = even ? "line0_" : "line1_";
+			String newLocation = str+rand.nextInt(numLocations);
 			for (int j = 0; j < i; j++) {
 				if (initialLocations[j].equals(newLocation)) {
 					j = -1;
-					newLocation = "start_"+rand.nextInt(numLocations);
+					newLocation = str+rand.nextInt(numLocations);
 				}
 			}
 			initialLocations[i] = newLocation;
 		}
-		System.out.println(initialLocations.toString());
+		System.out.println(">>>>>>>>>>>>>" + Arrays.toString(initialLocations));
 		
 		String[] finalLocations = new String[numRobots];
 		for (int i = 0; i < numRobots; i++) {
-			String newLocation = "goal_"+rand.nextInt(numLocations);
+			boolean even = (i%2) == 0;
+			String str = !even ? "line0_" : "line1_";
+			String newLocation = str+rand.nextInt(numLocations);
 			for (int j = 0; j < i; j++) {
-				if (initialLocations[j].equals(newLocation)) {
+				if (finalLocations[j].equals(newLocation)) {
 					j = -1;
-					newLocation = "goal_"+rand.nextInt(numLocations);
+					newLocation = str+rand.nextInt(numLocations);
 				}
 			}
 			finalLocations[i] = newLocation;
 		}
-		System.out.println(initialLocations.toString());
+		System.out.println(">>>>>>>>>>>>>" + Arrays.toString(finalLocations));
 		
 
 		//Set the goals such that two paths cannot overlap
 		for (int i = 0; i < initialLocations.length; i++) {
-			int robotID = robotIDs[i];
-			String initialLocation = initialLocations[i];
-			tec.placeRobot(robotID, Missions.getLocation(initialLocation));
-			Mission mFW = new Mission(robotID, Missions.getShortestPath(initialLocation, finalLocations[i]));
-			Mission mBW = new Mission(robotID, Missions.getShortestPath(finalLocations[i], initialLocation));
+			tec.placeRobot(robotIDs[i], Missions.getLocation(initialLocations[i]));
+			Mission mFW = new Mission(robotIDs[i], Missions.getShortestPath(initialLocations[i],finalLocations[i]));
+			Mission mBW = new Mission(robotIDs[i], Missions.getShortestPath(finalLocations[i],initialLocations[i]));
 			Missions.enqueueMission(mFW);
 			Missions.enqueueMission(mBW);
 		}
