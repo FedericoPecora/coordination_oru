@@ -1,4 +1,4 @@
-package se.oru.coordination.coordination_oru.tests.icaps2018.talk;
+package se.oru.coordination.coordination_oru.tests.collisionChecking;
 
 import java.io.File;
 import java.util.ArrayList;

@@ -1,4 +1,4 @@
-package se.oru.coordination.coordination_oru.tests.icaps2018.talk;
+package se.oru.coordination.coordination_oru.tests.collisionChecking;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -20,8 +20,8 @@ import se.oru.coordination.coordination_oru.util.BrowserVisualization;
 import se.oru.coordination.coordination_oru.util.Missions;
 import se.oru.coordination.coordination_oru.util.RVizVisualization;
 
-@DemoDescription(desc = "Coordination of robots along a circle. Start and goals are placed along the circumference of a circle with a fixed radious, and are continually posted to robots. Paths are computed by using the ReedsSheppCarPlanner.")
-public class Circle {
+@DemoDescription(desc = "Coordination of robots vertically. Goals are continually posted to robots. Paths are computed by using the ReedsSheppCarPlanner.")
+public class ParkingArrayNew {
 
 	public static void main(String[] args) throws InterruptedException {
 
@@ -29,9 +29,12 @@ public class Circle {
 		double MAX_VEL = 4.0;
 		
 		//Define the radius of the circle
-		double radius = 10.0;
-		int numLocations = 8;
-		int numRobots = 8;
+		int numSlots = 8;
+		int numRobots = 12;
+		double deltaX = 5.0;
+		double deltaY = 15.0;
+		double offsetX = 30.0;
+		double offsetY = 30.0;
 				
 		//Instantiate a trajectory envelope coordinator.
 		//The TrajectoryEnvelopeCoordinatorSimulation implementation provides
@@ -78,12 +81,13 @@ public class Circle {
 		long seed = 123123;// Calendar.getInstance().getTimeInMillis();
 		System.out.println("Seed random generator: " + seed);
 		Random rand = new Random(seed);
-		double angle = 2*Math.PI/numLocations;
-		ArrayList<String> locations = new ArrayList<String>();
-		for (int i = 0; i < numLocations; i++) {
-			double theta = 2*Math.PI*rand.nextDouble();
-			locations.add(i,"loc_"+i);
-			Missions.setLocation(locations.get(i), new Pose(radius*(2+Math.cos(angle*i)), radius*(2+Math.sin(angle*i)), theta));
+		ArrayList<String> locationsUp = new ArrayList<String>();
+		ArrayList<String> locationsDown = new ArrayList<String>();
+		for (int i = 0; i < numSlots; i++) {
+			locationsUp.add(i,"locUp_"+i);
+			locationsDown.add(i,"locDown_"+i);
+			Missions.setLocation(locationsUp.get(i), new Pose(offsetX+i*deltaX, offsetY+deltaY, -Math.PI/2.0));
+			Missions.setLocation(locationsDown.get(i), new Pose(offsetX+i*deltaX, offsetY, -Math.PI/2.0));
 		}
 		
 		//Set up motion planner
@@ -99,27 +103,27 @@ public class Circle {
 		//In case deadlocks occur, we make the coordinator capable of re-planning on the fly (experimental, not working properly yet)
 		tec.setMotionPlanner(rsp);
 		
-		for (String loc1 : Missions.getLocations().keySet()) {
-			for (String loc2 : Missions.getLocations().keySet()) {
-				if (!loc1.equals(loc2)) {
-					//Compute path in both directions
-					rsp.setStart(Missions.getLocation(loc1));
-					rsp.setGoals(Missions.getLocation(loc2));
-					if (!rsp.doPlanning()) throw new Error("No path between " + loc1 + " and " + loc2);
-					Missions.addKnownPath(loc1, loc2, rsp.getPath());
-					Missions.addKnownPath(loc2, loc1, rsp.getPathInv());
-				}
+		for (int i = 0; i < numSlots; i++) {
+			for (int j = 0; j < numSlots; j++) {
+				//Compute path in both directions
+				rsp.setStart(Missions.getLocation(locationsUp.get(i)));
+				rsp.setGoals(Missions.getLocation(locationsDown.get(j)));
+				if (!rsp.doPlanning()) throw new Error("No path between " + locationsUp.get(i) + "[" + Missions.getLocation(locationsUp.get(i)) + "] and " + locationsDown.get(j) + "[" + Missions.getLocation(locationsDown.get(j)) + "]");
+				Missions.addKnownPath(locationsUp.get(i), locationsDown.get(j), rsp.getPath());
+				Missions.addKnownPath(locationsDown.get(j), locationsUp.get(i), rsp.getPathInv());
 			}			
 		}
 		
 		// Decide initial poses for robots, place the robots, and create missions
 		String[] initialLocations = new String[numRobots];
 		for (int i = 0; i < numRobots; i++) {
-			String newLocation = "loc_"+rand.nextInt(numLocations);
+			String upOrDown = rand.nextBoolean() ? "Up" : "Down"; 
+			String newLocation = "loc" + upOrDown + "_"+rand.nextInt(numSlots);
 			for (int j = 0; j < i; j++) {
 				if (initialLocations[j].equals(newLocation)) {
 					j = -1;
-					newLocation = "loc_"+rand.nextInt(numLocations);
+					upOrDown = rand.nextBoolean() ? "Up" : "Down"; 
+					newLocation = "loc" + upOrDown + "_"+rand.nextInt(numSlots);
 				}
 			}
 			initialLocations[i] = newLocation;
@@ -132,9 +136,10 @@ public class Circle {
 			int robotID = robotIDs[i];
 			String initialLocation = initialLocations[i];
 			tec.placeRobot(robotID, Missions.getLocation(initialLocation));
-			String goalLocation = "loc_"+rand.nextInt(numLocations);
+			String upOrDown = initialLocation.contains("Down") ? "Up" : "Down"; 
+			String goalLocation = "loc" + upOrDown + "_"+rand.nextInt(numSlots);
 			while (initialLocation.equals(goalLocation) || assigned.contains(new Pair<String,String>(goalLocation,initialLocation))) {
-				goalLocation = "loc_"+rand.nextInt(numLocations);
+				goalLocation = "loc" + upOrDown + "_"+rand.nextInt(numSlots);
 			}
 			assigned.add(new Pair<String,String>(initialLocation,goalLocation));
 			Mission mFW = new Mission(robotID, Missions.getShortestPath(initialLocation, goalLocation));

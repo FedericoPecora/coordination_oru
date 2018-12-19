@@ -1,8 +1,8 @@
-package se.oru.coordination.coordination_oru.tests.icaps2018.talk;
+package se.oru.coordination.coordination_oru.tests.collisionChecking;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Calendar;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Random;
 
@@ -13,25 +13,22 @@ import com.vividsolutions.jts.geom.Coordinate;
 import aima.core.util.datastructure.Pair;
 import se.oru.coordination.coordination_oru.ConstantAccelerationForwardModel;
 import se.oru.coordination.coordination_oru.Mission;
-import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
 import se.oru.coordination.coordination_oru.util.BrowserVisualization;
 import se.oru.coordination.coordination_oru.util.Missions;
 import se.oru.coordination.coordination_oru.util.RVizVisualization;
 
-@DemoDescription(desc = "Coordination of robots along a circle. Start and goals are placed along the circumference of a circle with a fixed radious, and are continually posted to robots. Paths are computed by using the ReedsSheppCarPlanner.")
-public class Circle {
+public class ParkingArray {
 
 	public static void main(String[] args) throws InterruptedException {
 
 		double MAX_ACCEL = 3.0;
 		double MAX_VEL = 4.0;
 		
-		//Define the radius of the circle
-		double radius = 10.0;
-		int numLocations = 8;
-		int numRobots = 8;
+		//Define the radius of the circle	
+		int numRobots = 7;
+		int numLocations = ((numRobots%2) == 0) ? numRobots/2 : (numRobots+1)/2;
 				
 		//Instantiate a trajectory envelope coordinator.
 		//The TrajectoryEnvelopeCoordinatorSimulation implementation provides
@@ -47,6 +44,7 @@ public class Circle {
 		tec.setYieldIfParking(false);
 		tec.setBreakDeadlocksByReordering(false);
 		tec.setBreakDeadlocksByReplanning(true);
+		//Enable checking for collisions
 		tec.setCheckCollisions(true);
 				
 		//Set the footprint
@@ -64,26 +62,27 @@ public class Circle {
 		}
 		
 		//Set a map
-		String yamlFile = "maps/map-empty-circle.yaml";
+		String yamlFile = "maps/map-empty.yaml";
 		
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		RVizVisualization viz = new RVizVisualization();
 		//RVizVisualization.writeRVizConfigFile(robotIDs);
 		//BrowserVisualization viz = new BrowserVisualization();
 		//viz.setMap(yamlFile);
-		//viz.setInitialTransform(60, 33.58, 13.49);
+//		viz.setInitialTransform(60, 33.58, 13.49);
+		//viz.setInitialTransform(60, 15, 0.5);
 		tec.setVisualization(viz);
 		
 		//Determine locations around the circle, with random orientation
 		long seed = 123123;// Calendar.getInstance().getTimeInMillis();
 		System.out.println("Seed random generator: " + seed);
 		Random rand = new Random(seed);
-		double angle = 2*Math.PI/numLocations;
-		ArrayList<String> locations = new ArrayList<String>();
+		double dx = 1.5;
+		double dy = 15;
+		double[] origin = {10,5};
 		for (int i = 0; i < numLocations; i++) {
-			double theta = 2*Math.PI*rand.nextDouble();
-			locations.add(i,"loc_"+i);
-			Missions.setLocation(locations.get(i), new Pose(radius*(2+Math.cos(angle*i)), radius*(2+Math.sin(angle*i)), theta));
+			Missions.setLocation("line0_"+i, new Pose(origin[0]+i*dx, origin[1], Math.PI/2));
+			Missions.setLocation("line1_"+i, new Pose(origin[0]+i*dx, origin[1]+dy, Math.PI/2));
 		}
 		
 		//Set up motion planner
@@ -94,14 +93,14 @@ public class Circle {
 		rsp.setRadius(0.1);
 		rsp.setFootprint(tec.getDefaultFootprint());
 		rsp.setTurningRadius(4.0);
-		rsp.setDistanceBetweenPathPoints(0.1);
+		rsp.setDistanceBetweenPathPoints(0.3);
 		
 		//In case deadlocks occur, we make the coordinator capable of re-planning on the fly (experimental, not working properly yet)
 		tec.setMotionPlanner(rsp);
 		
 		for (String loc1 : Missions.getLocations().keySet()) {
 			for (String loc2 : Missions.getLocations().keySet()) {
-				if (!loc1.equals(loc2)) {
+				if (loc1.contains("line0_") && loc2.contains("line1_")) {
 					//Compute path in both directions
 					rsp.setStart(Missions.getLocation(loc1));
 					rsp.setGoals(Missions.getLocation(loc2));
@@ -115,30 +114,40 @@ public class Circle {
 		// Decide initial poses for robots, place the robots, and create missions
 		String[] initialLocations = new String[numRobots];
 		for (int i = 0; i < numRobots; i++) {
-			String newLocation = "loc_"+rand.nextInt(numLocations);
+			boolean even = (i%2) == 0;
+			String str = even ? "line0_" : "line1_";
+			String newLocation = str+rand.nextInt(numLocations);
 			for (int j = 0; j < i; j++) {
 				if (initialLocations[j].equals(newLocation)) {
 					j = -1;
-					newLocation = "loc_"+rand.nextInt(numLocations);
+					newLocation = str+rand.nextInt(numLocations);
 				}
 			}
 			initialLocations[i] = newLocation;
 		}
+		System.out.println(">>>>>>>>>>>>>" + Arrays.toString(initialLocations));
 		
-		HashSet<Pair<String,String>> assigned = new HashSet<Pair<String,String>>(); 
+		String[] finalLocations = new String[numRobots];
+		for (int i = 0; i < numRobots; i++) {
+			boolean even = (i%2) == 0;
+			String str = !even ? "line0_" : "line1_";
+			String newLocation = str+rand.nextInt(numLocations);
+			for (int j = 0; j < i; j++) {
+				if (finalLocations[j].equals(newLocation)) {
+					j = -1;
+					newLocation = str+rand.nextInt(numLocations);
+				}
+			}
+			finalLocations[i] = newLocation;
+		}
+		System.out.println(">>>>>>>>>>>>>" + Arrays.toString(finalLocations));
 		
+
 		//Set the goals such that two paths cannot overlap
 		for (int i = 0; i < initialLocations.length; i++) {
-			int robotID = robotIDs[i];
-			String initialLocation = initialLocations[i];
-			tec.placeRobot(robotID, Missions.getLocation(initialLocation));
-			String goalLocation = "loc_"+rand.nextInt(numLocations);
-			while (initialLocation.equals(goalLocation) || assigned.contains(new Pair<String,String>(goalLocation,initialLocation))) {
-				goalLocation = "loc_"+rand.nextInt(numLocations);
-			}
-			assigned.add(new Pair<String,String>(initialLocation,goalLocation));
-			Mission mFW = new Mission(robotID, Missions.getShortestPath(initialLocation, goalLocation));
-			Mission mBW = new Mission(robotID, Missions.getShortestPath(goalLocation, initialLocation));
+			tec.placeRobot(robotIDs[i], Missions.getLocation(initialLocations[i]));
+			Mission mFW = new Mission(robotIDs[i], Missions.getShortestPath(initialLocations[i],finalLocations[i]));
+			Mission mBW = new Mission(robotIDs[i], Missions.getShortestPath(finalLocations[i],initialLocations[i]));
 			Missions.enqueueMission(mFW);
 			Missions.enqueueMission(mBW);
 		}
@@ -162,5 +171,4 @@ public class Circle {
 		}
 		
 	}
-
 }

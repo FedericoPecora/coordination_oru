@@ -84,6 +84,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected boolean overlay = false;
 	protected boolean quiet = false;
 
+	protected boolean checkCollisions = false;
+	protected ArrayList<CollisionEvent> collisionsList = new ArrayList<CollisionEvent>();
+	protected Thread collisionThread = null;
+	
 	protected TrajectoryEnvelopeSolver solver = null;
 	//protected JTSDrawingPanel panel = null;
 	protected FleetVisualization viz = null;
@@ -126,6 +130,16 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected HashSet<HashSet<Integer>> replanningSpawned = new HashSet<HashSet<Integer>>();
 	protected boolean replanning = false;
 
+	/**
+	 * Set whether a collision checking thread should be started. This is useful for
+	 * debugging and verifying that the fleet behaves properly. By default, collision checking is not performed.
+	 * 
+	 * @param checkCollision Set to <code>true</code> if collision checking should be enabled.
+	 */
+	public void setCheckCollisions(boolean checkCollision) {
+		this.checkCollisions = checkCollision;
+	}
+	
 	/**
 	 * Utility method to treat internal resources from this library as filenames.
 	 * @param resource The internal resource to be loaded.
@@ -1354,6 +1368,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 */
 	public void computeCriticalSections() {
 
+		int numberOfCriticalSections = 0;
+		
 		synchronized(allCriticalSections) {
 
 			//Collect all driving envelopes
@@ -1408,7 +1424,85 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			
 			filterCriticalSections();
 			
-			metaCSPLogger.info("There are now " + allCriticalSections.size() + " critical sections");
+			numberOfCriticalSections = allCriticalSections.size();
+			metaCSPLogger.info("There are now " + numberOfCriticalSections + " critical sections");
+		}
+		
+		if (checkCollisions && (collisionThread == null) && (numberOfCriticalSections > 0)) {
+			// Start the collision checking thread. 
+			// The tread will be alive until there will be almost one critical section.
+			collisionThread = new Thread("Collision checking thread.") {
+
+				
+				@Override
+				public void run() {
+					metaCSPLogger.info("Starting the collision checking thread.");
+					ArrayList<CriticalSection> previousCollidingCS = new ArrayList<CriticalSection>();
+					ArrayList<CriticalSection> newCollidingCS = new ArrayList<CriticalSection>();
+					
+					while(true) {
+						newCollidingCS.clear();
+						
+						//collisions can happen only in critical sections						
+						synchronized (allCriticalSections) {
+							if (allCriticalSections.isEmpty())
+								break; //break the thread if there are no critical sections to control
+							
+							for (CriticalSection cs : allCriticalSections) {
+								//check if both the robots are inside the critical section
+								
+								//FIXME sample the real pose of the robots (ok in simulation, but not otherwise)
+								RobotReport robotReport1, robotReport2;
+								AbstractTrajectoryEnvelopeTracker tracker1, tracker2;
+								try {
+									synchronized (trackers)	{
+										tracker1 = trackers.get(cs.getTe1().getRobotID());
+										robotReport1 = tracker1.getRobotReport();
+										tracker2 = trackers.get(cs.getTe2().getRobotID());
+										robotReport2 = tracker2.getRobotReport();
+									}
+								}
+								catch (NullPointerException e) {
+									continue; //skip this cycle
+								}
+								
+								if ( robotReport1 != null && robotReport2 != null &&
+								(robotReport1.getPathIndex() < cs.getTe1End()) && (robotReport1.getPathIndex() > cs.getTe1Start()) && //robot1 is inside
+								(robotReport2.getPathIndex() < cs.getTe2End()) && (robotReport2.getPathIndex() > cs.getTe2Start())  	//robot2 is inside
+								) {
+									//place robot  in pose and get geometry
+									PoseSteering[] path1 = cs.getTe1().getTrajectory().getPoseSteering();
+									Geometry placement1 = cs.getTe1().makeFootprint(path1[robotReport1.getPathIndex()]);
+									
+									PoseSteering[] path2 = cs.getTe2().getTrajectory().getPoseSteering();
+									Geometry placement2 = cs.getTe2().makeFootprint(path2[robotReport2.getPathIndex()]);
+									
+									//check intersection
+									if (placement1.intersects(placement2)) {
+										if (!previousCollidingCS.contains(cs)) {
+											CollisionEvent ce = new CollisionEvent(Calendar.getInstance().getTimeInMillis(),robotReport1,robotReport2);
+											metaCSPLogger.info("** NEW COLLISION ** " + ce);
+											synchronized (collisionsList) {
+												collisionsList.add(ce);
+											}		
+											newCollidingCS.add(cs);
+										}
+									}
+									else if (previousCollidingCS.contains(cs))
+										previousCollidingCS.remove(cs); //remove the ones that are not colliding anymore
+								}
+							}
+						}
+						previousCollidingCS.addAll(newCollidingCS);
+						
+						try { Thread.sleep((long)(1000.0/30.0)); }
+						catch (InterruptedException e) { e.printStackTrace(); }
+					}
+					metaCSPLogger.info("Ending the collision checking thread.");
+				}
+					
+			};
+			collisionThread.start();
 		}
 	}
 	
@@ -1744,83 +1838,27 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						cssOneIntersectionPiece.add(oneCS);
 					}					
 				}
-				
-//				if (te1Starts.size() != te2Starts.size()) {
-//					System.out.println("WARNING: starts for R" + te1.getRobotID() + " are " + te1Starts + ", starts for R" + te2.getRobotID() + " are " + te2Starts);
-//					System.out.println("ORIGINALS   : " + cssOneIntersectionPiece);
-//					cssOneIntersectionPiece.clear();
-//					if (te1Starts.size() > te2Starts.size()) {
-//						te2Starts.clear();
-//						te2Ends.clear();
-//						for (int k = 0; k < te1Starts.size(); k++) {
-//							//System.out.println("CHUNK " + k);
-//							int start = te1Starts.get(k);
-//							int end = te1Ends.get(k);
-//							Geometry partialGeom = te1.getPartialEnvelopeGeometry(start, end);
-//							started = false;
-//							for (int j = 0; j < path2.length; j++) {
-//								Geometry placement2 = te2.makeFootprint(path2[j]);
-//								if (!started && placement2.intersects(partialGeom)) {
-//									started = true;
-//									te2Starts.add(j);
-//								}
-//								else if (started && !placement2.intersects(partialGeom)) {
-//									te2Ends.add(j);
-//									started = false;
-//								}
-//								if (started && j == path2.length-1) {
-//									te2Ends.add(path2.length-1);
-//								}
-//							}
-//						}
-//					}
-//					else {
-//						te1Starts.clear();
-//						te1Ends.clear();
-//						for (int k = 0; k < te2Starts.size(); k++) {
-//							int start = te2Starts.get(k);
-//							int end = te2Ends.get(k);
-//							Geometry partialGeom = te2.getPartialEnvelopeGeometry(start, end);
-//							started = false;
-//							for (int j = 0; j < path1.length; j++) {
-//								Geometry placement1 = te1.makeFootprint(path1[j]);
-//								if (!started && placement1.intersects(partialGeom)) {
-//									started = true;
-//									te1Starts.add(j);
-//								}
-//								else if (started && !placement1.intersects(partialGeom)) {
-//									te1Ends.add(j);
-//									started = false;
-//								}
-//								if (started && j == path1.length-1) {
-//									te1Ends.add(path1.length-1);
-//								}
-//							}
-//						}
-//					}
-//
-//					//And again...
-//					for (int k1 = 0; k1 < te1Starts.size(); k1++) {
-//						for (int k2 = 0; k2 < te2Starts.size(); k2++) {
-//							CriticalSection oneCS = new CriticalSection(te1, te2, te1Starts.get(k1), te2Starts.get(k2), te1Ends.get(k1), te2Ends.get(k2));
-//							//css.add(oneCS);
-//							cssOneIntersectionPiece.add(oneCS);
-//						}					
-//					}
-//					System.out.println("REVISED     : " + cssOneIntersectionPiece);
-//				}
 
-				// SEEMS NECESSARY FOR EPIROC SCENARIO!
-//				if (te1Starts.size() != te2Starts.size()) {
-//					System.out.println("WARNING: starts for R" + te1.getRobotID() + " are " + te1Starts + ", starts for R" + te2.getRobotID() + " are " + te2Starts);
-//					System.out.println("ORIGINALS   : " + cssOneIntersectionPiece);
-//					CriticalSection oldCSFirst = cssOneIntersectionPiece.get(0);
-//					CriticalSection oldCSLast = cssOneIntersectionPiece.get(cssOneIntersectionPiece.size()-1);
-//					CriticalSection newCS = new CriticalSection(te1, te2, oldCSFirst.getTe1Start(), oldCSFirst.getTe2Start(), oldCSLast.getTe1End(), oldCSLast.getTe2End());
-//					cssOneIntersectionPiece.clear();
-//					cssOneIntersectionPiece.add(newCS);
-//					System.out.println("REVISED     : " + cssOneIntersectionPiece);
-//				}
+				// ASYMMETRIC INTERSECTIONS OF ENVELOPES
+				// There are cases in which there are more starts along one envelope than along the other
+				// (see the Epiroc underground mining example).
+				// These "holes" may or may not be big enough to accommodate a robot. Those that are not
+				// should be filtered, as they falsely indicate that the critical section ends for a little bit
+				// before restarting. Because of this, such situations may lead to collision.
+				// Here, we take a conservative approach: instead of verifying whether
+				// the "hole" is big enough to really accommodate a robot so that it does not collide with
+				// the other envelope, we simply filter out all of these cases. We do this by joining the
+				// critical sections around holes.
+				if (te1Starts.size() != te2Starts.size()) {
+					metaCSPLogger.info("Asymmetric intersections of envelopes for Robot" + te1.getRobotID() + ", Robot" + te2.getRobotID() + ":");
+					metaCSPLogger.info("   Original : " + cssOneIntersectionPiece);
+					CriticalSection oldCSFirst = cssOneIntersectionPiece.get(0);
+					CriticalSection oldCSLast = cssOneIntersectionPiece.get(cssOneIntersectionPiece.size()-1);
+					CriticalSection newCS = new CriticalSection(te1, te2, oldCSFirst.getTe1Start(), oldCSFirst.getTe2Start(), oldCSLast.getTe1End(), oldCSLast.getTe2End());
+					cssOneIntersectionPiece.clear();
+					cssOneIntersectionPiece.add(newCS);
+					metaCSPLogger.info("   Refined  : " + cssOneIntersectionPiece);
+				}
 
 				css.addAll(cssOneIntersectionPiece);
 
