@@ -1838,83 +1838,27 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						cssOneIntersectionPiece.add(oneCS);
 					}					
 				}
-				
-//				if (te1Starts.size() != te2Starts.size()) {
-//					System.out.println("WARNING: starts for R" + te1.getRobotID() + " are " + te1Starts + ", starts for R" + te2.getRobotID() + " are " + te2Starts);
-//					System.out.println("ORIGINALS   : " + cssOneIntersectionPiece);
-//					cssOneIntersectionPiece.clear();
-//					if (te1Starts.size() > te2Starts.size()) {
-//						te2Starts.clear();
-//						te2Ends.clear();
-//						for (int k = 0; k < te1Starts.size(); k++) {
-//							//System.out.println("CHUNK " + k);
-//							int start = te1Starts.get(k);
-//							int end = te1Ends.get(k);
-//							Geometry partialGeom = te1.getPartialEnvelopeGeometry(start, end);
-//							started = false;
-//							for (int j = 0; j < path2.length; j++) {
-//								Geometry placement2 = te2.makeFootprint(path2[j]);
-//								if (!started && placement2.intersects(partialGeom)) {
-//									started = true;
-//									te2Starts.add(j);
-//								}
-//								else if (started && !placement2.intersects(partialGeom)) {
-//									te2Ends.add(j);
-//									started = false;
-//								}
-//								if (started && j == path2.length-1) {
-//									te2Ends.add(path2.length-1);
-//								}
-//							}
-//						}
-//					}
-//					else {
-//						te1Starts.clear();
-//						te1Ends.clear();
-//						for (int k = 0; k < te2Starts.size(); k++) {
-//							int start = te2Starts.get(k);
-//							int end = te2Ends.get(k);
-//							Geometry partialGeom = te2.getPartialEnvelopeGeometry(start, end);
-//							started = false;
-//							for (int j = 0; j < path1.length; j++) {
-//								Geometry placement1 = te1.makeFootprint(path1[j]);
-//								if (!started && placement1.intersects(partialGeom)) {
-//									started = true;
-//									te1Starts.add(j);
-//								}
-//								else if (started && !placement1.intersects(partialGeom)) {
-//									te1Ends.add(j);
-//									started = false;
-//								}
-//								if (started && j == path1.length-1) {
-//									te1Ends.add(path1.length-1);
-//								}
-//							}
-//						}
-//					}
-//
-//					//And again...
-//					for (int k1 = 0; k1 < te1Starts.size(); k1++) {
-//						for (int k2 = 0; k2 < te2Starts.size(); k2++) {
-//							CriticalSection oneCS = new CriticalSection(te1, te2, te1Starts.get(k1), te2Starts.get(k2), te1Ends.get(k1), te2Ends.get(k2));
-//							//css.add(oneCS);
-//							cssOneIntersectionPiece.add(oneCS);
-//						}					
-//					}
-//					System.out.println("REVISED     : " + cssOneIntersectionPiece);
-//				}
 
-				// SEEMS NECESSARY FOR EPIROC SCENARIO!
-//				if (te1Starts.size() != te2Starts.size()) {
-//					System.out.println("WARNING: starts for R" + te1.getRobotID() + " are " + te1Starts + ", starts for R" + te2.getRobotID() + " are " + te2Starts);
-//					System.out.println("ORIGINALS   : " + cssOneIntersectionPiece);
-//					CriticalSection oldCSFirst = cssOneIntersectionPiece.get(0);
-//					CriticalSection oldCSLast = cssOneIntersectionPiece.get(cssOneIntersectionPiece.size()-1);
-//					CriticalSection newCS = new CriticalSection(te1, te2, oldCSFirst.getTe1Start(), oldCSFirst.getTe2Start(), oldCSLast.getTe1End(), oldCSLast.getTe2End());
-//					cssOneIntersectionPiece.clear();
-//					cssOneIntersectionPiece.add(newCS);
-//					System.out.println("REVISED     : " + cssOneIntersectionPiece);
-//				}
+				// ASYMMETRIC INTERSECTIONS OF ENVELOPES
+				// There are cases in which there are more starts along one envelope than along the other
+				// (see the Epiroc underground mining example).
+				// These "holes" may or may not be big enough to accommodate a robot. Those that are not
+				// should be filtered, as they falsely indicate that the critical section ends for a little bit
+				// before restarting. Because of this, such situations may lead to collision.
+				// Here, we take a conservative approach: instead of verifying whether
+				// the "hole" is big enough to really accommodate a robot so that it does not collide with
+				// the other envelope, we simply filter out all of these cases. We do this by joining the
+				// critical sections around holes.
+				if (te1Starts.size() != te2Starts.size()) {
+					metaCSPLogger.info("Asymmetric intersections of envelopes for Robot" + te1.getRobotID() + ", Robot" + te2.getRobotID() + ":");
+					metaCSPLogger.info("   Original : " + cssOneIntersectionPiece);
+					CriticalSection oldCSFirst = cssOneIntersectionPiece.get(0);
+					CriticalSection oldCSLast = cssOneIntersectionPiece.get(cssOneIntersectionPiece.size()-1);
+					CriticalSection newCS = new CriticalSection(te1, te2, oldCSFirst.getTe1Start(), oldCSFirst.getTe2Start(), oldCSLast.getTe1End(), oldCSLast.getTe2End());
+					cssOneIntersectionPiece.clear();
+					cssOneIntersectionPiece.add(newCS);
+					metaCSPLogger.info("   Refined  : " + cssOneIntersectionPiece);
+				}
 
 				css.addAll(cssOneIntersectionPiece);
 

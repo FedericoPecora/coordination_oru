@@ -21,7 +21,7 @@ import se.oru.coordination.coordination_oru.util.Missions;
 import se.oru.coordination.coordination_oru.util.RVizVisualization;
 
 @DemoDescription(desc = "Coordination of robots vertically. Goals are continually posted to robots. Paths are computed by using the ReedsSheppCarPlanner.")
-public class MultipleVerticalMotions {
+public class ParkingArrayNew {
 
 	public static void main(String[] args) throws InterruptedException {
 
