@@ -1865,6 +1865,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					}					
 				}
 
+				// SPURIOUS INTERSECTIONS (can ignore)
+				if (te1Starts.size() == 0 || te2Starts.size() == 0) {
+					cssOneIntersectionPiece.clear();
+				}
+
 				// ASYMMETRIC INTERSECTIONS OF ENVELOPES
 				// There are cases in which there are more starts along one envelope than along the other
 				// (see the Epiroc underground mining example).
@@ -1875,7 +1880,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				// the "hole" is big enough to really accommodate a robot so that it does not collide with
 				// the other envelope, we simply filter out all of these cases. We do this by joining the
 				// critical sections around holes.
-				if (te1Starts.size() != te2Starts.size()) {
+				else if (te1Starts.size() != te2Starts.size()) {
 					if (te1Starts.size() == 0 || te2Starts.size() == 0) System.out.println("CRAP: te1Starts is " + te1Starts + " and te2Starts is " + te2Starts);
 					metaCSPLogger.info("Asymmetric intersections of envelopes for Robot" + te1.getRobotID() + ", Robot" + te2.getRobotID() + ":");
 					metaCSPLogger.info("   Original : " + cssOneIntersectionPiece);
@@ -1886,7 +1891,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					cssOneIntersectionPiece.add(newCS);
 					metaCSPLogger.info("   Refined  : " + cssOneIntersectionPiece);
 				}
-
+				
 				css.addAll(cssOneIntersectionPiece);
 
 			}
