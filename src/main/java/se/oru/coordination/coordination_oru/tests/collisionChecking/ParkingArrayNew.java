@@ -5,14 +5,17 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashSet;
 import java.util.Random;
+import java.util.logging.Level;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
+import org.metacsp.utility.logging.MetaCSPLogging;
 
 import com.vividsolutions.jts.geom.Coordinate;
 
 import aima.core.util.datastructure.Pair;
 import se.oru.coordination.coordination_oru.ConstantAccelerationForwardModel;
 import se.oru.coordination.coordination_oru.Mission;
+import se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
@@ -30,7 +33,6 @@ public class ParkingArrayNew {
 		
 		//Define the radius of the circle
 		int numSlots = 8;
-		int numRobots = 12;
 		double deltaX = 5.0;
 		double deltaY = 15.0;
 		double offsetX = 30.0;
@@ -51,6 +53,7 @@ public class ParkingArrayNew {
 		tec.setBreakDeadlocksByReordering(false);
 		tec.setBreakDeadlocksByReplanning(true);
 		tec.setCheckCollisions(true);
+		//MetaCSPLogging.setLevel(TrajectoryEnvelopeCoordinator.class, Level.FINEST);
 				
 		//Set the footprint
 		Coordinate footprint1 = new Coordinate(-0.5,0.5);
@@ -60,10 +63,23 @@ public class ParkingArrayNew {
 		tec.setDefaultFootprint(footprint1, footprint2, footprint3, footprint4);
 		
 		// Set the FW models and robotIDs
-		final int[] robotIDs = new int[numRobots];
-		for (int i = 0; i < numRobots; i++) {
-			robotIDs[i] = i+1;
-			tec.setForwardModel(i+1, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getControlPeriod(), tec.getTemporalResolution(), 2));
+		final int[] robotIDs = new int[] {1,2,3,4,5,6,7,8,9,10,11,12};
+		HashSet<Integer> inactiveRobots = new HashSet<Integer>();
+//		inactiveRobots.add(1);
+//		inactiveRobots.add(2);
+//		inactiveRobots.add(3);
+//		inactiveRobots.add(4);
+//		inactiveRobots.add(5);
+//		inactiveRobots.add(6);
+//		inactiveRobots.add(7);
+//		inactiveRobots.add(8);
+//		inactiveRobots.add(9);
+//		inactiveRobots.add(10);
+//		inactiveRobots.add(11);
+//		inactiveRobots.add(12);
+		
+		for (int i : robotIDs) {
+			tec.setForwardModel(i, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getControlPeriod(), tec.getTemporalResolution(), 2));
 		}
 		
 		//Set a map
@@ -98,11 +114,12 @@ public class ParkingArrayNew {
 		rsp.setRadius(0.1);
 		rsp.setFootprint(tec.getDefaultFootprint());
 		rsp.setTurningRadius(4.0);
-		rsp.setDistanceBetweenPathPoints(0.1);
+		rsp.setDistanceBetweenPathPoints(0.3);
 		
 		//In case deadlocks occur, we make the coordinator capable of re-planning on the fly (experimental, not working properly yet)
 		tec.setMotionPlanner(rsp);
 		
+		//Here we pre-compute all paths
 		for (int i = 0; i < numSlots; i++) {
 			for (int j = 0; j < numSlots; j++) {
 				//Compute path in both directions
@@ -115,8 +132,8 @@ public class ParkingArrayNew {
 		}
 		
 		// Decide initial poses for robots, place the robots, and create missions
-		String[] initialLocations = new String[numRobots];
-		for (int i = 0; i < numRobots; i++) {
+		String[] initialLocations = new String[robotIDs.length];
+		for (int i = 0; i < robotIDs.length; i++) {
 			String upOrDown = rand.nextBoolean() ? "Up" : "Down"; 
 			String newLocation = "loc" + upOrDown + "_"+rand.nextInt(numSlots);
 			for (int j = 0; j < i; j++) {
@@ -135,35 +152,39 @@ public class ParkingArrayNew {
 		for (int i = 0; i < initialLocations.length; i++) {
 			int robotID = robotIDs[i];
 			String initialLocation = initialLocations[i];
-			tec.placeRobot(robotID, Missions.getLocation(initialLocation));
+			if (!inactiveRobots.contains(robotID)) tec.placeRobot(robotID, Missions.getLocation(initialLocation));
 			String upOrDown = initialLocation.contains("Down") ? "Up" : "Down"; 
 			String goalLocation = "loc" + upOrDown + "_"+rand.nextInt(numSlots);
 			while (initialLocation.equals(goalLocation) || assigned.contains(new Pair<String,String>(goalLocation,initialLocation))) {
 				goalLocation = "loc" + upOrDown + "_"+rand.nextInt(numSlots);
 			}
 			assigned.add(new Pair<String,String>(initialLocation,goalLocation));
+			if (!inactiveRobots.contains(robotID)) {
 			Mission mFW = new Mission(robotID, Missions.getShortestPath(initialLocation, goalLocation));
 			Mission mBW = new Mission(robotID, Missions.getShortestPath(goalLocation, initialLocation));
 			Missions.enqueueMission(mFW);
 			Missions.enqueueMission(mBW);
+			}
 		}
 
 		for (final int robotID : robotIDs) {
-			Thread t = new Thread() {
-				public void run() {
-					while (true) {
-						if (tec.isFree(robotID)) {
-							Mission m = Missions.dequeueMission(robotID);
-							tec.addMissions(m);
-							tec.computeCriticalSectionsAndStartTrackingAddedMission();
-							Missions.enqueueMission(m);
+			if (!inactiveRobots.contains(robotID)) {
+				Thread t = new Thread() {
+					public void run() {
+						while (true) {
+							if (tec.isFree(robotID)) {
+								Mission m = Missions.dequeueMission(robotID);
+								tec.addMissions(m);
+								tec.computeCriticalSectionsAndStartTrackingAddedMission();
+								Missions.enqueueMission(m);
+							}
+							try { Thread.sleep(2000); }
+							catch (InterruptedException e) { e.printStackTrace(); }
 						}
-						try { Thread.sleep(2000); }
-						catch (InterruptedException e) { e.printStackTrace(); }
 					}
-				}
-			};
-			t.start();
+				};
+				t.start();
+			}
 		}
 		
 	}

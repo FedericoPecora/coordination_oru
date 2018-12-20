@@ -94,7 +94,7 @@ public class Circle {
 		rsp.setRadius(0.1);
 		rsp.setFootprint(tec.getDefaultFootprint());
 		rsp.setTurningRadius(4.0);
-		rsp.setDistanceBetweenPathPoints(0.1);
+		rsp.setDistanceBetweenPathPoints(0.3);
 		
 		//In case deadlocks occur, we make the coordinator capable of re-planning on the fly (experimental, not working properly yet)
 		tec.setMotionPlanner(rsp);
