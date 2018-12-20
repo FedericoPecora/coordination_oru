@@ -55,6 +55,18 @@ public class Mission implements Comparable<Mission> {
 	public Mission(int robotID, PoseSteering[] path) {
 		this(robotID, path, path[0].getPose().toString(), path[path.length-1].getPose().toString(), path[0].getPose(), path[path.length-1].getPose());
 	}
+	
+	/**
+	 * Instantiates a {@link Mission} for a given robot to navigate between two locations via a given path.
+	 * 
+	 * @param robotID The ID of the robot.
+	 * @param fromLocation The identifier of the source location.
+	 * @param path An array of {@link PoseSteering}s representing the path to be driven.
+	 */
+	public Mission(int robotID, String fromLocation, String toLocation, PoseSteering[] path) {
+		this(robotID, path, fromLocation, toLocation, path[0].getPose(), path[path.length-1].getPose());
+	}
+	
 
 	/**
 	 * Make the robot stop at the nearest location to a given pose for a given duration.
