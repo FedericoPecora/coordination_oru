@@ -1319,6 +1319,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 				//Both robots are driving, let's determine an ordering for them thru this critical section
 				else {
+					
+					boolean createArtificialDeadlock = false;
 										
 					//Neither robot has communicated to having reached the critical section,
 					//but due to delays they may have --> follow ordering heuristic if FW model allows it
@@ -1363,13 +1365,15 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					}
 
 					//Both robots in critical section --> re-impose previously decided dependency
-					else {					
+					else {				
+						int lastIndexOfCSDriving = -1;
 						//Robot 1 is ahead --> make robot 2 follow
 						if (isAhead(cs, robotReport1, robotReport2)) {
 							drivingCurrentIndex = robotReport1.getPathIndex();
 							waitingCurrentIndex = robotReport2.getPathIndex();
 							waitingTE = cs.getTe2();
 							drivingTE = cs.getTe1();
+							lastIndexOfCSDriving = cs.getTe1End();
 						}
 						//Robot 2 is ahead --> make robot 1 follow
 						else {
@@ -1377,6 +1381,17 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							waitingCurrentIndex = robotReport1.getPathIndex();
 							waitingTE = cs.getTe1();
 							drivingTE = cs.getTe2();
+							lastIndexOfCSDriving = cs.getTe2End();
+						}
+						
+						//Check if the leading robot can actually continue to the end of the CS
+						//without colliding with the other one; if that is not the case, raise a
+						//flag that will lead to the creation of an artificial deadlock
+						//(this may happen if one of the robots started a new driving envelope
+						//whose initial pose is already in the CS).
+						if (!canExitCriticalSection(drivingCurrentIndex, waitingCurrentIndex, drivingTE, waitingTE, lastIndexOfCSDriving)) {
+							createArtificialDeadlock = true;
+							metaCSPLogger.finest("Will create artificial deadlock to prevent (previously parked) Robot" + drivingTE.getRobotID() + " from driving into (waiting) Robot" + waitingTE.getRobotID());
 						}
 						metaCSPLogger.finest("Both-in and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID() + " and CS is: " + cs);
 					}
@@ -1388,7 +1403,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 					//Compute waiting path index point for waiting robot
 					int waitingPoint = getCriticalPoint(waitingRobotID, cs, drivingCurrentIndex);
-					//metaCSPLogger.info("Waiting point Robot" + waitingRobotID + ": " + waitingPoint);
 					if (waitingPoint >= 0) {		
 						//Make new dependency
 						int drivingCSEnd = -1;
@@ -1397,8 +1411,13 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd, waitingTracker, drivingTracker);
 						if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
 						currentDeps.get(waitingRobotID).add(dep);
-						//metaCSPLogger.info("New dependancy: waiting Robot" + dep.getWaitingRobotID() + " at " + dep.getWaitingPoint() + " till Robot" + dep.getDrivingRobotID() + " will be at " + dep.getReleasingPoint());
 						criticalSectionsToDeps.put(cs, dep);
+						if (createArtificialDeadlock) {
+							Dependency oppositeDep = new Dependency(drivingTE, waitingTE, drivingCurrentIndex, waitingTE.getSequenceNumberEnd(), drivingTracker, waitingTracker);
+							//System.out.println("HERE YOU GO: " + oppositeDep);
+							if (!currentDeps.containsKey(drivingRobotID)) currentDeps.put(drivingRobotID, new TreeSet<Dependency>());
+							currentDeps.get(drivingRobotID).add(oppositeDep);
+						}
 					}
 					else {
 						//If robot is asked to wait in an invalid path point, throw error and give up!
@@ -1433,6 +1452,15 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			}
 			findCycles();
 		}		
+	}
+	
+	private boolean canExitCriticalSection(int drivingCurrentIndex, int waitingCurrentIndex, TrajectoryEnvelope drivingTE, TrajectoryEnvelope waitingTE, int lastIndexOfCSDriving) {
+		Geometry placementWaiting = waitingTE.makeFootprint(waitingTE.getTrajectory().getPoseSteering()[waitingCurrentIndex]);
+		for (int i = drivingCurrentIndex; i <= lastIndexOfCSDriving; i++) {
+			Geometry placementDriving = drivingTE.makeFootprint(drivingTE.getTrajectory().getPoseSteering()[i]);
+			if (placementWaiting.intersects(placementDriving)) return false;
+		}
+		return true;
 	}
 
 
@@ -1924,6 +1952,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				}
 				
 				
+				// SPURIOUS INTERSECTIONS (can ignore)
+				if (te1Starts.size() == 0 || te2Starts.size() == 0) {
+					cssOneIntersectionPiece.clear();
+				}
+
 				// ASYMMETRIC INTERSECTIONS OF ENVELOPES
 				// There are cases in which there are more starts along one envelope than along the other
 				// (see the Epiroc underground mining example).
@@ -1934,7 +1967,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				// the "hole" is big enough to really accommodate a robot so that it does not collide with
 				// the other envelope, we simply filter out all of these cases. We do this by joining the
 				// critical sections around holes.
-				if (te1Starts.size() != te2Starts.size()) {
+				else if (te1Starts.size() != te2Starts.size()) {
+					if (te1Starts.size() == 0 || te2Starts.size() == 0) System.out.println("CRAP: te1Starts is " + te1Starts + " and te2Starts is " + te2Starts);
 					metaCSPLogger.info("Asymmetric intersections of envelopes for Robot" + te1.getRobotID() + ", Robot" + te2.getRobotID() + ":");
 					metaCSPLogger.info("   Original : " + cssOneIntersectionPiece);
 					CriticalSection oldCSFirst = cssOneIntersectionPiece.get(0);
