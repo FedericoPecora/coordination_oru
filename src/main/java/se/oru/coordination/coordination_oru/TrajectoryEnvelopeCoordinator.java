@@ -128,7 +128,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected Callback inferenceCallback = null;
 	
 	protected HashSet<HashSet<Integer>> replanningSpawned = new HashSet<HashSet<Integer>>();
-	protected boolean replanning = false;
+	//protected boolean replanning = false;
 
 	/**
 	 * Set whether a collision checking thread should be started. This is useful for
@@ -873,8 +873,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					break;
 				}
 			}
-			if (!replanning && tryReplanning && !replanningSpawned.contains(deadlockedRobots)) {
-				replanning = true;
+			//if (!replanning && tryReplanning && !replanningSpawned.contains(deadlockedRobots)) {
+			if (tryReplanning && !replanningSpawned.contains(deadlockedRobots)) {
+				//replanning = true;
 				//Get other robots
 				final HashSet<Integer> allRobots = new HashSet<Integer>();
 				for (Integer robotID : deadlockedRobots) {
@@ -894,36 +895,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 			}
 			else {
-				System.out.println("Skipping replanning for deadlocked robots " + deadlockedRobots + " because (!replanning && tryReplanning && !replanningSpawned.contains(deadlockedRobots)):" + !replanning  + ", " + tryReplanning + ", " + !replanningSpawned.contains(deadlockedRobots));
+				if (!tryReplanning) metaCSPLogger.finest("Skipping re-planning for deadlocked robots " + deadlockedRobots + " because one of the robots is parked");
+				if (replanningSpawned.contains(deadlockedRobots)) metaCSPLogger.finest("Skipping re-planning for deadlocked robots " + deadlockedRobots + " because re-planning has already been spawned");
 			}
 		}
 	}
-	
-//	private void spawnReplanning(ArrayList<ArrayList<Dependency>> deadlockedDeps) {
-//		for (ArrayList<Dependency> depList : deadlockedDeps) {
-//			boolean tryReplanning = true;
-//			final HashSet<Integer> deadlockedRobots = new HashSet<Integer>();
-//			for (final Dependency dep : depList) {
-//				deadlockedRobots.add(dep.getWaitingRobotID());
-//				deadlockedRobots.add(dep.getDrivingRobotID());
-//				if (getRobotReport(dep.getDrivingRobotID()).getPathIndex() == -1 || getRobotReport(dep.getWaitingRobotID()).getPathIndex() == -1) {
-//					tryReplanning = false;
-//					break;
-//				}
-//			}
-//			if (tryReplanning && !replanningSpawned.contains(deadlockedRobots)) {
-//				replanningSpawned.add(deadlockedRobots);
-//				metaCSPLogger.info("Will replan for one of the following deadlocked robots: " + deadlockedRobots + "...");
-//				new Thread() {
-//					public void run() {
-//						rePlanPath(deadlockedRobots);
-//					}
-//				}.start();
-//
-//			}
-//		}
-//	}
-	
 	
 	protected Geometry[] getObstaclesInCriticalPoints(int ... robotIDs) {
 		//Compute one obstacle per given robot, placed in the robot's waiting pose
@@ -998,7 +974,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				}
 				replacePath(robotID, newCompletePath);
 				replanningSpawned.remove(robotsToReplan);
-				replanning = false;
+				//replanning = false;
 				metaCSPLogger.info("Successfully re-planned path of Robot" + robotID);
 				break;
 			}
@@ -1006,7 +982,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				metaCSPLogger.info("Failed to re-plan path of Robot" + robotID);
 			}
 		}
-		replanning = false;
+		//replanning = false;
 		replanningSpawned.remove(robotsToReplan);
 	}
 	
