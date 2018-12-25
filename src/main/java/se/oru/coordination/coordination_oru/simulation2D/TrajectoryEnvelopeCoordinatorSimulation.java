@@ -31,7 +31,6 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	protected double MAX_ACCELERATION;
 	protected int trackingPeriodInMillis;
 	protected boolean useInternalCPs = true;
-	protected AbstractMotionPlanner mp = null;
 
 	public int getTrackingPeriod() {
 		return trackingPeriodInMillis;
@@ -39,10 +38,6 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 
 	public double getTemporalResolution() {
 		return 1000.0;
-	}
-
-	public void setMotionPlanner(AbstractMotionPlanner mp) {
-		this.mp = mp;
 	}
 
 	/**
@@ -188,8 +183,8 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	}
 	
 	@Override
-	protected PoseSteering[] doReplanning(Pose fromPose, Pose toPose, Geometry... obstaclesToConsider) {
-		if (this.mp == null) return null;
+	protected PoseSteering[] doReplanning(AbstractMotionPlanner mp, Pose fromPose, Pose toPose, Geometry... obstaclesToConsider) {
+		if (mp == null) return null;
 		mp.setStart(fromPose);
 		mp.setGoals(toPose);
 		mp.clearObstacles();
@@ -197,5 +192,16 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 		if (mp.plan()) return mp.getPath();
 		return null;
 	}
+	
+//	@Override
+//	protected PoseSteering[] doReplanning(Pose fromPose, Pose toPose, Geometry... obstaclesToConsider) {
+//		if (this.defaultMotionPlanner == null) return null;
+//		defaultMotionPlanner.setStart(fromPose);
+//		defaultMotionPlanner.setGoals(toPose);
+//		defaultMotionPlanner.clearObstacles();
+//		if (obstaclesToConsider != null && obstaclesToConsider.length > 0) defaultMotionPlanner.addObstacles(obstaclesToConsider);
+//		if (defaultMotionPlanner.plan()) return defaultMotionPlanner.getPath();
+//		return null;
+//	}
 
 }

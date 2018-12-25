@@ -78,8 +78,7 @@ public abstract class AbstractMotionPlanner {
 		this.mapResolution = res;
 	}
 	
-	public synchronized void addObstacles(Geometry ... geom) {
-		if (this.mapFilename == null) throw new Error("Please set a map file first!");
+	private void addObstaclesToMap() {
 		BufferedImage img = null;
 		try {
 			img = ImageIO.read(new File(mapFilename)); 
@@ -87,7 +86,8 @@ public abstract class AbstractMotionPlanner {
 			Graphics2D g2 = img.createGraphics();
 			ShapeWriter writer = new ShapeWriter();
 			g2.setPaint(Color.black);
-			for (Geometry g : geom) {
+			//for (Geometry g : geom) {
+			for (Geometry g : this.obstacles) {
 				this.obstacles.add(g);
 				AffineTransformation at = new AffineTransformation();
 				at.scale(1.0/mapResolution, -1.0/mapResolution);
@@ -101,45 +101,30 @@ public abstract class AbstractMotionPlanner {
 			ImageIO.write(img, "png", outputfile);
 			this.mapFilename = outputfile.getAbsolutePath();
 		}
-		catch (IOException e) { e.printStackTrace(); }		
+		catch (IOException e) { e.printStackTrace(); }
+	}
+	
+	public synchronized void addObstacles(Geometry ... geom) {
+		for (Geometry g : geom) this.obstacles.add(g);
+		// If there is a map file, stamp obstacles into the map file...
+		if (this.mapFilename != null) this.addObstaclesToMap();
 	}
 
 	public synchronized void addObstacles(Geometry geom, Pose ... poses) {
-		if (this.mapFilename == null) throw new Error("Please set a map file first!");
-		BufferedImage img = null;
-		try {
-			img = ImageIO.read(new File(mapFilename)); 
-			Graphics2D g2 = img.createGraphics();
-			ShapeWriter writer = new ShapeWriter();
-			g2.setPaint(Color.black);
-			for (Pose pose : poses) {
-
-				AffineTransformation atObs = new AffineTransformation();
-				atObs.rotate(pose.getTheta());
-				atObs.translate(pose.getX(), pose.getY());
-				Geometry obs = atObs.transform(geom);
-				this.obstacles.add(obs);
-				
-				AffineTransformation at = new AffineTransformation();
-				at.rotate(pose.getTheta());
-				at.translate(pose.getX(), pose.getY());
-				at.scale(1.0/mapResolution, -1.0/mapResolution);
-				at.translate(0, img.getHeight());
-				Geometry scaledGeom = at.transform(geom);
-				Shape shape = writer.toShape(scaledGeom);
-				//System.out.println("Shape: " + shape.getBounds2D());
-				g2.fill(shape);
-			}
-			File outputfile = new File(TEMP_MAP_DIR + File.separator + "tempMap" + (numObstacles++) + ".png");
-			ImageIO.write(img, "png", outputfile);
-			this.mapFilename = outputfile.getAbsolutePath();
+		for (Pose pose : poses) {
+			AffineTransformation atObs = new AffineTransformation();
+			atObs.rotate(pose.getTheta());
+			atObs.translate(pose.getX(), pose.getY());
+			Geometry obs = atObs.transform(geom);
+			this.obstacles.add(obs);			
 		}
-		catch (IOException e) { e.printStackTrace(); }
+		// If there is a map file, stamp obstacles into the map file...
+		if (this.mapFilename != null) this.addObstaclesToMap();
 	}
 
 	public synchronized void clearObstacles() {
 		this.obstacles.clear();
-		this.setMapFilename(this.mapFilenameBAK);
+		if (this.mapFilename != null) this.setMapFilename(this.mapFilenameBAK);
 	}
 	
 	public PoseSteering[] getPath() {

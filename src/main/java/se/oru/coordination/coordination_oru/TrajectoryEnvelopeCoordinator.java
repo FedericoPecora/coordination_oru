@@ -43,6 +43,7 @@ import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.util.AffineTransformation;
 
+import se.oru.coordination.coordination_oru.motionplanning.AbstractMotionPlanner;
 import se.oru.coordination.coordination_oru.util.FleetVisualization;
 import se.oru.coordination.coordination_oru.util.StringUtils;
 import se.oru.coordination.coordination_oru.util.Pair;
@@ -127,6 +128,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected HashMap<Integer,TrackingCallback> trackingCallbacks = new HashMap<Integer, TrackingCallback>();	
 	protected Callback inferenceCallback = null;
 	
+	protected AbstractMotionPlanner defaultMotionPlanner = null;
+	protected HashMap<Integer,AbstractMotionPlanner> motionPlanners = new HashMap<Integer, AbstractMotionPlanner>();
 	protected HashSet<HashSet<Integer>> replanningSpawned = new HashSet<HashSet<Integer>>();
 	//protected boolean replanning = false;
 
@@ -837,7 +840,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	private boolean inParkingPose(int robotID) {
 		return getRobotReport(robotID).getPathIndex() == -1;
 	}
-	
+		
 	private void spawnReplanning(ArrayList<ArrayList<Dependency>> deadlockedDeps) {
 		
 		int maxSize = 0;
@@ -941,7 +944,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		return ret.toArray(new Geometry[ret.size()]);
 	}
 	
-	protected abstract PoseSteering[] doReplanning(Pose fromPose, Pose toPose, Geometry ... obstaclesToConsider);
+	protected abstract PoseSteering[] doReplanning(AbstractMotionPlanner mp, Pose fromPose, Pose toPose, Geometry ... obstaclesToConsider);
+	
+	//protected abstract PoseSteering[] doReplanning(Pose fromPose, Pose toPose, Geometry ... obstaclesToConsider);
 	
 	protected void rePlanPath(HashSet<Integer> robotsToReplan, HashSet<Integer> allRobots) {
 		for (int robotID : robotsToReplan) {
@@ -965,7 +970,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			for (int otherRobotID : allRobots) if (otherRobotID != robotID) otherRobotIDs[counter++] = otherRobotID;
 			Geometry[] obstacles = getObstaclesInCriticalPoints(otherRobotIDs);
 			metaCSPLogger.info("Attempting to re-plan path of Robot" + robotID + " (with obstacles for robots " + Arrays.toString(otherRobotIDs) + ")...");
-			PoseSteering[] newPath = doReplanning(currentWaitingPose, currentWaitingGoal, obstacles);
+			AbstractMotionPlanner mp = null;
+			if (this.motionPlanners.containsKey(robotID)) mp = this.motionPlanners.get(robotID);
+			else mp = this.defaultMotionPlanner;
+			PoseSteering[] newPath = doReplanning(mp, currentWaitingPose, currentWaitingGoal, obstacles);
 			if (newPath != null && newPath.length > 0) {
 				PoseSteering[] newCompletePath = new PoseSteering[newPath.length+currentWaitingIndex];
 				for (int i = 0; i < newCompletePath.length; i++) {
@@ -1353,7 +1361,35 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		return true;
 	}
 
+	/**
+	 * Set a motion planner to be used for re-planning.
+	 * @param mp The motion planner that will be called for re-planning. 
+	 */
+	@Deprecated
+	public void setMotionPlanner(AbstractMotionPlanner mp) {
+		this.defaultMotionPlanner = mp;
+	}
+	
+	/**
+	 * Set a motion planner to be used for re-planning for all robots
+	 * (unless a specific motion planner is specified for an individual robot).
+	 * @param mp The motion planner that will be called for re-planning for any
+	 * robot for which a motion planner has not been specified. 
+	 */
+	public void setDefaultMotionPlanner(AbstractMotionPlanner mp) {
+		this.defaultMotionPlanner = mp;
+	}
 
+	/**
+	 * Set a motion planner to be used for re-planning for a specific
+	 * robot.
+	 * @param robotID The robot for which the given motion planner should be used.
+	 * @param mp The motion planner that will be called for re-planning.
+	 */
+	public void setMotionPlanner(int robotID, AbstractMotionPlanner mp) {
+		this.motionPlanners.put(robotID, mp);
+	}
+	
 	/**
 	 * Add a criterion for determining the order of robots through critical sections
 	 * (comparator of {@link AbstractTrajectoryEnvelopeTracker}s). 
