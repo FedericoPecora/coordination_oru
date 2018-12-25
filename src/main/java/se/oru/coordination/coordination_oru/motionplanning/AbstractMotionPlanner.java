@@ -78,7 +78,7 @@ public abstract class AbstractMotionPlanner {
 		this.mapResolution = res;
 	}
 	
-	private void addObstaclesToMap() {
+	private synchronized void addObstaclesToMap() {
 		BufferedImage img = null;
 		try {
 			img = ImageIO.read(new File(mapFilename)); 
@@ -88,7 +88,6 @@ public abstract class AbstractMotionPlanner {
 			g2.setPaint(Color.black);
 			//for (Geometry g : geom) {
 			for (Geometry g : this.obstacles) {
-				this.obstacles.add(g);
 				AffineTransformation at = new AffineTransformation();
 				at.scale(1.0/mapResolution, -1.0/mapResolution);
 				at.translate(0, img.getHeight());

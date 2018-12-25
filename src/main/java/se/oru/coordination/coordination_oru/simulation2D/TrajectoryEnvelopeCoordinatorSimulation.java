@@ -182,17 +182,6 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 		return Calendar.getInstance().getTimeInMillis()-START_TIME;
 	}
 	
-	@Override
-	protected PoseSteering[] doReplanning(AbstractMotionPlanner mp, Pose fromPose, Pose toPose, Geometry... obstaclesToConsider) {
-		if (mp == null) return null;
-		mp.setStart(fromPose);
-		mp.setGoals(toPose);
-		mp.clearObstacles();
-		if (obstaclesToConsider != null && obstaclesToConsider.length > 0) mp.addObstacles(obstaclesToConsider);
-		if (mp.plan()) return mp.getPath();
-		return null;
-	}
-	
 //	@Override
 //	protected PoseSteering[] doReplanning(Pose fromPose, Pose toPose, Geometry... obstaclesToConsider) {
 //		if (this.defaultMotionPlanner == null) return null;

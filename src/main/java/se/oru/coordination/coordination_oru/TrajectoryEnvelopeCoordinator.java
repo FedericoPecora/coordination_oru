@@ -944,7 +944,17 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		return ret.toArray(new Geometry[ret.size()]);
 	}
 	
-	protected abstract PoseSteering[] doReplanning(AbstractMotionPlanner mp, Pose fromPose, Pose toPose, Geometry ... obstaclesToConsider);
+	//protected abstract PoseSteering[] doReplanning(AbstractMotionPlanner mp, Pose fromPose, Pose toPose, Geometry ... obstaclesToConsider);
+	
+	protected PoseSteering[] doReplanning(AbstractMotionPlanner mp, Pose fromPose, Pose toPose, Geometry... obstaclesToConsider) {
+		if (mp == null) return null;
+		mp.setStart(fromPose);
+		mp.setGoals(toPose);
+		mp.clearObstacles();
+		if (obstaclesToConsider != null && obstaclesToConsider.length > 0) mp.addObstacles(obstaclesToConsider);
+		if (mp.plan()) return mp.getPath();
+		return null;
+	}
 	
 	//protected abstract PoseSteering[] doReplanning(Pose fromPose, Pose toPose, Geometry ... obstaclesToConsider);
 	

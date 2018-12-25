@@ -117,7 +117,7 @@ public class ParkingArrayNew {
 		rsp.setDistanceBetweenPathPoints(0.3);
 		
 		//In case deadlocks occur, we make the coordinator capable of re-planning on the fly (experimental, not working properly yet)
-		tec.setMotionPlanner(rsp);
+		tec.setDefaultMotionPlanner(rsp);
 		
 		//Here we pre-compute all paths
 		for (int i = 0; i < numSlots; i++) {
