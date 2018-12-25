@@ -48,7 +48,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlannerReplanNew {
 		// -- the getCurrentTimeInMillis() method, which is used by the coordinator to keep time
 		//You still need to add one or more comparators to determine robot orderings thru critical sections (comparators are evaluated in the order in which they are added)
 		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(MAX_VEL,MAX_ACCEL);
-		tec.setMotionPlanner(rsp);
+		tec.setDefaultMotionPlanner(rsp);
 		
 		tec.addComparator(new Comparator<RobotAtCriticalSection> () {
 			@Override

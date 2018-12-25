@@ -29,7 +29,7 @@ public abstract class AbstractMotionPlanner {
 	protected Logger metaCSPLogger = MetaCSPLogging.getLogger(this.getClass());
 
 	protected static String TEMP_MAP_DIR = ".tempMaps";
-	protected int numObstacles = 0;
+	protected int numCalls = 0;
 	
 	protected Pose start = null;
 	protected Pose[] goal = null;
@@ -96,7 +96,7 @@ public abstract class AbstractMotionPlanner {
 				//System.out.println("Shape: " + shape.getBounds2D());
 				g2.fill(shape);
 			}
-			File outputfile = new File(TEMP_MAP_DIR + File.separator + "tempMap" + (numObstacles++) + ".png");
+			File outputfile = new File(TEMP_MAP_DIR + File.separator + "tempMap_" + System.identityHashCode(this) + "_" + (numCalls++) + ".png");
 			ImageIO.write(img, "png", outputfile);
 			this.mapFilename = outputfile.getAbsolutePath();
 		}

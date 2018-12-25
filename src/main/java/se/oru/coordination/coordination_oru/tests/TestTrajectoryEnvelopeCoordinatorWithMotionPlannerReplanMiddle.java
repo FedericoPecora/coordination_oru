@@ -39,7 +39,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlannerReplanMiddle {
 		rsp.setRadius(0.2);
 		rsp.setFootprint(footprint1, footprint2, footprint3, footprint4);
 		rsp.setTurningRadius(4.0);
-		rsp.setDistanceBetweenPathPoints(0.1);
+		rsp.setDistanceBetweenPathPoints(0.3);
 				
 		double MAX_ACCEL = 2.0;
 		double MAX_VEL = 3.0;
@@ -49,7 +49,9 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlannerReplanMiddle {
 		// -- the getCurrentTimeInMillis() method, which is used by the coordinator to keep time
 		//You still need to add one or more comparators to determine robot orderings thru critical sections (comparators are evaluated in the order in which they are added)
 		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(MAX_VEL,MAX_ACCEL);
-		tec.setMotionPlanner(rsp);
+		
+		//For deadlock resolution via re-planning
+		tec.setDefaultMotionPlanner(rsp);
 		
 		tec.addComparator(new Comparator<RobotAtCriticalSection> () {
 			@Override
@@ -67,6 +69,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlannerReplanMiddle {
 			}
 		});
 		tec.setUseInternalCriticalPoints(false);
+		tec.setCheckEscapePoses(true);
 		
 		tec.setDefaultFootprint(footprint1, footprint2, footprint3, footprint4);
 		
@@ -80,9 +83,9 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlannerReplanMiddle {
 
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
+		//viz.setSize(2048, 400);
 		BrowserVisualization viz = new BrowserVisualization();
 		viz.setInitialTransform(44, 0, 0);
-		//viz.setSize(1800, 450);
 		tec.setVisualization(viz);
 
 		Pose startRobot1 = new Pose(10.0,5.0,0.0);

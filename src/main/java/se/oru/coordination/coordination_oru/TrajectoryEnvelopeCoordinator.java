@@ -131,7 +131,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected AbstractMotionPlanner defaultMotionPlanner = null;
 	protected HashMap<Integer,AbstractMotionPlanner> motionPlanners = new HashMap<Integer, AbstractMotionPlanner>();
 	protected HashSet<HashSet<Integer>> replanningSpawned = new HashSet<HashSet<Integer>>();
-	//protected boolean replanning = false;
 
 	/**
 	 * Set whether a collision checking thread should be started. This is useful for
@@ -876,9 +875,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					break;
 				}
 			}
-			//if (!replanning && tryReplanning && !replanningSpawned.contains(deadlockedRobots)) {
 			if (tryReplanning && !replanningSpawned.contains(deadlockedRobots)) {
-				//replanning = true;
 				//Get other robots
 				final HashSet<Integer> allRobots = new HashSet<Integer>();
 				for (Integer robotID : deadlockedRobots) {
@@ -943,9 +940,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		}
 		return ret.toArray(new Geometry[ret.size()]);
 	}
-	
-	//protected abstract PoseSteering[] doReplanning(AbstractMotionPlanner mp, Pose fromPose, Pose toPose, Geometry ... obstaclesToConsider);
-	
+		
 	protected PoseSteering[] doReplanning(AbstractMotionPlanner mp, Pose fromPose, Pose toPose, Geometry... obstaclesToConsider) {
 		if (mp == null) return null;
 		mp.setStart(fromPose);
@@ -955,8 +950,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		if (mp.plan()) return mp.getPath();
 		return null;
 	}
-	
-	//protected abstract PoseSteering[] doReplanning(Pose fromPose, Pose toPose, Geometry ... obstaclesToConsider);
 	
 	protected void rePlanPath(HashSet<Integer> robotsToReplan, HashSet<Integer> allRobots) {
 		for (int robotID : robotsToReplan) {
@@ -992,7 +985,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				}
 				replacePath(robotID, newCompletePath);
 				replanningSpawned.remove(robotsToReplan);
-				//replanning = false;
 				metaCSPLogger.info("Successfully re-planned path of Robot" + robotID);
 				break;
 			}
@@ -1000,7 +992,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				metaCSPLogger.info("Failed to re-plan path of Robot" + robotID);
 			}
 		}
-		//replanning = false;
 		replanningSpawned.remove(robotsToReplan);
 	}
 	
@@ -1301,7 +1292,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						//whose initial pose is already in the CS).
 						if (!canExitCriticalSection(drivingCurrentIndex, waitingCurrentIndex, drivingTE, waitingTE, lastIndexOfCSDriving)) {
 							createArtificialDeadlock = true;
-							metaCSPLogger.finest("Will create artificial deadlock to prevent (previously parked) Robot" + drivingTE.getRobotID() + " from driving into (waiting) Robot" + waitingTE.getRobotID());
+							metaCSPLogger.info("Will create artificial deadlock to prevent (previously parked) Robot" + drivingTE.getRobotID() + " from driving into (waiting) Robot" + waitingTE.getRobotID());
 						}
 						metaCSPLogger.finest("Both-in and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID() + " and CS is: " + cs);
 					}
@@ -1323,10 +1314,15 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						currentDeps.get(waitingRobotID).add(dep);
 						criticalSectionsToDeps.put(cs, dep);
 						if (createArtificialDeadlock) {
-							Dependency oppositeDep = new Dependency(drivingTE, waitingTE, drivingCurrentIndex, waitingTE.getSequenceNumberEnd(), drivingTracker, waitingTracker);
-							//System.out.println("HERE YOU GO: " + oppositeDep);
-							if (!currentDeps.containsKey(drivingRobotID)) currentDeps.put(drivingRobotID, new TreeSet<Dependency>());
-							currentDeps.get(drivingRobotID).add(oppositeDep);
+							for (Dependency otherDep : currentDependencies) {
+								if (otherDep.getWaitingRobotID() == drivingRobotID && otherDep.getDrivingRobotID() == waitingRobotID) {
+									//Dependency oppositeDep = new Dependency(drivingTE, waitingTE, drivingCurrentIndex, waitingTE.getSequenceNumberEnd(), drivingTracker, waitingTracker);
+									//System.out.println("HERE YOU GO: " + otherDep);
+									if (!currentDeps.containsKey(drivingRobotID)) currentDeps.put(drivingRobotID, new TreeSet<Dependency>());
+									currentDeps.get(drivingRobotID).add(otherDep);
+									break;
+								}
+							}
 						}
 					}
 					else {
@@ -1398,6 +1394,25 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 */
 	public void setMotionPlanner(int robotID, AbstractMotionPlanner mp) {
 		this.motionPlanners.put(robotID, mp);
+	}
+	
+	/**
+	 * Get the motion planner to be used for re-planning for all robots that do not
+	 * have a dedicated motion planner.
+	 * @return The motion planner used for re-planning for all robots that do not
+	 * have a dedicated motion planner.
+	 */
+	public AbstractMotionPlanner getDefaultMotionPlanner() {
+		return this.defaultMotionPlanner;
+	}
+	
+	/**
+	 * Get the motion planner used for re-planning for a specific robot.
+	 * @param robotID The ID of a robot.
+	 * @return The motion planner used for re-planning for the given robot.
+	 */
+	public AbstractMotionPlanner getMotionPlanner(int robotID) {
+		return this.motionPlanners.get(robotID);
 	}
 	
 	/**
