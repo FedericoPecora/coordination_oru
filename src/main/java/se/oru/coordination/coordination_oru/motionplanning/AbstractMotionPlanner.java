@@ -160,7 +160,7 @@ public abstract class AbstractMotionPlanner {
 		}
 		
 		boolean ret = doPlanning();
-		if (!verifyPlanning) return ret;
+		if (!verifyPlanning || !ret) return ret;
 		
 		PoseSteering[] path = getPath();
 		for (int i = 0; i < path.length; i++) {
