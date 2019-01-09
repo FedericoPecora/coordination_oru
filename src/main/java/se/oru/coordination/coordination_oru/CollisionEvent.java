@@ -36,7 +36,7 @@ public class CollisionEvent {
 	 * @return The critical section where the collision happens.
 	 */
 	public String toString() {
-		return "Robots: [" + this.reports[0].getRobotID() +"," + this.reports[1].getRobotID()+"], time: "+ this.time + ".";
+		return "Robots: [" + this.reports[0].getRobotID() +"," + this.reports[1].getRobotID()+"], PathIndices: [" + this.reports[0].getPathIndex() +", " + this.reports[1].getPathIndex() + "], Poses: "+ this.reports[0].getPose().toString() + ", " + this.reports[1].getPose().toString() + ".";
 	};
 }
 
