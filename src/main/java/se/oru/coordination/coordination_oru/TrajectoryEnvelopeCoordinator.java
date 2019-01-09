@@ -2305,8 +2305,26 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				st += ": " + currentPP + "   ";
 			}
 			ret.add(st);
-			ret.add(CONNECTOR_LEAF + "Dependencies ... " + currentDependencies);
-			return ret.toArray(new String[ret.size()]);
+			synchronized (currentDependencies) {
+				ret.add(CONNECTOR_BRANCH + "Dependencies ... " + currentDependencies);
+				if (checkCollisions) {
+					int numberOfCollisions = 0;
+					synchronized (collisionsList) {
+						numberOfCollisions = collisionsList.size();		
+						if (numberOfCollisions>0) {
+							ret.add(CONNECTOR_BRANCH + "Number of collisions ... " + numberOfCollisions + ".");
+							for (int i = 0; i < collisionsList.size()-1; i++) {
+								ret.add(CONNECTOR_BRANCH + " ....................... " + collisionsList.get(i).toString());
+							}
+							ret.add(CONNECTOR_LEAF + " ....................... " + collisionsList.get(collisionsList.size()-1).toString());
+						}
+						else
+							ret.add(CONNECTOR_LEAF + "Number of collisions ... " + numberOfCollisions + ".");
+					}
+					
+				}
+				return ret.toArray(new String[ret.size()]);
+			}
 		}
 	}
 
