@@ -873,12 +873,16 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	}
 	
 	private boolean atCP(int robotID) {
-		if (this.getRobotReport(robotID).getPathIndex() == -1) return false;
-		return (Math.abs(this.getRobotReport(robotID).getCriticalPoint() - this.getRobotReport(robotID).getPathIndex()) <= 1);
+		synchronized (trackers)	{
+			if (!communicatedCPs.containsKey(trackers.get(robotID)) || (this.getRobotReport(robotID).getPathIndex() == -1 && communicatedCPs.get(trackers.get(robotID)).getFirst() == -1)) return false;
+			return (Math.abs(communicatedCPs.get(trackers.get(robotID)).getFirst() - this.getRobotReport(robotID).getPathIndex()) <= 1);
+		}
 	}
 	
 	private boolean inParkingPose(int robotID) {
-		return this.getRobotReport(robotID).getPathIndex() == -1;
+		synchronized(trackers) {
+			return this.getRobotReport(robotID).getPathIndex() == -1 && communicatedCPs.get(trackers.get(robotID)).getFirst() == -1;
+		}
 	}
 	
 	private void spawnReplanning(ArrayList<ArrayList<Dependency>> deadlockedDeps) {
