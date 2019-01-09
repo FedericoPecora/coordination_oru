@@ -2306,8 +2306,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			}
 			ret.add(st);
 			synchronized (currentDependencies) {
-				ret.add(CONNECTOR_BRANCH + "Dependencies ... " + currentDependencies);
 				if (checkCollisions) {
+					ret.add(CONNECTOR_BRANCH + "Dependencies ... " + currentDependencies);
 					int numberOfCollisions = 0;
 					synchronized (collisionsList) {
 						numberOfCollisions = collisionsList.size();		
@@ -2323,6 +2323,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					}
 					
 				}
+				else
+					ret.add(CONNECTOR_LEAF + "Dependencies ... " + currentDependencies);
 				return ret.toArray(new String[ret.size()]);
 			}
 		}
