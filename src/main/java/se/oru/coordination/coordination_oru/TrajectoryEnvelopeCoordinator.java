@@ -1692,7 +1692,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			computeCriticalSections();
 			updateDependencies();
 			
-			communicatedCPs.remove(trackers.get(robotID));
+			//FIXME: check with Federico. In my opinion this line should be commented. 
+			//If the critical point is changing, it will be automatically retransmitted.
+			//If it does not change, the effect is the same even if the path is changed.
+			//communicatedCPs.remove(trackers.get(robotID));
 		
 			envelopesToTrack.remove(newTE);
 		}
