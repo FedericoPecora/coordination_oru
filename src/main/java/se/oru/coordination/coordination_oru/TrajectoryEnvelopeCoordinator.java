@@ -1223,6 +1223,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				else {
 					
 					boolean createArtificialDeadlock = false;
+					int lastIndexOfCSDriving = -1;
+					int lastIndexOfCSWaiting = -1;
 										
 					//Neither robot has reached the critical section --> follow ordering heuristic if FW model allows it
 					if (robotReport1.getPathIndex() < cs.getTe1Start() && robotReport2.getPathIndex() < cs.getTe2Start()) {
@@ -1267,7 +1269,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 					//Both robots in critical section --> re-impose previously decided dependency
 					else {
-						int lastIndexOfCSDriving = -1;
 						//Robot 1 is ahead --> make robot 2 follow
 						if (isAhead(cs, robotReport1, robotReport2)) {
 							drivingCurrentIndex = robotReport1.getPathIndex();
@@ -1275,6 +1276,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							waitingTE = cs.getTe2();
 							drivingTE = cs.getTe1();
 							lastIndexOfCSDriving = cs.getTe1End();
+							lastIndexOfCSWaiting = cs.getTe2End();
 						}
 						//Robot 2 is ahead --> make robot 1 follow
 						else {
@@ -1283,6 +1285,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							waitingTE = cs.getTe1();
 							drivingTE = cs.getTe2();
 							lastIndexOfCSDriving = cs.getTe2End();
+							lastIndexOfCSWaiting = cs.getTe1End();
 						}
 						
 						//Check if the leading robot can actually continue to the end of the CS
@@ -1314,15 +1317,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						currentDeps.get(waitingRobotID).add(dep);
 						criticalSectionsToDeps.put(cs, dep);
 						if (createArtificialDeadlock) {
-							for (Dependency otherDep : currentDependencies) {
-								if (otherDep.getWaitingRobotID() == drivingRobotID && otherDep.getDrivingRobotID() == waitingRobotID) {
-									//Dependency oppositeDep = new Dependency(drivingTE, waitingTE, drivingCurrentIndex, waitingTE.getSequenceNumberEnd(), drivingTracker, waitingTracker);
-									//System.out.println("HERE YOU GO: " + otherDep);
-									if (!currentDeps.containsKey(drivingRobotID)) currentDeps.put(drivingRobotID, new TreeSet<Dependency>());
-									currentDeps.get(drivingRobotID).add(otherDep);
-									break;
-								}
-							}
+							Dependency oppositeDep = new Dependency(drivingTE,waitingTE,drivingCurrentIndex,lastIndexOfCSWaiting,drivingTracker,waitingTracker);
+							if (!currentDeps.containsKey(drivingRobotID)) currentDeps.put(drivingRobotID, new TreeSet<Dependency>());
+							currentDeps.get(drivingRobotID).add(oppositeDep);
+							metaCSPLogger.info("Added deadlock-inducing dependency: " + oppositeDep);
 						}
 					}
 					else {
@@ -1350,7 +1348,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					//System.out.println("(" + robotID + ") FIRST IS   : " + currentDeps.get(robotID).first());
 					//System.out.println("(" + robotID + ") OTHERS ARE : " + currentDeps.get(robotID));
 					Dependency firstDep = currentDeps.get(robotID).first();
-					setCriticalPoint(firstDep.getWaitingTracker().getTrajectoryEnvelope().getRobotID(), firstDep.getWaitingPoint());
+					//setCriticalPoint(firstDep.getWaitingTracker().getTrajectoryEnvelope().getRobotID(), firstDep.getWaitingPoint());
+					setCriticalPoint(firstDep.getWaitingRobotID(), firstDep.getWaitingPoint());
 					currentDependencies.add(firstDep);
 				}
 			}
