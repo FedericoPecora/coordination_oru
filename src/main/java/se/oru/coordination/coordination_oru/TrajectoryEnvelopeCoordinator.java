@@ -917,7 +917,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					if (currentPoint != -1 && currentPoint > waitingPoint) {
 						Pose currentPose = dep.getWaitingTrajectoryEnvelope().getTrajectory().getPose()[currentPoint];
 						currentFP = makeObstacles(waitingID, currentPose)[0];
-						System.out.println("Oops: Robot" + waitingID + " has stopped at " + currentPoint + " which is beyond " + waitingPoint);
+						metaCSPLogger.info("Oops: Robot" + waitingID + " has stopped at " + currentPoint + " which is beyond " + waitingPoint);
 					}
 					
 					ret.add(currentFP);
@@ -1119,6 +1119,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		//System.out.println("Caller of updateDependencies(): " + Thread.currentThread().getStackTrace()[2]);
 
 		HashMap<Integer,TreeSet<Dependency>> currentDeps = new HashMap<Integer,TreeSet<Dependency>>();
+		HashMap<Integer,TreeSet<Dependency>> artificialDependencies = new HashMap<Integer,TreeSet<Dependency>>(); 
 
 		//Make deps from un-reached stopping points
 		Set<Integer> robotIDs = trackers.keySet();
@@ -1318,8 +1319,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						criticalSectionsToDeps.put(cs, dep);
 						if (createArtificialDeadlock) {
 							Dependency oppositeDep = new Dependency(drivingTE,waitingTE,drivingCurrentIndex,lastIndexOfCSWaiting,drivingTracker,waitingTracker);
-							if (!currentDeps.containsKey(drivingRobotID)) currentDeps.put(drivingRobotID, new TreeSet<Dependency>());
-							currentDeps.get(drivingRobotID).add(oppositeDep);
+							//if (!currentDeps.containsKey(drivingRobotID)) currentDeps.put(drivingRobotID, new TreeSet<Dependency>());
+							//currentDeps.get(drivingRobotID).add(oppositeDep);
+							if (!artificialDependencies.containsKey(drivingRobotID)) artificialDependencies.put(drivingRobotID, new TreeSet<Dependency>());
+							artificialDependencies.get(drivingRobotID).add(oppositeDep);
 							metaCSPLogger.info("Added deadlock-inducing dependency: " + oppositeDep);
 						}
 					}
@@ -1340,17 +1343,35 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 		synchronized(currentDependencies) {
 			currentDependencies.clear();
-			for (Integer robotID : robotIDs) {
-				if (!currentDeps.containsKey(robotID)) {
+					
+			for (Integer robotID : robotIDs) {				
+				
+				if (!currentDeps.containsKey(robotID) && !artificialDependencies.containsKey(robotID)) {
 					setCriticalPoint(robotID, -1);
 				}
 				else {
 					//System.out.println("(" + robotID + ") FIRST IS   : " + currentDeps.get(robotID).first());
 					//System.out.println("(" + robotID + ") OTHERS ARE : " + currentDeps.get(robotID));
-					Dependency firstDep = currentDeps.get(robotID).first();
-					//setCriticalPoint(firstDep.getWaitingTracker().getTrajectoryEnvelope().getRobotID(), firstDep.getWaitingPoint());
-					setCriticalPoint(firstDep.getWaitingRobotID(), firstDep.getWaitingPoint());
-					currentDependencies.add(firstDep);
+					Dependency firstDep = null;
+					Dependency firstArtificialDep = null;
+					if (currentDeps.containsKey(robotID)){
+							currentDependencies.add(currentDeps.get(robotID).first());
+							firstDep = currentDeps.get(robotID).first();
+					}
+					if (artificialDependencies.containsKey(robotID)) {
+						//Add all the artificial dependencies
+						for (Dependency dep : artificialDependencies.get(robotID))
+							currentDependencies.add(dep);
+						firstArtificialDep = artificialDependencies.get(robotID).first();
+					}
+					
+					Dependency depToSend = null; 
+					if (firstDep != null)
+						depToSend = (firstArtificialDep != null) ? ((firstDep.compareTo(firstArtificialDep)<0) ? firstDep : firstArtificialDep) : firstDep;
+					else
+						depToSend = firstArtificialDep;
+					setCriticalPoint(depToSend.getWaitingRobotID(), depToSend.getWaitingPoint());
+
 				}
 			}
 			findCycles();
