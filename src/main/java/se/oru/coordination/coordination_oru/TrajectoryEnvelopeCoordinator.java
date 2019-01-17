@@ -875,28 +875,30 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					break;
 				}
 			}
-			if (tryReplanning && !replanningSpawned.contains(deadlockedRobots)) {
-				//Get other robots
-				final HashSet<Integer> allRobots = new HashSet<Integer>();
-				for (Integer robotID : deadlockedRobots) {
-					for (Dependency dep : currentDependencies) {
-						if (dep.getDrivingRobotID() == robotID) allRobots.add(dep.getWaitingRobotID());
-						else if (dep.getWaitingRobotID() == robotID) allRobots.add(dep.getDrivingRobotID());
+			synchronized (replanningSpawned) {
+				if (tryReplanning && !replanningSpawned.contains(deadlockedRobots)) {
+					//Get other robots
+					final HashSet<Integer> allRobots = new HashSet<Integer>();
+					for (Integer robotID : deadlockedRobots) {
+						for (Dependency dep : currentDependencies) {
+							if (dep.getDrivingRobotID() == robotID) allRobots.add(dep.getWaitingRobotID());
+							else if (dep.getWaitingRobotID() == robotID) allRobots.add(dep.getDrivingRobotID());
+						}
 					}
+	
+					replanningSpawned.add(deadlockedRobots);
+					metaCSPLogger.info("Will re-plan for one of the following deadlocked robots: " + deadlockedRobots + " (" + allRobots + ")...");
+					new Thread() {
+						public void run() {
+							rePlanPath(deadlockedRobots, allRobots);
+						}
+					}.start();
+	
 				}
-
-				replanningSpawned.add(deadlockedRobots);
-				metaCSPLogger.info("Will re-plan for one of the following deadlocked robots: " + deadlockedRobots + " (" + allRobots + ")...");
-				new Thread() {
-					public void run() {
-						rePlanPath(deadlockedRobots, allRobots);
-					}
-				}.start();
-
-			}
-			else {
-				if (!tryReplanning) metaCSPLogger.finest("Skipping re-planning for deadlocked robots " + deadlockedRobots + " because one of the robots is parked");
-				if (replanningSpawned.contains(deadlockedRobots)) metaCSPLogger.finest("Skipping re-planning for deadlocked robots " + deadlockedRobots + " because re-planning has already been spawned");
+				else {
+					if (!tryReplanning) metaCSPLogger.finest("Skipping re-planning for deadlocked robots " + deadlockedRobots + " because one of the robots is parked");
+					if (replanningSpawned.contains(deadlockedRobots)) metaCSPLogger.finest("Skipping re-planning for deadlocked robots " + deadlockedRobots + " because re-planning has already been spawned");
+				}
 			}
 		}
 	}
@@ -984,15 +986,16 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					else newCompletePath[i] = newPath[i-currentWaitingIndex];
 				}
 				replacePath(robotID, newCompletePath);
-				replanningSpawned.remove(robotsToReplan);
 				metaCSPLogger.info("Successfully re-planned path of Robot" + robotID);
 				break;
 			}
 			else {
 				metaCSPLogger.info("Failed to re-plan path of Robot" + robotID);
 			}
+		}		
+		synchronized (replanningSpawned) {
+			replanningSpawned.remove(robotsToReplan);
 		}
-		replanningSpawned.remove(robotsToReplan);
 	}
 	
 	/**
