@@ -904,47 +904,43 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	}
 	
 	protected Geometry[] getObstaclesInCriticalPoints(int ... robotIDs) {
-		synchronized (getCurrentDependencies()) {
-			//Compute one obstacle per given robot, placed in the robot's waiting pose
-			ArrayList<Geometry> ret = new ArrayList<Geometry>();
-			for (int robotID : robotIDs) {
-				for (Dependency dep : getCurrentDependencies()) {
-					int waitingID = dep.getWaitingRobotID();
-					if (robotID == waitingID) {
-						Pose waitingPose = dep.getWaitingPose();
-						int waitingPoint = dep.getWaitingPoint();
-						Geometry currentFP = makeObstacles(waitingID, waitingPose)[0]; 
-	
-						//In case the robot has stopped a little beyond the critical point
-						int currentPoint = getRobotReport(robotID).getPathIndex();
-						if (currentPoint != -1 && currentPoint > waitingPoint) {
-							Pose currentPose = dep.getWaitingTrajectoryEnvelope().getTrajectory().getPose()[currentPoint];
-							currentFP = makeObstacles(waitingID, currentPose)[0];
-							metaCSPLogger.info("Oops: Robot" + waitingID + " has stopped at " + currentPoint + " which is beyond " + waitingPoint);
-						}
-						
-						ret.add(currentFP);
+		//Compute one obstacle per given robot, placed in the robot's waiting pose
+		ArrayList<Geometry> ret = new ArrayList<Geometry>();
+		for (int robotID : robotIDs) {
+			for (Dependency dep : getCurrentDependencies()) {
+				int waitingID = dep.getWaitingRobotID();
+				if (robotID == waitingID) {
+					Pose waitingPose = dep.getWaitingPose();
+					int waitingPoint = dep.getWaitingPoint();
+					Geometry currentFP = makeObstacles(waitingID, waitingPose)[0]; 
+
+					//In case the robot has stopped a little beyond the critical point
+					int currentPoint = getRobotReport(robotID).getPathIndex();
+					if (currentPoint != -1 && currentPoint > waitingPoint) {
+						Pose currentPose = dep.getWaitingTrajectoryEnvelope().getTrajectory().getPose()[currentPoint];
+						currentFP = makeObstacles(waitingID, currentPose)[0];
+						metaCSPLogger.info("Oops: Robot" + waitingID + " has stopped at " + currentPoint + " which is beyond " + waitingPoint);
 					}
+					
+					ret.add(currentFP);
 				}
 			}
-			return ret.toArray(new Geometry[ret.size()]);
 		}
+		return ret.toArray(new Geometry[ret.size()]);
 	}
 	
 	protected Geometry[] getObstaclesFromWaitingRobots(int robotID) {
-		synchronized (getCurrentDependencies()) {
-			//Compute one obstacle per robot that is waiting for this robot, placed in the waiting robot's waiting pose
-			ArrayList<Geometry> ret = new ArrayList<Geometry>();
-			for (Dependency dep : getCurrentDependencies()) {
-				int drivingID = dep.getDrivingRobotID();
-				int waitingID = dep.getWaitingRobotID();
-				if (robotID == drivingID) {
-					Pose waitingPose  = dep.getWaitingTrajectoryEnvelope().getTrajectory().getPose()[dep.getWaitingPoint()];
-					ret.add(makeObstacles(waitingID, waitingPose)[0]);
-				}
+		//Compute one obstacle per robot that is waiting for this robot, placed in the waiting robot's waiting pose
+		ArrayList<Geometry> ret = new ArrayList<Geometry>();
+		for (Dependency dep : getCurrentDependencies()) {
+			int drivingID = dep.getDrivingRobotID();
+			int waitingID = dep.getWaitingRobotID();
+			if (robotID == drivingID) {
+				Pose waitingPose  = dep.getWaitingTrajectoryEnvelope().getTrajectory().getPose()[dep.getWaitingPoint()];
+				ret.add(makeObstacles(waitingID, waitingPose)[0]);
 			}
-			return ret.toArray(new Geometry[ret.size()]);
 		}
+		return ret.toArray(new Geometry[ret.size()]);
 	}
 		
 	protected PoseSteering[] doReplanning(AbstractMotionPlanner mp, Pose fromPose, Pose toPose, Geometry... obstaclesToConsider) {
@@ -963,16 +959,14 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			Pose currentWaitingPose = null;
 			Pose currentWaitingGoal = null;
 			PoseSteering[] oldPath = null;
-			synchronized (getCurrentDependencies()) {
-				for (Dependency dep : getCurrentDependencies()) {
-					if (dep.getWaitingRobotID() == robotID) {
-						currentWaitingIndex = dep.getWaitingPoint();
-						currentWaitingPose = dep.getWaitingPose();
-						Trajectory traj = dep.getWaitingTrajectoryEnvelope().getTrajectory();
-						oldPath = traj.getPoseSteering();
-						currentWaitingGoal = oldPath[oldPath.length-1].getPose();
-						break;
-					}
+			for (Dependency dep : getCurrentDependencies()) {
+				if (dep.getWaitingRobotID() == robotID) {
+					currentWaitingIndex = dep.getWaitingPoint();
+					currentWaitingPose = dep.getWaitingPose();
+					Trajectory traj = dep.getWaitingTrajectoryEnvelope().getTrajectory();
+					oldPath = traj.getPoseSteering();
+					currentWaitingGoal = oldPath[oldPath.length-1].getPose();
+					break;
 				}
 			}
 			//Geometry[] obstacles = getObstaclesFromWaitingRobots(robotID);
