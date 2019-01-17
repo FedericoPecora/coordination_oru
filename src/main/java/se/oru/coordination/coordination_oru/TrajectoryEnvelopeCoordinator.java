@@ -1602,69 +1602,73 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 */
 	public void replacePath(int robotID, PoseSteering[] newPath) {
 	
-		synchronized (allCriticalSections) {
-			//Get current envelope
-			TrajectoryEnvelope te = this.getCurrentTrajectoryEnvelope(robotID);
-					
-			if (viz != null) {
-				viz.removeEnvelope(te);
-			}
-			
-			//Remove CSs involving this robot
-			ArrayList<CriticalSection> toRemove = new ArrayList<CriticalSection>();
-			for (CriticalSection cs : allCriticalSections) {
-				if (cs.getTe1().equals(te) || cs.getTe2().equals(te)) {
-					toRemove.add(cs);
-				}
-			}
-			for (CriticalSection cs : toRemove) {
-				this.criticalSectionsToDeps.remove(cs);
-				this.allCriticalSections.remove(cs);
-			}
-		
-			//Make new envelope
-			TrajectoryEnvelope newTE = solver.createEnvelopeNoParking(robotID, newPath, "Driving", this.getFootprint(robotID));
-	
-			//Notify tracker
-			this.trackers.get(robotID).updateTrajectoryEnvelope(newTE);
-			
-			//Stitch together with rest of constraint network (temporal constraints with parking envelopes etc.)
-			for (Constraint con : solver.getConstraintNetwork().getOutgoingEdges(te)) {
-				if (con instanceof AllenIntervalConstraint) {
-					AllenIntervalConstraint aic = (AllenIntervalConstraint)con;
-					if (aic.getTypes()[0].equals(AllenIntervalConstraint.Type.Meets)) {
-						TrajectoryEnvelope newEndParking = solver.createParkingEnvelope(robotID, PARKING_DURATION, newTE.getTrajectory().getPose()[newTE.getTrajectory().getPose().length-1], "whatever", getFootprint(robotID));
-						TrajectoryEnvelope oldEndParking = (TrajectoryEnvelope)aic.getTo();
-	
-						solver.removeConstraints(solver.getConstraintNetwork().getIncidentEdges(te));
-						solver.removeVariable(te);
-						solver.removeConstraints(solver.getConstraintNetwork().getIncidentEdges(oldEndParking));
-						solver.removeVariable(oldEndParking);
-						
-						AllenIntervalConstraint newMeets = new AllenIntervalConstraint(AllenIntervalConstraint.Type.Meets);
-						newMeets.setFrom(newTE);
-						newMeets.setTo(newEndParking);
-						solver.addConstraint(newMeets);
-	
-						break;
+		synchronized (solver) {
+			synchronized (trackers) {
+				synchronized (allCriticalSections) {
+					//Get current envelope
+					TrajectoryEnvelope te = this.getCurrentTrajectoryEnvelope(robotID);
+							
+					if (viz != null) {
+						viz.removeEnvelope(te);
 					}
+					
+					//Remove CSs involving this robot
+					ArrayList<CriticalSection> toRemove = new ArrayList<CriticalSection>();
+					for (CriticalSection cs : allCriticalSections) {
+						if (cs.getTe1().equals(te) || cs.getTe2().equals(te)) {
+							toRemove.add(cs);
+						}
+					}
+					for (CriticalSection cs : toRemove) {
+						this.criticalSectionsToDeps.remove(cs);
+						this.allCriticalSections.remove(cs);
+					}
+				
+					//Make new envelope
+					TrajectoryEnvelope newTE = solver.createEnvelopeNoParking(robotID, newPath, "Driving", this.getFootprint(robotID));
+			
+					//Notify tracker
+					this.trackers.get(robotID).updateTrajectoryEnvelope(newTE);
+					
+					//Stitch together with rest of constraint network (temporal constraints with parking envelopes etc.)
+					for (Constraint con : solver.getConstraintNetwork().getOutgoingEdges(te)) {
+						if (con instanceof AllenIntervalConstraint) {
+							AllenIntervalConstraint aic = (AllenIntervalConstraint)con;
+							if (aic.getTypes()[0].equals(AllenIntervalConstraint.Type.Meets)) {
+								TrajectoryEnvelope newEndParking = solver.createParkingEnvelope(robotID, PARKING_DURATION, newTE.getTrajectory().getPose()[newTE.getTrajectory().getPose().length-1], "whatever", getFootprint(robotID));
+								TrajectoryEnvelope oldEndParking = (TrajectoryEnvelope)aic.getTo();
+			
+								solver.removeConstraints(solver.getConstraintNetwork().getIncidentEdges(te));
+								solver.removeVariable(te);
+								solver.removeConstraints(solver.getConstraintNetwork().getIncidentEdges(oldEndParking));
+								solver.removeVariable(oldEndParking);
+								
+								AllenIntervalConstraint newMeets = new AllenIntervalConstraint(AllenIntervalConstraint.Type.Meets);
+								newMeets.setFrom(newTE);
+								newMeets.setTo(newEndParking);
+								solver.addConstraint(newMeets);
+			
+								break;
+							}
+						}
+					}
+					
+					if (viz != null) {
+						viz.addEnvelope(newTE);
+					}
+					
+					//Add as if it were a new envelope, that way it will be accounted for in computeCriticalSections()
+					envelopesToTrack.add(newTE);
+					
+					//Recompute CSs involving this robot
+					computeCriticalSections();
+					updateDependencies();
+					
+					communicatedCPs.remove(trackers.get(robotID));
+			
+					envelopesToTrack.remove(newTE);
 				}
 			}
-			
-			if (viz != null) {
-				viz.addEnvelope(newTE);
-			}
-			
-			//Add as if it were a new envelope, that way it will be accounted for in computeCriticalSections()
-			envelopesToTrack.add(newTE);
-			
-			//Recompute CSs involving this robot
-			computeCriticalSections();
-			updateDependencies();
-			
-			communicatedCPs.remove(trackers.get(robotID));
-	
-			envelopesToTrack.remove(newTE);
 		}
 	}
 	
