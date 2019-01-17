@@ -458,7 +458,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 * @return The current state of a given robot.
 	 */
 	public RobotReport getRobotReport(int robotID) {
-
 		
 		//Read the last message received
 		synchronized (trackers) {
@@ -1614,74 +1613,77 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	public void replacePath(int robotID, PoseSteering[] newPath) {
 		
 		synchronized (solver) {
-			synchronized (trackers) {
-				synchronized (allCriticalSections) {
-					//Get current envelope
-					TrajectoryEnvelope te = this.getCurrentTrajectoryEnvelope(robotID);
-							
-					if (viz != null) {
-						viz.removeEnvelope(te);
-					}
-					
-					//Remove CSs involving this robot
-					ArrayList<CriticalSection> toRemove = new ArrayList<CriticalSection>();
-					for (CriticalSection cs : allCriticalSections) {
-						if (cs.getTe1().equals(te) || cs.getTe2().equals(te)) {
-							toRemove.add(cs);
-						}
-					}
-					for (CriticalSection cs : toRemove) {
-						this.criticalSectionsToDeps.remove(cs);
-						this.allCriticalSections.remove(cs);
-					}
-				
-					//Make new envelope
-					TrajectoryEnvelope newTE = solver.createEnvelopeNoParking(robotID, newPath, "Driving", this.getFootprint(robotID));
 			
-					//Notify tracker
-					this.trackers.get(robotID).updateTrajectoryEnvelope(newTE);
-					
-					//Stitch together with rest of constraint network (temporal constraints with parking envelopes etc.)
-					for (Constraint con : solver.getConstraintNetwork().getOutgoingEdges(te)) {
-						if (con instanceof AllenIntervalConstraint) {
-							AllenIntervalConstraint aic = (AllenIntervalConstraint)con;
-							if (aic.getTypes()[0].equals(AllenIntervalConstraint.Type.Meets)) {
-								TrajectoryEnvelope newEndParking = solver.createParkingEnvelope(robotID, PARKING_DURATION, newTE.getTrajectory().getPose()[newTE.getTrajectory().getPose().length-1], "whatever", getFootprint(robotID));
-								TrajectoryEnvelope oldEndParking = (TrajectoryEnvelope)aic.getTo();
-			
-								solver.removeConstraints(solver.getConstraintNetwork().getIncidentEdges(te));
-								solver.removeVariable(te);
-								solver.removeConstraints(solver.getConstraintNetwork().getIncidentEdges(oldEndParking));
-								solver.removeVariable(oldEndParking);
-								
-								AllenIntervalConstraint newMeets = new AllenIntervalConstraint(AllenIntervalConstraint.Type.Meets);
-								newMeets.setFrom(newTE);
-								newMeets.setTo(newEndParking);
-								solver.addConstraint(newMeets);
-			
-								break;
-							}
-						}
-					}
-					
-					if (viz != null) {
-						viz.addEnvelope(newTE);
-					}
-					
-					//Add as if it were a new envelope, that way it will be accounted for in computeCriticalSections()
-					envelopesToTrack.add(newTE);
-					
-					//Recompute CSs involving this robot
-					computeCriticalSections();
-					updateDependencies();
-					
-					//FIXME: check with Federico. In my opinion this line should be commented. 
-					//If the critical point is changing, it will be automatically retransmitted.
-					//If it does not change, the effect is the same even if the path is changed.
-					communicatedCPs.remove(trackers.get(robotID));
-				
-					envelopesToTrack.remove(newTE);
+			synchronized (allCriticalSections) {
+				//Get current envelope
+				TrajectoryEnvelope te = this.getCurrentTrajectoryEnvelope(robotID);
+						
+				if (viz != null) {
+					viz.removeEnvelope(te);
 				}
+				
+				//Remove CSs involving this robot
+				ArrayList<CriticalSection> toRemove = new ArrayList<CriticalSection>();
+				for (CriticalSection cs : allCriticalSections) {
+					if (cs.getTe1().equals(te) || cs.getTe2().equals(te)) {
+						toRemove.add(cs);
+					}
+				}
+				for (CriticalSection cs : toRemove) {
+					this.criticalSectionsToDeps.remove(cs);
+					this.allCriticalSections.remove(cs);
+				}
+			
+				//Make new envelope
+				TrajectoryEnvelope newTE = solver.createEnvelopeNoParking(robotID, newPath, "Driving", this.getFootprint(robotID));
+		
+				//Notify tracker
+				synchronized (trackers) {
+					this.trackers.get(robotID).updateTrajectoryEnvelope(newTE);
+				}
+				
+				//Stitch together with rest of constraint network (temporal constraints with parking envelopes etc.)
+				for (Constraint con : solver.getConstraintNetwork().getOutgoingEdges(te)) {
+					if (con instanceof AllenIntervalConstraint) {
+						AllenIntervalConstraint aic = (AllenIntervalConstraint)con;
+						if (aic.getTypes()[0].equals(AllenIntervalConstraint.Type.Meets)) {
+							TrajectoryEnvelope newEndParking = solver.createParkingEnvelope(robotID, PARKING_DURATION, newTE.getTrajectory().getPose()[newTE.getTrajectory().getPose().length-1], "whatever", getFootprint(robotID));
+							TrajectoryEnvelope oldEndParking = (TrajectoryEnvelope)aic.getTo();
+		
+							solver.removeConstraints(solver.getConstraintNetwork().getIncidentEdges(te));
+							solver.removeVariable(te);
+							solver.removeConstraints(solver.getConstraintNetwork().getIncidentEdges(oldEndParking));
+							solver.removeVariable(oldEndParking);
+							
+							AllenIntervalConstraint newMeets = new AllenIntervalConstraint(AllenIntervalConstraint.Type.Meets);
+							newMeets.setFrom(newTE);
+							newMeets.setTo(newEndParking);
+							solver.addConstraint(newMeets);
+		
+							break;
+						}
+					}
+				}
+				
+				if (viz != null) {
+					viz.addEnvelope(newTE);
+				}
+				
+				//Add as if it were a new envelope, that way it will be accounted for in computeCriticalSections()
+				envelopesToTrack.add(newTE);
+				
+				//Recompute CSs involving this robot
+				computeCriticalSections();
+				updateDependencies();
+				
+				//FIXME: check with Federico. In my opinion this line should be commented. 
+				//If the critical point is changing, it will be automatically retransmitted.
+				//If it does not change, the effect is the same even if the path is changed.
+				synchronized (trackers) {
+					communicatedCPs.remove(trackers.get(robotID));
+				}
+			
+				envelopesToTrack.remove(newTE);
 			}
 		}
 	}
@@ -1983,7 +1985,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	}
 
 	protected void cleanUp(TrajectoryEnvelope te) {
-		synchronized(solver) {
+		synchronized (solver) {
 			metaCSPLogger.info("Cleaning up " + te);
 			Constraint[] consToRemove = solver.getConstraintNetwork().getIncidentEdgesIncludingDependentVariables(te);
 			solver.removeConstraints(consToRemove);
@@ -2015,9 +2017,12 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 */
 	public void startTrackingAddedMissions() {
 
-		synchronized(solver) {
+		synchronized (solver) {
 			for (final TrajectoryEnvelope te : envelopesToTrack) {
-				TrajectoryEnvelopeTrackerDummy startParkingTracker = (TrajectoryEnvelopeTrackerDummy)trackers.get(te.getRobotID());
+				TrajectoryEnvelopeTrackerDummy startParkingTracker = null;
+				synchronized (trackers) {
+					startParkingTracker = (TrajectoryEnvelopeTrackerDummy)trackers.get(te.getRobotID());
+				}
 				final TrajectoryEnvelope startParking = startParkingTracker.getTrajectoryEnvelope();
 				//Create end parking envelope
 				final TrajectoryEnvelope endParking = solver.createParkingEnvelope(te.getRobotID(), PARKING_DURATION, te.getTrajectory().getPose()[te.getTrajectory().getPose().length-1], "whatever", getFootprint(te.getRobotID()));
@@ -2409,7 +2414,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			@Override
 			public void run() {
 				while (true) {
-					synchronized(solver) {						
+					synchronized (solver) {						
 						if (!quiet) printStatistics();
 						if (overlay) overlayStatistics();
 						updateDependencies();
@@ -2472,7 +2477,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	}
 	
 	public void computeCriticalSectionsAndStartTrackingAddedMission() {
-		synchronized(solver) {
+		synchronized (solver) {
 			computeCriticalSections();
 			updateDependencies();
 			startTrackingAddedMissions();
