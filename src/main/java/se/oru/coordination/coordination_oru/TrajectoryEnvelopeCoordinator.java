@@ -133,7 +133,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected Callback inferenceCallback = null;
 	
 	protected HashSet<HashSet<Integer>> replanningSpawned = new HashSet<HashSet<Integer>>();
-	protected boolean replanning = false;
 	
 	//Network knowledge
 	protected double packetLossProbability = NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS;
@@ -920,57 +919,30 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					break;
 				}
 			}
-			if (!replanning && tryReplanning && !replanningSpawned.contains(deadlockedRobots)) {
-				replanning = true;
-				//Get other robots
-				final HashSet<Integer> allRobots = new HashSet<Integer>();
-				for (Integer robotID : deadlockedRobots) {
-					for (Dependency dep : currentDependencies) {
-						if (dep.getDrivingRobotID() == robotID) allRobots.add(dep.getWaitingRobotID());
-						else if (dep.getWaitingRobotID() == robotID) allRobots.add(dep.getDrivingRobotID());
+			
+			synchronized (replanningSpawned) {
+				if (tryReplanning && !replanningSpawned.contains(deadlockedRobots)) {
+					//Get other robots
+					final HashSet<Integer> allRobots = new HashSet<Integer>();
+					for (Integer robotID : deadlockedRobots) {
+						for (Dependency dep : currentDependencies) {
+							if (dep.getDrivingRobotID() == robotID) allRobots.add(dep.getWaitingRobotID());
+							else if (dep.getWaitingRobotID() == robotID) allRobots.add(dep.getDrivingRobotID());
+						}
 					}
+	
+					replanningSpawned.add(deadlockedRobots);
+					metaCSPLogger.info("Will re-plan for one of the following deadlocked robots: " + deadlockedRobots + " (" + allRobots + ")...");
+					new Thread() {
+						public void run() {
+							rePlanPath(deadlockedRobots, allRobots);
+						}
+					}.start();
+	
 				}
-
-				replanningSpawned.add(deadlockedRobots);
-				metaCSPLogger.info("Will re-plan for one of the following deadlocked robots: " + deadlockedRobots + " (" + allRobots + ")...");
-				new Thread() {
-					public void run() {
-						rePlanPath(deadlockedRobots, allRobots);
-					}
-				}.start();
-
 			}
-//			else {
-//				System.out.println("Skipping because (!replanning && tryReplanning && !replanningSpawned.contains(deadlockedRobots)):" + !replanning  + ", " + tryReplanning + ", " + !replanningSpawned.contains(deadlockedRobots));
-//			}
 		}
 	}
-	
-//	private void spawnReplanning(ArrayList<ArrayList<Dependency>> deadlockedDeps) {
-//		for (ArrayList<Dependency> depList : deadlockedDeps) {
-//			boolean tryReplanning = true;
-//			final HashSet<Integer> deadlockedRobots = new HashSet<Integer>();
-//			for (final Dependency dep : depList) {
-//				deadlockedRobots.add(dep.getWaitingRobotID());
-//				deadlockedRobots.add(dep.getDrivingRobotID());
-//				if (getRobotReport(dep.getDrivingRobotID()).getPathIndex() == -1 || getRobotReport(dep.getWaitingRobotID()).getPathIndex() == -1) {
-//					tryReplanning = false;
-//					break;
-//				}
-//			}
-//			if (tryReplanning && !replanningSpawned.contains(deadlockedRobots)) {
-//				replanningSpawned.add(deadlockedRobots);
-//				metaCSPLogger.info("Will replan for one of the following deadlocked robots: " + deadlockedRobots + "...");
-//				new Thread() {
-//					public void run() {
-//						rePlanPath(deadlockedRobots);
-//					}
-//				}.start();
-//
-//			}
-//		}
-//	}
-	
 	
 	protected Geometry[] getObstaclesInCriticalPoints(int ... robotIDs) {
 		//Compute one obstacle per given robot, placed in the robot's waiting pose
@@ -1049,8 +1021,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 //					System.out.println(newCompletePath[i].getPose() + " / " + (i < oldPath.length ? oldPath[i].getPose() : "N/A"));
 //				}
 				replacePath(robotID, newCompletePath);
-				replanningSpawned.remove(robotsToReplan);
-				replanning = false;
 				metaCSPLogger.info("Successfully re-planned path of Robot" + robotID);
 				break;
 			}
@@ -1058,7 +1028,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				metaCSPLogger.info("Failed to re-plan path of Robot" + robotID);
 			}
 		}
-		replanning = false;
+		synchronized (replanningSpawned) {
+			replanningSpawned.remove(robotsToReplan);
+		}
 	}
 	
 	/**
