@@ -15,7 +15,6 @@ import com.vividsolutions.jts.geom.Coordinate;
 import aima.core.util.datastructure.Pair;
 import se.oru.coordination.coordination_oru.ConstantAccelerationForwardModel;
 import se.oru.coordination.coordination_oru.Mission;
-import se.oru.coordination.coordination_oru.NetworkConfiguration;
 import se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
@@ -55,11 +54,6 @@ public class ParkingArrayNew {
 		tec.setBreakDeadlocksByReplanning(true);
 		tec.setCheckCollisions(true);
 		//MetaCSPLogging.setLevel(TrajectoryEnvelopeCoordinator.class, Level.FINEST);
-		
-		//Setup the network parameters
-		NetworkConfiguration.setDelays(0, 0);
-		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0;
-		tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, NetworkConfiguration.getMaximumTxDelay(), 0.1);
 				
 		//Set the footprint
 		Coordinate footprint1 = new Coordinate(-0.5,0.5);
