@@ -1355,13 +1355,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					Dependency firstDep = null;
 					Dependency firstArtificialDep = null;
 					if (currentDeps.containsKey(robotID)){
-							currentDependencies.add(currentDeps.get(robotID).first());
 							firstDep = currentDeps.get(robotID).first();
 					}
 					if (artificialDependencies.containsKey(robotID)) {
-						//Add all the artificial dependencies
-						for (Dependency dep : artificialDependencies.get(robotID))
-							currentDependencies.add(dep);
 						firstArtificialDep = artificialDependencies.get(robotID).first();
 					}
 					
@@ -1371,6 +1367,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					else
 						depToSend = firstArtificialDep;
 					setCriticalPoint(depToSend.getWaitingRobotID(), depToSend.getWaitingPoint());
+					currentDependencies.add(depToSend);
 
 				}
 			}
