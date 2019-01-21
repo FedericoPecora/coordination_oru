@@ -2454,12 +2454,16 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 * @return <code>true</code> iff the robot is free to accept a new mission (that is, the robot is in state WAITING_FOR_TASK).
 	 */
 	public boolean isFree(int robotID) {
-		if (muted.contains(robotID)) return false;
-		for (TrajectoryEnvelope te : envelopesToTrack) if (te.getRobotID() == robotID) return false;
-		AbstractTrajectoryEnvelopeTracker tracker = trackers.get(robotID);
-		if (!(tracker instanceof TrajectoryEnvelopeTrackerDummy)) return false;
-		TrajectoryEnvelopeTrackerDummy trackerDummy = (TrajectoryEnvelopeTrackerDummy)tracker;
-		return (!trackerDummy.isParkingFinished());
+		synchronized (solver) {
+			if (muted.contains(robotID)) return false;
+			for (TrajectoryEnvelope te : envelopesToTrack) if (te.getRobotID() == robotID) return false;
+			synchronized (trackers) {
+				AbstractTrajectoryEnvelopeTracker tracker = trackers.get(robotID);
+				if (!(tracker instanceof TrajectoryEnvelopeTrackerDummy)) return false;
+				TrajectoryEnvelopeTrackerDummy trackerDummy = (TrajectoryEnvelopeTrackerDummy)tracker;
+				return (!trackerDummy.isParkingFinished());
+			}
+		}
 	}
 
 	private static void printLicense() {
