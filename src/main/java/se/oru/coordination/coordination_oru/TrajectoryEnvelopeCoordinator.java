@@ -97,7 +97,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected FleetVisualization viz = null;
 	protected ArrayList<TrajectoryEnvelope> envelopesToTrack = new ArrayList<TrajectoryEnvelope>();
 	protected ArrayList<TrajectoryEnvelope> currentParkingEnvelopes = new ArrayList<TrajectoryEnvelope>();
-	protected HashMap<CriticalSection,Dependency> criticalSectionsToDeps = new HashMap<CriticalSection, Dependency>();
 	protected ArrayList<CriticalSection> allCriticalSections = new ArrayList<CriticalSection>();
 	protected HashMap<Integer,ArrayList<Integer>> stoppingPoints = new HashMap<Integer,ArrayList<Integer>>();
 	protected HashMap<Integer,ArrayList<Integer>> stoppingTimes = new HashMap<Integer,ArrayList<Integer>>();
@@ -1284,7 +1283,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd, waitingTracker, drivingTracker);
 						if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
 						currentDeps.get(waitingRobotID).add(dep);
-						criticalSectionsToDeps.put(cs, dep);
 					}
 					else {
 						metaCSPLogger.finest("** Warning ** Robot" + waitingRobotID + " cannot stop at " + waitingPoint + " for Robot" + drivingRobotID + " (which is parked) because it is already at " + waitingCurrentIndex);
@@ -1389,7 +1387,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd, waitingTracker, drivingTracker);
 						if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
 						currentDeps.get(waitingRobotID).add(dep);
-						criticalSectionsToDeps.put(cs, dep);
 						if (createArtificialDeadlock) {
 							Dependency oppositeDep = new Dependency(drivingTE,waitingTE,drivingCurrentIndex,lastIndexOfCSWaiting,drivingTracker,waitingTracker);
 							if (!artificialDependencies.containsKey(drivingRobotID)) artificialDependencies.put(drivingRobotID, new TreeSet<Dependency>());
@@ -1407,7 +1404,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 			//Remove obsolete critical sections
 			for (CriticalSection cs : toRemove) {
-				this.criticalSectionsToDeps.remove(cs);
 				this.allCriticalSections.remove(cs);
 			}
 		}
@@ -1630,7 +1626,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					}
 				}
 				for (CriticalSection cs : toRemove) {
-					this.criticalSectionsToDeps.remove(cs);
 					this.allCriticalSections.remove(cs);
 				}
 			
