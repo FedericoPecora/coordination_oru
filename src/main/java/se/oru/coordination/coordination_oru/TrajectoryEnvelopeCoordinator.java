@@ -1342,12 +1342,14 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					else {			
 						
 						//you should be find who was the leader before
-						//Both the robots are driving
+						//Both the robots are driving.
+						
+						//PROBLEMS!!
 						
 						//Robot 1 is ahead --> make robot 2 follow
-						if (isAhead(cs, lastCriticalPoint1, lastCriticalPoint2)) {
+						if (isAhead(cs, robotReport1.getPathIndex(), robotReport2.getPathIndex())) {
 							drivingCurrentIndex = robotReport1.getPathIndex();
-							waitingCurrentIndex = lastCriticalPoint2;
+							waitingCurrentIndex = robotReport2.getPathIndex();
 							waitingTE = cs.getTe2();
 							drivingTE = cs.getTe1();
 							lastIndexOfCSDriving = cs.getTe1End();
@@ -1356,7 +1358,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						//Robot 2 is ahead --> make robot 1 follow
 						else {
 							drivingCurrentIndex = robotReport2.getPathIndex();
-							waitingCurrentIndex = lastCriticalPoint1;
+							waitingCurrentIndex = robotReport1.getPathIndex();
 							waitingTE = cs.getTe1();
 							drivingTE = cs.getTe2();
 							lastIndexOfCSDriving = cs.getTe2End();
@@ -1368,7 +1370,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						//flag that will lead to the creation of an artificial deadlock
 						//(this may happen if one of the robots started a new driving envelope
 						//whose initial pose is already in the CS).
+						//FIXME SEEN an EXCEPTION!!
 						if (!canExitCriticalSection(drivingCurrentIndex, waitingCurrentIndex, drivingTE, waitingTE, lastIndexOfCSDriving)) {
+							
+							//The resulting driving is the previous follower. A delay allow the new follower to proceed to much.
+							drivingCurrentIndex = communicatedCPs.get(trackers.get(drivingTE.getRobotID())).getFirst(); //the last previous allowed
 							createArtificialDeadlock = true;
 							metaCSPLogger.finest("Will create artificial deadlock to prevent (previously parked) Robot" + drivingTE.getRobotID() + " from driving into (waiting) Robot" + waitingTE.getRobotID());
 						}
