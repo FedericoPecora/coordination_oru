@@ -27,9 +27,11 @@ public class ParkingArray {
 		double MAX_ACCEL = 3.0;
 		double MAX_VEL = 4.0;
 		
-		//Define the radius of the circle	
-		int numRobots = 7;
-		int numLocations = ((numRobots%2) == 0) ? numRobots/2 : (numRobots+1)/2;
+		//Define an even number of robots
+		int numRobots = 8;
+		
+		//Define the number of locations for each line
+		int numLocations = 10;
 				
 		//Instantiate a trajectory envelope coordinator.
 		//The TrajectoryEnvelopeCoordinatorSimulation implementation provides
@@ -49,7 +51,7 @@ public class ParkingArray {
 		tec.setCheckCollisions(true);
 		
 		//Setup the network parameters
-		NetworkConfiguration.setDelays(0, 0);
+		NetworkConfiguration.setDelays(1000, 3000);
 		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0;
 		tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, NetworkConfiguration.getMaximumTxDelay(), 0.1);
 		
@@ -68,7 +70,7 @@ public class ParkingArray {
 		}
 		
 		//Set a map
-		String yamlFile = "maps/map-empty.yaml";
+		String yamlFile = "maps/map-empty-circle.yaml";
 		
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		RVizVisualization viz = new RVizVisualization();
@@ -83,12 +85,13 @@ public class ParkingArray {
 		long seed = 123123;// Calendar.getInstance().getTimeInMillis();
 		System.out.println("Seed random generator: " + seed);
 		Random rand = new Random(seed);
-		double dx = 1.5;
-		double dy = 15;
-		double[] origin = {10,5};
+		double deltaX = 2.5;
+		double deltaY = 15.0;
+		double offsetX = 30.0;
+		double offsetY = 30.0;
 		for (int i = 0; i < numLocations; i++) {
-			Missions.setLocation("line0_"+i, new Pose(origin[0]+i*dx, origin[1], Math.PI/2));
-			Missions.setLocation("line1_"+i, new Pose(origin[0]+i*dx, origin[1]+dy, Math.PI/2));
+			Missions.setLocation("locUp"+i, new Pose(offsetX+i*deltaX, offsetY+deltaY, -Math.PI/2.0));
+			Missions.setLocation("locDown"+i, new Pose(offsetX+i*deltaX, offsetY, -Math.PI/2.0));
 		}
 		
 		//Set up motion planner
@@ -106,7 +109,7 @@ public class ParkingArray {
 		
 		for (String loc1 : Missions.getLocations().keySet()) {
 			for (String loc2 : Missions.getLocations().keySet()) {
-				if (loc1.contains("line0_") && loc2.contains("line1_")) {
+				if (loc1.contains("locUp") && loc2.contains("locDown")) {
 					//Compute path in both directions
 					rsp.setStart(Missions.getLocation(loc1));
 					rsp.setGoals(Missions.getLocation(loc2));
@@ -117,36 +120,36 @@ public class ParkingArray {
 			}			
 		}
 		
-		// Decide initial poses for robots, place the robots, and create missions
+		// Decide initial poses for robots, place the robots, and create missions.
+		//In each line even locations are starts, odds are goal (removing the case of starting or ending in critical sections).
+		//Even robots start from lineUp, while odd robots start from lineDown.
 		String[] initialLocations = new String[numRobots];
 		for (int i = 0; i < numRobots; i++) {
 			boolean even = (i%2) == 0;
-			String str = even ? "line0_" : "line1_";
-			String newLocation = str+rand.nextInt(numLocations);
+			String str = even ? "locUp" : "locDown";
+			String newLocation = str+(2*rand.nextInt(numLocations/2))%numLocations;
 			for (int j = 0; j < i; j++) {
 				if (initialLocations[j].equals(newLocation)) {
 					j = -1;
-					newLocation = str+rand.nextInt(numLocations);
+					newLocation = str+(2*rand.nextInt(numLocations/2))%numLocations;
 				}
 			}
 			initialLocations[i] = newLocation;
 		}
-		System.out.println(">>>>>>>>>>>>>" + Arrays.toString(initialLocations));
-		
+
 		String[] finalLocations = new String[numRobots];
 		for (int i = 0; i < numRobots; i++) {
 			boolean even = (i%2) == 0;
-			String str = !even ? "line0_" : "line1_";
-			String newLocation = str+rand.nextInt(numLocations);
+			String str = !even ? "locUp" : "locDown";
+			String newLocation = str+(2*rand.nextInt(numLocations/2)+1)%numLocations;
 			for (int j = 0; j < i; j++) {
 				if (finalLocations[j].equals(newLocation)) {
 					j = -1;
-					newLocation = str+rand.nextInt(numLocations);
+					newLocation = str+(2*rand.nextInt(numLocations/2)+1)%numLocations;
 				}
 			}
 			finalLocations[i] = newLocation;
 		}
-		System.out.println(">>>>>>>>>>>>>" + Arrays.toString(finalLocations));
 		
 
 		//Set the goals such that two paths cannot overlap
