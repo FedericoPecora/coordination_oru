@@ -879,7 +879,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	
 	private boolean inParkingPose(int robotID) {
 		synchronized(trackers) {
-			return this.getRobotReport(robotID).getPathIndex() == -1 && this.getRobotReport(robotID).getCriticalPoint() == -1 && communicatedCPs.get(trackers.get(robotID)).getFirst() == -1;
+			return trackers.containsKey(robotID) && trackers.get(robotID) instanceof TrajectoryEnvelopeTrackerDummy;
 		}
 	}
 	
@@ -1276,7 +1276,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					
 					if (	//1. the last critical point was before the critical section (can stop by induction)
 							//note that due to delay robotTracker1.getCriticalPoint() could be different to the last communicated one,
-							(communicatedCPs.containsKey(robotTracker1) && communicatedCPs.get(robotTracker1).getFirst() != -1 && (communicatedCPs.get(robotTracker1).getFirst() <= cs.getTe1Start()))
+							(communicatedCPs.containsKey(robotTracker1) && communicatedCPs.get(robotTracker1).getFirst() != -1 && (communicatedCPs.get(robotTracker1).getFirst() < cs.getTe1Start()))
 							//2. stopped at the start of a critical section
 							|| (communicatedCPs.containsKey(robotTracker1) && robotReport1.getPathIndex() == communicatedCPs.get(robotTracker1).getFirst())
 							//if we haven't communicated anything to the robot, it is assumed that it cannot move
@@ -1286,7 +1286,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						//Due to temporal delays we cannot trust the velocity.
 						canStopRobot1 = fm1.canStop(robotTracker1.getTrajectoryEnvelope(), robotReport1, cs.getTe1Start(), false);
 					
-					if(	(communicatedCPs.containsKey(robotTracker2) && communicatedCPs.get(robotTracker2).getFirst() != -1 && (communicatedCPs.get(robotTracker2).getFirst() <= cs.getTe2Start()))
+					if(	(communicatedCPs.containsKey(robotTracker2) && communicatedCPs.get(robotTracker2).getFirst() != -1 && (communicatedCPs.get(robotTracker2).getFirst() < cs.getTe2Start()))
 						|| (communicatedCPs.containsKey(robotTracker2) && robotReport2.getPathIndex() == communicatedCPs.get(robotTracker2).getFirst())
 						|| !communicatedCPs.containsKey(robotTracker2))
 						canStopRobot2 = true;
