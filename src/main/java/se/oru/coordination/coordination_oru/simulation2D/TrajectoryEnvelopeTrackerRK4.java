@@ -88,23 +88,11 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 	
 	@Override
 	protected void onTrajectoryEnvelopeUpdate(TrajectoryEnvelope te) {
-		synchronized(reportsList) {
+		synchronized(reportsList) { //FIXME not ok, all the mutex should be changed
 			this.totalDistance = this.computeDistance(0, traj.getPose().length-1);
 			this.overallDistance = totalDistance;
 			this.internalCriticalPoints.clear();
 			this.computeInternalCriticalPoints();
-			
-			//Clear the list (the returned robot report will be related to the old path index).	
-			long timeNow = Calendar.getInstance().getTimeInMillis();
-			ArrayList<Long> reportTimeListsTmp = reportTimeLists; 
-			for (int index = 0; index < reportTimeLists.size(); index++)
-			{
-				if (reportTimeListsTmp.get(index) < timeNow) break;
-				if (reportTimeListsTmp.get(index) >= timeNow) {
-					reportsList.remove(index);
-					reportTimeLists.remove(index);
-				}	
-			}
 		}
 	}
 	
