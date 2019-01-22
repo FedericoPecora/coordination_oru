@@ -1222,16 +1222,13 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						//something has already been communicated to the robot, so its pose maybe is affected by delay.
 						//However the last reachable position is the one communicated.
 						
-						//Hyp. Robot1 is the leader. Compute the max reachable location. 
-						//Comparing this value with the last communicated CP for Robot2 it is possible to find if the hypothesis was correct.
+						//Hyp. Robot1 is the leader. Compute the max reachable location; then, comparing this value 
+						//with the last communicated CP for Robot2 it is possible to find if the hypothesis was correct.
 						waitingPoint = getCriticalPoint(robotReport2.getRobotID(), cs, robotReport1.getPathIndex());
-						if (communicatedCPs.get(waitingTracker).getFirst() > waitingPoint) {
-							//the leader is Robot2. No dependency should be added.
-						}
-						else {
+						if (communicatedCPs.get(waitingTracker).getFirst() <= waitingPoint) {
 							//Make a new dependency to avoid Robot2 to collide on Robot1
 							createAParkingDep = true;
-						}
+						} //else the leader is Robot2. No dependency should be added.
 					}
 					
 				}
@@ -1248,10 +1245,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					}
 					else {
 						waitingPoint = getCriticalPoint(robotReport1.getRobotID(), cs, robotReport2.getPathIndex());
-						if (communicatedCPs.get(waitingTracker).getFirst() > waitingPoint) {
-							//the leader is Robot2. No dependency should be added.
-						}
-						else {
+						if (communicatedCPs.get(waitingTracker).getFirst() <= waitingPoint) {
 							//Make a new dependency to avoid Robot2 to collide on Robot1
 							createAParkingDep = true;
 						}
@@ -1361,11 +1355,13 @@ public abstract class TrajectoryEnvelopeCoordinator {
 								}
 							}
 							else
-								metaCSPLogger.info("Help! Size is different than the expected! CS: " + cs + ", size: " + numDeps);
+								metaCSPLogger.info("ERROR! Size is different than the expected! CS: " + cs + ", size: " + numDeps);
 						}
 						else {
-							//The critical section is new and no decision has been already made about the ordering. But then, the can stop should be true for at least one robot
-							metaCSPLogger.info("LOST ORDERING");
+							//The critical section is new (due to a new path or to a replan).
+							//While in the first case at least one of the robots can stop,
+							//in the second we should check! FIXMES
+							metaCSPLogger.info("ERROR! Lost ordering CS: " + cs);
 
 						}
 						
@@ -1414,15 +1410,14 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						throw new Error("Waiting point < 0 for critical section " + cs);
 					}
 				}
+				
 				//Update the map
 				if (this.criticalSectionsToDeps.containsKey(cs)) this.criticalSectionsToDeps.remove(cs);
-				if (currentCsToDeps.size() > 0) {
-					HashSet<Dependency> depsToAdd = new HashSet<Dependency>();
-					for (Dependency dep : currentCsToDeps) {
-						depsToAdd.add(dep);
-					}
-					this.criticalSectionsToDeps.put(cs, depsToAdd);
+				HashSet<Dependency> depsToAdd = new HashSet<Dependency>();
+				for (Dependency dep : currentCsToDeps) {
+					depsToAdd.add(dep);
 				}
+				this.criticalSectionsToDeps.put(cs, depsToAdd);
 			}
 
 			//Remove obsolete critical sections
