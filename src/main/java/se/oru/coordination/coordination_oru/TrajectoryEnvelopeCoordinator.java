@@ -1121,8 +1121,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		PoseSteering[] pathRobot2 = cs.getTe2().getTrajectory().getPoseSteering();
 		double dist1 = 0.0;
 		double dist2 = 0.0;
-		//FIXME Qui c'è l'assunzione che uno dei due sia dentro, ma non è vero con delay.
-		//Potrebbero essere entrambe esterne ma nessuna delle due permettere lo stop.
 		for (int i = cs.getTe1Start(); i < lastPathIndex1-1; i++) {
 			dist1 += pathRobot1[i].getPose().getPosition().distance(pathRobot1[i+1].getPose().getPosition());
 		}
@@ -1338,32 +1336,37 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						//Both the robots are driving.
 						
 						//Check the previous decided order
-						if (this.criticalSectionsToDeps.containsKey(cs)) {
+						if (this.criticalSectionsToDeps.containsKey(cs) && this.criticalSectionsToDeps.get(cs).size() == 1) {
 							
-							//The critical section is not new and at the previous cycle there has been at least one dependency involving the pair of robots.
-							int numDeps = this.criticalSectionsToDeps.get(cs).size();
-							if (numDeps == 1) {
-								//just one ordering is possible (standard case). Let's impose that
-								for (Dependency dep : this.criticalSectionsToDeps.get(cs)) {
-									drivingRobotID = dep.getDrivingRobotID();
-									waitingRobotID = dep.getWaitingRobotID();
-									drivingCurrentIndex = (drivingRobotID == robotReport1.getRobotID()) ? robotReport1.getPathIndex() : robotReport2.getPathIndex();
-									drivingTE = (drivingRobotID == robotReport1.getRobotID()) ? cs.getTe1() : cs.getTe2();
-									waitingTE = (waitingRobotID == robotReport1.getRobotID()) ? cs.getTe1() : cs.getTe2();
-									lastIndexOfCSDriving = (drivingRobotID == robotReport1.getRobotID()) ? cs.getTe1End() : cs.getTe2End();
-									lastIndexOfCSWaiting = (waitingRobotID == robotReport1.getRobotID()) ? cs.getTe1End() : cs.getTe2End();
-								}
+							//The critical section is not new and no replan happen.
+							//Just one ordering is possible (standard case). Let's impose that
+							for (Dependency dep : this.criticalSectionsToDeps.get(cs)) {
+								drivingRobotID = dep.getDrivingRobotID();
+								waitingRobotID = dep.getWaitingRobotID();
 							}
-							else
-								metaCSPLogger.info("ERROR! Size is different than the expected! CS: " + cs + ", size: " + numDeps);
 						}
 						else {
 							//The critical section is new (due to a new path or to a replan).
 							//While in the first case at least one of the robots can stop,
-							//in the second we should check! FIXMES
-							metaCSPLogger.info("ERROR! Lost ordering CS: " + cs);
+							//in the second we should check! FIXME
+							metaCSPLogger.info("Using an euristic to restore a lost ordering for CS: " + cs + ". The furthest to the start is the leader.");
+							int lastPathIndex1 = (communicatedCPs.get(robotTracker1).getFirst() != -1) ? communicatedCPs.get(robotTracker1).getFirst() : cs.getTe1End(); 
+							int lastPathIndex2 = (communicatedCPs.get(robotTracker2).getFirst() != -1) ? communicatedCPs.get(robotTracker2).getFirst() : cs.getTe2End(); 
+							if (isAhead(cs,lastPathIndex1,lastPathIndex2)) {
+								drivingRobotID = robotReport1.getRobotID();
+								waitingRobotID = robotReport2.getRobotID();
+							}
+							else {
+								drivingRobotID = robotReport2.getRobotID();
+								waitingRobotID = robotReport1.getRobotID();
+							}
 
 						}
+						drivingCurrentIndex = (drivingRobotID == robotReport1.getRobotID()) ? robotReport1.getPathIndex() : robotReport2.getPathIndex();
+						drivingTE = (drivingRobotID == robotReport1.getRobotID()) ? cs.getTe1() : cs.getTe2();
+						waitingTE = (waitingRobotID == robotReport1.getRobotID()) ? cs.getTe1() : cs.getTe2();
+						lastIndexOfCSDriving = (drivingRobotID == robotReport1.getRobotID()) ? cs.getTe1End() : cs.getTe2End();
+						lastIndexOfCSWaiting = (waitingRobotID == robotReport1.getRobotID()) ? cs.getTe1End() : cs.getTe2End();
 						
 					
 						//Check if the leading robot can actually continue to the end of the CS
