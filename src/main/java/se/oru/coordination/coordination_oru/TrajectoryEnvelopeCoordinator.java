@@ -723,52 +723,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		return Math.max(0, yieldingRobotStart-TRAILING_PATH_POINTS);
 
 	}
-
-	@Deprecated
-	private int getCriticalPoint(TrajectoryEnvelope te1, TrajectoryEnvelope te2, int currentPIR1, int te1Start, int te1End, int te2Start) {
-
-		//Number of additional path points robot 2 should stay behind robot 1
-		int TRAILING_PATH_POINTS = 3;
-
-		//How far ahead in robot 1's trajectory should we look ahead for collisions
-		//(all the way to end of critical section if robots can drive in opposing directions)
-		int LOOKAHEAD = te1End; //5;
-
-		//How far into the critical section has robot 1 reached 
-		int depthRobot1 = currentPIR1-te1Start;
-
-		//If robot 1 not in critical section yet, return critical section start as waiting point for robot 2
-		if (depthRobot1 < 0) return Math.max(0, te2Start-TRAILING_PATH_POINTS);	
-
-		//Compute sweep of robot 1's footprint from current position to LOOKAHEAD
-		Pose robot1Pose = te1.getTrajectory().getPose()[currentPIR1];
-		Geometry robot1InPose = TrajectoryEnvelope.getFootprint(te1.getFootprint(), robot1Pose.getX(), robot1Pose.getY(), robot1Pose.getTheta());
-		for (int i = 1; currentPIR1+i < LOOKAHEAD && currentPIR1+i < te1.getTrajectory().getPose().length; i++) {
-			Pose robot1NextPose = te1.getTrajectory().getPose()[currentPIR1+i];
-			robot1InPose = robot1InPose.union(TrajectoryEnvelope.getFootprint(te1.getFootprint(), robot1NextPose.getX(), robot1NextPose.getY(), robot1NextPose.getTheta()));			
-		}
-
-		//Starting from the same depth into the critical section as that of robot 1,
-		//and decreasing the pose index backwards down to te2Start,
-		//return the pose index as soon as robot 2's footprint does not intersect with robot 1's sweep
-		for (int i = Math.min(te2.getTrajectory().getPose().length-1, te2Start+depthRobot1); i > te2Start-1; i--) {
-			Pose robot2Pose = te2.getTrajectory().getPose()[i];
-			Geometry robot2InPose = TrajectoryEnvelope.getFootprint(te2.getFootprint(), robot2Pose.getX(), robot2Pose.getY(), robot2Pose.getTheta());
-			if (!robot1InPose.intersects(robot2InPose)) {
-				return Math.max(0, i-TRAILING_PATH_POINTS);
-			}
-		}
-
-		//The only situation where the above has not returned is when robot 2 should
-		//stay "parked", therefore wait at index 0
-		return Math.max(0, te2Start-TRAILING_PATH_POINTS);
-
-		//		//The above should have returned, as i is decremented until robot 2 is before the critical section
-		//		System.out.println("Robot" + te1.getRobotID() + ": start=" +te1Start + " depth=" + depthRobot1 + " Robot" + te2.getRobotID() + ": start=" + te2Start);
-		//		metaCSPLogger.severe("Could not determine CP for " + te2);
-		//		throw new Error("Could not determine CP for " + te2);
-	}
-
 	/**
 	 * Returns <code>true</code> iff the given robot is at a stopping point.
 	 * @param robotID The ID of a robot.
@@ -870,12 +824,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		}
 	}
 	
-	private boolean atCP(int robotID) {
-		synchronized (trackers)	{
-			if (!communicatedCPs.containsKey(trackers.get(robotID)) || (this.getRobotReport(robotID).getPathIndex() == -1 && communicatedCPs.get(trackers.get(robotID)).getFirst() == -1)) return false;
-			return (Math.abs(communicatedCPs.get(trackers.get(robotID)).getFirst() - this.getRobotReport(robotID).getPathIndex()) <= 1);
-		}
-	}
 	
 	private boolean inParkingPose(int robotID) {
 		synchronized(trackers) {
@@ -911,9 +859,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			for (Dependency dep : depList) {
 				deadlockedRobots.add(dep.getWaitingRobotID());
 				deadlockedRobots.add(dep.getDrivingRobotID());
-				//if (getRobotReport(dep.getDrivingRobotID()).getPathIndex() == -1 || getRobotReport(dep.getWaitingRobotID()).getPathIndex() == -1) {
 				if (inParkingPose(dep.getDrivingRobotID()) || inParkingPose(dep.getWaitingRobotID())) {
-				//if (atCP(dep.getDrivingRobotID()) && atCP(dep.getWaitingRobotID())) {
 					tryReplanning = false;
 					break;
 				}
@@ -1202,7 +1148,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				int waitingPoint = -1;
 				boolean createAParkingDep = false;
 				
-				//Robot1 is parking in critical section. If the leader is Robot1, make the other wait
+				//Robot1 is parking in critical section. If it is the driver of the current critical section, make the other wait.
 				if (robotTracker1 instanceof TrajectoryEnvelopeTrackerDummy && !(robotTracker2 instanceof TrajectoryEnvelopeTrackerDummy)) {
 					drivingRobotID = robotReport1.getRobotID();
 					waitingRobotID = robotReport2.getRobotID();
@@ -1212,7 +1158,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					waitingTracker = robotTracker2;
 					if (!communicatedCPs.containsKey(waitingTracker)) {
 						//the robot is starting a new mission but is still stopped. Its position is correct by definition.
-						//Since by definition the parking is at the end of a critical section (only at the goal), the dependency should be added.
+						//Since the parking is at the end of a critical section (only at the goal), the dependency should be added.
 						createAParkingDep = true;
 						waitingPoint = Math.max(getCriticalPoint(robotReport2.getRobotID(), cs, robotReport1.getPathIndex()), robotReport2.getPathIndex());
 					}
@@ -1251,9 +1197,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				}
 				
 				if (createAParkingDep) {
-					int drivingCSEnd = -1;
-					if (waitingRobotID == cs.getTe1().getRobotID()) drivingCSEnd = cs.getTe2End();
-					else drivingCSEnd = cs.getTe1End();
+					int drivingCSEnd = (waitingRobotID == cs.getTe1().getRobotID()) ? cs.getTe2End() : cs.getTe1End();
 					metaCSPLogger.finest("Robot" + drivingRobotID + " is parked, so Robot" + waitingRobotID + " will have to wait");	
 					Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd, waitingTracker, drivingTracker);
 					if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
@@ -1274,11 +1218,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					boolean canStopRobot1 = false;
 					boolean canStopRobot2 = false;
 					
-					if (	//1. the last critical point was before the critical section (can stop by induction)
+					if (	//the last critical point was before the critical section (can stop by induction)
 							//note that due to delay robotTracker1.getCriticalPoint() could be different to the last communicated one,
 							(communicatedCPs.containsKey(robotTracker1) && communicatedCPs.get(robotTracker1).getFirst() != -1 && (communicatedCPs.get(robotTracker1).getFirst() < cs.getTe1Start()))
-							//2. stopped at the start of a critical section
-							|| (communicatedCPs.containsKey(robotTracker1) && robotReport1.getPathIndex() == communicatedCPs.get(robotTracker1).getFirst())
 							//if we haven't communicated anything to the robot, it is assumed that it cannot move
 							|| !communicatedCPs.containsKey(robotTracker1))
 						canStopRobot1 = true;
@@ -1287,7 +1229,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						canStopRobot1 = fm1.canStop(robotTracker1.getTrajectoryEnvelope(), robotReport1, cs.getTe1Start(), false);
 					
 					if(	(communicatedCPs.containsKey(robotTracker2) && communicatedCPs.get(robotTracker2).getFirst() != -1 && (communicatedCPs.get(robotTracker2).getFirst() < cs.getTe2Start()))
-						|| (communicatedCPs.containsKey(robotTracker2) && robotReport2.getPathIndex() == communicatedCPs.get(robotTracker2).getFirst())
 						|| !communicatedCPs.containsKey(robotTracker2))
 						canStopRobot2 = true;
 					else canStopRobot2 = fm2.canStop(robotTracker2.getTrajectoryEnvelope(), robotReport2, cs.getTe2Start(), false);
@@ -1362,9 +1303,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							}
 
 						}
-						drivingCurrentIndex = (drivingRobotID == robotReport1.getRobotID()) ? robotReport1.getPathIndex() : robotReport2.getPathIndex();
+						
 						drivingTE = (drivingRobotID == robotReport1.getRobotID()) ? cs.getTe1() : cs.getTe2();
 						waitingTE = (waitingRobotID == robotReport1.getRobotID()) ? cs.getTe1() : cs.getTe2();
+						drivingCurrentIndex = (drivingRobotID == robotReport1.getRobotID()) ? robotReport1.getPathIndex() : robotReport2.getPathIndex();
+						waitingCurrentIndex = communicatedCPs.get(trackers.get(waitingTE.getRobotID())).getFirst(); //FIXME
 						lastIndexOfCSDriving = (drivingRobotID == robotReport1.getRobotID()) ? cs.getTe1End() : cs.getTe2End();
 						lastIndexOfCSWaiting = (waitingRobotID == robotReport1.getRobotID()) ? cs.getTe1End() : cs.getTe2End();
 						
@@ -1373,14 +1316,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						//without colliding with the other one; if that is not the case, raise a
 						//flag that will lead to the creation of an artificial deadlock
 						//(this may happen if one of the robots started a new driving envelope
-						//whose initial pose is already in the CS).
-//						if (!canExitCriticalSection(drivingCurrentIndex, waitingCurrentIndex, drivingTE, waitingTE, lastIndexOfCSDriving)) {
-//							
-//							//The resulting driving is the previous follower. A delay allow the new follower to proceed to much.
-//							drivingCurrentIndex = communicatedCPs.get(trackers.get(drivingTE.getRobotID())).getFirst(); //the last previous allowed
-//							createArtificialDeadlock = true;
-//							metaCSPLogger.finest("Will create artificial deadlock to prevent (previously parked) Robot" + drivingTE.getRobotID() + " from driving into (waiting) Robot" + waitingTE.getRobotID());
-//						}
+						//whose initial pose is already in the CS). FIXME
+						if (!canExitCriticalSection(drivingCurrentIndex, waitingCurrentIndex, drivingTE, waitingTE, lastIndexOfCSDriving)) {
+							createArtificialDeadlock = true;
+							metaCSPLogger.finest("Will create artificial deadlock to prevent (previously parked) Robot" + drivingTE.getRobotID() + " from driving into (waiting) Robot" + waitingTE.getRobotID());
+						}
 						metaCSPLogger.info("Both-in and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID() + " and CS is: " + cs);
 					}
 
@@ -1393,9 +1333,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					waitingPoint = getCriticalPoint(waitingRobotID, cs, drivingCurrentIndex);
 					if (waitingPoint >= 0) {		
 						//Make new dependency
-						int drivingCSEnd = -1;
-						if (waitingRobotID == cs.getTe1().getRobotID()) drivingCSEnd = cs.getTe2End();
-						else drivingCSEnd = cs.getTe1End();
+						int drivingCSEnd = (waitingRobotID == cs.getTe1().getRobotID()) ? cs.getTe2End() : cs.getTe1End();
 						Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd, waitingTracker, drivingTracker);
 						if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
 						currentDeps.get(waitingRobotID).add(dep);
@@ -1460,6 +1398,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	}
 	
 	private boolean canExitCriticalSection(int drivingCurrentIndex, int waitingCurrentIndex, TrajectoryEnvelope drivingTE, TrajectoryEnvelope waitingTE, int lastIndexOfCSDriving) {
+		drivingCurrentIndex = Math.max(drivingCurrentIndex,0);
+		waitingCurrentIndex = Math.max(waitingCurrentIndex,0);
 		Geometry placementWaiting = waitingTE.makeFootprint(waitingTE.getTrajectory().getPoseSteering()[waitingCurrentIndex]);
 		for (int i = drivingCurrentIndex; i <= lastIndexOfCSDriving; i++) {
 			Geometry placementDriving = drivingTE.makeFootprint(drivingTE.getTrajectory().getPoseSteering()[i]);
@@ -1778,7 +1718,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						int end12 = cs1.getTe2End();
 						int end21 = cs2.getTe1End();
 						int end22 = cs2.getTe2End();
-						Pose[] path1 = cs1.getTe1().getTrajectory().getPose();
 						//CS1 before CS2
 						if (start11 < start21) {
 							//CS1 ends after CS2 starts
@@ -1801,27 +1740,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 								toAdd.add(newCS);
 								metaCSPLogger.finest("(Pass " + passNum + ") MERGED (ends-after-start): " + cs1 + " + " + cs2 + " = " + newCS);
 							}
-							//distance CS1.end -> CS2.start too small
-							//(this is incorrect, leads to deadlocks!)
-//							else if (path1[end11].distanceTo(path1[start21]) <= 1.1*getMaxFootprintDimension(cs1.getTe1().getRobotID())) {
-//								toRemove.add(cs1);
-//								toRemove.add(cs2);
-//								int newStart1 = start11;
-//								int newEnd1 = end21;
-//								int newStart2 = -1;
-//								int newEnd2 = -1;
-//								if (start12 < start22) {
-//									newStart2 = start12;
-//									newEnd2 = end22;
-//								}
-//								else {
-//									newStart2 = start22;
-//									newEnd2 = end12;
-//								}
-//								CriticalSection newCS = new CriticalSection(cs1.getTe1(), cs1.getTe2(), newStart1, newStart2, newEnd1, newEnd2); 
-//								toAdd.add(newCS);
-//								System.out.println("(Pass " + passNum + ") MERGED (too-close): " + cs1 + " + " + cs2 + " = " + newCS);								
-//							}
 						}
 					}
 				}	
