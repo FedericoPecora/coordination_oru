@@ -1149,7 +1149,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				boolean createAParkingDep = false;
 				if (robotTracker1 instanceof TrajectoryEnvelopeTrackerDummy || robotTracker2 instanceof TrajectoryEnvelopeTrackerDummy) {
 					//Robot1 is parking in critical section. If it is the driver of the current critical section, make the other wait.
-					if (robotTracker1 instanceof TrajectoryEnvelopeTrackerDummy && !(robotTracker2 instanceof TrajectoryEnvelopeTrackerDummy)) {
+					if (robotTracker1 instanceof TrajectoryEnvelopeTrackerDummy) {
 						drivingRobotID = robotReport1.getRobotID();
 						waitingRobotID = robotReport2.getRobotID();
 						drivingTE = robotTracker1.getTrajectoryEnvelope();
@@ -1176,7 +1176,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						}
 						
 					}
-					else if (!(robotTracker1 instanceof TrajectoryEnvelopeTrackerDummy) && robotTracker2 instanceof TrajectoryEnvelopeTrackerDummy) {
+					else if (robotTracker2 instanceof TrajectoryEnvelopeTrackerDummy) {
 						drivingRobotID = robotReport2.getRobotID();
 						waitingRobotID = robotReport1.getRobotID();
 						drivingTE = robotTracker2.getTrajectoryEnvelope();
@@ -1268,21 +1268,25 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						metaCSPLogger.finest("One-in-one-out (2) and Robot" + drivingTE.getRobotID() + " (in) ahead of Robot" + waitingTE.getRobotID() + " (out) and CS is: " + cs);
 					}
 
-					//Both robots in critical section --> re-impose previously decided dependency
 					else {			
 						
-						//you should be find who was the leader before
-						//Both the robots are driving.
+						//Both robots in critical section --> re-impose previously decided dependency
 						
 						//Check the previous decided order
 						if (this.criticalSectionsToDeps.containsKey(cs) && this.criticalSectionsToDeps.get(cs).size() == 1) {
-							//The critical section is not new and no replan happen.
-							//Just one ordering is possible (standard case). Let's impose that
+							//The critical section is not new and no re-plan happens.
+							//Standard case: there is just one dependency in the previous set. Let's impose that.
 							for (Dependency dep : this.criticalSectionsToDeps.get(cs)) {
 								drivingRobotID = dep.getDrivingRobotID();
 								waitingRobotID = dep.getWaitingRobotID();
 							}
-							//If one of the robot was parked, then an order exists.
+							
+							//If one of the robot was parked previously in critical section and has just started driving again,
+							//then the set of previous constraints contains at least one dependency (due to parking).
+
+							drivingCurrentIndex = (drivingRobotID == robotReport1.getRobotID()) ? robotReport1.getPathIndex() : robotReport2.getPathIndex();
+							waitingCurrentIndex = communicatedCPs.containsKey(trackers.get(waitingRobotID)) ? communicatedCPs.get(trackers.get(waitingRobotID)).getFirst() : ((waitingRobotID == robotReport1.getRobotID()) ? robotReport1.getPathIndex() : robotReport2.getPathIndex()); //the maximum reachable position.
+
 						}
 						else {
 							
@@ -1290,18 +1294,26 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							
 							//The critical section has been changed online due to a re-plan.
 							//However, if the i-th path has been replaced, the last communicated critical point it has not been changed till the last communicated critical point.
-							if (communicatedCPs.get(robotTracker1).getFirst() == -1 || communicatedCPs.get(robotTracker1).getFirst() > cs.getTe1End()) {
+							if (!communicatedCPs.containsKey(robotTracker1) || communicatedCPs.containsKey(robotTracker1) && (communicatedCPs.get(robotTracker1).getFirst() == -1 || communicatedCPs.get(robotTracker1).getFirst() > cs.getTe1End())) {
 								drivingRobotID = robotReport1.getRobotID();
 								waitingRobotID = robotReport2.getRobotID();								
 							}
-							else if (communicatedCPs.get(robotTracker2).getFirst() == -1 || communicatedCPs.get(robotTracker2).getFirst() > cs.getTe2End()) {
+							else if (!communicatedCPs.containsKey(robotTracker2) || communicatedCPs.containsKey(robotTracker2) && (communicatedCPs.get(robotTracker2).getFirst() == -1 || communicatedCPs.get(robotTracker2).getFirst() > cs.getTe2End())) {
 								drivingRobotID = robotReport2.getRobotID();
 								waitingRobotID = robotReport1.getRobotID();								
 							}
 							else {
 								metaCSPLogger.info("Using an heuristic to restore a lost ordering for CS: " + cs + ". The furthest to the start is the driver.");
-								int lastPathIndex1 = (communicatedCPs.get(robotTracker1).getFirst() != -1) ? communicatedCPs.get(robotTracker1).getFirst() : cs.getTe1End(); 
-								int lastPathIndex2 = (communicatedCPs.get(robotTracker2).getFirst() != -1) ? communicatedCPs.get(robotTracker2).getFirst() : cs.getTe2End(); 
+								int lastPathIndex1 = robotReport1.getPathIndex();
+								if (communicatedCPs.containsKey(robotTracker1)) {
+									if (communicatedCPs.get(robotTracker1).getFirst() != -1)	lastPathIndex1 = communicatedCPs.get(robotTracker1).getFirst(); 
+									else lastPathIndex1 = cs.getTe1End(); 
+								}
+								int lastPathIndex2 = robotReport2.getPathIndex();
+								if (communicatedCPs.containsKey(robotTracker2)) {
+									if (communicatedCPs.get(robotTracker2).getFirst() != -1)	lastPathIndex2 = communicatedCPs.get(robotTracker2).getFirst(); 
+									else lastPathIndex2 = cs.getTe1End(); 
+								}					
 								if (isAhead(cs,lastPathIndex1,lastPathIndex2)) {
 									drivingRobotID = robotReport1.getRobotID();
 									waitingRobotID = robotReport2.getRobotID();
@@ -1311,13 +1323,13 @@ public abstract class TrajectoryEnvelopeCoordinator {
 									waitingRobotID = robotReport1.getRobotID();
 								}
 							}
+							drivingCurrentIndex = (drivingRobotID == robotReport1.getRobotID()) ? robotReport1.getPathIndex() : robotReport2.getPathIndex();
+							waitingCurrentIndex = (waitingRobotID == robotReport1.getRobotID()) ? robotReport1.getPathIndex() : robotReport2.getPathIndex();
 
 						}
 						
 						drivingTE = (drivingRobotID == robotReport1.getRobotID()) ? cs.getTe1() : cs.getTe2();
 						waitingTE = (waitingRobotID == robotReport1.getRobotID()) ? cs.getTe1() : cs.getTe2();
-						drivingCurrentIndex = (drivingRobotID == robotReport1.getRobotID()) ? robotReport1.getPathIndex() : robotReport2.getPathIndex(); //Delay!!
-						waitingCurrentIndex = (waitingRobotID == robotReport1.getRobotID()) ? robotReport1.getPathIndex() : robotReport2.getPathIndex(); //Delay!!
 						lastIndexOfCSDriving = (drivingRobotID == robotReport1.getRobotID()) ? cs.getTe1End() : cs.getTe2End();
 						lastIndexOfCSWaiting = (waitingRobotID == robotReport1.getRobotID()) ? cs.getTe1End() : cs.getTe2End();
 						
@@ -1328,7 +1340,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						//(this may happen if one of the robots started a new driving envelope
 						//whose initial pose is already in the CS). FIXME
 						if (!canExitCriticalSection(drivingCurrentIndex, waitingCurrentIndex, drivingTE, waitingTE, lastIndexOfCSDriving)) {
-							createArtificialDeadlock = false;//true;
+							createArtificialDeadlock = false;
 							metaCSPLogger.finest("Will create artificial deadlock to prevent (previously parked) Robot" + drivingTE.getRobotID() + " from driving into (waiting) Robot" + waitingTE.getRobotID());
 						}
 						metaCSPLogger.info("Both-in and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID() + " and CS is: " + cs);
