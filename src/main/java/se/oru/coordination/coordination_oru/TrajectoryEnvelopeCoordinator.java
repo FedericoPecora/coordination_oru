@@ -1237,6 +1237,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						//If robot 1 has priority over robot 2
 						if (getOrder(robotTracker1, robotReport1, robotTracker2, robotReport2, cs)) {
 							drivingCurrentIndex = robotReport1.getPathIndex();
+							waitingCurrentIndex = communicatedCPs.containsKey(trackers.get(waitingRobotID)) ? communicatedCPs.get(trackers.get(waitingRobotID)).getFirst() : ((waitingRobotID == robotReport1.getRobotID()) ? robotReport1.getPathIndex() : robotReport2.getPathIndex()); //the maximum reachable position.
 							waitingTE = cs.getTe2();
 							drivingTE = cs.getTe1();
 							metaCSPLogger.finest("Both-out (1) and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID() + " and CS is: " + cs);
@@ -1245,6 +1246,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						//If robot 2 has priority over robot 1
 						else {
 							drivingCurrentIndex = robotReport2.getPathIndex();
+							waitingCurrentIndex = communicatedCPs.containsKey(trackers.get(waitingRobotID)) ? communicatedCPs.get(trackers.get(waitingRobotID)).getFirst() : ((waitingRobotID == robotReport1.getRobotID()) ? robotReport1.getPathIndex() : robotReport2.getPathIndex()); //the maximum reachable position.
 							waitingTE = cs.getTe1();
 							drivingTE = cs.getTe2();
 							metaCSPLogger.finest("Both-out (2) and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID() + " and CS is: " + cs);
@@ -1255,6 +1257,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					//Robot 1 can stop before entering the critical section, robot 2 can't --> robot 1 waits
 					else if (canStopRobot1 && !canStopRobot2) {
 						drivingCurrentIndex = robotReport2.getPathIndex();
+						waitingCurrentIndex = communicatedCPs.containsKey(trackers.get(waitingRobotID)) ? communicatedCPs.get(trackers.get(waitingRobotID)).getFirst() : ((waitingRobotID == robotReport1.getRobotID()) ? robotReport1.getPathIndex() : robotReport2.getPathIndex()); //the maximum reachable position.
 						waitingTE = cs.getTe1();
 						drivingTE = cs.getTe2();
 						metaCSPLogger.finest("One-in-one-out (1) and Robot" + drivingTE.getRobotID() + " (in) is ahead of Robot" + waitingTE.getRobotID() + " (out) and CS is: " + cs);
@@ -1263,6 +1266,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					//Robot 2 can stop before entering critical section, robot 1 can't --> robot 2 waits
 					else if (!canStopRobot1 && canStopRobot2) {
 						drivingCurrentIndex = robotReport1.getPathIndex();
+						waitingCurrentIndex = communicatedCPs.containsKey(trackers.get(waitingRobotID)) ? communicatedCPs.get(trackers.get(waitingRobotID)).getFirst() : ((waitingRobotID == robotReport1.getRobotID()) ? robotReport1.getPathIndex() : robotReport2.getPathIndex()); //the maximum reachable position.
 						waitingTE = cs.getTe2();
 						drivingTE = cs.getTe1();
 						metaCSPLogger.finest("One-in-one-out (2) and Robot" + drivingTE.getRobotID() + " (in) ahead of Robot" + waitingTE.getRobotID() + " (out) and CS is: " + cs);
@@ -1285,7 +1289,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							//then the set of previous constraints contains at least one dependency (due to parking).
 
 							drivingCurrentIndex = (drivingRobotID == robotReport1.getRobotID()) ? robotReport1.getPathIndex() : robotReport2.getPathIndex();
-
+							waitingCurrentIndex = communicatedCPs.containsKey(trackers.get(waitingRobotID)) ? communicatedCPs.get(trackers.get(waitingRobotID)).getFirst() : ((waitingRobotID == robotReport1.getRobotID()) ? robotReport1.getPathIndex() : robotReport2.getPathIndex()); //the maximum reachable position.
 						}
 						else {
 							
@@ -1324,14 +1328,12 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							}
 							drivingCurrentIndex = (drivingRobotID == robotReport1.getRobotID()) ? robotReport1.getPathIndex() : robotReport2.getPathIndex();
 							waitingCurrentIndex = (waitingRobotID == robotReport1.getRobotID()) ? robotReport1.getPathIndex() : robotReport2.getPathIndex();
-
 						}
 						
 						drivingTE = (drivingRobotID == robotReport1.getRobotID()) ? cs.getTe1() : cs.getTe2();
 						waitingTE = (waitingRobotID == robotReport1.getRobotID()) ? cs.getTe1() : cs.getTe2();
 						lastIndexOfCSDriving = (drivingRobotID == robotReport1.getRobotID()) ? cs.getTe1End() : cs.getTe2End();
-						lastIndexOfCSWaiting = (waitingRobotID == robotReport1.getRobotID()) ? cs.getTe1End() : cs.getTe2End();
-						
+						lastIndexOfCSWaiting = (waitingRobotID == robotReport1.getRobotID()) ? cs.getTe1End() : cs.getTe2End();					
 					
 						//Check if the leading robot can actually continue to the end of the CS
 						//without colliding with the other one; if that is not the case, raise a
@@ -1349,7 +1351,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					drivingRobotID = drivingTE.getRobotID();
 					waitingTracker = trackers.get(waitingRobotID);
 					drivingTracker = trackers.get(drivingRobotID);
-					waitingCurrentIndex = communicatedCPs.containsKey(trackers.get(waitingRobotID)) ? communicatedCPs.get(trackers.get(waitingRobotID)).getFirst() : ((waitingRobotID == robotReport1.getRobotID()) ? robotReport1.getPathIndex() : robotReport2.getPathIndex()); //the maximum reachable position.
 
 					//Compute waiting path index point for waiting robot
 					//If the driving robot was parked, the previous critical point should be restored.
