@@ -1262,6 +1262,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 							drivingCurrentIndex = (drivingRobotID == robotReport1.getRobotID()) ? robotReport1.getPathIndex() : robotReport2.getPathIndex();
 						}
+						else {
+							metaCSPLogger.severe("Both inside but lost critical section to dep");
+							throw new Error("FIXME! Lost dependency! " );	
+						}
 						
 						drivingTE = (drivingRobotID == robotReport1.getRobotID()) ? cs.getTe1() : cs.getTe2();
 						waitingTE = (waitingRobotID == robotReport1.getRobotID()) ? cs.getTe1() : cs.getTe2();
