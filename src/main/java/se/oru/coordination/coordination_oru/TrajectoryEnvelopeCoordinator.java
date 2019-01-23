@@ -1285,15 +1285,14 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							//then the set of previous constraints contains at least one dependency (due to parking).
 
 							drivingCurrentIndex = (drivingRobotID == robotReport1.getRobotID()) ? robotReport1.getPathIndex() : robotReport2.getPathIndex();
-							waitingCurrentIndex = communicatedCPs.containsKey(trackers.get(waitingRobotID)) ? communicatedCPs.get(trackers.get(waitingRobotID)).getFirst() : ((waitingRobotID == robotReport1.getRobotID()) ? robotReport1.getPathIndex() : robotReport2.getPathIndex()); //the maximum reachable position.
 
 						}
 						else {
 							
-							//FIXME!! There are still problems here
-							
 							//The critical section has been changed online due to a re-plan.
 							//However, if the i-th path has been replaced, the last communicated critical point it has not been changed till the last communicated critical point.
+							//Hence, almost one of the two robots could stop before accessing the new critical section.
+							//This case should NEVER happen.
 							if (!communicatedCPs.containsKey(robotTracker1) || communicatedCPs.containsKey(robotTracker1) && (communicatedCPs.get(robotTracker1).getFirst() == -1 || communicatedCPs.get(robotTracker1).getFirst() > cs.getTe1End())) {
 								drivingRobotID = robotReport1.getRobotID();
 								waitingRobotID = robotReport2.getRobotID();								
@@ -1350,12 +1349,15 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					drivingRobotID = drivingTE.getRobotID();
 					waitingTracker = trackers.get(waitingRobotID);
 					drivingTracker = trackers.get(drivingRobotID);
+					waitingCurrentIndex = communicatedCPs.containsKey(trackers.get(waitingRobotID)) ? communicatedCPs.get(trackers.get(waitingRobotID)).getFirst() : ((waitingRobotID == robotReport1.getRobotID()) ? robotReport1.getPathIndex() : robotReport2.getPathIndex()); //the maximum reachable position.
 
 					//Compute waiting path index point for waiting robot
-					waitingPoint = getCriticalPoint(waitingRobotID, cs, drivingCurrentIndex);
+					//If the driving robot was parked, the previous critical point should be restored.
+					waitingPoint = Math.max(waitingCurrentIndex, getCriticalPoint(waitingRobotID, cs, drivingCurrentIndex));	
+					
 					if (waitingPoint >= 0) {		
 						//Make new dependency
-						int drivingCSEnd = (waitingRobotID == cs.getTe1().getRobotID()) ? cs.getTe2End() : cs.getTe1End();
+						int drivingCSEnd = (drivingRobotID == cs.getTe1().getRobotID()) ? cs.getTe1End() : cs.getTe2End();
 						Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd, waitingTracker, drivingTracker);
 						if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
 						currentDeps.get(waitingRobotID).add(dep);
@@ -1659,10 +1661,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				//FIXME: check with Federico. In my opinion this line should be commented. 
 				//If the critical point is changing, it will be automatically retransmitted.
 				//If it does not change, the effect is the same even if the path is changed.
-				synchronized (trackers) {
-					communicatedCPs.remove(trackers.get(robotID));
-				}
-			
+//				synchronized (trackers) {
+//					communicatedCPs.remove(trackers.get(robotID));
+//				}
+				
 				envelopesToTrack.remove(newTE);
 			}
 		}
@@ -2420,7 +2422,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	public boolean isFree(int robotID) {
 		synchronized (solver) {
 			if (muted.contains(robotID)) return false;
-			for (TrajectoryEnvelope te : envelopesToTrack) if (te.getRobotID() == robotID) return false;
+			for (TrajectoryEnvelope te : envelopesToTrack) if (te.getRobotID() == robotID) {
+				metaCSPLogger.info("ENVELOPE TO TRACK IS NOT EMPTY");
+				return false;
+			}
 			synchronized (trackers) {
 				AbstractTrajectoryEnvelopeTracker tracker = trackers.get(robotID);
 				if (!(tracker instanceof TrajectoryEnvelopeTrackerDummy)) return false;
