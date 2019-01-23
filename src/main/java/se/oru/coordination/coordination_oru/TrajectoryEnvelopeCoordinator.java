@@ -97,7 +97,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected FleetVisualization viz = null;
 	protected ArrayList<TrajectoryEnvelope> envelopesToTrack = new ArrayList<TrajectoryEnvelope>();
 	protected ArrayList<TrajectoryEnvelope> currentParkingEnvelopes = new ArrayList<TrajectoryEnvelope>();
-	protected ArrayList<CriticalSection> allCriticalSections = new ArrayList<CriticalSection>();
+	protected HashSet<CriticalSection> allCriticalSections = new HashSet<CriticalSection>();
 	protected HashMap<CriticalSection,HashSet<Dependency>> criticalSectionsToDeps = new HashMap<CriticalSection, HashSet<Dependency>>();
 	protected HashMap<Integer,ArrayList<Integer>> stoppingPoints = new HashMap<Integer,ArrayList<Integer>>();
 	protected HashMap<Integer,ArrayList<Integer>> stoppingTimes = new HashMap<Integer,ArrayList<Integer>>();
@@ -1775,24 +1775,24 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		while (!toAdd.isEmpty() || !toRemove.isEmpty());
 		
 		toRemove.clear();
-		for (int i = 0; i < this.allCriticalSections.size(); i++) {
-			for (int j = i+1; j < this.allCriticalSections.size(); j++) {
-				CriticalSection cs1 = this.allCriticalSections.get(i);
-				CriticalSection cs2 = this.allCriticalSections.get(j);
-				int start11 = cs1.getTe1Start();
-				int start12 = cs1.getTe2Start();
-				int start21 = cs2.getTe1Start();
-				int start22 = cs2.getTe2Start();
-				int end11 = cs1.getTe1End();
-				int end12 = cs1.getTe2End();
-				int end21 = cs2.getTe1End();
-				int end22 = cs2.getTe2End();
-				//If CS1 and CS2 are about the same pair of robots
-				if (!cs1.equals(cs2) && cs1.getTe1().equals(cs2.getTe1()) && cs1.getTe2().equals(cs2.getTe2())) {
-					//CS1 and CS2 are identical
-					if (start11 == start21 && end11 == end21 && start12 == start22 && end12 == end22) {
-						toRemove.add(cs1);
-						metaCSPLogger.finest("(Pass " + passNum + ") Removed one of " + cs1 + " and " + cs2);
+		for (CriticalSection cs1 : this.allCriticalSections) {
+			for (CriticalSection cs2 :  this.allCriticalSections) {
+				if (!cs1.equals(cs2)) {
+					int start11 = cs1.getTe1Start();
+					int start12 = cs1.getTe2Start();
+					int start21 = cs2.getTe1Start();
+					int start22 = cs2.getTe2Start();
+					int end11 = cs1.getTe1End();
+					int end12 = cs1.getTe2End();
+					int end21 = cs2.getTe1End();
+					int end22 = cs2.getTe2End();
+					//If CS1 and CS2 are about the same pair of robots
+					if (!cs1.equals(cs2) && cs1.getTe1().equals(cs2.getTe1()) && cs1.getTe2().equals(cs2.getTe2())) {
+						//CS1 and CS2 are identical
+						if (start11 == start21 && end11 == end21 && start12 == start22 && end12 == end22) {
+							toRemove.add(cs1);
+							metaCSPLogger.finest("(Pass " + passNum + ") Removed one of " + cs1 + " and " + cs2);
+						}
 					}
 				}
 			}
