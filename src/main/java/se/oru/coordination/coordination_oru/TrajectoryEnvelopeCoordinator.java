@@ -1215,17 +1215,20 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					boolean canStopRobot1 = false;
 					boolean canStopRobot2 = false;
 
+					//FIXME: no communication what means?
+					//Forced robots to waits for parked robots.
+					
 					if (	//the last critical point was before the critical section (can stop by induction)
 							(communicatedCPs.containsKey(robotTracker1) && communicatedCPs.get(robotTracker1).getFirst() != -1 && communicatedCPs.get(robotTracker1).getFirst() < cs.getTe1Start())
 							//the robot is starting outside the critical section
-							|| (!communicatedCPs.containsKey(robotTracker1) && robotReport1.getPathIndex() < cs.getTe1Start() && !(cs.getTe1End() == cs.getTe1().getPathLength()-1)))
+							|| (!communicatedCPs.containsKey(robotTracker1) && robotReport1.getPathIndex() < cs.getTe1Start() && !(cs.getTe1End() == 0 && cs.getTe1Start() == 0)))
 						canStopRobot1 = true;
 					else
 						//Due to temporal delays we cannot trust the velocity.
 						canStopRobot1 = fm1.canStop(robotTracker1.getTrajectoryEnvelope(), robotReport1, cs.getTe1Start(), false);
 					
 					if(	(communicatedCPs.containsKey(robotTracker2) && communicatedCPs.get(robotTracker2).getFirst() != -1 && communicatedCPs.get(robotTracker2).getFirst() < cs.getTe2Start())
-						|| (!communicatedCPs.containsKey(robotTracker2) && robotReport2.getPathIndex() < cs.getTe2Start() && !(cs.getTe2End() == cs.getTe2().getPathLength()-1)))
+						|| (!communicatedCPs.containsKey(robotTracker2) && robotReport2.getPathIndex() < cs.getTe2Start() && !(cs.getTe2End() == 0 && cs.getTe2Start() == 0)))
 						canStopRobot2 = true;
 					else canStopRobot2 = fm2.canStop(robotTracker2.getTrajectoryEnvelope(), robotReport2, cs.getTe2Start(), false);
 					
@@ -1281,7 +1284,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							
 							//If one of the robot was parked previously in critical section and has just started driving again,
 							//then the set of previous constraints contains at least one dependency (due to parking).
-
 							drivingCurrentIndex = (drivingRobotID == robotReport1.getRobotID()) ? robotReport1.getPathIndex() : robotReport2.getPathIndex();
 						}
 						else {
