@@ -1587,6 +1587,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				//FIXME!! Restore the set of dependencies that should be maintained.
 				
 				updateDependencies();
+				
+				//The other possible solution: the robot that is replanning can stop at every new critical section by induction.
+				synchronized (trackers) {
+					communicatedCPs.remove(trackers.get(robotID));
+				}
 							
 				envelopesToTrack.remove(newTE);
 			}
@@ -1695,7 +1700,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				this.allCriticalSections.remove(cs);
 				this.criticalSectionsToDeps.remove(cs);
 			}
-			//FIXME LOST pair between critical sections and dependencies probably found.
 			for (CriticalSection cs : toAdd) this.allCriticalSections.add(cs);
 		}
 		while (!toAdd.isEmpty() || !toRemove.isEmpty());
@@ -1906,6 +1910,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 * Start the trackers associated to the last batch of {@link Mission}s that has been added.
 	 */
 	public void startTrackingAddedMissions() {
+		
+		//FIXME: if this is not placed into the control loop (), then a robot can pass from (P) to (D) without 
+		//affecting the set of dependencies.
 
 		synchronized (solver) {
 			for (final TrajectoryEnvelope te : envelopesToTrack) {
