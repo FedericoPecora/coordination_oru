@@ -1021,16 +1021,17 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		//If both can stop before entering, use ordering function (or closest if no ordering function)
 		metaCSPLogger.finest("Both robots can stop at " + cs);
 		
-		if (yieldIfParking) {
-			if (cs.getTe1End() == cs.getTe1().getPathLength()-1) {
-				metaCSPLogger.info("Robot" + cs.getTe1().getRobotID() + " will park in " + cs + ", letting Robot" + cs.getTe2().getRobotID() + " go first");
-				return false;
-			}
-			if (cs.getTe2End() == cs.getTe2().getPathLength()-1) {
-				metaCSPLogger.info("Robot" + cs.getTe2().getRobotID() + " will park in " + cs + ", letting Robot" + cs.getTe1().getRobotID() + " go first");
-				return true;
-			}
-		}
+		//NO MORE USED
+//		if (yieldIfParking) {
+//			if (cs.getTe1End() == cs.getTe1().getPathLength()-1) {
+//				metaCSPLogger.info("Robot" + cs.getTe1().getRobotID() + " will park in " + cs + ", letting Robot" + cs.getTe2().getRobotID() + " go first");
+//				return false;
+//			}
+//			if (cs.getTe2End() == cs.getTe2().getPathLength()-1) {
+//				metaCSPLogger.info("Robot" + cs.getTe2().getRobotID() + " will park in " + cs + ", letting Robot" + cs.getTe1().getRobotID() + " go first");
+//				return true;
+//			}
+//		}
 		
 		//one possible ordering
 		synchronized (disallowedDependencies) {
@@ -1213,18 +1214,18 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					ForwardModel fm2 = getForwardModel(robotReport2.getRobotID());
 					boolean canStopRobot1 = false;
 					boolean canStopRobot2 = false;
-					
+
 					if (	//the last critical point was before the critical section (can stop by induction)
 							(communicatedCPs.containsKey(robotTracker1) && communicatedCPs.get(robotTracker1).getFirst() != -1 && communicatedCPs.get(robotTracker1).getFirst() < cs.getTe1Start())
 							//the robot is starting outside the critical section
-							|| (!communicatedCPs.containsKey(robotTracker1) && robotReport1.getPathIndex() < cs.getTe1Start()))
+							|| (!communicatedCPs.containsKey(robotTracker1) && robotReport1.getPathIndex() < cs.getTe1Start() && !(cs.getTe1End() == cs.getTe1().getPathLength()-1)))
 						canStopRobot1 = true;
 					else
 						//Due to temporal delays we cannot trust the velocity.
 						canStopRobot1 = fm1.canStop(robotTracker1.getTrajectoryEnvelope(), robotReport1, cs.getTe1Start(), false);
 					
 					if(	(communicatedCPs.containsKey(robotTracker2) && communicatedCPs.get(robotTracker2).getFirst() != -1 && communicatedCPs.get(robotTracker2).getFirst() < cs.getTe2Start())
-						|| (!communicatedCPs.containsKey(robotTracker2) && robotReport2.getPathIndex() < cs.getTe2Start()))
+						|| (!communicatedCPs.containsKey(robotTracker2) && robotReport2.getPathIndex() < cs.getTe2Start() && !(cs.getTe2End() == cs.getTe2().getPathLength()-1)))
 						canStopRobot2 = true;
 					else canStopRobot2 = fm2.canStop(robotTracker2.getTrajectoryEnvelope(), robotReport2, cs.getTe2Start(), false);
 					
