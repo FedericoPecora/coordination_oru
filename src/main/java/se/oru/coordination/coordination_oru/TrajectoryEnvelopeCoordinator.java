@@ -941,6 +941,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			Pose currentWaitingPose = null;
 			Pose currentWaitingGoal = null;
 			PoseSteering[] oldPath = null;
+			
+			//FIXME not synchronized on current dependencies
 			for (Dependency dep : getCurrentDependencies()) {
 				if (dep.getWaitingRobotID() == robotID) {
 					currentWaitingIndex = dep.getWaitingPoint();
@@ -951,11 +953,14 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					break;
 				}
 			}
-			//Geometry[] obstacles = getObstaclesFromWaitingRobots(robotID);
+			
 			int[] otherRobotIDs = new int[allRobots.size()-1];
 			int counter = 0;
 			for (int otherRobotID : allRobots) if (otherRobotID != robotID) otherRobotIDs[counter++] = otherRobotID;
+			
+			//FIXME not synchronized on current dependencies
 			Geometry[] obstacles = getObstaclesInCriticalPoints(otherRobotIDs);
+			
 			metaCSPLogger.info("Attempting to re-plan path of Robot" + robotID + " (with obstacles for robots " + Arrays.toString(otherRobotIDs) + ")...");
 			PoseSteering[] newPath = doReplanning(currentWaitingPose, currentWaitingGoal, obstacles);
 			if (newPath != null && newPath.length > 0) {
@@ -964,12 +969,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					if (i < currentWaitingIndex) newCompletePath[i] = oldPath[i];
 					else newCompletePath[i] = newPath[i-currentWaitingIndex];
 				}
-//				for (int i = 0; i < newCompletePath.length; i++) {
-//					if (i == currentWaitingIndex) System.out.println("--- current pose (" + currentWaitingIndex + ") ---");
-//					else if (i == currentWaitingIndex+1) System.out.println("--- new path starts below ---");
-//					System.out.println(newCompletePath[i].getPose() + " / " + (i < oldPath.length ? oldPath[i].getPose() : "N/A"));
-//				}
-				replacePath(robotID, newCompletePath);
+				replacePath(robotID, newCompletePath); //FIXME -> the new path may consider as obstacles some old poses.
 				metaCSPLogger.info("Successfully re-planned path of Robot" + robotID);
 				break;
 			}
@@ -1138,6 +1138,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				RobotReport robotReport2 = this.getRobotReport(cs.getTe2().getRobotID());
 
 				//One or both robots past end of the critical section --> critical section is obsolete
+				//This condition is still valid in case of delays (new mission phases <--> new trackers)
 				if (robotReport1.getPathIndex() > cs.getTe1End() || robotReport2.getPathIndex() > cs.getTe2End()) {
 					toRemove.add(cs);
 					metaCSPLogger.finest("Obsolete critical section\n\t" + cs);
@@ -1162,7 +1163,16 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						drivingTracker = robotTracker1;
 						waitingTracker = robotTracker2;
 						waitingPoint = getCriticalPoint(robotReport2.getRobotID(), cs, robotReport1.getPathIndex());
-						if (!communicatedCPs.containsKey(waitingTracker) || communicatedCPs.containsKey(waitingTracker) && communicatedCPs.get(waitingTracker).getFirst() != -1 && communicatedCPs.get(waitingTracker).getFirst() <= waitingPoint) {
+						
+						//Check if the robots can stop while changing the current order of accessing through the critical section.
+						boolean canStopRobot2 = true;
+						if (!(robotTracker2 instanceof TrajectoryEnvelopeTrackerDummy)) {
+							ForwardModel fm2 = getForwardModel(robotReport2.getRobotID());
+							canStopRobot2 = fm2.canStop(robotTracker2.getTrajectoryEnvelope(), robotReport2, cs.getTe2Start(), false);
+						}
+						if (!communicatedCPs.containsKey(waitingTracker) && !canStopRobot2 //(D)-->(P) and without this constraint, you will allow (D) to overcome (P). 
+																						   // However, if (P) is parked outside the critical section, no constraint should be imposed. 
+								|| communicatedCPs.containsKey(waitingTracker) && communicatedCPs.get(waitingTracker).getFirst() != -1 && communicatedCPs.get(waitingTracker).getFirst() <= waitingPoint) {
 							createAParkingDep = true;
 						}
 						
@@ -1175,13 +1185,20 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						drivingTracker = robotTracker2;
 						waitingTracker = robotTracker1;
 						waitingPoint = getCriticalPoint(robotReport1.getRobotID(), cs, robotReport2.getPathIndex());
-						if (!communicatedCPs.containsKey(waitingTracker) || communicatedCPs.containsKey(waitingTracker) && communicatedCPs.get(waitingTracker).getFirst() != -1 && communicatedCPs.get(waitingTracker).getFirst() <= waitingPoint) {
+						
+						boolean canStopRobot1 = true;
+						if (!(robotTracker1 instanceof TrajectoryEnvelopeTrackerDummy)){
+							ForwardModel fm1 = getForwardModel(robotReport1.getRobotID());
+							canStopRobot1 = fm1.canStop(robotTracker1.getTrajectoryEnvelope(), robotReport1, cs.getTe1Start(), false);
+						}								
+						if (!communicatedCPs.containsKey(waitingTracker) && !canStopRobot1
+								|| communicatedCPs.containsKey(waitingTracker) && communicatedCPs.get(waitingTracker).getFirst() != -1 && communicatedCPs.get(waitingTracker).getFirst() <= waitingPoint) {
 							createAParkingDep = true;						
 						}
 					}
 					
 					if (createAParkingDep) {
-						int drivingCSEnd = (waitingRobotID == cs.getTe1().getRobotID()) ? cs.getTe2End() : cs.getTe1End();
+						int drivingCSEnd = (drivingRobotID == cs.getTe1().getRobotID()) ? cs.getTe1End() : cs.getTe2End();
 						metaCSPLogger.info("Robot" + drivingRobotID + " is parked, so Robot" + waitingRobotID + " will have to wait");	
 						Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd, waitingTracker, drivingTracker);
 						if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
@@ -1237,7 +1254,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						drivingCurrentIndex = robotReport2.getPathIndex();
 						waitingTE = cs.getTe1();
 						drivingTE = cs.getTe2();
-						metaCSPLogger.finest("One-can-one-can't-stop (1) and Robot" + drivingTE.getRobotID() + " (can) is ahead of Robot" + waitingTE.getRobotID() + " (can't) and CS is: " + cs);
+						metaCSPLogger.finest("One-can-one-can't-stop (1) and Robot" + drivingTE.getRobotID() + " (can't) is ahead of Robot" + waitingTE.getRobotID() + " (can) and CS is: " + cs);
 					}
 
 					//Robot 2 can stop before entering critical section, robot 1 can't --> robot 2 waits
@@ -1245,7 +1262,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						drivingCurrentIndex = robotReport1.getPathIndex();
 						waitingTE = cs.getTe2();
 						drivingTE = cs.getTe1();
-						metaCSPLogger.finest("One-can-one-can't-stop (2) and Robot" + drivingTE.getRobotID() + " (can) ahead of Robot" + waitingTE.getRobotID() + " (can't) and CS is: " + cs);
+						metaCSPLogger.finest("One-can-one-can't-stop (2) and Robot" + drivingTE.getRobotID() + " (can't) ahead of Robot" + waitingTE.getRobotID() + " (can) and CS is: " + cs);
 					}
 
 					else {			
@@ -1267,7 +1284,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							drivingCurrentIndex = (drivingRobotID == robotReport1.getRobotID()) ? robotReport1.getPathIndex() : robotReport2.getPathIndex();
 						}
 						else {
-							metaCSPLogger.severe("Both cannot stop but lost critical section to dep.");
+							metaCSPLogger.severe("Both cannot stop but lost critical section to dep. CS: " + cs);
 							throw new Error("FIXME! Lost dependency! " );	
 						}
 						
