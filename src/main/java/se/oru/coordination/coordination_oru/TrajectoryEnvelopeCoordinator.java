@@ -98,7 +98,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected ArrayList<TrajectoryEnvelope> envelopesToTrack = new ArrayList<TrajectoryEnvelope>();
 	protected ArrayList<TrajectoryEnvelope> currentParkingEnvelopes = new ArrayList<TrajectoryEnvelope>();
 	protected ArrayList<CriticalSection> allCriticalSections = new ArrayList<CriticalSection>();
-	protected HashMap<CriticalSection,HashSet<Dependency>> criticalSectionsToDeps = new HashMap<CriticalSection, HashSet<Dependency>>();
+	protected HashMap<CriticalSection,HashSet<Dependency>> criticalSectionsToDeps = new HashMap<CriticalSection, HashSet<Dependency>>(); 
+	//FIXME CHECK (Federico)
+	//  0 dependencies -> first assignment. There should NEVER happen: Both cannot stop.
+	//  1 dependency -> standard case.
+	// >1 dependencies -> There should NEVER happen.
 	protected HashMap<Integer,ArrayList<Integer>> stoppingPoints = new HashMap<Integer,ArrayList<Integer>>();
 	protected HashMap<Integer,ArrayList<Integer>> stoppingTimes = new HashMap<Integer,ArrayList<Integer>>();
 	protected HashMap<Integer,Thread> stoppingPointTimers = new HashMap<Integer,Thread>();
@@ -1215,7 +1219,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							drivingCurrentIndex = robotReport1.getPathIndex();
 							waitingTE = cs.getTe2();
 							drivingTE = cs.getTe1();
-							metaCSPLogger.finest("Both-out (1) and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID() + " and CS is: " + cs);
+							metaCSPLogger.finest("Both-can-stop (1) and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID() + " and CS is: " + cs);
 						}
 
 						//If robot 2 has priority over robot 1
@@ -1223,7 +1227,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							drivingCurrentIndex = robotReport2.getPathIndex();
 							waitingTE = cs.getTe1();
 							drivingTE = cs.getTe2();
-							metaCSPLogger.finest("Both-out (2) and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID() + " and CS is: " + cs);
+							metaCSPLogger.finest("Both-can-stop (2) and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID() + " and CS is: " + cs);
 						}
 
 					}
@@ -1233,7 +1237,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						drivingCurrentIndex = robotReport2.getPathIndex();
 						waitingTE = cs.getTe1();
 						drivingTE = cs.getTe2();
-						metaCSPLogger.finest("One-in-one-out (1) and Robot" + drivingTE.getRobotID() + " (in) is ahead of Robot" + waitingTE.getRobotID() + " (out) and CS is: " + cs);
+						metaCSPLogger.finest("One-can-one-can't-stop (1) and Robot" + drivingTE.getRobotID() + " (can) is ahead of Robot" + waitingTE.getRobotID() + " (can't) and CS is: " + cs);
 					}
 
 					//Robot 2 can stop before entering critical section, robot 1 can't --> robot 2 waits
@@ -1241,7 +1245,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						drivingCurrentIndex = robotReport1.getPathIndex();
 						waitingTE = cs.getTe2();
 						drivingTE = cs.getTe1();
-						metaCSPLogger.finest("One-in-one-out (2) and Robot" + drivingTE.getRobotID() + " (in) ahead of Robot" + waitingTE.getRobotID() + " (out) and CS is: " + cs);
+						metaCSPLogger.finest("One-can-one-can't-stop (2) and Robot" + drivingTE.getRobotID() + " (can) ahead of Robot" + waitingTE.getRobotID() + " (can't) and CS is: " + cs);
 					}
 
 					else {			
@@ -1263,13 +1267,13 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							drivingCurrentIndex = (drivingRobotID == robotReport1.getRobotID()) ? robotReport1.getPathIndex() : robotReport2.getPathIndex();
 						}
 						else {
-							metaCSPLogger.severe("Both inside but lost critical section to dep");
+							metaCSPLogger.severe("Both cannot stop but lost critical section to dep.");
 							throw new Error("FIXME! Lost dependency! " );	
 						}
 						
 						drivingTE = (drivingRobotID == robotReport1.getRobotID()) ? cs.getTe1() : cs.getTe2();
 						waitingTE = (waitingRobotID == robotReport1.getRobotID()) ? cs.getTe1() : cs.getTe2();
-						metaCSPLogger.info("Both-in and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID() + " and CS is: " + cs);
+						metaCSPLogger.info("Both-can't-stop and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID() + " and CS is: " + cs);
 					}
 
 					waitingRobotID = waitingTE.getRobotID();
@@ -1515,6 +1519,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						toRemove.add(cs);
 					}
 				}
+				
+				//FIXME!! Compute and store the set of dependencies that should be maintained.
 				for (CriticalSection cs : toRemove) {
 					this.allCriticalSections.remove(cs);
 					this.criticalSectionsToDeps.remove(cs);
@@ -1560,6 +1566,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				
 				//Recompute CSs involving this robot
 				computeCriticalSections();
+				
+				//FIXME!! Restore the set of dependencies that should be maintained.
+				
 				updateDependencies();
 							
 				envelopesToTrack.remove(newTE);
@@ -1669,6 +1678,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				this.allCriticalSections.remove(cs);
 				this.criticalSectionsToDeps.remove(cs);
 			}
+			//FIXME LOST pair between critical sections and dependencies probably found.
 			for (CriticalSection cs : toAdd) this.allCriticalSections.add(cs);
 		}
 		while (!toAdd.isEmpty() || !toRemove.isEmpty());
