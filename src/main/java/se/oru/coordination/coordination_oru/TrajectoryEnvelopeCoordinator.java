@@ -1197,28 +1197,39 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				}
 				else { //Both robots are driving, let's determine an ordering for them through this critical section
 															
-					//Check if the robots can stop while changing the current order of accessing through the critical section.
+					//Check if the robots can stop while changing the current order of accessing the critical section.
 					ForwardModel fm1 = getForwardModel(robotReport1.getRobotID());
 					ForwardModel fm2 = getForwardModel(robotReport2.getRobotID());
 					boolean canStopRobot1 = false;
 					boolean canStopRobot2 = false;
-
-					//FIXME: no communication what means? not having started
-					//Forced robots to waits for parked robots.
-					
-					if (	//the last critical point was before the critical section (can stop by induction)
+				
+					if (cs.getTe1End() == 0 && cs.getTe1Start() == 0) {
+						//force the other robots to wait the robot to leave its footprint.
+						canStopRobot1 = false; 
+					}
+					else {
+						
+						if (//the last critical point was before the critical section (can stop by induction)
 							(communicatedCPs.containsKey(robotTracker1) && communicatedCPs.get(robotTracker1).getFirst() != -1 && communicatedCPs.get(robotTracker1).getFirst() < cs.getTe1Start())
-							//the robot is starting outside the critical section
-							|| (!communicatedCPs.containsKey(robotTracker1) && !(cs.getTe1End() == 0 && cs.getTe1Start() == 0)))
-						canStopRobot1 = true;
-					else
-						//Due to temporal delays we cannot trust the velocity.
-						canStopRobot1 = fm1.canStop(robotTracker1.getTrajectoryEnvelope(), robotReport1, cs.getTe1Start(), false);
+							//the robot is starting from parking. This constraint will automatically lead to a deadlock if the other robot is already in critical section,
+							//while it allows to leave the parking in the other case. (Tricky --> Federico?)
+							|| !communicatedCPs.containsKey(robotTracker1))
+							canStopRobot1 = true;
+						else
+							//Due to temporal delays we cannot trust the velocity.
+							canStopRobot1 = fm1.canStop(robotTracker1.getTrajectoryEnvelope(), robotReport1, cs.getTe1Start(), false);
+						
+					}
+
 					
-					if(	(communicatedCPs.containsKey(robotTracker2) && communicatedCPs.get(robotTracker2).getFirst() != -1 && communicatedCPs.get(robotTracker2).getFirst() < cs.getTe2Start())
-						|| (!communicatedCPs.containsKey(robotTracker2) && !(cs.getTe2End() == 0 && cs.getTe2Start() == 0)))
-						canStopRobot2 = true;
-					else canStopRobot2 = fm2.canStop(robotTracker2.getTrajectoryEnvelope(), robotReport2, cs.getTe2Start(), false);
+					if (cs.getTe2End() == 0 && cs.getTe2Start() == 0) canStopRobot2 = false;
+					else {
+						if ((communicatedCPs.containsKey(robotTracker2) && communicatedCPs.get(robotTracker2).getFirst() != -1 && communicatedCPs.get(robotTracker2).getFirst() < cs.getTe2Start())
+								|| !communicatedCPs.containsKey(robotTracker2))
+							canStopRobot2 = true;
+						else canStopRobot2 = fm2.canStop(robotTracker2.getTrajectoryEnvelope(), robotReport2, cs.getTe2Start(), false);
+					}
+
 					
 					//Both the robots can stop before accessing the critical section --> follow ordering heuristic if FW model allows it
 					if (canStopRobot1 && canStopRobot2) {
