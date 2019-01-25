@@ -1616,11 +1616,14 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						for(CriticalSection csOld : toRemove.keySet()) {
 							if (cs.equals(csOld) || 
 									(cs.getTe1().getRobotID() == csOld.getTe1().getRobotID() && cs.getTe2().getRobotID() == csOld.getTe2().getRobotID() 
-									&& cs.getTe1Start() == csOld.getTe2Start() && cs.getTe1Start() < communicatedCPs.get(this.trackers.get(robotID)).getFirst()))
+									&& cs.getTe1Start() == csOld.getTe2Start() && 
+									(cs.getTe1().getRobotID() == robotID && cs.getTe1Start() <= communicatedCPs.get(this.trackers.get(robotID)).getFirst()
+									|| cs.getTe2().getRobotID() == robotID && cs.getTe2Start() <= communicatedCPs.get(this.trackers.get(robotID)).getFirst())))
 								this.criticalSectionsToDeps.put(cs,toRemove.get(csOld));
 						}
 					}
 				}
+				
 				updateDependencies();
 											
 				envelopesToTrack.remove(newTE);
