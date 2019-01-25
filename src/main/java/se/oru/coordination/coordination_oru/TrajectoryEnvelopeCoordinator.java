@@ -1568,9 +1568,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				
 				//Remove CSs involving this robot
 				ArrayList<CriticalSection> toRemove = new ArrayList<CriticalSection>();
+				//HashMap<CriticalSection, HashSet<Dependency>> toRemoveCSToDeps = new HashMap<CriticalSection, HashSet<Dependency>>();
 				for (CriticalSection cs : this.allCriticalSections) {
 					if (cs.getTe1().equals(te) || cs.getTe2().equals(te)) {
 						toRemove.add(cs);
+						//toRemoveCSToDeps.put(cs, criticalSectionsToDeps.get(cs));
 					}
 				}
 				
@@ -1622,35 +1624,14 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				computeCriticalSections();
 				
 				//FIXME!! Restore the set of dependencies that should be maintained (it is sufficient to decide who is the leader).
-				//Since the robot that is replanning is maintaining the current critical point, it should be imposed as leader of each critical section that
-				//starts before the last communicated critical point. Obsolete critical section will be automatically removed when the updateDependencies is called.
-//				TrajectoryEnvelope waitingTE = null;
-//				TrajectoryEnvelope drivingTE = newTE;
-//				int waitingPoint = -1;
-//				int drivingCSEnd = -1;
-//				AbstractTrajectoryEnvelopeTracker waitingTracker = null;
-//				AbstractTrajectoryEnvelopeTracker drivingTracker = null;			
-//				for (CriticalSection cs : this.allCriticalSections) {	
-//					if (cs.getTe1().getRobotID() == robotID && cs.getTe2Start() < communicatedCPs.get(drivingTracker).getFirst()) {
-//						drivingCSEnd = cs.getTe1End();
-//						drivingTracker = trackers.get(robotID);
-//						waitingTracker = trackers.get(cs.getTe2().getRobotID());
-//						waitingTE = cs.getTe2();
-//						waitingPoint = getCriticalPoint(waitingTE.getRobotID(), cs, communicatedCPs.get(drivingTracker).getFirst()); //not used (it will be recomputed)
-//					}
-//					else if (cs.getTe2().getRobotID() == robotID && cs.getTe2Start() <= communicatedCPs.get(drivingTracker).getFirst()) {
-//						drivingCSEnd = cs.getTe1End();
-//						waitingTracker = trackers.get(cs.getTe1().getRobotID());
-//						waitingTE = cs.getTe1();
-//						waitingPoint = getCriticalPoint(waitingTE.getRobotID(), cs, communicatedCPs.get(drivingTracker).getFirst()); //not used (it will be recomputed)
-//					}
-//					if (!(waitingTracker instanceof TrajectoryEnvelopeTrackerDummy)) {
-//						Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd, waitingTracker, drivingTracker);
-//						HashSet<Dependency> list = new HashSet<Dependency>();
-//						list.add(dep);
-//						this.criticalSectionsToDeps.put(cs, list);
+//				for (CriticalSection cs1 : this.allCriticalSections) {
+//					for (CriticalSection cs2 : toRemoveCSToDeps.keySet()) {
+//						if (cs1.equals(cs2)) {
+//							this.criticalSectionsToDeps.put(cs1, toRemoveCSToDeps.get(cs2));
+//						}
 //					}
 //				}
+				
 				updateDependencies();
 											
 				envelopesToTrack.remove(newTE);

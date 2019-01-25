@@ -57,7 +57,7 @@ public class ParkingArrayNew {
 		//MetaCSPLogging.setLevel(TrajectoryEnvelopeCoordinator.class, Level.FINEST);
 		
 		//Setup the network parameters
-		NetworkConfiguration.setDelays(0, 0);
+		NetworkConfiguration.setDelays(1000, 3000);
 		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0;
 		tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, NetworkConfiguration.getMaximumTxDelay(), 0.1);
 				
@@ -178,11 +178,13 @@ public class ParkingArrayNew {
 				Thread t = new Thread() {
 					public void run() {
 						while (true) {
-							if (tec.isFree(robotID)) {
-								Mission m = Missions.dequeueMission(robotID);
-								tec.addMissions(m);
-								tec.computeCriticalSectionsAndStartTrackingAddedMission();
-								Missions.enqueueMission(m);
+							synchronized(tec.getSolver()) {
+								if (tec.isFree(robotID)) {
+									Mission m = Missions.dequeueMission(robotID);
+									tec.addMissions(m);
+									tec.computeCriticalSectionsAndStartTrackingAddedMission();
+									Missions.enqueueMission(m);
+								}
 							}
 							try { Thread.sleep(2000); }
 							catch (InterruptedException e) { e.printStackTrace(); }
