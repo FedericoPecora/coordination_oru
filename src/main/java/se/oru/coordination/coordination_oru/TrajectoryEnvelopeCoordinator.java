@@ -1286,8 +1286,43 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							drivingCurrentIndex = (drivingRobotID == robotReport1.getRobotID()) ? robotReport1.getPathIndex() : robotReport2.getPathIndex();
 						}
 						else {
-							metaCSPLogger.severe("Both cannot stop but lost critical section to dep. CS: " + cs);
-							throw new Error("FIXME! Lost dependency! " );	
+							metaCSPLogger.severe("Both cannot stop. Try to restore the correct order basing on prior knowledge. CS: " + cs);
+							
+							//This case can happen due to a re-plan, and only for the critical sections 
+							//for which both the robots cannot stop (the old part of the path).
+					
+							//PRIOR KNOWLEDGE
+							//(robotTracker1 instanceof TrajectoryEnvelopeTrakerDummy) == false && (robotTracker2 instanceof TrajectoryEnvelopeTrakerDummy) == false  --> otherwise case (0)
+							//communicatedCPs.containsKey(robotTracker1) == true && communicatedCPs.containsKey(robotTracker2) == true --> otherwise case (1)
+							//communicatedCPs.get(robotTracker2) >= cs.getTe1Start() && communicatedCPs.get(robotTracker2) >= cs.getTe2Start() --> otherwise case (1)
+							//robotReport1.getPathIndex() < cs.getTe1End() && robotReport2.getPathIndex() < cs.getTe2End() --> otherwise obsolete
+							if (cs.getTe1Start() == 0 && cs.getTe1End() == 0 || communicatedCPs.get(robotTracker1).getFirst() == -1) {
+								drivingRobotID = robotReport1.getRobotID();
+								waitingRobotID = robotReport2.getRobotID();
+							}
+							else if (cs.getTe2Start() == 0 && cs.getTe2End() == 0 || communicatedCPs.get(robotTracker2).getFirst() == -1) { 
+								drivingRobotID = robotReport2.getRobotID();
+								waitingRobotID = robotReport1.getRobotID();
+							}
+							else {
+								waitingPoint = getCriticalPoint(robotReport2.getRobotID(), cs, communicatedCPs.get(robotTracker1).getFirst());
+								if (communicatedCPs.get(robotTracker2).getFirst() > waitingPoint) {
+									drivingRobotID = robotReport2.getRobotID();
+									waitingRobotID = robotReport1.getRobotID();
+								}
+								else {
+									waitingPoint = getCriticalPoint(robotReport2.getRobotID(), cs, communicatedCPs.get(robotTracker1).getFirst());
+									if (communicatedCPs.get(robotTracker1).getFirst() > waitingPoint) {
+										drivingRobotID = robotReport1.getRobotID();
+										waitingRobotID = robotReport2.getRobotID();
+									}
+									else {
+										metaCSPLogger.severe("Both cannot stop but lost critical section to dep. CS: " + cs);
+										throw new Error("FIXME! Lost dependency! " );
+									}
+								}
+							}							
+							drivingCurrentIndex = (drivingRobotID == robotReport1.getRobotID()) ? robotReport1.getPathIndex() : robotReport2.getPathIndex();
 						}
 						
 						drivingTE = (drivingRobotID == robotReport1.getRobotID()) ? cs.getTe1() : cs.getTe2();
