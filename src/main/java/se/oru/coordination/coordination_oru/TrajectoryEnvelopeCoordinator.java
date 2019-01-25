@@ -1164,15 +1164,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						drivingTracker = robotTracker1;
 						waitingTracker = robotTracker2;
 						waitingPoint = getCriticalPoint(robotReport2.getRobotID(), cs, robotReport1.getPathIndex());
-						
-						//Check if the robots can stop while changing the current order of accessing through the critical section.
-						boolean canStopRobot2 = true;
-						if (!(robotTracker2 instanceof TrajectoryEnvelopeTrackerDummy)) {
-							ForwardModel fm2 = getForwardModel(robotReport2.getRobotID());
-							canStopRobot2 = fm2.canStop(robotTracker2.getTrajectoryEnvelope(), robotReport2, cs.getTe2Start(), false);
-						}
-						if (!communicatedCPs.containsKey(waitingTracker) && !canStopRobot2 //(D)-->(P) and without this constraint, you will allow (D) to overcome (P). 
-																						   // However, if (P) is parked outside the critical section, no constraint should be imposed. 
+
+						if (!communicatedCPs.containsKey(waitingTracker) && robotReport1.getPathIndex() <= waitingPoint 
 								|| communicatedCPs.containsKey(waitingTracker) && communicatedCPs.get(waitingTracker).getFirst() != -1 && communicatedCPs.get(waitingTracker).getFirst() <= waitingPoint) {
 							createAParkingDep = true;
 						}
@@ -1186,13 +1179,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						drivingTracker = robotTracker2;
 						waitingTracker = robotTracker1;
 						waitingPoint = getCriticalPoint(robotReport1.getRobotID(), cs, robotReport2.getPathIndex());
-						
-						boolean canStopRobot1 = true;
-						if (!(robotTracker1 instanceof TrajectoryEnvelopeTrackerDummy)){
-							ForwardModel fm1 = getForwardModel(robotReport1.getRobotID());
-							canStopRobot1 = fm1.canStop(robotTracker1.getTrajectoryEnvelope(), robotReport1, cs.getTe1Start(), false);
-						}								
-						if (!communicatedCPs.containsKey(waitingTracker) && !canStopRobot1
+												
+						if (!communicatedCPs.containsKey(waitingTracker) && robotReport2.getPathIndex() <= waitingPoint
 								|| communicatedCPs.containsKey(waitingTracker) && communicatedCPs.get(waitingTracker).getFirst() != -1 && communicatedCPs.get(waitingTracker).getFirst() <= waitingPoint) {
 							createAParkingDep = true;						
 						}
