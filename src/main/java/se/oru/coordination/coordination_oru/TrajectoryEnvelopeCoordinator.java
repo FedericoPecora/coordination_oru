@@ -1296,31 +1296,21 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							//communicatedCPs.containsKey(robotTracker1) == true && communicatedCPs.containsKey(robotTracker2) == true --> otherwise case (1)
 							//communicatedCPs.get(robotTracker2) >= cs.getTe1Start() && communicatedCPs.get(robotTracker2) >= cs.getTe2Start() --> otherwise case (1)
 							//robotReport1.getPathIndex() < cs.getTe1End() && robotReport2.getPathIndex() < cs.getTe2End() --> otherwise obsolete
-							if (cs.getTe1Start() == 0 && cs.getTe1End() == 0 || communicatedCPs.get(robotTracker1).getFirst() == -1) {
+							
+							int waitingPoint2 = getCriticalPoint(robotReport2.getRobotID(), cs, communicatedCPs.get(robotTracker1).getFirst());
+							int waitingPoint1 = getCriticalPoint(robotReport1.getRobotID(), cs, communicatedCPs.get(robotTracker2).getFirst());
+							
+							if (cs.getTe1Start() == 0 && cs.getTe1End() == 0 || communicatedCPs.get(robotTracker1).getFirst() == -1 || communicatedCPs.get(robotTracker1).getFirst() > waitingPoint1) {
 								drivingRobotID = robotReport1.getRobotID();
 								waitingRobotID = robotReport2.getRobotID();
 							}
-							else if (cs.getTe2Start() == 0 && cs.getTe2End() == 0 || communicatedCPs.get(robotTracker2).getFirst() == -1) { 
+							else if (cs.getTe2Start() == 0 && cs.getTe2End() == 0 || communicatedCPs.get(robotTracker2).getFirst() == -1 || communicatedCPs.get(robotTracker2).getFirst() > waitingPoint2) { 
 								drivingRobotID = robotReport2.getRobotID();
 								waitingRobotID = robotReport1.getRobotID();
 							}
 							else {
-								waitingPoint = getCriticalPoint(robotReport2.getRobotID(), cs, communicatedCPs.get(robotTracker1).getFirst());
-								if (communicatedCPs.get(robotTracker2).getFirst() > waitingPoint) {
-									drivingRobotID = robotReport2.getRobotID();
-									waitingRobotID = robotReport1.getRobotID();
-								}
-								else {
-									waitingPoint = getCriticalPoint(robotReport2.getRobotID(), cs, communicatedCPs.get(robotTracker1).getFirst());
-									if (communicatedCPs.get(robotTracker1).getFirst() > waitingPoint) {
-										drivingRobotID = robotReport1.getRobotID();
-										waitingRobotID = robotReport2.getRobotID();
-									}
-									else {
-										metaCSPLogger.severe("Both cannot stop but lost critical section to dep. CS: " + cs);
-										throw new Error("FIXME! Lost dependency! " );
-									}
-								}
+								metaCSPLogger.severe("Both cannot stop but lost critical section to dep. CS: " + cs);
+								throw new Error("FIXME! Lost dependency! " );
 							}							
 							drivingCurrentIndex = (drivingRobotID == robotReport1.getRobotID()) ? robotReport1.getPathIndex() : robotReport2.getPathIndex();
 						}
@@ -1568,11 +1558,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				
 				//Remove CSs involving this robot
 				ArrayList<CriticalSection> toRemove = new ArrayList<CriticalSection>();
-				//HashMap<CriticalSection, HashSet<Dependency>> toRemoveCSToDeps = new HashMap<CriticalSection, HashSet<Dependency>>();
 				for (CriticalSection cs : this.allCriticalSections) {
 					if (cs.getTe1().equals(te) || cs.getTe2().equals(te)) {
 						toRemove.add(cs);
-						//toRemoveCSToDeps.put(cs, criticalSectionsToDeps.get(cs));
 					}
 				}
 				
@@ -1624,13 +1612,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				computeCriticalSections();
 				
 				//FIXME!! Restore the set of dependencies that should be maintained (it is sufficient to decide who is the leader).
-//				for (CriticalSection cs1 : this.allCriticalSections) {
-//					for (CriticalSection cs2 : toRemoveCSToDeps.keySet()) {
-//						if (cs1.equals(cs2)) {
-//							this.criticalSectionsToDeps.put(cs1, toRemoveCSToDeps.get(cs2));
-//						}
-//					}
-//				}
 				
 				updateDependencies();
 											
