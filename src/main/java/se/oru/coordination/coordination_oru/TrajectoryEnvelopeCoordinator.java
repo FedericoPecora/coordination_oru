@@ -1215,20 +1215,20 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					boolean canStopRobot1 = false;
 					boolean canStopRobot2 = false;
 
-					//FIXME: no communication what means?
+					//FIXME: no communication what means? not having started
 					//Forced robots to waits for parked robots.
 					
 					if (	//the last critical point was before the critical section (can stop by induction)
 							(communicatedCPs.containsKey(robotTracker1) && communicatedCPs.get(robotTracker1).getFirst() != -1 && communicatedCPs.get(robotTracker1).getFirst() < cs.getTe1Start())
 							//the robot is starting outside the critical section
-							|| (!communicatedCPs.containsKey(robotTracker1) && robotReport1.getPathIndex() < cs.getTe1Start() && !(cs.getTe1End() == 0 && cs.getTe1Start() == 0)))
+							|| (!communicatedCPs.containsKey(robotTracker1) && !(cs.getTe1End() == 0 && cs.getTe1Start() == 0)))
 						canStopRobot1 = true;
 					else
 						//Due to temporal delays we cannot trust the velocity.
 						canStopRobot1 = fm1.canStop(robotTracker1.getTrajectoryEnvelope(), robotReport1, cs.getTe1Start(), false);
 					
 					if(	(communicatedCPs.containsKey(robotTracker2) && communicatedCPs.get(robotTracker2).getFirst() != -1 && communicatedCPs.get(robotTracker2).getFirst() < cs.getTe2Start())
-						|| (!communicatedCPs.containsKey(robotTracker2) && robotReport2.getPathIndex() < cs.getTe2Start() && !(cs.getTe2End() == 0 && cs.getTe2Start() == 0)))
+						|| (!communicatedCPs.containsKey(robotTracker2) && !(cs.getTe2End() == 0 && cs.getTe2Start() == 0)))
 						canStopRobot2 = true;
 					else canStopRobot2 = fm2.canStop(robotTracker2.getTrajectoryEnvelope(), robotReport2, cs.getTe2Start(), false);
 					
@@ -1587,15 +1587,38 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				//Recompute CSs involving this robot
 				computeCriticalSections();
 				
-				//FIXME!! Restore the set of dependencies that should be maintained.
-				
+				//FIXME!! Restore the set of dependencies that should be maintained (it is sufficient to decide who is the leader).
+				//Since the robot that is replanning is maintaining the current critical point, it should be imposed as leader of each critical section that
+				//starts before the last communicated critical point. Obsolete critical section will be automatically removed when the updateDependencies is called.
+//				TrajectoryEnvelope waitingTE = null;
+//				TrajectoryEnvelope drivingTE = newTE;
+//				int waitingPoint = -1;
+//				int drivingCSEnd = -1;
+//				AbstractTrajectoryEnvelopeTracker waitingTracker = null;
+//				AbstractTrajectoryEnvelopeTracker drivingTracker = null;			
+//				for (CriticalSection cs : this.allCriticalSections) {	
+//					if (cs.getTe1().getRobotID() == robotID && cs.getTe2Start() < communicatedCPs.get(drivingTracker).getFirst()) {
+//						drivingCSEnd = cs.getTe1End();
+//						drivingTracker = trackers.get(robotID);
+//						waitingTracker = trackers.get(cs.getTe2().getRobotID());
+//						waitingTE = cs.getTe2();
+//						waitingPoint = getCriticalPoint(waitingTE.getRobotID(), cs, communicatedCPs.get(drivingTracker).getFirst()); //not used (it will be recomputed)
+//					}
+//					else if (cs.getTe2().getRobotID() == robotID && cs.getTe2Start() <= communicatedCPs.get(drivingTracker).getFirst()) {
+//						drivingCSEnd = cs.getTe1End();
+//						waitingTracker = trackers.get(cs.getTe1().getRobotID());
+//						waitingTE = cs.getTe1();
+//						waitingPoint = getCriticalPoint(waitingTE.getRobotID(), cs, communicatedCPs.get(drivingTracker).getFirst()); //not used (it will be recomputed)
+//					}
+//					if (!(waitingTracker instanceof TrajectoryEnvelopeTrackerDummy)) {
+//						Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd, waitingTracker, drivingTracker);
+//						HashSet<Dependency> list = new HashSet<Dependency>();
+//						list.add(dep);
+//						this.criticalSectionsToDeps.put(cs, list);
+//					}
+//				}
 				updateDependencies();
-				
-				//The other possible solution: the robot that is replanning can stop at every new critical section by induction.
-				synchronized (trackers) {
-					communicatedCPs.remove(trackers.get(robotID));
-				}
-							
+											
 				envelopesToTrack.remove(newTE);
 			}
 		}
