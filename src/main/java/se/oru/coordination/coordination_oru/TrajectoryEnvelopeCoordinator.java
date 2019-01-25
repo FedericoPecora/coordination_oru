@@ -1283,7 +1283,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							
 							//If one of the robot was parked previously in critical section and has just started driving again,
 							//then the set of previous constraints contains at least one dependency (due to parking).
-							drivingCurrentIndex = (drivingRobotID == robotReport1.getRobotID()) ? robotReport1.getPathIndex() : robotReport2.getPathIndex();
 						}
 						else {
 							metaCSPLogger.severe("Both cannot stop. Try to restore the correct order basing on prior knowledge. CS: " + cs);
@@ -1297,8 +1296,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							//communicatedCPs.get(robotTracker2) >= cs.getTe1Start() && communicatedCPs.get(robotTracker2) >= cs.getTe2Start() --> otherwise case (1)
 							//robotReport1.getPathIndex() < cs.getTe1End() && robotReport2.getPathIndex() < cs.getTe2End() --> otherwise obsolete
 							
-							int waitingPoint2 = getCriticalPoint(robotReport2.getRobotID(), cs, communicatedCPs.get(robotTracker1).getFirst());
 							int waitingPoint1 = getCriticalPoint(robotReport1.getRobotID(), cs, communicatedCPs.get(robotTracker2).getFirst());
+							int waitingPoint2 = getCriticalPoint(robotReport2.getRobotID(), cs, communicatedCPs.get(robotTracker1).getFirst());
 							
 							if (cs.getTe1Start() == 0 && cs.getTe1End() == 0 || communicatedCPs.get(robotTracker1).getFirst() == -1 || communicatedCPs.get(robotTracker1).getFirst() > waitingPoint1) {
 								drivingRobotID = robotReport1.getRobotID();
@@ -1312,9 +1311,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 								metaCSPLogger.severe("Both cannot stop but lost critical section to dep. CS: " + cs);
 								throw new Error("FIXME! Lost dependency! " );
 							}							
-							drivingCurrentIndex = (drivingRobotID == robotReport1.getRobotID()) ? robotReport1.getPathIndex() : robotReport2.getPathIndex();
 						}
 						
+						drivingCurrentIndex = (drivingRobotID == robotReport1.getRobotID()) ? robotReport1.getPathIndex() : robotReport2.getPathIndex();
 						drivingTE = (drivingRobotID == robotReport1.getRobotID()) ? cs.getTe1() : cs.getTe2();
 						waitingTE = (waitingRobotID == robotReport1.getRobotID()) ? cs.getTe1() : cs.getTe2();
 						metaCSPLogger.info("Both-can't-stop and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID() + " and CS is: " + cs);
@@ -1557,15 +1556,15 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				}
 				
 				//Remove CSs involving this robot
-				ArrayList<CriticalSection> toRemove = new ArrayList<CriticalSection>();
-				for (CriticalSection cs : this.allCriticalSections) {
+				HashMap<CriticalSection,HashSet<Dependency>> toRemove = new HashMap<CriticalSection,HashSet<Dependency>>();
+				for (CriticalSection cs : this.criticalSectionsToDeps.keySet()) {
 					if (cs.getTe1().equals(te) || cs.getTe2().equals(te)) {
-						toRemove.add(cs);
+						toRemove.put(cs,criticalSectionsToDeps.get(cs));
 					}
 				}
 				
 				//FIXME!! Compute and store the set of dependencies that should be maintained.
-				for (CriticalSection cs : toRemove) {
+				for (CriticalSection cs : toRemove.keySet()) {
 					this.allCriticalSections.remove(cs);
 					this.criticalSectionsToDeps.remove(cs);
 				}
@@ -1612,7 +1611,16 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				computeCriticalSections();
 				
 				//FIXME!! Restore the set of dependencies that should be maintained (it is sufficient to decide who is the leader).
-				
+				synchronized (trackers) {
+					for (CriticalSection cs : this.allCriticalSections) {
+						for(CriticalSection csOld : toRemove.keySet()) {
+							if (cs.equals(csOld) || 
+									(cs.getTe1().getRobotID() == csOld.getTe1().getRobotID() && cs.getTe2().getRobotID() == csOld.getTe2().getRobotID() 
+									&& cs.getTe1Start() == csOld.getTe2Start() && cs.getTe1Start() < communicatedCPs.get(this.trackers.get(robotID)).getFirst()))
+								this.criticalSectionsToDeps.put(cs,toRemove.get(csOld));
+						}
+					}
+				}
 				updateDependencies();
 											
 				envelopesToTrack.remove(newTE);

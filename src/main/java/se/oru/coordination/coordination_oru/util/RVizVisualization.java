@@ -452,7 +452,9 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 					visualization_msgs.MarkerArray ma = node.getTopicMessageFactory().newFromType(visualization_msgs.MarkerArray._TYPE);
 					ArrayList<visualization_msgs.Marker> copy = new ArrayList<visualization_msgs.Marker>();
 					for (visualization_msgs.Marker m : robotStatusMarkers.get(entry.getKey())) copy.add(m);
-					if (envelopeMarkers != null && envelopeMarkers.containsKey(entry.getKey())) copy.add(envelopeMarkers.get(entry.getKey()));
+					synchronized(envelopeMarkers) {
+						if (envelopeMarkers != null && envelopeMarkers.containsKey(entry.getKey())) copy.add(envelopeMarkers.get(entry.getKey()));
+					}
 					ma.setMarkers(copy);
 					entry.getValue().publish(ma);
 					robotStatusMarkers.get(entry.getKey()).clear();
