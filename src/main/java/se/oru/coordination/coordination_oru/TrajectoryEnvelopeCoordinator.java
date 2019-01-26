@@ -1612,15 +1612,23 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				
 				//FIXME!! Restore the set of dependencies that should be maintained (it is sufficient to decide who is the leader).
 				synchronized (trackers) {
-					for (CriticalSection cs : this.allCriticalSections) {
-						for(CriticalSection csOld : toRemove.keySet()) {
-							if (cs.equals(csOld) || 
-									(cs.getTe1().getRobotID() == csOld.getTe1().getRobotID() && cs.getTe2().getRobotID() == csOld.getTe2().getRobotID() 
-									&& cs.getTe1Start() == csOld.getTe1Start() && cs.getTe2Start() == csOld.getTe2Start() &&
-									(communicatedCPs.get(this.trackers.get(robotID)).getFirst() == -1 
-									|| cs.getTe1().getRobotID() == robotID && (cs.getTe1Start() == 0 || cs.getTe1Start() < communicatedCPs.get(this.trackers.get(robotID)).getFirst())
-									|| cs.getTe2().getRobotID() == robotID && (cs.getTe2Start() == 0 || cs.getTe2Start() < communicatedCPs.get(this.trackers.get(robotID)).getFirst()))))
-								this.criticalSectionsToDeps.put(cs,toRemove.get(csOld));
+					for (CriticalSection cs1 : this.allCriticalSections) {
+						for(CriticalSection cs2 : toRemove.keySet()) {
+							if ((cs1.getTe1().getRobotID() == robotID || cs1.getTe2().getRobotID() == robotID) && (cs2.getTe1().getRobotID() == robotID || cs2.getTe2().getRobotID() == robotID)) {
+								if ( 
+									//are related to the same pairs of robots? 
+									//check all the possible combination between TE and ID:
+									//a. 1->1 and 2->2
+									((cs1.getTe1().getRobotID() == cs2.getTe1().getRobotID() && cs1.getTe2().getRobotID() == cs2.getTe2().getRobotID() 
+									&& cs1.getTe1Start() == cs2.getTe1Start() && cs1.getTe2Start() == cs2.getTe2Start()) ||
+									//b. 1->2 and 2->1
+									(cs1.getTe1().getRobotID() == cs2.getTe2().getRobotID() && cs1.getTe2().getRobotID() == cs2.getTe1().getRobotID() 
+									&& cs1.getTe1Start() == cs2.getTe2Start() && cs1.getTe2Start() == cs2.getTe1Start())) &&
+									//the critical section starts before the last communicated critical point
+									(cs1.getTe1().getRobotID() == robotID && (cs1.getTe1Start() == 0 || cs1.getTe1Start() < communicatedCPs.get(this.trackers.get(robotID)).getFirst())
+									|| cs1.getTe2().getRobotID() == robotID && (cs1.getTe2Start() == 0 || cs1.getTe2Start() < communicatedCPs.get(this.trackers.get(robotID)).getFirst())))
+									this.criticalSectionsToDeps.put(cs1,toRemove.get(cs2)); //note that the dependency does not need to reverse the order.
+							}
 						}
 					}
 				}
