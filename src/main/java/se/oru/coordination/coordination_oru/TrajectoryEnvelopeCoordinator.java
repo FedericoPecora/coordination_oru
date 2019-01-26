@@ -1617,8 +1617,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							if (cs.equals(csOld) || 
 									(cs.getTe1().getRobotID() == csOld.getTe1().getRobotID() && cs.getTe2().getRobotID() == csOld.getTe2().getRobotID() 
 									&& cs.getTe1Start() == csOld.getTe1Start() && cs.getTe2Start() == csOld.getTe2Start() &&
-									(cs.getTe1().getRobotID() == robotID && cs.getTe1Start() < communicatedCPs.get(this.trackers.get(robotID)).getFirst()
-									|| cs.getTe2().getRobotID() == robotID && cs.getTe2Start() < communicatedCPs.get(this.trackers.get(robotID)).getFirst())))
+									(communicatedCPs.get(this.trackers.get(robotID)).getFirst() == -1 
+									|| cs.getTe1().getRobotID() == robotID && (cs.getTe1Start() == 0 || cs.getTe1Start() < communicatedCPs.get(this.trackers.get(robotID)).getFirst())
+									|| cs.getTe2().getRobotID() == robotID && (cs.getTe2Start() == 0 || cs.getTe2Start() < communicatedCPs.get(this.trackers.get(robotID)).getFirst()))))
 								this.criticalSectionsToDeps.put(cs,toRemove.get(csOld));
 						}
 					}
