@@ -569,6 +569,7 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 
 	@Override
 	public void removeEnvelope(TrajectoryEnvelope te) {
+		if (this.envelopeMarkers == null) return;
 		synchronized(envelopeMarkers) {
 			this.envelopeMarkers.remove(te.getRobotID());
 		}		
