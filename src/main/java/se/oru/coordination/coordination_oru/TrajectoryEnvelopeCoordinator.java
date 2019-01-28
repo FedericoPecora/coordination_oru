@@ -1402,6 +1402,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					if (!envelopesToTrack.get(j).equals(drivingEnvelopes.get(i))) {
 						for (CriticalSection cs : getCriticalSections(drivingEnvelopes.get(i), envelopesToTrack.get(j))) {
 							this.allCriticalSections.add(cs);
+							this.criticalSectionsToDeps.put(cs, new HashSet<Dependency>());
 						}
 					}
 				}
@@ -1412,6 +1413,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				for (int j = i+1; j < envelopesToTrack.size(); j++) {
 					for (CriticalSection cs : getCriticalSections(envelopesToTrack.get(i), envelopesToTrack.get(j))) {
 						this.allCriticalSections.add(cs);
+						this.criticalSectionsToDeps.put(cs, new HashSet<Dependency>());
 					}
 				}
 			}
@@ -1422,6 +1424,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					if (drivingEnvelopes.get(i).getRobotID() != currentParkingEnvelopes.get(j).getRobotID()) {
 						for (CriticalSection cs : getCriticalSections(drivingEnvelopes.get(i), currentParkingEnvelopes.get(j))) {
 							this.allCriticalSections.add(cs);
+							this.criticalSectionsToDeps.put(cs, new HashSet<Dependency>());
 						}
 					}
 				}
@@ -1433,6 +1436,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					if (envelopesToTrack.get(i).getRobotID() != currentParkingEnvelopes.get(j).getRobotID()) {
 						for (CriticalSection cs : getCriticalSections(envelopesToTrack.get(i), currentParkingEnvelopes.get(j))) {
 							this.allCriticalSections.add(cs);
+							this.criticalSectionsToDeps.put(cs, new HashSet<Dependency>());
 						}
 					}
 				}
@@ -1542,7 +1546,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				HashMap<CriticalSection,HashSet<Dependency>> toRemove = new HashMap<CriticalSection,HashSet<Dependency>>();
 				for (CriticalSection cs : this.criticalSectionsToDeps.keySet()) {
 					if (cs.getTe1().equals(te) || cs.getTe2().equals(te)) {
-						toRemove.put(cs,criticalSectionsToDeps.get(cs));
+						toRemove.put(cs, this.criticalSectionsToDeps.get(cs));
 					}
 				}
 				
@@ -1729,7 +1733,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				this.allCriticalSections.remove(cs);
 				this.criticalSectionsToDeps.remove(cs);
 			}
-			for (CriticalSection cs : toAdd) this.allCriticalSections.add(cs);
+			for (CriticalSection cs : toAdd) {
+				this.allCriticalSections.add(cs);
+				this.criticalSectionsToDeps.put(cs, new HashSet<Dependency>());
+			}
 		}
 		while (!toAdd.isEmpty() || !toRemove.isEmpty());
 		
