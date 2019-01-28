@@ -1619,10 +1619,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						}
 					}
 				}
-				
-				updateDependencies();
-											
 				envelopesToTrack.remove(newTE);
+				
+				updateDependencies();							
+				
 			}
 		}
 	}
@@ -2011,10 +2011,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					@Override
 					public void onTrackingFinished() {
 
-						if (trackingCallbacks.containsKey(myTE.getRobotID())) trackingCallbacks.get(myTE.getRobotID()).onTrackingFinished();
-						
 						synchronized (solver) {
 							metaCSPLogger.info("Tracking finished for " + myTE);
+							
+							if (trackingCallbacks.containsKey(myTE.getRobotID())) trackingCallbacks.get(myTE.getRobotID()).onTrackingFinished();
 
 							if (viz != null) viz.removeEnvelope(myTE);
 
