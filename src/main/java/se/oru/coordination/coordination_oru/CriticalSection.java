@@ -70,19 +70,7 @@ public class CriticalSection {
 	public void setTe2Break(int te2Break) {
 		this.te2Break = te2Break;
 	}
-	
-	@Override
-	public boolean equals(Object obj) {
-	if (!(obj instanceof CriticalSection)) return false;
-	CriticalSection other = (CriticalSection)obj;
-	return other.getTe1().getRobotID() == this.getTe1().getRobotID() &&
-			other.getTe2().getRobotID() == this.getTe2().getRobotID() &&
-			other.getTe1Start() == this.getTe1Start() &&
-			other.getTe2Start() == this.getTe2Start() &&
-			other.getTe1End() == this.getTe1End() &&
-			other.getTe2End() == this.getTe2End();
-	}
-	
+		
 	@Override
 	public String toString() {
 		String ret = "";
