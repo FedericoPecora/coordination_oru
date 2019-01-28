@@ -1591,39 +1591,134 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					viz.addEnvelope(newTE);
 				}
 				
-				//Add as if it were a new envelope, that way it will be accounted for in computeCriticalSections()
-				envelopesToTrack.add(newTE);
+				//-------------------------------------
 				
-				//Recompute CSs involving this robot
-				computeCriticalSections();
-				
-				//FIXME!! Restore the set of dependencies that should be maintained (it is sufficient to decide who is the leader).
+				//Make new envelope containing only the new part of the path
+				int lastCriticalPoint = -1;
+				AbstractTrajectoryEnvelopeTracker robotTracker = null;
 				synchronized (trackers) {
-					for (CriticalSection cs1 : this.allCriticalSections) {
-						for(CriticalSection cs2 : toRemove.keySet()) {
+					robotTracker = this.trackers.get(robotID);
+					lastCriticalPoint = communicatedCPs.get(robotTracker).getFirst();
+				}
+				PoseSteering[] truncatedPath = Arrays.copyOf(newTE.getTrajectory().getPoseSteering(), lastCriticalPoint+1);
+				TrajectoryEnvelope truncatedTE = solver.createEnvelopeNoParking(robotID, truncatedPath, "Driving", this.getFootprint(robotID));
+				
+				//Stitch together with rest of constraint network (temporal constraints with parking envelopes etc.)
+				for (Constraint con : solver.getConstraintNetwork().getOutgoingEdges(te)) {
+					if (con instanceof AllenIntervalConstraint) {
+						AllenIntervalConstraint aic = (AllenIntervalConstraint)con;
+						if (aic.getTypes()[0].equals(AllenIntervalConstraint.Type.Meets)) {
+							TrajectoryEnvelope newEndParking = solver.createParkingEnvelope(robotID, PARKING_DURATION, truncatedTE.getTrajectory().getPose()[newTE.getTrajectory().getPose().length-1], "whatever", getFootprint(robotID));
+							TrajectoryEnvelope oldEndParking = (TrajectoryEnvelope)aic.getTo();
+		
+							solver.removeConstraints(solver.getConstraintNetwork().getIncidentEdges(te));
+							solver.removeVariable(te);
+							solver.removeConstraints(solver.getConstraintNetwork().getIncidentEdges(oldEndParking));
+							solver.removeVariable(oldEndParking);
 							
-							//are related to this robot?
-							boolean robotIDFound = (cs1.getTe1().getRobotID() == robotID || cs1.getTe2().getRobotID() == robotID) && (cs2.getTe1().getRobotID() == robotID || cs2.getTe2().getRobotID() == robotID);
-							
-							//are related to the same pairs of robots? 
-							//check all the possible combination between TE and ID:
-							//a. 1->1 and 2->2
-							boolean equivalentCS = (cs1.getTe1().getRobotID() == cs2.getTe1().getRobotID() && cs1.getTe2().getRobotID() == cs2.getTe2().getRobotID() 
-									&& cs1.getTe1Start() == cs2.getTe1Start() && cs1.getTe2Start() == cs2.getTe2Start()) ||
-									//b. 1->2 and 2->1
-									(cs1.getTe1().getRobotID() == cs2.getTe2().getRobotID() && cs1.getTe2().getRobotID() == cs2.getTe1().getRobotID() 
-									&& cs1.getTe1Start() == cs2.getTe2Start() && cs1.getTe2Start() == cs2.getTe1Start());
-							
-							//the critical section is starting before the last communicated critical point?
-							boolean startBeforeLastCP = (cs1.getTe1().getRobotID() == robotID && (cs1.getTe1Start() == 0 || cs1.getTe1Start() < communicatedCPs.get(this.trackers.get(robotID)).getFirst()))
-									|| (cs1.getTe2().getRobotID() == robotID && (cs1.getTe2Start() == 0 || cs1.getTe2Start() < communicatedCPs.get(this.trackers.get(robotID)).getFirst()));
-							
-							if (robotIDFound && equivalentCS && startBeforeLastCP)
-								this.criticalSectionsToDeps.put(cs1,toRemove.get(cs2)); //note that the dependency does not need to reverse the order.
+							AllenIntervalConstraint newMeets = new AllenIntervalConstraint(AllenIntervalConstraint.Type.Meets);
+							newMeets.setFrom(newTE);
+							newMeets.setTo(newEndParking);
+							solver.addConstraint(newMeets);
+		
+							break;
 						}
 					}
 				}
-				envelopesToTrack.remove(newTE);
+				
+				//Add as if it were a new envelope, that way it will be accounted for in computeCriticalSections()
+				envelopesToTrack.add(truncatedTE);
+				
+				//Recompute CSs involving this robot (only on the new piece of the path) 
+				computeCriticalSections();
+				
+				//For each CS, replace the truncated trajectory envelope with the complete one, shift start and end.
+				ArrayList<CriticalSection> toAdd = new ArrayList<CriticalSection>(); 
+				ArrayList<CriticalSection> newToRemove = new ArrayList<CriticalSection>(); 
+				for (CriticalSection cs1 : this.allCriticalSections) {
+					if (cs1.getTe1().getRobotID() == robotID) {
+						CriticalSection cs3 = new CriticalSection(newTE,cs1.getTe2(),cs1.getTe1Start()+lastCriticalPoint+1,cs1.getTe2Start(),cs1.getTe1End()+lastCriticalPoint+1,cs1.getTe2End());
+						toAdd.add(cs3);
+						newToRemove.add(cs1);
+					}
+					else if (cs1.getTe2().getRobotID() == robotID) {
+						CriticalSection cs3 = new CriticalSection(cs1.getTe1(),newTE,cs1.getTe2Start(),cs1.getTe2Start()+lastCriticalPoint+1,cs1.getTe2End(),cs1.getTe2End()+lastCriticalPoint+1);
+						toAdd.add(cs3);
+						newToRemove.add(cs1);
+					}
+				}
+				
+				//remove not shifted CS involving the robot
+				for (CriticalSection cs : newToRemove) {
+					this.allCriticalSections.remove(cs);
+					this.criticalSectionsToDeps.remove(cs);
+				}
+				//add the shifted ones an empty set of dependencies
+				for (CriticalSection cs : toAdd) {
+					this.allCriticalSections.add(cs);
+					this.criticalSectionsToDeps.put(cs,new HashSet<Dependency>());
+				}
+				
+				//Then, stick together the old CS with the new ones.
+				toAdd.clear();
+				newToRemove.clear();
+				HashMap<CriticalSection,HashSet<Dependency>> toMerge = new HashMap<CriticalSection,HashSet<Dependency>>();
+				
+				//(TrajectoryEnvelope te1, TrajectoryEnvelope te2, int te1Start, int te2Start, int te1End, int te2End)
+				
+				for (CriticalSection cs2 : toRemove.keySet()) {
+					//cs2 is related to this robot?
+					if (cs2.getTe1().getRobotID() == robotID || cs2.getTe2().getRobotID() == robotID) {
+						//something should be done. If it ends before the last communicated CP, then it should be added and stop.
+						if ((cs2.getTe1().getRobotID() == robotID && cs2.getTe1End() < lastCriticalPoint) || (cs2.getTe2().getRobotID() == robotID && cs2.getTe2End() < lastCriticalPoint)) {
+							toAdd.add(cs2);
+						}
+						else {
+							//check if the OLD critical section should be merged with a NEW one
+							for (CriticalSection cs1 : this.allCriticalSections) {
+								if ((cs1.getTe1().getRobotID() == cs2.getTe1().getRobotID() && cs1.getTe2().getRobotID() == cs2.getTe2().getRobotID()) ||
+										(cs1.getTe1().getRobotID() == cs2.getTe2().getRobotID() && cs1.getTe2().getRobotID() == cs2.getTe1().getRobotID())) {
+									if (cs1.getTe1().getRobotID() == robotID && cs1.getTe1Start() == lastCriticalPoint + 1) {
+										int newStart = (cs2.getTe1().getRobotID() == robotID) ? cs2.getTe1Start() : cs2.getTe2Start();
+										int newEnd = (cs1.getTe1().getRobotID() == robotID) ? cs1.getTe1End() : cs1.getTe2End();
+										CriticalSection cs3 = new CriticalSection(cs1.getTe1(),cs1.getTe2(),newStart,cs1.getTe2Start(),newEnd,cs1.getTe2End());
+										toMerge.put(cs3,toRemove.get(cs2));
+										newToRemove.add(cs1);
+										break;
+									}
+									else if (cs1.getTe2().getRobotID() == robotID && cs1.getTe2Start() == lastCriticalPoint + 1) {
+										int newStart = (cs2.getTe1().getRobotID() == robotID) ? cs2.getTe1Start() : cs2.getTe2Start();
+										int newEnd = (cs1.getTe1().getRobotID() == robotID) ? cs1.getTe1End() : cs1.getTe2End();
+										CriticalSection cs3 = new CriticalSection(cs1.getTe1(),cs1.getTe2(),cs1.getTe1Start(),newStart,cs1.getTe1End(),newEnd);
+										toMerge.put(cs3,toRemove.get(cs2));
+										newToRemove.add(cs1);
+										break;
+									}
+								}
+							}
+						}
+					}
+				}
+				
+				//restore the set of CS related to the first part of the path with the related set of dependencies
+				for (CriticalSection cs : toAdd) {
+					this.allCriticalSections.add(cs);
+					this.criticalSectionsToDeps.put(cs,toRemove.get(cs));
+				}
+				
+				//replace the CS that should be merged
+				for (CriticalSection cs : newToRemove) {
+					this.allCriticalSections.remove(cs);
+					this.criticalSectionsToDeps.remove(cs);
+				}
+				for (CriticalSection cs : toMerge.keySet()) {
+					this.allCriticalSections.add(cs);
+					this.criticalSectionsToDeps.put(cs,toMerge.get(cs));
+				}
+				
+				//remove the truncated envelope
+				envelopesToTrack.remove(truncatedTE);
+				cleanUp(truncatedTE);
 				
 				updateDependencies();							
 				
