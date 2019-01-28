@@ -14,6 +14,7 @@ import com.vividsolutions.jts.geom.Coordinate;
 import se.oru.coordination.coordination_oru.ConstantAccelerationForwardModel;
 import se.oru.coordination.coordination_oru.CriticalSection;
 import se.oru.coordination.coordination_oru.Mission;
+import se.oru.coordination.coordination_oru.NetworkConfiguration;
 import se.oru.coordination.coordination_oru.RobotAtCriticalSection;
 import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
@@ -62,30 +63,21 @@ public class RandomPathsInMap {
 	public static void main(String[] args) throws InterruptedException {
 
 		double MAX_ACCEL = 3.0;
-		double MAX_VEL = 14.0;
-		int CONTROL_PERIOD = 1000;
+		double MAX_VEL = 4.0;
+
 		//Instantiate a trajectory envelope coordinator.
-		//The TrajectoryEnvelopeCoordinatorSimulation implementation provides
-		// -- the factory method getNewTracker() which returns a trajectory envelope tracker
-		// -- the getCurrentTimeInMillis() method, which is used by the coordinator to keep time
-		//You still need to add one or more comparators to determine robot orderings thru critical sections (comparators are evaluated in the order in which they are added)
-		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(CONTROL_PERIOD,1000.0,MAX_VEL,MAX_ACCEL);
-//		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(MAX_VEL,MAX_ACCEL);
-		tec.addComparator(new Comparator<RobotAtCriticalSection> () {
-			@Override
-			public int compare(RobotAtCriticalSection o1, RobotAtCriticalSection o2) {
-				CriticalSection cs = o1.getCriticalSection();
-				RobotReport robotReport1 = o1.getRobotReport();
-				RobotReport robotReport2 = o2.getRobotReport();
-				return ((cs.getTe1Start()-robotReport1.getPathIndex())-(cs.getTe2Start()-robotReport2.getPathIndex()));
-			}
-		});
-		tec.addComparator(new Comparator<RobotAtCriticalSection> () {
-			@Override
-			public int compare(RobotAtCriticalSection o1, RobotAtCriticalSection o2) {
-				return (o2.getRobotReport().getRobotID()-o1.getRobotReport().getRobotID());
-			}
-		});
+		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(MAX_VEL,MAX_ACCEL);
+		tec.setUseInternalCriticalPoints(false);
+		tec.setYieldIfParking(false);
+		tec.setBreakDeadlocksByReordering(false);
+		tec.setBreakDeadlocksByReplanning(true);
+		tec.setCheckCollisions(true);
+		//MetaCSPLogging.setLevel(TrajectoryEnvelopeCoordinator.class, Level.FINEST);
+		
+		//Setup the network parameters
+		NetworkConfiguration.setDelays(1000, 3000);
+		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0;
+		tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, NetworkConfiguration.getMaximumTxDelay(), 0.1);
 
 		Coordinate footprint1 = new Coordinate(-1.0,0.5);
 		Coordinate footprint2 = new Coordinate(1.0,0.5);
@@ -106,10 +98,6 @@ public class RandomPathsInMap {
 		viz.setMap(yamlFile);
 		viz.setInitialTransform(20.0, 9.0, 2.0);
 		tec.setVisualization(viz);
-		
-		tec.setUseInternalCriticalPoints(true);
-		tec.setYieldIfParking(false);
-		tec.setBreakDeadlocks(true);
 		
 		Missions.loadLocationAndPathData("missions/icaps_locations_and_paths_1.txt");
 
@@ -206,7 +194,7 @@ public class RandomPathsInMap {
 					String lastDestination = "R_"+(robotID-1);
 					long startTime = Calendar.getInstance().getTimeInMillis();
 					while (true && totalIterations > 0) {
-						synchronized(tec) {
+						synchronized(tec.getSolver()) {
 							if (tec.isFree(robotID)) {
 								if (!firstTime) {
 									long elapsed = Calendar.getInstance().getTimeInMillis()-startTime;
