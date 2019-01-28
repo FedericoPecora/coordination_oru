@@ -748,10 +748,13 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					catch (InterruptedException e) { e.printStackTrace(); }
 				}
 				metaCSPLogger.info("Waiting thread finishes for " + robotID);
-				synchronized(stoppingPoints) {
-					stoppingPoints.get(robotID).remove((int)index);
-					stoppingTimes.get(robotID).remove((int)index);
-					stoppingPointTimers.remove(robotID);
+				synchronized(solver) {
+					synchronized(stoppingPoints) {
+						stoppingPoints.get(robotID).remove((int)index);
+						stoppingTimes.get(robotID).remove((int)index);
+						stoppingPointTimers.remove(robotID);
+					}
+					updateDependencies();
 				}
 			}
 		};
