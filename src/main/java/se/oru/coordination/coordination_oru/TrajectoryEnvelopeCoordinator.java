@@ -1625,10 +1625,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				}
 				envelopesToTrack.remove(newTE);
 				
-				updateDependencies();							
-
-				
-				updateDependencies();							
+				updateDependencies();											
 				
 			}
 		}
