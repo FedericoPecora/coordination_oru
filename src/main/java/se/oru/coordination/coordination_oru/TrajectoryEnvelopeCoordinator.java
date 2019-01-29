@@ -832,9 +832,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	
 	
 	private boolean inParkingPose(int robotID) {
-		synchronized(trackers) {
-			return trackers.containsKey(robotID) && trackers.get(robotID) instanceof TrajectoryEnvelopeTrackerDummy || !communicatedCPs.containsKey(trackers.get(robotID));
-		}
+		return this.getRobotReport(robotID).getPathIndex() == -1;
 	}
 	
 	private void spawnReplanning(ArrayList<ArrayList<Dependency>> deadlockedDeps) {
