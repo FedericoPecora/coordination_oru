@@ -1229,15 +1229,15 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						//FIXME handle parking in the goal
 						//the robot is starting from parking. This constraint will automatically lead to a deadlock if the other robot is already in critical section,
 						//while it allows to leave the parking in the other case.
-						if (!communicatedCPs.containsKey(robotTracker1)) {
-							if (cs.getTe1End() != 0 && cs.getTe1Start() == 0 && canStopRobot2)
-								canStopRobot2 = communicatedCPs.get(robotTracker2).getFirst() < cs.getTe2Start();
-						}
-						
-						if (!communicatedCPs.containsKey(robotTracker2)) {
-							if (cs.getTe2End() != 0 && cs.getTe2Start() == 0 && canStopRobot1)
-								canStopRobot1 = communicatedCPs.get(robotTracker1).getFirst() < cs.getTe1Start();
-						}
+//						if (!communicatedCPs.containsKey(robotTracker1) && communicatedCPs.containsKey(robotTracker2)) {
+//							if (cs.getTe1End() != 0 && cs.getTe1Start() == 0 && canStopRobot2)
+//								canStopRobot2 = communicatedCPs.get(robotTracker2).getFirst() < cs.getTe2Start();
+//						}
+//						
+//						if (!communicatedCPs.containsKey(robotTracker2) && communicatedCPs.containsKey(robotTracker1)) {
+//							if (cs.getTe2End() != 0 && cs.getTe2Start() == 0 && canStopRobot1)
+//								canStopRobot1 = communicatedCPs.get(robotTracker1).getFirst() < cs.getTe1Start();
+//						}
 						
 						//Both the robots can stop before accessing the critical section --> follow ordering heuristic if FW model allows it
 						if (canStopRobot1 && canStopRobot2) {
@@ -1300,7 +1300,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							drivingCurrentIndex = (drivingRobotID == robotReport1.getRobotID()) ? robotReport1.getPathIndex() : robotReport2.getPathIndex();
 							drivingTE = (drivingRobotID == robotReport1.getRobotID()) ? cs.getTe1() : cs.getTe2();
 							waitingTE = (waitingRobotID == robotReport1.getRobotID()) ? cs.getTe1() : cs.getTe2();
-							metaCSPLogger.finest("Both-can't-stop and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID() + " and CS is: " + cs);
+							metaCSPLogger.info("Both-can't-stop and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID() + " and CS is: " + cs);
 						}
 	
 						waitingRobotID = waitingTE.getRobotID();
@@ -1337,7 +1337,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				//Remove obsolete critical sections
 				for (CriticalSection cs : toRemove) {
 					this.allCriticalSections.remove(cs);
-					//this.criticalSectionsToDeps.remove(cs); //allow to restore the correct precedence constraint in case of asymmetric ...
+					//this.criticalSectionsToDeps.remove(cs); //This command has been removed to allow restoring the correct precedence constraint in case of re-plan. 
+															  //the history of decisions for accessing a critical section can be removed only when the robot completes a mission.
+															  //In case of re-plan, the history related to CSs containing indices before the point at which the path is changed should be maintained.
+															  //Otherwise (CSs related to pieces of path that have been completely replaced), the history can be removed.
 				}
 			}
 	
@@ -1544,15 +1547,31 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					viz.removeEnvelope(te);
 				}
 				
-				//Remove CSs involving this robot
-				HashMap<CriticalSection,HashSet<Dependency>> toRemove = new HashMap<CriticalSection,HashSet<Dependency>>();
-				for (CriticalSection cs : this.criticalSectionsToDeps.keySet()) {
+			
+				HashMap<CriticalSection,HashSet<Dependency>> toRemove = new HashMap<CriticalSection,HashSet<Dependency>>();				
+				HashMap<Integer,ArrayList<CriticalSection>> otherRobotsSharingCSs = new HashMap<Integer,ArrayList<CriticalSection>>();
+				for (CriticalSection cs : this.criticalSectionsToDeps.keySet()) { //the set of critical sections related to the current paths (alive or obsolete),
+																				  //with the last decided precedence
+					
 					if (cs.getTe1().equals(te) || cs.getTe2().equals(te)) {
-						toRemove.put(cs, this.criticalSectionsToDeps.get(cs));
+						//Keep the history while removing the deadlocking dependency
+						HashSet<Dependency> depsList = new HashSet<Dependency>();
+						for (Dependency dep : this.criticalSectionsToDeps.get(cs)) {
+							depsList.add(new Dependency(dep.getWaitingTrajectoryEnvelope(),dep.getDrivingTrajectoryEnvelope(),dep.getWaitingPoint(),dep.getReleasingPoint(),dep.getWaitingTracker(),dep.getDrivingTracker()));
+						}
+						toRemove.put(cs, depsList);
+
+						//Store the shared critical sections (alive or not).
+						int otherRobotID = cs.getTe1().equals(te) ? cs.getTe2().getRobotID() : cs.getTe1().getRobotID();
+						if (!otherRobotsSharingCSs.containsKey(otherRobotID)) otherRobotsSharingCSs.put(otherRobotID, new ArrayList<CriticalSection>()); {
+							otherRobotsSharingCSs.get(otherRobotID).add(cs); //new CriticalSection(cs.getTe1(),cs.getTe2(),cs.getTe1Start(),cs.getTe2Start(),cs.getTe1End(),cs.getTe2End()) (?)
+						}
 					}
 				}
+
 				
-				//FIXME!! Compute and store the set of dependencies that should be maintained.
+				//Remove CSs involving this robot, clearing the history 
+				//(the set of decisions that should be maintained will be added again in the following).
 				for (CriticalSection cs : toRemove.keySet()) {
 					this.allCriticalSections.remove(cs);
 					this.criticalSectionsToDeps.remove(cs);
@@ -1599,38 +1618,51 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				//Recompute CSs involving this robot
 				computeCriticalSections();
 				
-				//FIXME!! Restore the set of dependencies that should be maintained (it is sufficient to decide who is the leader).
-				synchronized (trackers) {
-					for (CriticalSection cs1 : this.allCriticalSections) {
-						for(CriticalSection cs2 : toRemove.keySet()) { //dependencies on critical sections potentially still active
-							boolean robotIDFound = (cs1.getTe1().getRobotID() == robotID || cs1.getTe2().getRobotID() == robotID) && (cs2.getTe1().getRobotID() == robotID || cs2.getTe2().getRobotID() == robotID);					
-							boolean equalCS = (cs1.getTe1().getRobotID() == cs2.getTe1().getRobotID() && cs1.getTe2().getRobotID() == cs2.getTe2().getRobotID() 
-									&& cs1.getTe1Start() == cs2.getTe1Start() && cs1.getTe2Start() == cs2.getTe2Start() && cs1.getTe1End() == cs2.getTe1End() && cs1.getTe2End() == cs2.getTe2End()) ||
-									(cs1.getTe1().getRobotID() == cs2.getTe2().getRobotID() && cs1.getTe2().getRobotID() == cs2.getTe1().getRobotID() 
-									&& cs1.getTe1Start() == cs2.getTe2Start() && cs1.getTe2Start() == cs2.getTe1Start() && cs1.getTe1End() == cs2.getTe2End() && cs1.getTe2End() == cs2.getTe1End());					
-							if (robotIDFound) {
-								if (equalCS) {
-									this.criticalSectionsToDeps.put(cs1, toRemove.get(cs2)); //note that the dependency does not need to reverse the order.
-									break;
-								}
-								else {
-									boolean equivalentCS = (cs1.getTe1().getRobotID() == cs2.getTe1().getRobotID() && cs1.getTe2().getRobotID() == cs2.getTe2().getRobotID() 
-											&& cs1.getTe1Start() == cs2.getTe1Start() && cs1.getTe2Start() == cs2.getTe2Start()) ||
-											(cs1.getTe1().getRobotID() == cs2.getTe2().getRobotID() && cs1.getTe2().getRobotID() == cs2.getTe1().getRobotID() 
-											&& cs1.getTe1Start() == cs2.getTe2Start() && cs1.getTe2Start() == cs2.getTe1Start());
-									boolean startBeforeLastCP = (cs1.getTe1().getRobotID() == robotID && cs1.getTe1Start() <= communicatedCPs.get(this.trackers.get(robotID)).getFirst())
-											|| (cs1.getTe2().getRobotID() == robotID && cs1.getTe2Start() <= communicatedCPs.get(this.trackers.get(robotID)).getFirst());						
-									boolean isFootprint = (cs2.getTe1().getRobotID() == robotID && cs2.getTe1End() == 0) || (cs2.getTe2().getRobotID() == robotID && cs2.getTe2End() == 0);
-									
-									if (equivalentCS && startBeforeLastCP && !isFootprint) {
-										this.criticalSectionsToDeps.put(cs1, toRemove.get(cs2)); //note that the dependency does not need to reverse the order.
-										break;
-									}
+				//Restore the set of dependencies that should be maintained 
+				//(for each critical section shared between the old and the new path it is sufficient to store which robot has the precedence).
+				
+				//Dependencies to remove: 
+				//- the deadlocking dependency (involving the current critical point - the robot can surely stop by construction) --> FIXME
+				//- dependencies related old CSs which are not shared between the new and the old path.
+				
+				//Dependencies to maintain:
+				//- dependencies on critical sections that start before the breaking point:
+				//		--> if the CS ends before the breaking point then CS is equal in the old and in the new path.
+				//		--> else due to a merging (asymmetric path) the critical section is shared (starts before the breaking point, but ends after).
+							
+				int lastCriticalPoint = -1;
+				synchronized(trackers) {
+					lastCriticalPoint = communicatedCPs.get(trackers.get(robotID)).getFirst();
+				}
+				
+				for (CriticalSection cs1 : this.allCriticalSections) {
+					if (cs1.getTe1().getRobotID() == robotID || cs1.getTe2().getRobotID() == robotID) {
+						int start1 = (cs1.getTe1().getRobotID() == robotID) ? cs1.getTe1Start() : cs1.getTe2Start();
+						int end1 = (cs1.getTe1().getRobotID() == robotID) ? cs1.getTe1End() : cs1.getTe2End();
+						if (end1 <= lastCriticalPoint) {
+							//the critical section is shared
+							this.criticalSectionsToDeps.put(cs1, toRemove.get(cs1));
+						}
+						else if (start1 <= lastCriticalPoint) {
+							//the critical section starts before and ends after the breaking point --> restore the right precedence constraint related to the old history. 
+							TrajectoryEnvelope te2 = (cs1.getTe1().getRobotID() == robotID) ? cs1.getTe2() : cs1.getTe1();
+							CriticalSection cs = null; //the one that should be used for restoring the correct dependency
+							
+							//find the old critical section involving this pair of robots (the last starting before the critical point)
+							ArrayList<CriticalSection> checkList = otherRobotsSharingCSs.get(te2.getRobotID());
+							int lastBefore = -1;
+							for(CriticalSection cs2 : checkList) {
+								int start2 = (cs2.getTe1().getRobotID() == robotID) ? cs2.getTe1Start() : cs2.getTe2Start();
+								if (start2 > lastBefore && start2 <= lastCriticalPoint) {
+									lastBefore = start2;
+									cs = cs2;
 								}
 							}
+							this.criticalSectionsToDeps.put(cs1, toRemove.get(cs));
 						}
 					}
 				}
+				
 				envelopesToTrack.remove(newTE);
 				
 				updateDependencies();											
@@ -2042,7 +2074,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							//remove critical sections in which this robot is involved
 							synchronized(allCriticalSections) {
 								ArrayList<CriticalSection> toRemove = new ArrayList<CriticalSection>();
-								for (CriticalSection cs : allCriticalSections) {
+								for (CriticalSection cs : criticalSectionsToDeps.keySet()) {
 									if (cs.getTe1().getRobotID() == myTE.getRobotID() || cs.getTe2().getRobotID() == myTE.getRobotID()) toRemove.add(cs);
 								}
 								for (CriticalSection cs : toRemove) {
