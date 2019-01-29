@@ -1281,7 +1281,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							//Both robots in critical section --> re-impose previously decided dependency
 							
 							//Check the previous decided order
-							if (this.criticalSectionsToDeps.containsKey(cs) && this.criticalSectionsToDeps.get(cs).size() == 1) {
+							if (this.criticalSectionsToDeps.containsKey(cs) && this.criticalSectionsToDeps.get(cs) != null && this.criticalSectionsToDeps.get(cs).size() == 1) {
 								//The critical section is not new and no re-plan happens.
 								//Standard case: there is just one dependency in the previous set. Let's impose that.
 								for (Dependency dep : this.criticalSectionsToDeps.get(cs)) {
@@ -1630,7 +1630,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				//(for each critical section shared between the old and the new path it is sufficient to store which robot has the precedence).
 				
 				//Dependencies to remove: 
-				//- the deadlocking dependency (involving the current critical point - the robot can surely stop by construction) --> FIXME
+				//- the deadlocking dependency (involving the current critical point - the robot can surely stop by construction) --> Already done
 				//- dependencies related old CSs which are not shared between the new and the old path.
 				
 				//Dependencies to maintain:
