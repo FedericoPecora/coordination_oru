@@ -1561,9 +1561,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					if (cs.getTe1().equals(te) || cs.getTe2().equals(te)) {
 						//Keep the history while removing the deadlocking dependency
 						HashSet<Dependency> depsList = new HashSet<Dependency>();
-						for (Dependency dep : this.criticalSectionsToDeps.get(cs)) {
-							if (!(dep.getWaitingRobotID() == robotID && dep.getWaitingPoint() == lastCriticalPoint))
-								depsList.add(new Dependency(dep.getWaitingTrajectoryEnvelope(),dep.getDrivingTrajectoryEnvelope(),dep.getWaitingPoint(),dep.getReleasingPoint(),dep.getWaitingTracker(),dep.getDrivingTracker()));
+						if (this.criticalSectionsToDeps.get(cs) != null && this.criticalSectionsToDeps.get(cs).size() > 0) { //FIXME
+							for (Dependency dep : this.criticalSectionsToDeps.get(cs)) {
+								if (!(dep.getWaitingRobotID() == robotID && dep.getWaitingPoint() == lastCriticalPoint))
+									depsList.add(new Dependency(dep.getWaitingTrajectoryEnvelope(),dep.getDrivingTrajectoryEnvelope(),dep.getWaitingPoint(),dep.getReleasingPoint(),dep.getWaitingTracker(),dep.getDrivingTracker()));
+							}
 						}
 						toRemove.put(cs, depsList);
 
