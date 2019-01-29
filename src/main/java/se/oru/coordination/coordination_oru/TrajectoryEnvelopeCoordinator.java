@@ -1548,6 +1548,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				}
 				
 			
+				int lastCriticalPoint = -1;
+				synchronized(trackers) {
+					lastCriticalPoint = communicatedCPs.get(trackers.get(robotID)).getFirst();
+				}
+				
 				HashMap<CriticalSection,HashSet<Dependency>> toRemove = new HashMap<CriticalSection,HashSet<Dependency>>();				
 				HashMap<Integer,ArrayList<CriticalSection>> otherRobotsSharingCSs = new HashMap<Integer,ArrayList<CriticalSection>>();
 				for (CriticalSection cs : this.criticalSectionsToDeps.keySet()) { //the set of critical sections related to the current paths (alive or obsolete),
@@ -1557,14 +1562,15 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						//Keep the history while removing the deadlocking dependency
 						HashSet<Dependency> depsList = new HashSet<Dependency>();
 						for (Dependency dep : this.criticalSectionsToDeps.get(cs)) {
-							depsList.add(new Dependency(dep.getWaitingTrajectoryEnvelope(),dep.getDrivingTrajectoryEnvelope(),dep.getWaitingPoint(),dep.getReleasingPoint(),dep.getWaitingTracker(),dep.getDrivingTracker()));
+							if (!(dep.getWaitingRobotID() == robotID && dep.getWaitingPoint() == lastCriticalPoint))
+								depsList.add(new Dependency(dep.getWaitingTrajectoryEnvelope(),dep.getDrivingTrajectoryEnvelope(),dep.getWaitingPoint(),dep.getReleasingPoint(),dep.getWaitingTracker(),dep.getDrivingTracker()));
 						}
 						toRemove.put(cs, depsList);
 
 						//Store the shared critical sections (alive or not).
 						int otherRobotID = cs.getTe1().equals(te) ? cs.getTe2().getRobotID() : cs.getTe1().getRobotID();
 						if (!otherRobotsSharingCSs.containsKey(otherRobotID)) otherRobotsSharingCSs.put(otherRobotID, new ArrayList<CriticalSection>()); {
-							otherRobotsSharingCSs.get(otherRobotID).add(cs); //new CriticalSection(cs.getTe1(),cs.getTe2(),cs.getTe1Start(),cs.getTe2Start(),cs.getTe1End(),cs.getTe2End()) (?)
+							otherRobotsSharingCSs.get(otherRobotID).add(cs); //FIXME new CriticalSection(cs.getTe1(),cs.getTe2(),cs.getTe1Start(),cs.getTe2Start(),cs.getTe1End(),cs.getTe2End()) (?)
 						}
 					}
 				}
@@ -1630,11 +1636,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				//		--> if the CS ends before the breaking point then CS is equal in the old and in the new path.
 				//		--> else due to a merging (asymmetric path) the critical section is shared (starts before the breaking point, but ends after).
 							
-				int lastCriticalPoint = -1;
-				synchronized(trackers) {
-					lastCriticalPoint = communicatedCPs.get(trackers.get(robotID)).getFirst();
-				}
-				
 				for (CriticalSection cs1 : this.allCriticalSections) {
 					if (cs1.getTe1().getRobotID() == robotID || cs1.getTe2().getRobotID() == robotID) {
 						int start1 = (cs1.getTe1().getRobotID() == robotID) ? cs1.getTe1Start() : cs1.getTe2Start();
