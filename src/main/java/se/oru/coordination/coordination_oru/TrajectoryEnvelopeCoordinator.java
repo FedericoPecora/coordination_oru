@@ -98,11 +98,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected ArrayList<TrajectoryEnvelope> envelopesToTrack = new ArrayList<TrajectoryEnvelope>();
 	protected ArrayList<TrajectoryEnvelope> currentParkingEnvelopes = new ArrayList<TrajectoryEnvelope>();
 	protected ArrayList<CriticalSection> allCriticalSections = new ArrayList<CriticalSection>();
-	protected HashMap<CriticalSection,HashSet<Dependency>> criticalSectionsToDeps = new HashMap<CriticalSection, HashSet<Dependency>>(); 
-	//FIXME CHECK (Federico)
+	protected HashMap<CriticalSection,Dependency> criticalSectionsToDeps = new HashMap<CriticalSection, Dependency>(); 
 	//  0 dependencies -> first assignment. There should NEVER happen: Both cannot stop.
 	//  1 dependency -> standard case.
-	// >1 dependencies -> There should NEVER happen.
 	protected HashMap<Integer,ArrayList<Integer>> stoppingPoints = new HashMap<Integer,ArrayList<Integer>>();
 	protected HashMap<Integer,ArrayList<Integer>> stoppingTimes = new HashMap<Integer,ArrayList<Integer>>();
 	protected HashMap<Integer,Thread> stoppingPointTimers = new HashMap<Integer,Thread>();
@@ -1088,7 +1086,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		//System.out.println("Caller of updateDependencies(): " + Thread.currentThread().getStackTrace()[2]);
 		synchronized(solver) {
 			HashMap<Integer,TreeSet<Dependency>> currentDeps = new HashMap<Integer,TreeSet<Dependency>>();
-			HashSet<Dependency> currentCsToDeps = new HashSet<Dependency>();
 	
 			//Make deps from un-reached stopping points
 			Set<Integer> robotIDs = trackers.keySet();
@@ -1122,7 +1119,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				for (CriticalSection cs : this.allCriticalSections) {
 					
 					//Store the current set of dependencies related to this critical section.
-					currentCsToDeps.clear();
+					Dependency currentCsToDep = null;
 					
 					//Will be assigned depending on current situation of robot reports...
 					int waitingRobotID = -1;
@@ -1189,10 +1186,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						if (createAParkingDep) {
 							int drivingCSEnd = (drivingRobotID == cs.getTe1().getRobotID()) ? cs.getTe1End() : cs.getTe2End();
 							metaCSPLogger.finest("Robot" + drivingRobotID + " is parked, so Robot" + waitingRobotID + " will have to wait");	
-							Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd, waitingTracker, drivingTracker);
+							currentCsToDep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd, waitingTracker, drivingTracker);
 							if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
-							currentDeps.get(waitingRobotID).add(dep);
-							currentCsToDeps.add(dep);
+							currentDeps.get(waitingRobotID).add(currentCsToDep);
 						}
 					}
 					else { //Both robots are driving, let's determine an ordering for them through this critical section
@@ -1269,13 +1265,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							//Both robots in critical section --> re-impose previously decided dependency
 							
 							//Check the previous decided order
-							if (this.criticalSectionsToDeps.containsKey(cs) && this.criticalSectionsToDeps.get(cs) != null && this.criticalSectionsToDeps.get(cs).size() == 1) {
+							if (this.criticalSectionsToDeps.containsKey(cs) && this.criticalSectionsToDeps.get(cs) != null) {
 								//The critical section is not new and no re-plan happens.
 								//Standard case: there is just one dependency in the previous set. Let's impose that.
-								for (Dependency dep : this.criticalSectionsToDeps.get(cs)) {
-									drivingRobotID = dep.getDrivingRobotID();
-									waitingRobotID = dep.getWaitingRobotID();
-								}
+								drivingRobotID = this.criticalSectionsToDeps.get(cs).getDrivingRobotID();
+								waitingRobotID = this.criticalSectionsToDeps.get(cs).getWaitingRobotID();
 								
 								//If one of the robot was parked previously in critical section and has just started driving again,
 								//then the set of previous constraints contains at least one dependency (due to parking).
@@ -1313,7 +1307,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						
 						if (waitingPoint >= 0) {		
 							//Make new dependency
-							Dependency dep = null;
 							int drivingCSEnd = -1;
 							if (createDeadlock) {
 								//reverse the dependency
@@ -1326,15 +1319,14 @@ public abstract class TrajectoryEnvelopeCoordinator {
 								waitingTE = newWaitingTE;
 								drivingTE = newDrivingTE;
 								drivingCSEnd = (drivingRobotID == cs.getTe1().getRobotID()) ? cs.getTe1End() : cs.getTe2End();
-								dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd, waitingTracker, drivingTracker);
+								currentCsToDep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd, waitingTracker, drivingTracker);
 							}
 							else {
 								drivingCSEnd = (drivingRobotID == cs.getTe1().getRobotID()) ? cs.getTe1End() : cs.getTe2End();
-								dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd, waitingTracker, drivingTracker);
+								currentCsToDep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd, waitingTracker, drivingTracker);
 							}
 							if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
-							currentDeps.get(waitingRobotID).add(dep);
-							currentCsToDeps.add(dep);
+							currentDeps.get(waitingRobotID).add(currentCsToDep);
 						}
 						else {
 							//If robot is asked to wait in an invalid path point, throw error and give up!
@@ -1344,12 +1336,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					}
 					
 					//Update the history of decisions for each critical section that has been updated
-					HashSet<Dependency> depsToAdd = new HashSet<Dependency>();
-					for (Dependency dep : currentCsToDeps) {
-						//(TrajectoryEnvelope teWaiting, TrajectoryEnvelope teDriving, int waitingPoint, int thresholdPoint, AbstractTrajectoryEnvelopeTracker waitingTracker, AbstractTrajectoryEnvelopeTracker drivingTracker)
-						depsToAdd.add(new Dependency(dep.getWaitingTrajectoryEnvelope(),dep.getDrivingTrajectoryEnvelope(),dep.getWaitingPoint(), dep.getReleasingPoint(),dep.getWaitingTracker(),dep.getDrivingTracker()));
-					}
-					this.criticalSectionsToDeps.put(cs, depsToAdd);
+					this.criticalSectionsToDeps.put(cs, currentCsToDep);
 				}
 	
 				//Remove obsolete critical sections
@@ -1567,26 +1554,25 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					lastCriticalPoint = communicatedCPs.get(trackers.get(robotID)).getFirst();
 				}
 				
-				HashMap<CriticalSection,HashSet<Dependency>> toRemove = new HashMap<CriticalSection,HashSet<Dependency>>();				
+				HashMap<CriticalSection,Dependency> toRemove = new HashMap<CriticalSection,Dependency>();				
 				HashMap<Integer,ArrayList<CriticalSection>> otherRobotsSharingCSs = new HashMap<Integer,ArrayList<CriticalSection>>();
 				for (CriticalSection cs : this.criticalSectionsToDeps.keySet()) { //the set of critical sections related to the current paths (alive or obsolete),
 																				  //with the last decided precedence
 					
 					if (cs.getTe1().equals(te) || cs.getTe2().equals(te)) {
 						//Keep the history while removing the deadlocking dependency
-						HashSet<Dependency> depsList = new HashSet<Dependency>();
-						if (this.criticalSectionsToDeps.get(cs) != null && this.criticalSectionsToDeps.get(cs).size() > 0) { //FIXME
-							for (Dependency dep : this.criticalSectionsToDeps.get(cs)) {
-								if (!(dep.getWaitingRobotID() == robotID && dep.getWaitingPoint() == lastCriticalPoint))
-									depsList.add(new Dependency(dep.getWaitingTrajectoryEnvelope(),dep.getDrivingTrajectoryEnvelope(),dep.getWaitingPoint(),dep.getReleasingPoint(),dep.getWaitingTracker(),dep.getDrivingTracker()));
-							}
+						if (this.criticalSectionsToDeps.get(cs) != null) { //FIXME
+							Dependency dep = this.criticalSectionsToDeps.get(cs);
+							if (!(dep.getWaitingRobotID() == robotID && dep.getWaitingPoint() == lastCriticalPoint))
+								toRemove.put(cs, new Dependency(dep.getWaitingTrajectoryEnvelope(),dep.getDrivingTrajectoryEnvelope(),dep.getWaitingPoint(),dep.getReleasingPoint(),dep.getWaitingTracker(),dep.getDrivingTracker()));
+							else
+								toRemove.put(cs, null);
 						}
-						toRemove.put(cs, depsList);
 
 						//Store the shared critical sections (alive or not).
 						int otherRobotID = cs.getTe1().equals(te) ? cs.getTe2().getRobotID() : cs.getTe1().getRobotID();
 						if (!otherRobotsSharingCSs.containsKey(otherRobotID)) otherRobotsSharingCSs.put(otherRobotID, new ArrayList<CriticalSection>()); {
-							otherRobotsSharingCSs.get(otherRobotID).add(cs); //FIXME new CriticalSection(cs.getTe1(),cs.getTe2(),cs.getTe1Start(),cs.getTe2Start(),cs.getTe1End(),cs.getTe2End()) (?)
+							otherRobotsSharingCSs.get(otherRobotID).add(new CriticalSection(cs.getTe1(),cs.getTe2(),cs.getTe1Start(),cs.getTe2Start(),cs.getTe1End(),cs.getTe2End())); //FIXME new CriticalSection(cs.getTe1(),cs.getTe2(),cs.getTe1Start(),cs.getTe2Start(),cs.getTe1End(),cs.getTe2End()) (?)
 						}
 					}
 				}
@@ -1662,7 +1648,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							if (shared || between) {
 								CriticalSection cs = null; //the one that should be used for restoring the correct dependency
 								
-								//Heuristic: find the old critical section involving this pair of robots (the last starting before the critical point)
+								//Heuristic: find the old critical section involving this pair of robots (the last starting before the critical point).
 								ArrayList<CriticalSection> checkList = otherRobotsSharingCSs.get((cs1.getTe1().getRobotID() == robotID) ? cs1.getTe2().getRobotID() : cs1.getTe1().getRobotID());
 								int lastBefore = -1;
 								boolean found = false;
