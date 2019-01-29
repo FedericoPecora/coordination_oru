@@ -1325,10 +1325,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						}
 					}
 					
-					//Update the map
+					//Update the history of decisions for each critical section that has been updated
 					HashSet<Dependency> depsToAdd = new HashSet<Dependency>();
 					for (Dependency dep : currentCsToDeps) {
-						depsToAdd.add(dep);
+						//(TrajectoryEnvelope teWaiting, TrajectoryEnvelope teDriving, int waitingPoint, int thresholdPoint, AbstractTrajectoryEnvelopeTracker waitingTracker, AbstractTrajectoryEnvelopeTracker drivingTracker)
+						depsToAdd.add(new Dependency(dep.getWaitingTrajectoryEnvelope(),dep.getDrivingTrajectoryEnvelope(),dep.getWaitingPoint(), dep.getReleasingPoint(),dep.getWaitingTracker(),dep.getDrivingTracker()));
 					}
 					this.criticalSectionsToDeps.put(cs, depsToAdd);
 				}
