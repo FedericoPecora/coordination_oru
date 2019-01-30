@@ -1572,7 +1572,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						//Store the shared critical sections (alive or not).
 						int otherRobotID = cs.getTe1().equals(te) ? cs.getTe2().getRobotID() : cs.getTe1().getRobotID();
 						if (!otherRobotsSharingCSs.containsKey(otherRobotID)) otherRobotsSharingCSs.put(otherRobotID, new ArrayList<CriticalSection>()); {
-							otherRobotsSharingCSs.get(otherRobotID).add(new CriticalSection(cs.getTe1(),cs.getTe2(),cs.getTe1Start(),cs.getTe2Start(),cs.getTe1End(),cs.getTe2End())); //FIXME new CriticalSection(cs.getTe1(),cs.getTe2(),cs.getTe1Start(),cs.getTe2Start(),cs.getTe1End(),cs.getTe2End()) (?)
+							otherRobotsSharingCSs.get(otherRobotID).add(cs); //FIXME new CriticalSection(cs.getTe1(),cs.getTe2(),cs.getTe1Start(),cs.getTe2Start(),cs.getTe1End(),cs.getTe2End()) (?)
 						}
 					}
 				}
@@ -1649,24 +1649,26 @@ public abstract class TrajectoryEnvelopeCoordinator {
 								CriticalSection cs = null; //the one that should be used for restoring the correct dependency
 								
 								//Heuristic: find the old critical section involving this pair of robots (the last starting before the critical point).
-								ArrayList<CriticalSection> checkList = otherRobotsSharingCSs.get((cs1.getTe1().getRobotID() == robotID) ? cs1.getTe2().getRobotID() : cs1.getTe1().getRobotID());
-								int lastBefore = -1;
-								boolean found = false;
-								for(CriticalSection cs2 : checkList) {
-									int start2 = (cs2.getTe1().getRobotID() == robotID) ? cs2.getTe1Start() : cs2.getTe2Start();
-									int end2 = (cs2.getTe1().getRobotID() == robotID) ? cs2.getTe1End() : cs2.getTe2End();
-									if (start1 == start2 && end1 == end2) {
-										cs = cs2;
-										found = true;
-										break;
+								int otherRobot = (cs1.getTe1().getRobotID() == robotID) ? cs1.getTe2().getRobotID() : cs1.getTe1().getRobotID();
+								if (otherRobotsSharingCSs.containsKey(otherRobot)) {
+									int lastBefore = -1;
+									boolean found = false;
+									for(CriticalSection cs2 : otherRobotsSharingCSs.get(otherRobot)) {
+										int start2 = (cs2.getTe1().getRobotID() == robotID) ? cs2.getTe1Start() : cs2.getTe2Start();
+										int end2 = (cs2.getTe1().getRobotID() == robotID) ? cs2.getTe1End() : cs2.getTe2End();
+										if (start1 == start2 && end1 == end2) {
+											cs = cs2;
+											found = true;
+											break;
+										}
+										if (start2 > lastBefore && start2 <= lastCriticalPoint) {
+											lastBefore = start2;
+											cs = cs2;
+										}
 									}
-									if (start2 > lastBefore && start2 <= lastCriticalPoint) {
-										lastBefore = start2;
-										cs = cs2;
-									}
+									if (!found && shared) metaCSPLogger.info("Shared CS: " + cs1 + " not found. Using heuristic.");
+									this.criticalSectionsToDeps.put(cs1, toRemove.get(cs));
 								}
-								if (!found && shared) metaCSPLogger.info("Shared CS: " + cs1 + " not found. Using heuristic.");
-								this.criticalSectionsToDeps.put(cs1, toRemove.get(cs));
 							}
 						}
 					}
@@ -2305,7 +2307,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 * @return The current {@link TrajectoryEnvelope} of a robot.
 	 */
 	public TrajectoryEnvelope getCurrentTrajectoryEnvelope(int robotID) {
-		return trackers.get(robotID).getTrajectoryEnvelope();
+		synchronized(trackers) {
+			return trackers.get(robotID).getTrajectoryEnvelope();
+		}
 	}
 
 	protected String[] getStatistics() {
