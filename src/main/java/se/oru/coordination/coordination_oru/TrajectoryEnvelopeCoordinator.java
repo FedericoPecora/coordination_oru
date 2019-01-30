@@ -654,7 +654,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 * @return A list of {@link Dependency} objects.
 	 */
 	public HashSet<Dependency> getCurrentDependencies() {
-		return this.currentDependencies;
+		synchronized(currentDependencies) {
+			return this.currentDependencies;
+		}
 	}
 
 	/*
@@ -861,7 +863,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			for (Dependency dep : depList) {
 				deadlockedRobots.add(dep.getWaitingRobotID());
 				deadlockedRobots.add(dep.getDrivingRobotID());
-				if (inParkingPose(dep.getDrivingRobotID()) || inParkingPose(dep.getWaitingRobotID())) {
+				RobotReport rrWaiting = getRobotReport(dep.getWaitingRobotID());
+				if (inParkingPose(dep.getDrivingRobotID()) || inParkingPose(dep.getWaitingRobotID())
+						|| rrWaiting.getPathIndex() < dep.getWaitingPoint()) { //let deadlock happen before re-planning
 					tryReplanning = false;
 					break;
 				}
@@ -1561,7 +1565,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					
 					if (cs.getTe1().equals(te) || cs.getTe2().equals(te)) {
 						//Keep the history while removing the deadlocking dependency
-						if (this.criticalSectionsToDeps.get(cs) != null) { //FIXME
+						if (this.criticalSectionsToDeps.get(cs) != null) {
 							Dependency dep = this.criticalSectionsToDeps.get(cs);
 							if (!(dep.getWaitingRobotID() == robotID && dep.getWaitingPoint() == lastCriticalPoint))
 								toRemove.put(cs, new Dependency(dep.getWaitingTrajectoryEnvelope(),dep.getDrivingTrajectoryEnvelope(),dep.getWaitingPoint(),dep.getReleasingPoint(),dep.getWaitingTracker(),dep.getDrivingTracker()));
