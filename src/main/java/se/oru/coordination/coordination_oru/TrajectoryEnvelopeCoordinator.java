@@ -1207,7 +1207,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							canStopRobot1 = false;
 							canStopRobot2 = true;
 						}
-						else if (cs.getTe2End() == 0 && cs.getTe1Start() == 0) {
+						else if (cs.getTe2End() == 0 && cs.getTe2Start() == 0) {
 							canStopRobot2 = false;
 							canStopRobot1 = true;
 						}
