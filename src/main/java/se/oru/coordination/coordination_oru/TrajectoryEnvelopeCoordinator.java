@@ -435,25 +435,24 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 * @param robotID The ID of the robot.
 	 * @param criticalPoint The index of the path pose beyond which the robot should not navigate.
 	 */
-	public void setCriticalPoint(final int robotID, final int criticalPoint) {
-			
-		final AbstractTrajectoryEnvelopeTracker tracker = trackers.get(robotID);
-	
-		//If the robot is not muted
-		if (tracker != null && !muted.contains(robotID)) {
-			long timeNow = Calendar.getInstance().getTimeInMillis();
-			
-			//UDP transmission -> we can assume the message to be lost FIXME
-			boolean retransmitt = false;//communicatedCPs.containsKey(tracker) && communicatedCPs.get(tracker).getFirst().equals(criticalPoint) && ((int)(timeNow-communicatedCPs.get(tracker).getSecond()) > 2*(MAX_TX_DELAY+CONTROL_PERIOD+tracker.getTrackingPeriodInMillis()));
-			
-			if (!communicatedCPs.containsKey(tracker) || !communicatedCPs.get(tracker).getFirst().equals(criticalPoint) || retransmitt ) {
-				communicatedCPs.put(tracker, new Pair<Integer,Long>(criticalPoint, timeNow));
-				externalCPCounters.replace(tracker,externalCPCounters.get(tracker)+1);
-				tracker.setCriticalPoint(criticalPoint, externalCPCounters.get(tracker)%Integer.MAX_VALUE);
+	public void setCriticalPoint(final int robotID, final int criticalPoint) {	
+		synchronized (trackers) {
+			//If the robot is not muted
+			if (trackers.get(robotID) != null && !muted.contains(robotID)) {
+				long timeNow = Calendar.getInstance().getTimeInMillis();
 				
-				//for statistics
-				totalMsgsSent.set(totalMsgsSent.get()+1); 
-				if (retransmitt) totalMsgsRetransmitted.set(totalMsgsRetransmitted.get()+1);
+				//UDP transmission -> we can assume the message to be lost FIXME
+				boolean retransmitt = false;//communicatedCPs.containsKey(tracker) && communicatedCPs.get(tracker).getFirst().equals(criticalPoint) && ((int)(timeNow-communicatedCPs.get(tracker).getSecond()) > 2*(MAX_TX_DELAY+CONTROL_PERIOD+tracker.getTrackingPeriodInMillis()));
+				
+				if (!communicatedCPs.containsKey(trackers.get(robotID)) || !(communicatedCPs.get(trackers.get(robotID)).getFirst() == criticalPoint) || retransmitt ) {
+					communicatedCPs.put(trackers.get(robotID), new Pair<Integer,Long>(criticalPoint, timeNow));
+					externalCPCounters.replace(trackers.get(robotID), externalCPCounters.get(trackers.get(robotID))+1);
+					trackers.get(robotID).setCriticalPoint(criticalPoint, externalCPCounters.get(trackers.get(robotID))%Integer.MAX_VALUE);
+					
+					//for statistics
+					totalMsgsSent.set(totalMsgsSent.get()+1); 
+					if (retransmitt) totalMsgsRetransmitted.set(totalMsgsRetransmitted.get()+1);
+				}
 			}
 		}
 	}
@@ -1315,10 +1314,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						
 						//Handle the particular case of starting from a critical section at the FIRST communication.
 						//The precedence computed set the parked robot as driving. Check if the constraint should be corrected due to a wake up.
-						if (!communicatedCPs.containsKey(drivingTracker) && communicatedCPs.containsKey(waitingTracker)) {
+						if (!communicatedCPs.containsKey(drivingTracker) && communicatedCPs.containsKey(waitingTracker) && 
+								(((drivingRobotID == cs.getTe1().getRobotID()) ? cs.getTe1End() : cs.getTe2End()) != 0)) {
 							int lastWaitingIndex = communicatedCPs.get(waitingTracker).getFirst();
-							if (lastWaitingIndex >= ((waitingRobotID == cs.getTe1().getRobotID()) ? cs.getTe1Start() : cs.getTe2Start())
-									&& (((drivingRobotID == cs.getTe1().getRobotID()) ? cs.getTe1End() : cs.getTe2End()) != 0)) {
+							if (lastWaitingIndex >= ((waitingRobotID == cs.getTe1().getRobotID()) ? cs.getTe1Start() : cs.getTe2Start())) {
 								//the driving robot cannot really escape. Let's create a deadlock.
 								createDeadlock = true;
 								TrajectoryEnvelope tmpWaitingTE = new TrajectoryEnvelope(drivingTE.getConstraintSolver(),drivingTE.getID(),drivingTE.getInternalConstraintSolvers(),drivingTE.getInternalVariables());
@@ -1331,6 +1330,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 								drivingTracker = trackers.get(drivingRobotID);
 							}
 						}
+
 						
 						//Compute waiting path index point for waiting robot
 						waitingPoint = createDeadlock ? 0 : getCriticalPoint(waitingRobotID, cs, drivingCurrentIndex);
