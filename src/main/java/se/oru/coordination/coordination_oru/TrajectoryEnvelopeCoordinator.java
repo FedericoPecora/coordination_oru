@@ -1796,7 +1796,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			}
 			for (CriticalSection cs : toRemove) {
 				this.allCriticalSections.remove(cs);
-				this.criticalSectionsToDeps.remove(cs);
+				//this.criticalSectionsToDeps.remove(cs);
 			}
 			for (CriticalSection cs : toAdd) {
 				this.allCriticalSections.add(cs);
@@ -1830,7 +1830,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		}
 		for (CriticalSection cs : toRemove) {
 			this.allCriticalSections.remove(cs);
-			this.criticalSectionsToDeps.remove(cs);
+			//this.criticalSectionsToDeps.remove(cs);
 		}
 
 	}
