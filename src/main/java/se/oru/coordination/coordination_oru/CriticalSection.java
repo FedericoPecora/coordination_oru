@@ -43,6 +43,8 @@ public class CriticalSection {
 		if (te1 == null || te2 == null) {
 			if (other.te1 != null && other.te2 != null)
 				return false;
+			else if (te1 == null) 
+				return te2 == ((other.te1 == null) ? other.te2 : other.te1);
 		} else if (!te1.equals(other.te1) || !te1.equals(other.te2))
 			return false; 
 		if (te1End != (te1.equals(other.te1) ? other.te1End : other.te2End))
@@ -52,13 +54,15 @@ public class CriticalSection {
 		return true;
 	}
 
-	@Override
+	@Override //FIXME
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
 		result = prime * result + ((te1 == null) ? 0 : te1.hashCode()) + ((te2 == null) ? 0 : te2.hashCode());
 		result = prime * result + te1End + te2End;
-		result = prime * result + te1Start+ te2Start;
+		result = prime * result + Math.abs(te1End - te2End);
+		result = prime * result + te1Start + te2Start;
+		result = prime * result + Math.abs(te1Start - te2Start);
 		return result;
 	}
 
