@@ -30,6 +30,37 @@ public class CriticalSection {
 		this.te1End = te1End;
 		this.te2End = te2End;
 	}
+	
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		CriticalSection other = (CriticalSection) obj;
+		if (te1 == null || te2 == null) {
+			if (other.te1 != null && other.te2 != null)
+				return false;
+		} else if (!te1.equals(other.te1) || !te1.equals(other.te2))
+			return false; 
+		if (te1End != (te1.equals(other.te1) ? other.te1End : other.te2End))
+			return false;
+		if (te1Start != (te1.equals(other.te1) ? other.te1Start : other.te2Start))
+			return false;
+		return true;
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((te1 == null) ? 0 : te1.hashCode()) + ((te2 == null) ? 0 : te2.hashCode());
+		result = prime * result + te1End + te2End;
+		result = prime * result + te1Start+ te2Start;
+		return result;
+	}
 
 	public TrajectoryEnvelope getTe1() {
 		return te1;
