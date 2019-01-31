@@ -45,7 +45,7 @@ public class CriticalSection {
 				return false;
 			else if (te1 == null) 
 				return te2 == ((other.te1 == null) ? other.te2 : other.te1);
-		} else if (!te1.equals(other.te1) || !te1.equals(other.te2))
+		} else if (!(te1.equals(other.te1) || te1.equals(other.te2)))
 			return false; 
 		if (te1End != (te1.equals(other.te1) ? other.te1End : other.te2End))
 			return false;
