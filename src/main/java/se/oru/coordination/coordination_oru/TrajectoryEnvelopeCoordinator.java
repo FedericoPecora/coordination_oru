@@ -446,7 +446,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			//UDP transmission -> we can assume the message to be lost FIXME
 			boolean retransmitt = false;//communicatedCPs.containsKey(tracker) && communicatedCPs.get(tracker).getFirst().equals(criticalPoint) && ((int)(timeNow-communicatedCPs.get(tracker).getSecond()) > 2*(MAX_TX_DELAY+CONTROL_PERIOD+tracker.getTrackingPeriodInMillis()));
 			
-			if (!communicatedCPs.containsKey(tracker) || !communicatedCPs.get(tracker).getFirst().equals(criticalPoint) || retransmitt ) {
+			if (!communicatedCPs.containsKey(tracker) || (communicatedCPs.containsKey(tracker) && !communicatedCPs.get(tracker).getFirst().equals(criticalPoint)) || retransmitt ) {
 				communicatedCPs.put(tracker, new Pair<Integer,Long>(criticalPoint, timeNow));
 				externalCPCounters.replace(tracker,externalCPCounters.get(tracker)+1);
 				tracker.setCriticalPoint(criticalPoint, externalCPCounters.get(tracker)%Integer.MAX_VALUE);
@@ -1574,40 +1574,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					lastCriticalPoint = communicatedCPs.get(trackers.get(robotID)).getFirst();
 				}
 				metaCSPLogger.info("(replacePath) Last critical point of Robot"+robotID+": "+lastCriticalPoint);
-				
-				HashMap<CriticalSection,Dependency> toRemove = new HashMap<CriticalSection,Dependency>();				
-				HashMap<Integer,ArrayList<CriticalSection>> otherRobotsSharingCSs = new HashMap<Integer,ArrayList<CriticalSection>>();
-				for (CriticalSection cs : this.criticalSectionsToDeps.keySet()) { //the set of critical sections related to the current paths (alive or obsolete),
-																				  //with the last decided precedence
-					
-					//if (cs.getTe1().equals(te) || cs.getTe2().equals(te)) {
-					if (cs.getTe1().getRobotID() == te.getRobotID() || cs.getTe2().getRobotID() == te.getRobotID()) {
-						//Keep the history while removing the deadlocking dependency
-						if (this.criticalSectionsToDeps.get(cs) != null) {
-							Dependency dep = this.criticalSectionsToDeps.get(cs);
-							if (!(dep.getWaitingRobotID() == robotID && dep.getWaitingPoint() == lastCriticalPoint))
-								toRemove.put(cs, new Dependency(dep.getWaitingTrajectoryEnvelope(),dep.getDrivingTrajectoryEnvelope(),dep.getWaitingPoint(),dep.getReleasingPoint(),dep.getWaitingTracker(),dep.getDrivingTracker()));
-							else
-								toRemove.put(cs, null);
-						}
-
-						//Store the shared critical sections (alive or not).
-						int otherRobotID = (cs.getTe1().getRobotID() == te.getRobotID()) ? cs.getTe2().getRobotID() : cs.getTe1().getRobotID();
-						//int otherRobotID = cs.getTe1().equals(te) ? cs.getTe2().getRobotID() : cs.getTe1().getRobotID();
-						if (!otherRobotsSharingCSs.containsKey(otherRobotID)) otherRobotsSharingCSs.put(otherRobotID, new ArrayList<CriticalSection>()); {
-							otherRobotsSharingCSs.get(otherRobotID).add(cs); //FIXME new CriticalSection(cs.getTe1(),cs.getTe2(),cs.getTe1Start(),cs.getTe2Start(),cs.getTe1End(),cs.getTe2End()) (?)
-						}
-					}
-				}
-
-				
-				//Remove CSs involving this robot, clearing the history 
-				//(the set of decisions that should be maintained will be added again in the following).
-				for (CriticalSection cs : toRemove.keySet()) {
-					this.allCriticalSections.remove(cs);
-					this.criticalSectionsToDeps.remove(cs);
-				}
-			
+							
 				//Make new envelope
 				TrajectoryEnvelope newTE = solver.createEnvelopeNoParking(robotID, newPath, "Driving", this.getFootprint(robotID));
 		
@@ -1643,6 +1610,39 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					viz.addEnvelope(newTE);
 				}
 				
+				HashMap<CriticalSection,Dependency> toRemove = new HashMap<CriticalSection,Dependency>();				
+				HashMap<Integer,ArrayList<CriticalSection>> otherRobotsSharingCSs = new HashMap<Integer,ArrayList<CriticalSection>>();
+				for (CriticalSection cs : this.criticalSectionsToDeps.keySet()) { //the set of critical sections related to the current paths (alive or obsolete),
+																				  //with the last decided precedence
+					
+					//if (cs.getTe1().equals(te) || cs.getTe2().equals(te)) {
+					if (cs.getTe1().getRobotID() == newTE.getRobotID() || cs.getTe2().getRobotID() == newTE.getRobotID()) {
+						//Keep the history while removing the deadlocking dependency
+						if (this.criticalSectionsToDeps.get(cs) != null) {
+							Dependency dep = this.criticalSectionsToDeps.get(cs);
+							if (dep.getWaitingRobotID() == robotID && dep.getWaitingPoint() == lastCriticalPoint)
+								toRemove.put(cs, null);
+							else
+								toRemove.put(cs, new Dependency(dep.getWaitingTrajectoryEnvelope(),newTE,dep.getWaitingPoint(),dep.getReleasingPoint(),dep.getWaitingTracker(),trackers.get(robotID)));
+						}
+
+						//Store the shared critical sections (alive or not).
+						int otherRobotID = (cs.getTe1().getRobotID() == te.getRobotID()) ? cs.getTe2().getRobotID() : cs.getTe1().getRobotID();
+						//int otherRobotID = cs.getTe1().equals(te) ? cs.getTe2().getRobotID() : cs.getTe1().getRobotID();
+						if (!otherRobotsSharingCSs.containsKey(otherRobotID)) otherRobotsSharingCSs.put(otherRobotID, new ArrayList<CriticalSection>()); {
+							otherRobotsSharingCSs.get(otherRobotID).add(cs); //FIXME new CriticalSection(cs.getTe1(),cs.getTe2(),cs.getTe1Start(),cs.getTe2Start(),cs.getTe1End(),cs.getTe2End()) (?)
+						}
+					}
+				}
+
+				
+				//Remove CSs involving this robot, clearing the history 
+				//(the set of decisions that should be maintained will be added again in the following).
+				for (CriticalSection cs : toRemove.keySet()) {
+					this.allCriticalSections.remove(cs);
+					this.criticalSectionsToDeps.remove(cs);
+				}
+				
 				//Add as if it were a new envelope, that way it will be accounted for in computeCriticalSections()
 				envelopesToTrack.add(newTE);
 				
@@ -1667,7 +1667,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							int start1 = (cs1.getTe1().getRobotID() == robotID) ? cs1.getTe1Start() : cs1.getTe2Start();
 							int end1 = (cs1.getTe1().getRobotID() == robotID) ? cs1.getTe1End() : cs1.getTe2End();
 							boolean shared = end1 <= lastCriticalPoint; //the critical section is shared between in the two paths. However, due to asymmetric merging is possible that there won't be an equal critical section.
-							boolean between = !shared && start1 <= lastCriticalPoint; //the critical section starts before and ends after the breaking point --> restore the right precedence constraint related to the old history. 
+							boolean between = !shared && (start1 <= lastCriticalPoint); //the critical section starts before and ends after the breaking point --> restore the right precedence constraint related to the old history. 
 							if (shared || between) {
 								CriticalSection cs = null; //the one that should be used for restoring the correct dependency
 								
@@ -1684,7 +1684,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 											found = true;
 											break;
 										}
-										if (start2 > lastBefore && start2 <= lastCriticalPoint && end2 != 0) {
+										if (start2 > lastBefore && start2 <= lastCriticalPoint && (end2 != 0)) {
 											lastBefore = start2;
 											cs = cs2;
 										}
@@ -1805,7 +1805,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			}
 			for (CriticalSection cs : toRemove) {
 				this.allCriticalSections.remove(cs);
-				this.criticalSectionsToDeps.remove(cs);
+//				this.criticalSectionsToDeps.remove(cs);
 			}
 			for (CriticalSection cs : toAdd) {
 				this.allCriticalSections.add(cs);
@@ -1839,7 +1839,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		}
 		for (CriticalSection cs : toRemove) {
 			this.allCriticalSections.remove(cs);
-			this.criticalSectionsToDeps.remove(cs);
+//			this.criticalSectionsToDeps.remove(cs);
 		}
 
 	}
