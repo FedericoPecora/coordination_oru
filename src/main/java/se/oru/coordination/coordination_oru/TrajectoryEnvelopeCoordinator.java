@@ -99,7 +99,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected FleetVisualization viz = null;
 	protected ArrayList<TrajectoryEnvelope> envelopesToTrack = new ArrayList<TrajectoryEnvelope>();
 	protected ArrayList<TrajectoryEnvelope> currentParkingEnvelopes = new ArrayList<TrajectoryEnvelope>();
-	protected ArrayList<CriticalSection> allCriticalSections = new ArrayList<CriticalSection>();
+	protected HashSet<CriticalSection> allCriticalSections = new HashSet<CriticalSection>();
 	protected HashMap<CriticalSection,Pair<Integer,Integer>> criticalSectionsToDeps = new HashMap<CriticalSection, Pair<Integer,Integer>>(); 
 	//  0 dependencies -> first assignment. There should NEVER happen: Both cannot stop.
 	//  1 dependency -> standard case.
@@ -686,9 +686,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 * @return A list of {@link Dependency} objects.
 	 */
 	public HashSet<Dependency> getCurrentDependencies() {
-		synchronized(currentDependencies) {
+		//synchronized(currentDependencies) {
 			return this.currentDependencies;
-		}
+		//}
 	}
 
 	/*
@@ -896,7 +896,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				deadlockedRobots.add(dep.getWaitingRobotID());
 				deadlockedRobots.add(dep.getDrivingRobotID());
 				RobotReport rrWaiting = getRobotReport(dep.getWaitingRobotID());
-				if (inParkingPose(dep.getDrivingRobotID()) || inParkingPose(dep.getWaitingRobotID())
+				if (inParkingPose(dep.getDrivingRobotID()) || inParkingPose(dep.getWaitingRobotID()) //) {
 						|| (dep.getWaitingPoint() == 0 ? (rrWaiting.getPathIndex() < 0) : (rrWaiting.getPathIndex() < dep.getWaitingPoint()-1))) {
 					tryReplanning = false;
 					break;
@@ -1407,7 +1407,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					}
 					
 					//Update the history of decisions for each critical section that has been updated
-					this.criticalSectionsToDeps.put(cs, waintingRobotIDandCP);
+					if (waintingRobotIDandCP != null)
+						this.criticalSectionsToDeps.put(cs, waintingRobotIDandCP);
 				}
 	
 				//Remove obsolete critical sections
@@ -1499,6 +1500,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					if (!envelopesToTrack.get(j).equals(drivingEnvelopes.get(i))) {
 						for (CriticalSection cs : getCriticalSections(drivingEnvelopes.get(i), envelopesToTrack.get(j))) {
 							this.allCriticalSections.add(cs);
+							//metaCSPLogger.info("computeCriticalSections(): add (1) " + cs);
 						}
 					}
 				}
@@ -1509,6 +1511,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				for (int j = i+1; j < envelopesToTrack.size(); j++) {
 					for (CriticalSection cs : getCriticalSections(envelopesToTrack.get(i), envelopesToTrack.get(j))) {
 						this.allCriticalSections.add(cs);
+						//metaCSPLogger.info("computeCriticalSections(): add (2) " + cs);
 					}
 				}
 			}
@@ -1519,6 +1522,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					if (drivingEnvelopes.get(i).getRobotID() != currentParkingEnvelopes.get(j).getRobotID()) {
 						for (CriticalSection cs : getCriticalSections(drivingEnvelopes.get(i), currentParkingEnvelopes.get(j))) {
 							this.allCriticalSections.add(cs);
+							//metaCSPLogger.info("computeCriticalSections(): add (3) " + cs);
 						}
 					}
 				}
@@ -1530,6 +1534,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					if (envelopesToTrack.get(i).getRobotID() != currentParkingEnvelopes.get(j).getRobotID()) {
 						for (CriticalSection cs : getCriticalSections(envelopesToTrack.get(i), currentParkingEnvelopes.get(j))) {
 							this.allCriticalSections.add(cs);
+							//metaCSPLogger.info("computeCriticalSections(): add (4) " + cs);
 						}
 					}
 				}
@@ -1640,12 +1645,12 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				synchronized(trackers) {
 					lastCriticalPoint = communicatedCPs.get(trackers.get(robotID)).getFirst();
 				}
-				//metaCSPLogger.info("(replacePath) Last critical point of Robot"+robotID+": "+lastCriticalPoint);
+				metaCSPLogger.info("(replacePath) Last critical point of Robot"+robotID+": "+lastCriticalPoint);
 				
 				HashMap<CriticalSection,Pair<Integer,Integer>> toRemove = new HashMap<CriticalSection,Pair<Integer,Integer>>();				
 				HashMap<Integer,ArrayList<CriticalSection>> otherRobotsSharingCSs = new HashMap<Integer,ArrayList<CriticalSection>>();
 				for (CriticalSection cs : this.criticalSectionsToDeps.keySet()) { //the set of critical sections related to the current paths (alive or obsolete),
-																				  //with the last decided precedence
+																				  //with the last decided precedence.
 					
 					//if (cs.getTe1().equals(te) || cs.getTe2().equals(te)) {
 					if (cs.getTe1().getRobotID() == te.getRobotID() || cs.getTe2().getRobotID() == te.getRobotID()) {
@@ -1665,6 +1670,11 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							otherRobotsSharingCSs.get(otherRobotID).add(cs); //FIXME new CriticalSection(cs.getTe1(),cs.getTe2(),cs.getTe1Start(),cs.getTe2Start(),cs.getTe1End(),cs.getTe2End()) (?)
 						}
 					}
+				}
+				
+				//clearing all the other critical sections that are till alive but that are not involved to dependences.
+				for (CriticalSection cs : this.allCriticalSections) {
+					if ((cs.getTe1().getRobotID() == te.getRobotID() || cs.getTe2().getRobotID() == te.getRobotID()) && !toRemove.containsKey(cs)) toRemove.put(cs, null);
 				}
 
 				
@@ -1730,41 +1740,43 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				//		--> if the CS ends before the breaking point then CS is equal in the old and in the new path.
 				//		--> else due to a merging (asymmetric path) the critical section is shared (starts before the breaking point, but ends after).
 							
-				if (lastCriticalPoint != 0) { //else the robot is starting from critical section --> clear everything
-					for (CriticalSection cs1 : this.allCriticalSections) {
-						if (cs1.getTe1().getRobotID() == robotID || cs1.getTe2().getRobotID() == robotID) {
-							int start1 = (cs1.getTe1().getRobotID() == robotID) ? cs1.getTe1Start() : cs1.getTe2Start();
-							int end1 = (cs1.getTe1().getRobotID() == robotID) ? cs1.getTe1End() : cs1.getTe2End();
-							boolean shared = end1 <= lastCriticalPoint; //the critical section is shared between in the two paths. However, due to asymmetric merging is possible that there won't be an equal critical section.
-							boolean between = !shared && (start1 <= lastCriticalPoint); //the critical section starts before and ends after the breaking point --> restore the right precedence constraint related to the old history. 
-							if (shared || between) {
-								CriticalSection cs = null; //the one that should be used for restoring the correct dependency
-								
-								//Heuristic: find the old critical section involving this pair of robots (the last - not the footprint - starting before the critical point).
-								int otherRobot = (cs1.getTe1().getRobotID() == robotID) ? cs1.getTe2().getRobotID() : cs1.getTe1().getRobotID();
-								if (otherRobotsSharingCSs.containsKey(otherRobot)) {
-									int lastBefore = -1;
-									boolean found = false;
-									for(CriticalSection cs2 : otherRobotsSharingCSs.get(otherRobot)) {
-										int start2 = (cs2.getTe1().getRobotID() == robotID) ? cs2.getTe1Start() : cs2.getTe2Start();
-										int end2 = (cs2.getTe1().getRobotID() == robotID) ? cs2.getTe1End() : cs2.getTe2End();
-										if (start1 == start2 && end1 == end2) {
-											cs = cs2;
-											found = true;
-											break;
-										}
-										if (start2 > lastBefore && start2 <= lastCriticalPoint && (end2 != 0)) {
-											lastBefore = start2;
-											cs = cs2;
-										}
-									}
-									if (!found && shared) metaCSPLogger.info("Shared CS: " + cs1 + " not found. Using heuristic.");
-									this.criticalSectionsToDeps.put(cs1, toRemove.get(cs));
-								}
-							}
-						}
-					}
-				}
+//				if (lastCriticalPoint != 0) { //else the robot is starting from critical section --> clear everything
+//					for (CriticalSection cs1 : this.allCriticalSections) {
+//						if (cs1.getTe1().getRobotID() == robotID || cs1.getTe2().getRobotID() == robotID) {
+//							int start1 = (cs1.getTe1().getRobotID() == robotID) ? cs1.getTe1Start() : cs1.getTe2Start();
+//							int end1 = (cs1.getTe1().getRobotID() == robotID) ? cs1.getTe1End() : cs1.getTe2End();
+//							boolean shared = end1 <= lastCriticalPoint; //the critical section is shared between in the two paths. However, due to asymmetric merging is possible that there won't be an equal critical section.
+//							boolean between = !shared && (start1 <= lastCriticalPoint); //the critical section starts before and ends after the breaking point --> restore the right precedence constraint related to the old history. 
+//							if (shared || between) {
+//								CriticalSection cs = null; //the one that should be used for restoring the correct dependency
+//								
+//								//Heuristic: find the old critical section involving this pair of robots (the last - not the footprint - starting before the critical point).
+//								int otherRobot = (cs1.getTe1().getRobotID() == robotID) ? cs1.getTe2().getRobotID() : cs1.getTe1().getRobotID();
+//								if (otherRobotsSharingCSs.containsKey(otherRobot)) {
+//									int lastBefore = -1;
+//									boolean found = false;
+//									for(CriticalSection cs2 : otherRobotsSharingCSs.get(otherRobot)) {
+//										int start2 = (cs2.getTe1().getRobotID() == robotID) ? cs2.getTe1Start() : cs2.getTe2Start();
+//										int end2 = (cs2.getTe1().getRobotID() == robotID) ? cs2.getTe1End() : cs2.getTe2End();
+//										if (start1 == start2 && end1 == end2) {
+//											cs = cs2;
+//											found = true;
+//											break;
+//										}
+//										if (start2 > lastBefore && start2 <= lastCriticalPoint && (end2 != 0)) {
+//											lastBefore = start2;
+//											cs = cs2;
+//										}
+//									}
+//									if (!found && shared) metaCSPLogger.info("Shared CS: " + cs1 + " not found. Using heuristic.");
+//									this.criticalSectionsToDeps.put(cs1, toRemove.get(cs));
+//								}
+//							}
+//						}
+//					}
+//				}
+//				else
+					communicatedCPs.remove(trackers.get(robotID)); //restart computing everything, since the robot has a new path
 								
 				envelopesToTrack.remove(newTE);
 				
@@ -1874,20 +1886,27 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			}
 			for (CriticalSection cs : toRemove) {
 				this.allCriticalSections.remove(cs);
+				//metaCSPLogger.info("filterCriticalSection(): remove (1) " + cs);
 //				this.criticalSectionsToDeps.remove(cs);
 			}
 			for (CriticalSection cs : toAdd) {
 				this.allCriticalSections.add(cs);
+				//metaCSPLogger.info("filterCriticalSection(): add (1) " + cs);
 				//this.criticalSectionsToDeps.put(cs, new HashSet<Dependency>());
 			}
 		}
 		while (!toAdd.isEmpty() || !toRemove.isEmpty());
 		
 		toRemove.clear();
-		for (int i = 0; i < this.allCriticalSections.size(); i++) {
-			for (int j = i+1; j < this.allCriticalSections.size(); j++) {
-				CriticalSection cs1 = this.allCriticalSections.get(i);
-				CriticalSection cs2 = this.allCriticalSections.get(j);
+		ArrayList<CriticalSection> allCriticalSectionsList = new ArrayList<CriticalSection>();
+		for (CriticalSection cs : this.allCriticalSections) {
+			allCriticalSectionsList.add(cs);
+		}
+		
+		for (int i = 0; i < allCriticalSectionsList.size(); i++) {
+			for (int j = i+1; j < allCriticalSectionsList.size(); j++) {
+				CriticalSection cs1 = allCriticalSectionsList.get(i);
+				CriticalSection cs2 = allCriticalSectionsList.get(j);
 				int start11 = cs1.getTe1Start();
 				int start12 = cs1.getTe2Start();
 				int start21 = cs2.getTe1Start();
@@ -1908,6 +1927,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		}
 		for (CriticalSection cs : toRemove) {
 			this.allCriticalSections.remove(cs);
+			//metaCSPLogger.info("filterCriticalSection(): remove (2) " + cs);
 //			this.criticalSectionsToDeps.remove(cs);
 		}
 
@@ -2179,6 +2199,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 								ArrayList<CriticalSection> toRemove = new ArrayList<CriticalSection>();
 								for (CriticalSection cs : criticalSectionsToDeps.keySet()) {
 									if (cs.getTe1().getRobotID() == myTE.getRobotID() || cs.getTe2().getRobotID() == myTE.getRobotID()) toRemove.add(cs);
+								}
+								for (CriticalSection cs : allCriticalSections) {
+									if ((cs.getTe1().getRobotID() == myTE.getRobotID() || cs.getTe2().getRobotID() == myTE.getRobotID()) && !toRemove.contains(cs))
+										toRemove.add(cs);
 								}
 								for (CriticalSection cs : toRemove) {
 									allCriticalSections.remove(cs);
