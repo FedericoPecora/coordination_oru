@@ -1373,24 +1373,24 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						//Compute waiting path index point for waiting robot
 						waitingPoint = getCriticalPoint(waitingRobotID, cs, drivingCurrentIndex);
 						if (wakeUpinCSRobot1 && communicatedCPs.containsKey(robotTracker2)) {
-							int newWaitingPoint = waitingPoint;
-							waitingPoint = Math.max(newWaitingPoint, communicatedCPs.get(robotTracker2).getFirst());
-							if (newWaitingPoint != waitingPoint) {
+							if (communicatedCPs.get(robotTracker2).getFirst() > waitingPoint) {
+								metaCSPLogger.info("Wake-up Robot"+robotReport1.getRobotID()+"; revising waiting point of Robot" + robotReport2.getRobotID() + ": " + waitingPoint + "-->" + communicatedCPs.get(robotTracker2).getFirst());
+								waitingPoint = communicatedCPs.get(robotTracker2).getFirst();
 								escapingCSToWaitingRobotIDandCP.put(cs, new Pair<Integer,Integer>(robotReport2.getRobotID(), waitingPoint));
-								metaCSPLogger.info("Wake-up Robot"+robotReport1.getRobotID()+"; revising waiting point: " + newWaitingPoint + "-->" + waitingPoint);
 							}
 						}
 						else if (wakeUpinCSRobot2 && communicatedCPs.containsKey(robotTracker1)) {
-							int newWaitingPoint = waitingPoint;
-							waitingPoint = Math.max(newWaitingPoint, communicatedCPs.get(robotTracker1).getFirst());
-							if (newWaitingPoint != waitingPoint) {
+							if (communicatedCPs.get(robotTracker1).getFirst() > waitingPoint) {
+								metaCSPLogger.info("Wake-up Robot"+robotReport2.getRobotID()+"; revising waiting point of Robot" + robotReport1.getRobotID() + ": " + waitingPoint + "-->" + communicatedCPs.get(robotTracker1).getFirst());
+								waitingPoint = communicatedCPs.get(robotTracker1).getFirst();
 								escapingCSToWaitingRobotIDandCP.put(cs, new Pair<Integer,Integer>(robotReport1.getRobotID(), waitingPoint));
-								metaCSPLogger.info("Wake-up Robot"+robotReport2.getRobotID()+"; revising waiting point: " + newWaitingPoint + "-->" + waitingPoint);
 							}
 						}
 						
-						if (escapingCSToWaitingRobotIDandCP.containsKey(cs) && escapingCSToWaitingRobotIDandCP.get(cs).getFirst() == waitingRobotID) 
+						if (escapingCSToWaitingRobotIDandCP.containsKey(cs) && escapingCSToWaitingRobotIDandCP.get(cs).getFirst() == waitingRobotID) {
 							waitingPoint = escapingCSToWaitingRobotIDandCP.get(cs).getSecond();
+							metaCSPLogger.info("Use escaping waiting point. Make Robot" + waitingRobotID + " stoping at " + waitingPoint + ".");
+						}
 						
 						if (waitingPoint >= 0) {		
 							//Make new dependency
