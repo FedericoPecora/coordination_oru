@@ -85,7 +85,7 @@ public class ParkingArrayNew {
 //		inactiveRobots.add(12);
 		
 		for (int i : robotIDs) {
-			tec.setForwardModel(i+1, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getTrackingPeriod()));
+			tec.setForwardModel(i, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getTrackingPeriod()));
 		}
 		
 		//Set a map
