@@ -91,7 +91,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected Thread collisionThread = null;
 	
 	protected AtomicInteger totalMsgsSent = new AtomicInteger(0);
-	protected AtomicInteger totalMsgsRetransmitted = new AtomicInteger(0);
+	protected AtomicInteger totalMsgsLost = new AtomicInteger(0);
+	protected AtomicInteger totalPacketsLost = new AtomicInteger(0);
+	protected AtomicInteger totalMsgsReTx = new AtomicInteger(0);
+	protected AtomicInteger criticalSectionCounter =  new AtomicInteger(0);
 																			
 	protected TrajectoryEnvelopeSolver solver = null;
 
@@ -428,13 +431,27 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		}
 	}
 
+	/** 
+	 * Just for statistic purposes (simulation).
+	 */
+	public void incrementLostMsgsCounter() {
+		this.totalMsgsLost.incrementAndGet();
+	}
+	
+	/** 
+	 * Just for statistic purposes (simulation).
+	 */
+	public void incrementLostPacketsCounter() {
+		this.totalPacketsLost.incrementAndGet();
+	}
+	
 	/**
 	 * Instruct a given robot's tracker that it may not navigate beyond a given 
 	 * path index.  
 	 * @param robotID The ID of the robot.
 	 * @param criticalPoint The index of the path pose beyond which the robot should not navigate.
 	 */
-	public void setCriticalPoint(int robotID, int criticalPoint) {
+	public void setCriticalPoint(int robotID, int criticalPoint, boolean retransmitt) {
 		
 		synchronized (trackers) {
 			AbstractTrajectoryEnvelopeTracker tracker = trackers.get(robotID);
@@ -442,10 +459,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			//If the robot is not muted
 			if (tracker != null && !muted.contains(robotID)) {
 				long timeNow = Calendar.getInstance().getTimeInMillis();
-				
-				//UDP transmission -> we can assume the message to be lost FIXME
-				boolean retransmitt = false;//communicatedCPs.containsKey(tracker) && communicatedCPs.get(tracker).getFirst().equals(criticalPoint) && ((int)(timeNow-communicatedCPs.get(tracker).getSecond()) > 2*(MAX_TX_DELAY+CONTROL_PERIOD+tracker.getTrackingPeriodInMillis()));
-				
+					
 				if (!communicatedCPs.containsKey(tracker) || (communicatedCPs.containsKey(tracker) && !(communicatedCPs.get(tracker).getFirst() == criticalPoint)) || retransmitt ) {
 					communicatedCPs.put(tracker, new Pair<Integer,Long>(criticalPoint, timeNow));
 					externalCPCounters.replace(tracker,externalCPCounters.get(tracker)+1);
@@ -453,7 +467,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					
 					//for statistics
 					totalMsgsSent.set(totalMsgsSent.get()+1); 
-					if (retransmitt) totalMsgsRetransmitted.set(totalMsgsRetransmitted.get()+1);
+					if (retransmitt) totalMsgsReTx.set(totalMsgsReTx.get()+1);
 					
 					//metaCSPLogger.info("Sent critical point " + criticalPoint + " to Robot" + robotID +".");
 				}
@@ -476,7 +490,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 //					
 //					//for statistics
 //					totalMsgsSent.set(totalMsgsSent.get()+1); 
-//					if (retransmitt) totalMsgsRetransmitted.set(totalMsgsRetransmitted.get()+1);
+//					if (retransmitt) totalMsgsReTx.set(totalMsgsReTx.get()+1);
 //					
 //					//metaCSPLogger.info("Send " + criticalPoint + " to Robot"+robotID+", tracker is " + ((trackers.get(robotID) instanceof TrajectoryEnvelopeTrackerDummy) ? "(P)" : "(D)"));
 //				}
@@ -702,7 +716,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	private int getCriticalPoint(int yieldingRobotID, CriticalSection cs, int leadingRobotCurrentPathIndex) {
 
 		//Number of additional path points robot 2 should stay behind robot 1
-		int TRAILING_PATH_POINTS = 3;
+		int TRAILING_PATH_POINTS = 5;
 
 		int leadingRobotStart = -1;
 		int yieldingRobotStart = -1;
@@ -895,7 +909,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				deadlockedRobots.add(dep.getDrivingRobotID());
 				RobotReport rrWaiting = getRobotReport(dep.getWaitingRobotID());
 				if (inParkingPose(dep.getDrivingRobotID()) || inParkingPose(dep.getWaitingRobotID())
-						|| (dep.getWaitingPoint() == 0 ? (rrWaiting.getPathIndex() < 0) : (rrWaiting.getPathIndex() < dep.getWaitingPoint()-1))) {
+						|| (dep.getWaitingPoint() == 0 ? (rrWaiting.getPathIndex() < 0) : (rrWaiting.getPathIndex() < dep.getWaitingPoint()-2))) {
 					tryReplanning = false;
 					break;
 				}
@@ -1131,11 +1145,17 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					}
 				}
 			}
+			
+			//Update the coordinator view
+			HashMap<Integer,RobotReport> currentReports = new HashMap<Integer,RobotReport>();
+			for (int robotID : robotIDs) {
+				currentReports.put(robotID,this.getRobotReport(robotID));
+			}
 	
 			//Make deps from critical sections, and remove obsolete critical sections
 			synchronized(allCriticalSections) {
 	
-				ArrayList<CriticalSection> toRemove = new ArrayList<CriticalSection>();
+				HashSet<CriticalSection> toRemove = new HashSet<CriticalSection>();
 				for (CriticalSection cs : this.allCriticalSections) {
 					
 					//Store the current set of order of traveling through this critical section (waiting robot ID and the related waiting point).
@@ -1151,9 +1171,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					TrajectoryEnvelope drivingTE = null;
 	
 					AbstractTrajectoryEnvelopeTracker robotTracker1 = trackers.get(cs.getTe1().getRobotID());
-					RobotReport robotReport1 = this.getRobotReport(cs.getTe1().getRobotID());
+					RobotReport robotReport1 = currentReports.get(cs.getTe1().getRobotID());
 					AbstractTrajectoryEnvelopeTracker robotTracker2 = trackers.get(cs.getTe2().getRobotID());
-					RobotReport robotReport2 = this.getRobotReport(cs.getTe2().getRobotID());
+					RobotReport robotReport2 = currentReports.get(cs.getTe2().getRobotID());
 	
 					//One or both robots past end of the critical section --> critical section is obsolete
 					//This condition is still valid in case of delays (new mission phases <--> new trackers)
@@ -1394,13 +1414,24 @@ public abstract class TrajectoryEnvelopeCoordinator {
 															  //Otherwise (CSs related to pieces of path that have been completely replaced), the history can be removed.
 					escapingCSToWaitingRobotIDandCP.remove(cs);
 				}
+				
+				//increment the counter
+				this.criticalSectionCounter.addAndGet(toRemove.size());
 			}
 	
 			synchronized(currentDependencies) {
 				currentDependencies.clear();
+				AbstractTrajectoryEnvelopeTracker tracker = null;
 				for (Integer robotID : robotIDs) {
+					synchronized (trackers) {
+						tracker = trackers.get(robotID);
+					}
+					int maxDelay = 2*(MAX_TX_DELAY+EFFECTIVE_CONTROL_PERIOD+tracker.getTrackingPeriodInMillis());
+					
 					if (!currentDeps.containsKey(robotID) && !artificialDependencies.containsKey(robotID)) {
-						setCriticalPoint(robotID, -1);
+						boolean retransmitt = communicatedCPs.containsKey(tracker) && communicatedCPs.get(tracker).getFirst() == -1 && currentReports.get(robotID).getCriticalPoint() != -1
+								&& ((int)(Calendar.getInstance().getTimeInMillis()-communicatedCPs.get(tracker).getSecond()) > maxDelay);
+						setCriticalPoint(robotID, -1, retransmitt);
 					}
 					else {
 						Dependency firstDep = null;
@@ -1419,7 +1450,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						else
 							depToSend = firstArtificialDep;
 						metaCSPLogger.finest("Set critical point " + depToSend.getWaitingPoint() + " to Robot" + depToSend.getWaitingRobotID() +".");
-						setCriticalPoint(depToSend.getWaitingRobotID(), depToSend.getWaitingPoint());
+						boolean retransmitt = communicatedCPs.containsKey(tracker) && communicatedCPs.get(tracker).getFirst() == depToSend.getWaitingPoint() && currentReports.get(robotID).getCriticalPoint() != depToSend.getWaitingPoint()
+								&& ((int)(Calendar.getInstance().getTimeInMillis()-communicatedCPs.get(tracker).getSecond()) > maxDelay);
+						setCriticalPoint(depToSend.getWaitingRobotID(), depToSend.getWaitingPoint(), retransmitt);
 						currentDependencies.add(depToSend);
 					}
 				}
@@ -1558,8 +1591,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 								}
 								
 								if ( robotReport1 != null && robotReport2 != null &&
-								(robotReport1.getPathIndex() < cs.getTe1End()) && (robotReport1.getPathIndex() > cs.getTe1Start()) && //robot1 is inside
-								(robotReport2.getPathIndex() < cs.getTe2End()) && (robotReport2.getPathIndex() > cs.getTe2Start())  	//robot2 is inside
+								(robotReport1.getPathIndex() <= cs.getTe1End()) && (robotReport1.getPathIndex() >= cs.getTe1Start()) && //robot1 is inside
+								(robotReport2.getPathIndex() <= cs.getTe2End()) && (robotReport2.getPathIndex() >= cs.getTe2Start())  	//robot2 is inside
 								) {
 									//place robot  in pose and get geometry
 									PoseSteering[] path1 = cs.getTe1().getTrajectory().getPoseSteering();
@@ -1613,9 +1646,15 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				if (viz != null) {
 					viz.removeEnvelope(te);
 				}
+				
+				//get last communicated waipoint;
+				int lastCriticalPoint = -1;
+				synchronized (trackers) {
+					lastCriticalPoint = communicatedCPs.get(trackers.get(robotID)).getFirst();
+				}
 								
 				//Remove CSs involving this robot, clearing the history.
-				cleanUpRobotCS(te.getRobotID());
+				cleanUpRobotCS(te.getRobotID(),lastCriticalPoint);
 							
 				//Make new envelope
 				TrajectoryEnvelope newTE = solver.createEnvelopeNoParking(robotID, newPath, "Driving", this.getFootprint(robotID));
@@ -1972,7 +2011,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		}
 	}
 	
-	protected void cleanUpRobotCS(int robotID) {
+	protected void cleanUpRobotCS(int robotID, int lastWaitingPoint) {
 		synchronized (allCriticalSections) {
 			metaCSPLogger.info("Cleaning up critical sections of Robot" + robotID);
 			ArrayList<CriticalSection> toRemove = new ArrayList<CriticalSection>();
@@ -1982,8 +2021,13 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			}
 			//... and all the critical sections which are currently alive.
 			for (CriticalSection cs : allCriticalSections) {
-				if ((cs.getTe1().getRobotID() == robotID || cs.getTe2().getRobotID() == robotID) && !toRemove.contains(cs))
+				if ((cs.getTe1().getRobotID() == robotID || cs.getTe2().getRobotID() == robotID) && !toRemove.contains(cs)) {
 					toRemove.add(cs);
+					//increment the counter
+					if (cs.getTe1().getRobotID() == robotID && (cs.getTe1Start() <= lastWaitingPoint || lastWaitingPoint == -1) || 
+							cs.getTe2().getRobotID() == robotID && (cs.getTe2Start() <= lastWaitingPoint || lastWaitingPoint == -1))
+							this.criticalSectionCounter.incrementAndGet();
+				}
 			}
 			for (CriticalSection cs : toRemove) {
 				criticalSectionsToDeps.remove(cs);
@@ -2102,7 +2146,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							}
 
 							//remove critical sections in which this robot is involved
-							cleanUpRobotCS(myTE.getRobotID());
+							cleanUpRobotCS(myTE.getRobotID(), -1);
 
 							//clean up the old parking envelope
 							cleanUp(startParking);
@@ -2368,20 +2412,17 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			int numberOfCollisions = 0;
 			synchronized (collisionsList) {
 				numberOfCollisions = collisionsList.size();		
+				ret.add(CONNECTOR_BRANCH + "Number of collisions ... " + numberOfCollisions + ".");
 				if (numberOfCollisions>0) {
-					ret.add(CONNECTOR_BRANCH + "Number of collisions ... " + numberOfCollisions + ".");
 					for (CollisionEvent ce : collisionsList) {
 						ret.add(CONNECTOR_BRANCH + " ....................... " + ce.toString());
 					}
 				}
-				else
-					ret.add(CONNECTOR_LEAF + "Number of collisions ... " + numberOfCollisions + ".");
 			}
 			
 		}
-		int totReTx = totalMsgsRetransmitted.get();
-		int totTx = totalMsgsSent.get();
-		ret.add(CONNECTOR_LEAF + "Transmission ..... reTx:" + totReTx + ", Tx: " + totTx + ", rate: " + ((totTx > 0) ? (float)totReTx/totTx : 0) + ".");
+		ret.add(CONNECTOR_BRANCH + "Total number of obsolete critical sections ... " + criticalSectionCounter.get() + ".");
+		ret.add(CONNECTOR_LEAF + "Total messages sent: ... " + totalMsgsSent.get() + ", lost: " + totalMsgsLost.get() + ", retransmitted: " + totalMsgsReTx.get() + ". Packets lost: " + totalPacketsLost.get() + ", number of replicas: " + numberOfReplicas + ".");
 		return ret.toArray(new String[ret.size()]);
 	}
 

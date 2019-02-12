@@ -330,9 +330,12 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 				{
 					boolean send = false;
 					int trial = 0;
-					while(!send && trial < numberOfReplicas) {
+					//while(!send && trial < numberOfReplicas) {
+					while(trial < numberOfReplicas) {
 						if (rand.nextDouble() < (1-NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS)) //the real one
 							send = true;
+						else
+							tec.incrementLostPacketsCounter();
 						trial++;
 					}
 					if (send) {
@@ -352,6 +355,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 						}
 					}
 					else {
+						tec.incrementLostMsgsCounter();
 						metaCSPLogger.info("PACKET to Robot" + te.getRobotID() + " LOST, criticalPoint: " + criticalPoint + ", externalCPCounter: " + externalCPCount);
 					}
 				}
