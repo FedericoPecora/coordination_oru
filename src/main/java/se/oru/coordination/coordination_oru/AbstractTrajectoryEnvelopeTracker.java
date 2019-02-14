@@ -164,7 +164,7 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 		if (
 				(externalCPCounter < this.externalCPCounter && externalCPCounter-this.externalCPCounter > Integer.MAX_VALUE/2.0) ||
 				(this.externalCPCounter > externalCPCounter && this.externalCPCounter-externalCPCounter < Integer.MAX_VALUE/2.0)) {
-			metaCSPLogger.finest("Ignored critical point " + criticalPointToSet + " related to counter " + externalCPCounter + " because counter is already at " + this.externalCPCounter + ".");
+			metaCSPLogger.info("Ignored critical point " + criticalPointToSet + " related to counter " + externalCPCounter + " because counter is already at " + this.externalCPCounter + ".");
 			return;
 		}
 		setCriticalPoint(criticalPointToSet);
