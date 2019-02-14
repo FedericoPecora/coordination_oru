@@ -68,16 +68,16 @@ public class RandomPathsInMap {
 		//Instantiate a trajectory envelope coordinator.
 		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(MAX_VEL,MAX_ACCEL);
 		tec.setUseInternalCriticalPoints(false);
-		tec.setYieldIfParking(false);
+		tec.setYieldIfParking(true);
 		tec.setBreakDeadlocksByReordering(false);
 		tec.setBreakDeadlocksByReplanning(true);
 		tec.setCheckCollisions(true);
 		//MetaCSPLogging.setLevel(TrajectoryEnvelopeCoordinator.class, Level.FINEST);
 		
 		//Setup the network parameters
-		NetworkConfiguration.setDelays(1000, 3000);
-		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0;
-		tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, NetworkConfiguration.getMaximumTxDelay(), 0.1);
+		NetworkConfiguration.setDelays(10, 2000);
+		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0.2;
+		tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, NetworkConfiguration.getMaximumTxDelay(), 1e-1);
 
 		Coordinate footprint1 = new Coordinate(-1.0,0.5);
 		Coordinate footprint2 = new Coordinate(1.0,0.5);
@@ -99,7 +99,7 @@ public class RandomPathsInMap {
 		viz.setInitialTransform(20.0, 9.0, 2.0);
 		tec.setVisualization(viz);
 		
-		Missions.loadLocationAndPathData("missions/icaps_locations_and_paths_1.txt");
+		Missions.loadLocationAndPathData("missions/icaps_locations_and_paths_4.txt");
 
 		//MetaCSPLogging.setLevel(tec.getClass().getSuperclass(), Level.FINEST);
 
@@ -124,7 +124,7 @@ public class RandomPathsInMap {
 			new File(outputDir).mkdir();
 		}
 				
-		int[] robotIDs = new int[] {1,2,3,4,5};
+		int[] robotIDs = new int[] {1,2,3,4,5,6,7,8,9,10};
 		int locationCounter = 0;
 		//int[] robotIDs = new int[] {1,2};
 		for (int robotID : robotIDs) {

@@ -1,6 +1,8 @@
 package se.oru.coordination.coordination_oru.tests.collisionChecking;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashSet;
@@ -26,11 +28,31 @@ import se.oru.coordination.coordination_oru.util.RVizVisualization;
 
 @DemoDescription(desc = "Coordination of robots vertically. Goals are continually posted to robots. Paths are computed by using the ReedsSheppCarPlanner.")
 public class ParkingArrayNew {
+	
+	private static void writeStat(String fileName, String stat) {
+        try {
+        	//Append to file
+            PrintWriter writer = new PrintWriter(new FileOutputStream(new File(fileName), true)); 
+            writer.println(stat);
+            writer.close();
+        }
+        catch (Exception e) { e.printStackTrace(); }
+	}
+	
+	private static void initStat(String fileName, String stat) {
+        try {
+        	//Append to file
+            PrintWriter writer = new PrintWriter(new FileOutputStream(new File(fileName), false)); 
+            writer.println(stat);
+            writer.close();
+        }
+        catch (Exception e) { e.printStackTrace(); }
+	}
 
 	public static void main(String[] args) throws InterruptedException {
 
-		double MAX_ACCEL = 3.0;
-		double MAX_VEL = 4.0;
+		double MAX_ACCEL = 2.0;
+		double MAX_VEL = 3.0;
 		
 		//Define the radius of the circle
 		int numSlots = 8;
@@ -57,7 +79,7 @@ public class ParkingArrayNew {
 		//MetaCSPLogging.setLevel(TrajectoryEnvelopeCoordinator.class, Level.FINEST);
 		
 		//Setup the network parameters
-		NetworkConfiguration.setDelays(1000, 3000);
+		NetworkConfiguration.setDelays(10, 2000);
 		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0;
 		tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, NetworkConfiguration.getMaximumTxDelay(), 0.1);
 				
@@ -99,8 +121,13 @@ public class ParkingArrayNew {
 		//viz.setInitialTransform(60, 33.58, 13.49);
 		tec.setVisualization(viz);
 		
+		final String statFilename = System.getProperty("user.home")+File.separator+"stats.txt";
+		String header = "#";
+		for (int robotID : robotIDs) header += (robotID + "\t");
+		initStat(statFilename, header);
+		
 		//Determine locations around the circle, with random orientation
-		long seed = 123123;// Calendar.getInstance().getTimeInMillis();
+		long seed = 123123;//Calendar.getInstance().getTimeInMillis();
 		System.out.println("Seed random generator: " + seed);
 		Random rand = new Random(seed);
 		ArrayList<String> locationsUp = new ArrayList<String>();
@@ -167,6 +194,7 @@ public class ParkingArrayNew {
 			assigned.add(new Pair<String,String>(initialLocation,goalLocation));
 			if (!inactiveRobots.contains(robotID)) {
 			Mission mFW = new Mission(robotID, Missions.getShortestPath(initialLocation, goalLocation));
+			System.out.println("Robot" + robotID+ ", start: " + initialLocation + " ,goal: " + goalLocation);
 			Mission mBW = new Mission(robotID, Missions.getShortestPath(goalLocation, initialLocation));
 			Missions.enqueueMission(mFW);
 			Missions.enqueueMission(mBW);
@@ -177,18 +205,47 @@ public class ParkingArrayNew {
 			if (!inactiveRobots.contains(robotID)) {
 				Thread t = new Thread() {
 					public void run() {
-						while (true) {
+//						while (true) {
+//							synchronized(tec.getSolver()) {
+//								if (tec.isFree(robotID)) {
+//									Mission m = Missions.dequeueMission(robotID);
+//									tec.addMissions(m);
+//									tec.computeCriticalSectionsAndStartTrackingAddedMission();
+//									Missions.enqueueMission(m);
+//								}
+//							}
+//							try { Thread.sleep(2000); }
+//							catch (InterruptedException e) { e.printStackTrace(); }
+//						}
+						boolean firstTime = true;
+						int totalIterations = 20;
+						if (robotID%2 == 0) totalIterations = 19;
+						long startTime = Calendar.getInstance().getTimeInMillis();
+						while (true && totalIterations > 0) {
 							synchronized(tec.getSolver()) {
 								if (tec.isFree(robotID)) {
+									if (!firstTime) {
+										long elapsed = Calendar.getInstance().getTimeInMillis()-startTime;
+										String stat = "";
+										for (int i = 1; i < robotID; i++) stat += "\t";
+										stat += elapsed;
+										writeStat(statFilename, stat);
+									}
+									startTime = Calendar.getInstance().getTimeInMillis();
+									firstTime = false;
 									Mission m = Missions.dequeueMission(robotID);
 									tec.addMissions(m);
 									tec.computeCriticalSectionsAndStartTrackingAddedMission();
 									Missions.enqueueMission(m);
+									totalIterations--;
 								}
 							}
-							try { Thread.sleep(2000); }
+							//Sleep for a little
+							try { Thread.sleep(4000); }
 							catch (InterruptedException e) { e.printStackTrace(); }
 						}
+						System.out.println("Robot" + robotID + " is done!");
+						
 					}
 				};
 				t.start();
