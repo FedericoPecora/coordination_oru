@@ -216,7 +216,7 @@ public class RandomPathsInMap {
 							}
 						}
 						//Sleep for a little (2 sec)
-						try { Thread.sleep(100); }
+						try { Thread.sleep(2000); }
 						catch (InterruptedException e) { e.printStackTrace(); }
 					}
 					System.out.println("Robot" + robotID + " is done!");
