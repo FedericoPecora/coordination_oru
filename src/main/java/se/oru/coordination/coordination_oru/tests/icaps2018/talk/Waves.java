@@ -1,7 +1,11 @@
 package se.oru.coordination.coordination_oru.tests.icaps2018.talk;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.PrintWriter;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Comparator;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
@@ -23,6 +27,39 @@ import se.oru.coordination.coordination_oru.util.RVizVisualization;
 
 @DemoDescription(desc = "Coordination of robots along sine wave paths (obtained without the ReedsSheppCarPlanner) in opposing directions.")
 public class Waves {
+	
+	private static boolean deleteDir(File dir) {
+	    if (dir.isDirectory()) {
+	        String[] children = dir.list();
+	        for (int i=0; i<children.length; i++) {
+	            boolean success = deleteDir(new File(dir, children[i]));
+	            if (!success) {
+	                return false;
+	            }
+	        }
+	    }
+	    return dir.delete();
+	}
+
+	private static void writeStat(String fileName, String stat) {
+        try {
+        	//Append to file
+            PrintWriter writer = new PrintWriter(new FileOutputStream(new File(fileName), true)); 
+            writer.println(stat);
+            writer.close();
+        }
+        catch (Exception e) { e.printStackTrace(); }
+	}
+	
+	private static void initStat(String fileName, String stat) {
+        try {
+        	//Append to file
+            PrintWriter writer = new PrintWriter(new FileOutputStream(new File(fileName), false)); 
+            writer.println(stat);
+            writer.close();
+        }
+        catch (Exception e) { e.printStackTrace(); }
+	}
 
 	private static PoseSteering[] getSinePath(double period, double magnitude, Pose from, Pose to) {
 		if (from.getY() != to.getY()) throw new Error("Can only do straight sine waves ;)");
@@ -54,8 +91,8 @@ public class Waves {
 	
 	public static void main(String[] args) throws InterruptedException {
 
-		double MAX_ACCEL = 3.0;
-		double MAX_VEL = 14.0;
+		double MAX_ACCEL = 4.0;
+		double MAX_VEL = 3.0;
 		final int numRobots = (args != null && args.length > 0) ? Integer.parseInt(args[0]) : 10;
 		//Instantiate a trajectory envelope coordinator.
 		//The TrajectoryEnvelopeCoordinatorSimulation implementation provides
@@ -80,8 +117,8 @@ public class Waves {
 		});
 		tec.setCheckCollisions(true);
 		
-		NetworkConfiguration.setDelays(50, 3000);
-		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0.5;
+		NetworkConfiguration.setDelays(10, 2000);
+		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0.2;
 		tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, NetworkConfiguration.getMaximumTxDelay(), 0.1);
 
 
@@ -115,12 +152,12 @@ public class Waves {
 		
 		for (int index = 0; index < robotIDs.length; index++) {
 			int robotID = robotIDs[index];
-			double period = 18;
-			double mag = deltaY;
+			double period = 10;
+			double mag = 2*deltaY;
 
 			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getTrackingPeriod()));
 			Pose from = new Pose(0.0,index*deltaY,0.0);
-			Pose to = new Pose(5*period,index*deltaY,0.0);
+			Pose to = new Pose(3*period,index*deltaY,0.0);
 
 			if (index%2 != 0) mag*=(-1);
 			PoseSteering[] robotPath = getSinePath(period, mag, from, to);
@@ -139,21 +176,67 @@ public class Waves {
 
 		System.out.println("Added missions " + Missions.getMissions());
 		
-		while (true) {
-			ArrayList<Mission> missionsToAdd = new ArrayList<Mission>();
-			for (int robotID : robotIDs) {
-				if (tec.isFree(robotID)) {
-					Mission m = Missions.dequeueMission(robotID);
-					missionsToAdd.add(m);
-					Missions.enqueueMission(m);
+//		while (true) {
+//			ArrayList<Mission> missionsToAdd = new ArrayList<Mission>();
+//			for (int robotID : robotIDs) {
+//				if (tec.isFree(robotID)) {
+//					Mission m = Missions.dequeueMission(robotID);
+//					missionsToAdd.add(m);
+//					Missions.enqueueMission(m);
+//				}
+//			}
+//			tec.addMissions(missionsToAdd.toArray(new Mission[missionsToAdd.size()]));
+//			tec.computeCriticalSections();
+//			tec.startTrackingAddedMissions();
+//			Thread.sleep(1000);
+//		}
+		
+		final String statFilename = System.getProperty("user.home")+File.separator+"stats.txt";
+		
+		//Start a mission dispatching thread for each robot, which will run forever
+		for (int i = 0; i < robotIDs.length; i++) {
+			final int robotID = robotIDs[i];
+			//For each robot, create a thread that dispatches the "next" mission when the robot is free
+			
+			Thread t = new Thread() {
+				@Override
+				public void run() {
+					boolean firstTime = true;
+					int sequenceNumber = 0;
+					int totalIterations = 20;
+					if (robotID%2 == 0) totalIterations = 19;
+					long startTime = Calendar.getInstance().getTimeInMillis();
+					while (true && totalIterations > 0) {
+						synchronized(tec.getSolver()) {
+							if (tec.isFree(robotID)) {
+								if (!firstTime) {
+									long elapsed = Calendar.getInstance().getTimeInMillis()-startTime;
+									String stat = "";
+									for (int i = 1; i < robotID; i++) stat += "\t";
+									stat += elapsed;
+									writeStat(statFilename, stat);
+								}
+								startTime = Calendar.getInstance().getTimeInMillis();
+								firstTime = false;
+								Mission m = Missions.getMission(robotID,sequenceNumber);
+								tec.addMissions(m);
+								tec.computeCriticalSections();
+								tec.startTrackingAddedMissions();
+								sequenceNumber = (sequenceNumber+1)%Missions.getMissions(robotID).size();
+								totalIterations--;
+							}
+						}
+						//Sleep for a little (2 sec)
+						try { Thread.sleep(100); }
+						catch (InterruptedException e) { e.printStackTrace(); }
+					}
+					System.out.println("Robot" + robotID + " is done!");
 				}
-			}
-			tec.addMissions(missionsToAdd.toArray(new Mission[missionsToAdd.size()]));
-			tec.computeCriticalSections();
-			//tec.updateDependencies();
-			tec.startTrackingAddedMissions();
-			Thread.sleep(1000);
+			};
+			//Start the thread!
+			t.start();
 		}
+
 	}
 
 }
