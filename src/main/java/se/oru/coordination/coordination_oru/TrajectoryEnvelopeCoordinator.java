@@ -457,7 +457,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			AbstractTrajectoryEnvelopeTracker tracker = trackers.get(robotID);
 		
 			//If the robot is not muted
-			if (tracker != null && !muted.contains(robotID)) {
+			if (tracker != null && !muted.contains(robotID) && !(tracker instanceof TrajectoryEnvelopeTrackerDummy)) {
 				long timeNow = Calendar.getInstance().getTimeInMillis();
 					
 				if (!communicatedCPs.containsKey(tracker) || (communicatedCPs.containsKey(tracker) && !(communicatedCPs.get(tracker).getFirst() == criticalPoint)) || retransmitt ) {

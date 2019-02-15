@@ -88,10 +88,13 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 	 * @param te The new {@link TrajectoryEnvelope} of this tracker.
 	 */
 	public void updateTrajectoryEnvelope(TrajectoryEnvelope te) {
-		this.te = te;
-		this.cb.updateTrajectoryEnvelope(te);
-		this.traj = te.getTrajectory();
-		this.onTrajectoryEnvelopeUpdate(te);
+		synchronized(solver) {
+			metaCSPLogger.info("Updating trajectory Robot" +this.te.getRobotID()+". TEID: " + this.te.getID() + "--> TEID: " + te.getID()+ ".");
+			this.te = te;
+			this.cb.updateTrajectoryEnvelope(te);
+			this.traj = te.getTrajectory();
+			this.onTrajectoryEnvelopeUpdate(te);
+		}
 	}
 	
 	@Deprecated
