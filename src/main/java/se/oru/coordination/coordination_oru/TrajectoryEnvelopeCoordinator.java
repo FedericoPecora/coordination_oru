@@ -213,7 +213,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		this.packetLossProbability = packetLossProbability;
 		this.MAX_TX_DELAY = MAX_TX_DELAY;
 		this.maxFaultsProbability = maxFaultsProbability;	
-		this.numberOfReplicas =  (packetLossProbability > 0 && maxFaultsProbability > 0) ? (int)Math.ceil(Math.log(maxFaultsProbability)/Math.log(packetLossProbability)) : 1;
+		this.numberOfReplicas =  (packetLossProbability > 0 && maxFaultsProbability > 0) ? (int)Math.ceil(Math.log(1-Math.sqrt(1-maxFaultsProbability))/Math.log(packetLossProbability)) : 1;
 		metaCSPLogger.info("Number of replicas for each send: " + numberOfReplicas);
 	}
 	
