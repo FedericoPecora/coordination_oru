@@ -51,8 +51,8 @@ public class ParkingArrayNew {
 
 	public static void main(String[] args) throws InterruptedException {
 
-		double MAX_ACCEL = 2.0;
-		double MAX_VEL = 3.0;
+		double MAX_ACCEL = 1.0;
+		double MAX_VEL = 2.5;
 		
 		//Define the radius of the circle
 		int numSlots = 8;
@@ -103,8 +103,8 @@ public class ParkingArrayNew {
 //		inactiveRobots.add(8);
 //		inactiveRobots.add(9);
 //		inactiveRobots.add(10);
-//		inactiveRobots.add(11);
-//		inactiveRobots.add(12);
+		inactiveRobots.add(11);
+		inactiveRobots.add(12);
 		
 		for (int i : robotIDs) {
 			tec.setForwardModel(i, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getTrackingPeriod()));
@@ -220,10 +220,18 @@ public class ParkingArrayNew {
 						boolean firstTime = true;
 						int totalIterations = 20;
 						if (robotID%2 == 0) totalIterations = 19;
+						boolean isFree = false;
 						long startTime = Calendar.getInstance().getTimeInMillis();
 						while (true && totalIterations > 0) {
 							synchronized(tec.getSolver()) {
-								if (tec.isFree(robotID)) {
+								if (tec.isFree(robotID)) isFree = true;
+							}
+							//Sleep for a little
+							try { Thread.sleep(2000); }
+							catch (InterruptedException e) { e.printStackTrace(); }
+							if (isFree) {
+								isFree = false;
+								synchronized(tec.getSolver()) {
 									if (!firstTime) {
 										long elapsed = Calendar.getInstance().getTimeInMillis()-startTime;
 										String stat = "";
@@ -241,7 +249,7 @@ public class ParkingArrayNew {
 								}
 							}
 							//Sleep for a little
-							try { Thread.sleep(4000); }
+							try { Thread.sleep(2000); }
 							catch (InterruptedException e) { e.printStackTrace(); }
 						}
 						System.out.println("Robot" + robotID + " is done!");

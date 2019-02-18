@@ -716,7 +716,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	private int getCriticalPoint(int yieldingRobotID, CriticalSection cs, int leadingRobotCurrentPathIndex) {
 
 		//Number of additional path points robot 2 should stay behind robot 1
-		int TRAILING_PATH_POINTS = 5;
+		int TRAILING_PATH_POINTS = 3;
 
 		int leadingRobotStart = -1;
 		int yieldingRobotStart = -1;
