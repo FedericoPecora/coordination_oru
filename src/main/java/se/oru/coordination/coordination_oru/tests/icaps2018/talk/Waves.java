@@ -20,6 +20,7 @@ import se.oru.coordination.coordination_oru.NetworkConfiguration;
 import se.oru.coordination.coordination_oru.RobotAtCriticalSection;
 import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
+import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
 import se.oru.coordination.coordination_oru.util.BrowserVisualization;
 import se.oru.coordination.coordination_oru.util.Missions;
@@ -91,8 +92,8 @@ public class Waves {
 	
 	public static void main(String[] args) throws InterruptedException {
 
-		double MAX_ACCEL = 4.0;
-		double MAX_VEL = 3.0;
+		double MAX_ACCEL = 3.0;
+		double MAX_VEL = 4.0;
 		final int numRobots = (args != null && args.length > 0) ? Integer.parseInt(args[0]) : 10;
 		//Instantiate a trajectory envelope coordinator.
 		//The TrajectoryEnvelopeCoordinatorSimulation implementation provides
@@ -117,10 +118,10 @@ public class Waves {
 		});
 		tec.setCheckCollisions(true);
 		
-		NetworkConfiguration.setDelays(10, 2000);
-		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0.2;
-		tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, NetworkConfiguration.getMaximumTxDelay(), 0.1);
-
+		NetworkConfiguration.setDelays(2000, 2000);
+		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0;
+		//tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, NetworkConfiguration.getMaximumTxDelay(), 0);
+		tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, 0, 0);
 
 		Coordinate footprint1 = new Coordinate(-0.5,0.5);
 		Coordinate footprint2 = new Coordinate(0.5,0.5);
@@ -133,7 +134,19 @@ public class Waves {
 		
 		tec.setUseInternalCriticalPoints(false);
 		tec.setYieldIfParking(false);
-		tec.setBreakDeadlocks(false);
+		tec.setBreakDeadlocksByReordering(false);
+		tec.setBreakDeadlocksByReplanning(true);
+		
+		//Set up motion planner
+		String yamlFile = "maps/map-empty.yaml";
+		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
+		rsp.setMapFilename("maps"+File.separator+Missions.getProperty("image", yamlFile));
+		double res = Double.parseDouble(Missions.getProperty("resolution", yamlFile));
+		rsp.setMapResolution(res);
+		rsp.setRadius(0.1);
+		rsp.setFootprint(tec.getDefaultFootprint());
+		rsp.setTurningRadius(4.0);
+		rsp.setDistanceBetweenPathPoints(0.3);
 
 		//MetaCSPLogging.setLevel(tec.getClass().getSuperclass(), Level.FINEST);
 
@@ -144,10 +157,11 @@ public class Waves {
 		
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
-		RVizVisualization viz = new RVizVisualization();
+		//RVizVisualization viz = new RVizVisualization();
 		//RVizVisualization.writeRVizConfigFile(robotIDs);
-		//BrowserVisualization viz = new BrowserVisualization();
-		//viz.setInitialTransform(19.64, 3.18, 16.49);
+		BrowserVisualization viz = new BrowserVisualization();
+		viz.setInitialTransform(20.0, 45, 20);
+		viz.setMap(yamlFile);
 		tec.setVisualization(viz);
 		
 		for (int index = 0; index < robotIDs.length; index++) {
@@ -202,20 +216,29 @@ public class Waves {
 				@Override
 				public void run() {
 					boolean firstTime = true;
+					boolean isFree = false;
 					int sequenceNumber = 0;
-					int totalIterations = 20;
-					if (robotID%2 == 0) totalIterations = 19;
+					int totalIterations = 101;
+					//if (robotID%2 == 0) totalIterations = 19;
 					long startTime = Calendar.getInstance().getTimeInMillis();
 					while (true && totalIterations > 0) {
 						synchronized(tec.getSolver()) {
-							if (tec.isFree(robotID)) {
-								if (!firstTime) {
-									long elapsed = Calendar.getInstance().getTimeInMillis()-startTime;
-									String stat = "";
-									for (int i = 1; i < robotID; i++) stat += "\t";
-									stat += elapsed;
-									writeStat(statFilename, stat);
-								}
+							if (tec.isFree(robotID)) isFree = true;
+						}
+						//Sleep for a little
+						try { Thread.sleep(2000); }
+						catch (InterruptedException e) { e.printStackTrace(); }
+						
+						if (isFree) {
+							isFree = false;
+							synchronized(tec.getSolver()) {
+//								if (!firstTime) {
+//									long elapsed = Calendar.getInstance().getTimeInMillis()-startTime;
+//									String stat = "";
+//									for (int i = 1; i < robotID; i++) stat += "\t";
+//									stat += elapsed;
+//									writeStat(statFilename, stat);
+//								}
 								startTime = Calendar.getInstance().getTimeInMillis();
 								firstTime = false;
 								Mission m = Missions.getMission(robotID,sequenceNumber);
