@@ -218,7 +218,7 @@ public class Waves {
 					boolean firstTime = true;
 					boolean isFree = false;
 					int sequenceNumber = 0;
-					int totalIterations = 101;
+					int totalIterations = 21;
 					//if (robotID%2 == 0) totalIterations = 19;
 					long startTime = Calendar.getInstance().getTimeInMillis();
 					while (true && totalIterations > 0) {
@@ -232,13 +232,13 @@ public class Waves {
 						if (isFree) {
 							isFree = false;
 							synchronized(tec.getSolver()) {
-//								if (!firstTime) {
-//									long elapsed = Calendar.getInstance().getTimeInMillis()-startTime;
-//									String stat = "";
-//									for (int i = 1; i < robotID; i++) stat += "\t";
-//									stat += elapsed;
-//									writeStat(statFilename, stat);
-//								}
+								if (!firstTime) {
+									long elapsed = Calendar.getInstance().getTimeInMillis()-startTime;
+									String stat = "";
+									for (int i = 1; i < robotID; i++) stat += "\t";
+									stat += elapsed;
+									writeStat(statFilename, stat);
+								}
 								startTime = Calendar.getInstance().getTimeInMillis();
 								firstTime = false;
 								Mission m = Missions.getMission(robotID,sequenceNumber);
