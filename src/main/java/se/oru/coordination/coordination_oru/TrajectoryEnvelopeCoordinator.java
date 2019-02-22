@@ -1059,8 +1059,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		if (dep2.getWaitingPoint() <= dep1.getReleasingPoint()) return true;
 		return false;
 	}
-	//private boolean getOrderMaster(AbstractTrajectoryEnvelopeTracker robotTracker1, RobotReport robotReport1, AbstractTrajectoryEnvelopeTracker robotTracker2, RobotReport robotReport2, CriticalSection cs) {
-	private boolean getOrder(AbstractTrajectoryEnvelopeTracker robotTracker1, RobotReport robotReport1, AbstractTrajectoryEnvelopeTracker robotTracker2, RobotReport robotReport2, CriticalSection cs) {
+	
+	
+	private boolean getOrderMaster(AbstractTrajectoryEnvelopeTracker robotTracker1, RobotReport robotReport1, AbstractTrajectoryEnvelopeTracker robotTracker2, RobotReport robotReport2, CriticalSection cs) {
+	//private boolean getOrder(AbstractTrajectoryEnvelopeTracker robotTracker1, RobotReport robotReport1, AbstractTrajectoryEnvelopeTracker robotTracker2, RobotReport robotReport2, CriticalSection cs) {
 
 		//Check if the robots can stop while changing the current order of accessing the critical section.
 		ForwardModel fm1 = getForwardModel(robotTracker1.getTrajectoryEnvelope().getRobotID());
@@ -1118,8 +1120,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 	//returns true if robot1 should go before robot2
 	//returns false if robot2 should go before robot1
-//	private boolean getOrder(AbstractTrajectoryEnvelopeTracker robotTracker1, RobotReport robotReport1, AbstractTrajectoryEnvelopeTracker robotTracker2, RobotReport robotReport2, CriticalSection cs) {
-	private boolean getOrderUDPdev(AbstractTrajectoryEnvelopeTracker robotTracker1, RobotReport robotReport1, AbstractTrajectoryEnvelopeTracker robotTracker2, RobotReport robotReport2, CriticalSection cs) {
+//	private boolean getOrderUDPdev(AbstractTrajectoryEnvelopeTracker robotTracker1, RobotReport robotReport1, AbstractTrajectoryEnvelopeTracker robotTracker2, RobotReport robotReport2, CriticalSection cs) {
+	private boolean getOrder(AbstractTrajectoryEnvelopeTracker robotTracker1, RobotReport robotReport1, AbstractTrajectoryEnvelopeTracker robotTracker2, RobotReport robotReport2, CriticalSection cs) {
 
 		//If both can stop before entering, use ordering function (or closest if no ordering function)
 		metaCSPLogger.finest("Both robots can stop at " + cs);
@@ -1170,8 +1172,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	}
 
 	//Update and set the critical points
-	//private void updateDependenciesMaster() {
-	private void updateDependencies() {
+	private void updateDependenciesMaster() {
+	//private void updateDependencies() {
 
 		//System.out.println("Caller of updateDependencies(): " + Thread.currentThread().getStackTrace()[2]);
 		synchronized(solver) {
@@ -1454,8 +1456,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		}
 	}
 	
-	private void updateDependenciesUDPdev() {
-	//private void updateDependencies() {
+	//private void updateDependenciesUDPdev() {
+	private void updateDependencies() {
 
 		//System.out.println("Caller of updateDependencies(): " + Thread.currentThread().getStackTrace()[2]);
 		synchronized(solver) {
