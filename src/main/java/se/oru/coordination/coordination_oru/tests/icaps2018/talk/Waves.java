@@ -93,7 +93,7 @@ public class Waves {
 	public static void main(String[] args) throws InterruptedException {
 
 		double MAX_ACCEL = 3.0;
-		double MAX_VEL = 4.0;
+		double MAX_VEL = 2.5;
 		final int numRobots = (args != null && args.length > 0) ? Integer.parseInt(args[0]) : 10;
 		//Instantiate a trajectory envelope coordinator.
 		//The TrajectoryEnvelopeCoordinatorSimulation implementation provides
@@ -118,10 +118,10 @@ public class Waves {
 		});
 		tec.setCheckCollisions(true);
 		
-		NetworkConfiguration.setDelays(2000, 2000);
+		NetworkConfiguration.setDelays(100, 100);
 		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0;
-		//tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, NetworkConfiguration.getMaximumTxDelay(), 0);
-		tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, 0, 0);
+		tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, NetworkConfiguration.getMaximumTxDelay(), 0.02);
+		//tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, 0, 0);
 
 		Coordinate footprint1 = new Coordinate(-0.5,0.5);
 		Coordinate footprint2 = new Coordinate(0.5,0.5);

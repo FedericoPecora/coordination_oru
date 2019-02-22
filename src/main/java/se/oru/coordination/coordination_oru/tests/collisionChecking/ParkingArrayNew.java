@@ -80,8 +80,8 @@ public class ParkingArrayNew {
 		
 		//Setup the network parameters
 		NetworkConfiguration.setDelays(10, 2000);
-		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0;
-		tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, NetworkConfiguration.getMaximumTxDelay(), 0.1);
+		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0.2;
+		tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, NetworkConfiguration.getMaximumTxDelay(), 0.02);
 				
 		//Set the footprint
 		Coordinate footprint1 = new Coordinate(-0.5,0.5);
@@ -127,7 +127,7 @@ public class ParkingArrayNew {
 		initStat(statFilename, header);
 		
 		//Determine locations around the circle, with random orientation
-		long seed = 123123;//Calendar.getInstance().getTimeInMillis();
+		long seed = Calendar.getInstance().getTimeInMillis();
 		System.out.println("Seed random generator: " + seed);
 		Random rand = new Random(seed);
 		ArrayList<String> locationsUp = new ArrayList<String>();
@@ -218,8 +218,8 @@ public class ParkingArrayNew {
 //							catch (InterruptedException e) { e.printStackTrace(); }
 //						}
 						boolean firstTime = true;
-						int totalIterations = 20;
-						if (robotID%2 == 0) totalIterations = 19;
+						int totalIterations = 12;
+						//if (robotID%2 == 0) totalIterations = 19;
 						boolean isFree = false;
 						long startTime = Calendar.getInstance().getTimeInMillis();
 						while (true && totalIterations > 0) {

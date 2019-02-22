@@ -68,7 +68,7 @@ public class RandomPathsInMap {
 		//Instantiate a trajectory envelope coordinator.
 		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(MAX_VEL,MAX_ACCEL);
 		tec.setUseInternalCriticalPoints(false);
-		tec.setYieldIfParking(true);
+		tec.setYieldIfParking(false);
 		tec.setBreakDeadlocksByReordering(false);
 		tec.setBreakDeadlocksByReplanning(true);
 		tec.setCheckCollisions(true);
@@ -77,7 +77,7 @@ public class RandomPathsInMap {
 		//Setup the network parameters
 		NetworkConfiguration.setDelays(10, 2000);
 		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0.2;
-		tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, NetworkConfiguration.getMaximumTxDelay(), 1e-1);
+		tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, NetworkConfiguration.getMaximumTxDelay(), 1e-2);
 
 		Coordinate footprint1 = new Coordinate(-1.0,0.5);
 		Coordinate footprint2 = new Coordinate(1.0,0.5);
@@ -89,7 +89,8 @@ public class RandomPathsInMap {
 		tec.setupSolver(0, 100000000);
 
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
-		String yamlFile = "maps/map-partial-2.yaml";
+		//String yamlFile = "maps/map-partial-2.yaml";
+		String yamlFile = "maps/map-corridors.yaml";
 		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
 		//viz.setMap(yamlFile);
 		//RVizVisualization viz = new RVizVisualization();
