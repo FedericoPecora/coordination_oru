@@ -127,7 +127,7 @@ public class ParkingArrayNew {
 		initStat(statFilename, header);
 		
 		//Determine locations around the circle, with random orientation
-		long seed = Calendar.getInstance().getTimeInMillis();
+		long seed = 123123;//Calendar.getInstance().getTimeInMillis();
 		System.out.println("Seed random generator: " + seed);
 		Random rand = new Random(seed);
 		ArrayList<String> locationsUp = new ArrayList<String>();
