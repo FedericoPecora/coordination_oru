@@ -271,7 +271,7 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 			visualization_msgs.Marker marker = node.getTopicMessageFactory().newFromType(visualization_msgs.Marker._TYPE);
 			marker.getHeader().setFrameId(mapFrameID);
 			marker.getScale().setX(0.2f);
-			marker.getColor().setR(100f);
+			marker.getColor().setR(100.0f);
 			marker.getColor().setG(0.0f);
 			marker.getColor().setB(0.0f);
 			marker.getColor().setA(0.8f);
@@ -309,10 +309,10 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 			markerName.getScale().setX(1.0f);
 			markerName.getScale().setY(1.0f);
 			markerName.getScale().setZ(1.0f);
-			markerName.getColor().setR(1.0f);
-			markerName.getColor().setG(1.0f);
-			markerName.getColor().setB(1.0f);
-			markerName.getColor().setA(0.8f);
+			markerName.getColor().setR(0.0f);
+			markerName.getColor().setG(0.0f);
+			markerName.getColor().setB(0.0f);
+			markerName.getColor().setA(1.0f);
 			markerName.setAction(visualization_msgs.Marker.ADD);                                
 			markerName.setNs("robot_state");
 			markerName.setType(visualization_msgs.Marker.TEXT_VIEW_FACING);
@@ -341,8 +341,8 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 			marker.getHeader().setFrameId(mapFrameID);
 			marker.getScale().setX(0.2f);
 			marker.getColor().setR(0.0f);
-			marker.getColor().setG(100.0f);
-			marker.getColor().setB(0.0f);
+			marker.getColor().setG(0.0f);//100
+			marker.getColor().setB(100.0f);//0
 			marker.getColor().setA(0.8f);
 			marker.setAction(visualization_msgs.Marker.ADD);                                
 			marker.setNs("box_marker");
@@ -377,10 +377,10 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 			markerName.getScale().setX(1.0f);
 			markerName.getScale().setY(1.0f);
 			markerName.getScale().setZ(1.0f);
-			markerName.getColor().setR(1.0f);
-			markerName.getColor().setG(1.0f);
-			markerName.getColor().setB(1.0f);
-			markerName.getColor().setA(0.8f);
+			markerName.getColor().setR(0.0f); //1.0
+			markerName.getColor().setG(0.0f); //1.0
+			markerName.getColor().setB(0.0f); //1.0
+			markerName.getColor().setA(0.0f); //0.8
 			markerName.setAction(visualization_msgs.Marker.ADD);                                
 			markerName.setNs("label");
 			markerName.setType(visualization_msgs.Marker.TEXT_VIEW_FACING);
@@ -426,10 +426,10 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 			mArrow.getScale().setX(0.4);
 			mArrow.getScale().setY(1.0);
 			mArrow.getScale().setZ(1.2);
-			mArrow.getColor().setR(15.0f);
-			mArrow.getColor().setG(100.0f);
-			mArrow.getColor().setB(200.0f);
-			mArrow.getColor().setA(0.2f);
+			mArrow.getColor().setR(0.0f);
+			mArrow.getColor().setG(0.0f);
+			mArrow.getColor().setB(0.0f);
+			mArrow.getColor().setA(0.3f);
 			mArrow.setLifetime(new Duration(1.0));
 			if (!this.dependencyPublishers.containsKey(rrWaiting.getRobotID())) {
 				Publisher<visualization_msgs.MarkerArray> markerArrayPublisher = node.newPublisher("robot"+rrWaiting.getRobotID()+"/deps", visualization_msgs.MarkerArray._TYPE);
@@ -539,10 +539,10 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 		visualization_msgs.Marker marker = node.getTopicMessageFactory().newFromType(visualization_msgs.Marker._TYPE);
 		marker.getHeader().setFrameId(mapFrameID);
 		marker.getScale().setX(0.1f);
-		marker.getColor().setR(50f);
-		marker.getColor().setG(50.0f);
+		marker.getColor().setR(0f);
+		marker.getColor().setG(0.0f);
 		marker.getColor().setB(0.0f);
-		marker.getColor().setA(0.8f);
+		marker.getColor().setA(0.7f);
 		marker.setAction(visualization_msgs.Marker.ADD);
 		marker.setNs("current_envelope");
 		marker.setType(visualization_msgs.Marker.LINE_STRIP);
