@@ -46,6 +46,7 @@ import nav_msgs.OccupancyGrid;
 import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.util.FleetVisualization;
 import se.oru.coordination.coordination_oru.util.Missions;
+import com.vividsolutions.jts.geom.Polygon;
 //import org.ros.visualization_msgs.MarkerArray;
 import visualization_msgs.MarkerArray;
 
@@ -278,7 +279,7 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 			marker.setAction(visualization_msgs.Marker.ADD);                                
 			marker.setNs("current_pose");
 			marker.setType(visualization_msgs.Marker.LINE_STRIP);
-			marker.setId(te.getRobotID());
+			marker.setId(rr.getRobotID());
 			marker.setLifetime(new Duration(10.0));
 
 			ArrayList<geometry_msgs.Point> points = new ArrayList<geometry_msgs.Point>();
@@ -335,23 +336,29 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 		}
 	}
 	
-	public void displayBox(String markerLabel, Coordinate[] shape, int markerID, double x, double y, double durationInSeconds) {
+	@Override
+	public void displayRobotState(Polygon fp, RobotReport rr, String ... extraStatusInfo) {
 		if (ready) {
+			double x = rr.getPose().getX();
+			double y = rr.getPose().getY();
+			double theta = rr.getPose().getTheta();
+
 			visualization_msgs.Marker marker = node.getTopicMessageFactory().newFromType(visualization_msgs.Marker._TYPE);
 			marker.getHeader().setFrameId(mapFrameID);
 			marker.getScale().setX(0.2f);
-			marker.getColor().setR(0.0f);
-			marker.getColor().setG(0.0f);//100
-			marker.getColor().setB(100.0f);//0
+			marker.getColor().setR(100.0f);
+			marker.getColor().setG(0.0f);
+			marker.getColor().setB(0.0f);
 			marker.getColor().setA(0.8f);
 			marker.setAction(visualization_msgs.Marker.ADD);                                
-			marker.setNs("box_marker");
+			marker.setNs("current_pose");
 			marker.setType(visualization_msgs.Marker.LINE_STRIP);
-			marker.setId(markerID);
-			marker.setLifetime(new Duration(durationInSeconds));
+			marker.setId(rr.getRobotID());
+			marker.setLifetime(new Duration(10.0));
 
 			ArrayList<geometry_msgs.Point> points = new ArrayList<geometry_msgs.Point>();
-			for (Coordinate coord : shape) {
+			Coordinate[] coords = TrajectoryEnvelope.getFootprint(fp, x, y, theta).getCoordinates();
+			for (Coordinate coord : coords) {
 				geometry_msgs.Point point = node.getTopicMessageFactory().newFromType(geometry_msgs.Point._TYPE);
 				point.setX(coord.x);
 				point.setY(coord.y);
@@ -360,15 +367,15 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 			}
 			points.add(points.get(0));
 			marker.setPoints(points);
-			if (!this.boxMarkerPublishers.containsKey(markerLabel)) {
-				Publisher<visualization_msgs.MarkerArray> markerArrayPublisher = node.newPublisher(markerLabel, visualization_msgs.MarkerArray._TYPE);
-				this.boxMarkerPublishers.put(markerLabel, markerArrayPublisher);
-				synchronized(boxMarkerMarkers) {
-					this.boxMarkerMarkers.put(markerLabel, new ArrayList<visualization_msgs.Marker>());
+			if (!this.robotStatusPublishers.containsKey(rr.getRobotID())) {
+				Publisher<visualization_msgs.MarkerArray> markerArrayPublisher = node.newPublisher("robot"+rr.getRobotID()+"/status", visualization_msgs.MarkerArray._TYPE);
+				this.robotStatusPublishers.put(rr.getRobotID(), markerArrayPublisher);
+				synchronized(robotStatusMarkers) {
+					this.robotStatusMarkers.put(rr.getRobotID(), new ArrayList<visualization_msgs.Marker>());
 				}
 			}
-			synchronized(boxMarkerMarkers) {
-				this.boxMarkerMarkers.get(markerLabel).add(marker);
+			synchronized(robotStatusMarkers) {
+				this.robotStatusMarkers.get(rr.getRobotID()).add(marker);
 			}
 
 			//////////////
@@ -377,16 +384,18 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 			markerName.getScale().setX(1.0f);
 			markerName.getScale().setY(1.0f);
 			markerName.getScale().setZ(1.0f);
-			markerName.getColor().setR(0.0f); //1.0
-			markerName.getColor().setG(0.0f); //1.0
-			markerName.getColor().setB(0.0f); //1.0
-			markerName.getColor().setA(0.0f); //0.8
+			markerName.getColor().setR(0.0f);
+			markerName.getColor().setG(0.0f);
+			markerName.getColor().setB(0.0f);
+			markerName.getColor().setA(1.0f);
 			markerName.setAction(visualization_msgs.Marker.ADD);                                
-			markerName.setNs("label");
+			markerName.setNs("robot_state");
 			markerName.setType(visualization_msgs.Marker.TEXT_VIEW_FACING);
 			//markerName.setId(te.getRobotID());
-			markerName.setLifetime(new Duration(durationInSeconds));
-			markerName.setText(markerLabel);
+			markerName.setLifetime(new Duration(10.0));
+			String markerText  = "R" + rr.getRobotID() + ": " + rr.getPathIndex();
+			if (extraStatusInfo != null) for (String extra : extraStatusInfo) markerText += "\n" + extra;
+			markerName.setText(markerText);
 			geometry_msgs.Pose pose = node.getTopicMessageFactory().newFromType(geometry_msgs.Pose._TYPE);
 			geometry_msgs.Point pos = node.getTopicMessageFactory().newFromType(geometry_msgs.Point._TYPE);
 			pos.setX(x);
@@ -394,9 +403,10 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 			pos.setZ(0);
 			pose.setPosition(pos);
 			markerName.setPose(pose);
-			synchronized(boxMarkerMarkers) {
-				this.boxMarkerMarkers.get(markerLabel).add(markerName);
+			synchronized(robotStatusMarkers) {
+				this.robotStatusMarkers.get(rr.getRobotID()).add(markerName);
 			}
+
 		}
 	}
 
@@ -452,8 +462,10 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 					visualization_msgs.MarkerArray ma = node.getTopicMessageFactory().newFromType(visualization_msgs.MarkerArray._TYPE);
 					ArrayList<visualization_msgs.Marker> copy = new ArrayList<visualization_msgs.Marker>();
 					for (visualization_msgs.Marker m : robotStatusMarkers.get(entry.getKey())) copy.add(m);
-					synchronized(envelopeMarkers) {
-						if (envelopeMarkers != null && envelopeMarkers.containsKey(entry.getKey())) copy.add(envelopeMarkers.get(entry.getKey()));
+					if (envelopeMarkers != null) {
+						synchronized(envelopeMarkers) {
+							if (envelopeMarkers != null && envelopeMarkers.containsKey(entry.getKey())) copy.add(envelopeMarkers.get(entry.getKey()));
+						}
 					}
 					ma.setMarkers(copy);
 					entry.getValue().publish(ma);

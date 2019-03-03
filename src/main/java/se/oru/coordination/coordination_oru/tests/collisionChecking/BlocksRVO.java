@@ -5,6 +5,9 @@ import java.util.Random;
 
 import org.apache.commons.math3.geometry.euclidean.twod.Vector2D;
 import edu.unc.cs.gamma.rvo.Simulator;
+import se.oru.coordination.coordination_oru.RVOSimulator;
+import se.oru.coordination.coordination_oru.util.BrowserVisualization;
+import se.oru.coordination.coordination_oru.util.RVizVisualization;
 
 public class BlocksRVO {
 	
@@ -16,11 +19,11 @@ public class BlocksRVO {
 	private static void setupScenario(Simulator sim)
 	{
 		/* Specify the global time step of the simulation. */
-		sim.setTimeStep(0.25f);
+		sim.setTimeStep(1.0f);
 
 		/* Specify the default parameters for agents that are subsequently added. */
 		//sim.setAgentDefaults(15.0f, 10, 5.0f, 5.0f, 2.0f, 2.0f);
-		sim.setAgentDefaults(15.0, 10, 5.0, 5.0, 5.0, 2.0, new Vector2D(2.0,0.0)); //(neighborDistance, maxNeighbors, timeHorizonAgents, timeHorizonObstacles, radius, maxSpeed, velocity)
+		sim.setAgentDefaults(15.0, 10, 5.0, 5.0, 0.50, 2.0, new Vector2D(0.0,0.0)); //(neighborDistance, maxNeighbors, timeHorizonAgents, timeHorizonObstacles, radius, maxSpeed, velocity)
 
 		/*
 		 * Add agents, specifying their start position, and store their goals on the
@@ -66,7 +69,7 @@ public class BlocksRVO {
 		sim.addObstacle(obstacle3);
 		sim.addObstacle(obstacle4);
 
-		/* Process the obstacles so that they are accounted for in the simulation. */
+		// Process the obstacles so that they are accounted for in the simulation.
 		sim.processObstacles();
 	}
 	
@@ -124,16 +127,37 @@ public class BlocksRVO {
 	public static void main(String[] args) throws InterruptedException {
 		
 		//Create a new Simulator
+//		RVOSimulator sim = new RVOSimulator();
 		Simulator sim = Simulator.instance;
+		RVOSimulator visim = new RVOSimulator(sim);
+		
+		System.out.println("Setup simulator");
+		
+		//Set visualization 
+		//String yamlFile = "maps/map-corridors.yaml";
+		RVizVisualization viz = new RVizVisualization();
+		//RVizVisualization.writeRVizConfigFile(robotIDs);
+		//viz.setMap(yamlFile);
+		//BrowserVisualization viz = new BrowserVisualization();
+		visim.setVisualization(viz);
+		
+		System.out.println("Visualization");
 
 		/* Set up the scenario. */
 		setupScenario(sim);
+		
+		System.out.println("Setup scenario");
+		
+		Thread.sleep(10000);
+		
+		System.out.println("Start!");
 
 		/* Perform (and manipulate) the simulation. */
 		do {
-			updateVisualization(sim);
+			//updateVisualization(sim);
 			setPreferredVelocities(sim);
-			sim.doStep();
+			visim.doStepAndVisualize();
+			Thread.sleep(100);
 		}
 		while (!reachedGoal(sim));
 		

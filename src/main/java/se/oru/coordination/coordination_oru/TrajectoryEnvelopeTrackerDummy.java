@@ -127,7 +127,7 @@ public abstract class TrajectoryEnvelopeTrackerDummy extends AbstractTrajectoryE
 	
 	@Override
 	public void onPositionUpdate() {
-		if (tec.getVisualization() != null) tec.getVisualization().displayRobotState(te, getRobotReport());
+		if (tec.getVisualization() != null) tec.getVisualization().displayRobotState(te.getFootprint(), getRobotReport());
 	}
 
 	

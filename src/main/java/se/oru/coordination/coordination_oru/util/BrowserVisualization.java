@@ -182,6 +182,30 @@ public class BrowserVisualization implements FleetVisualization {
 		enqueueMessage(jsonString);
 		enqueueMessage(jsonStringArrow);
 	}
+	
+	@Override
+	public void displayRobotState(Polygon fp, RobotReport rr, String... extraStatusInfo) {
+		double x = rr.getPose().getX();
+		double y = rr.getPose().getY();
+		double theta = rr.getPose().getTheta();
+		
+		String name = "R"+rr.getRobotID();
+		String extraData = " : " + rr.getPathIndex();
+		if (extraStatusInfo != null) {
+			for (String st : extraStatusInfo) {
+				extraData += (" | " + st);
+			}
+		}
+		
+		Geometry geom = TrajectoryEnvelope.getFootprint(fp, x, y, theta);
+		this.updateRobotFootprintArea(geom);
+		double scale = Math.sqrt(robotFootprintArea)*0.2;
+		Geometry arrowGeom = createArrow(rr.getPose(), robotFootprintXDim/scale, scale);
+		String jsonString = "{ \"operation\" : \"addGeometry\", \"data\" : " + this.geometryToJSONString(name, geom, "#ff0000", -1, true, extraData) + "}";
+		String jsonStringArrow = "{ \"operation\" : \"addGeometry\", \"data\" : " + this.geometryToJSONString("_"+name, arrowGeom, "#ffffff", -1, true, null) + "}";
+		enqueueMessage(jsonString);
+		enqueueMessage(jsonStringArrow);
+	}
 
 	@Override
 	public void displayDependency(RobotReport rrWaiting, RobotReport rrDriving, String dependencyDescriptor) {

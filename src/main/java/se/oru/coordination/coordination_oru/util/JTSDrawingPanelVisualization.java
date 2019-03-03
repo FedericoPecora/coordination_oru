@@ -3,6 +3,7 @@ package se.oru.coordination.coordination_oru.util;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 
 import javax.swing.JFrame;
@@ -55,6 +56,20 @@ public class JTSDrawingPanelVisualization implements FleetVisualization {
 		}
 		if (rr.getPathIndex() != -1) panel.addGeometry(name, TrajectoryEnvelope.getFootprint(te.getFootprint(), x, y, theta), false, true, false, "#FF0000");
 		else panel.addGeometry(name, TrajectoryEnvelope.getFootprint(te.getFootprint(), te.getTrajectory().getPose()[0].getX(), te.getTrajectory().getPose()[0].getY(), te.getTrajectory().getPose()[0].getTheta()), false, true, false, "#4286F4");
+	}
+	
+	@Override
+	public void displayRobotState(Polygon fp, RobotReport rr, String ... extraStatusInfo) {
+		double x = rr.getPose().getX();
+		double y = rr.getPose().getY();
+		double theta = rr.getPose().getTheta();
+		String name = "R"+rr.getRobotID();
+		if (extraStatusInfo != null) {
+			for (String st : extraStatusInfo) {
+				name += ("\\"+st);
+			}
+		}
+		panel.addGeometry(name, TrajectoryEnvelope.getFootprint(fp, x, y, theta), false, true, false, "#FF0000");
 	}
 
 	@Override
