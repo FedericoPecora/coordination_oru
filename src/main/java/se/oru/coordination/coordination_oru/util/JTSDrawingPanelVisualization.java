@@ -19,14 +19,10 @@ import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.Point;
 import com.vividsolutions.jts.geom.Polygon;
 
-import nav_msgs.MapMetaData;
-import nav_msgs.OccupancyGrid;
 import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator;
 
 public class JTSDrawingPanelVisualization implements FleetVisualization {
-	
-	//FIXME unimplemented methods
 
 	private JTSDrawingPanel panel = null;
 
@@ -210,18 +206,6 @@ public class JTSDrawingPanelVisualization implements FleetVisualization {
 	public int periodicEnvelopeRefreshInMillis() {
 		// TODO Auto-generated method stub
 		return 0;
-	}
-
-	@Override
-	public boolean getInfo(MapMetaData info) {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	@Override
-	public boolean getMap(OccupancyGrid map) {
-		// TODO Auto-generated method stub
-		return false;
 	}
 
 }
