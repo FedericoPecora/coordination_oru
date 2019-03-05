@@ -42,6 +42,7 @@ import org.ros.node.topic.Publisher;
 import com.vividsolutions.jts.geom.Coordinate;
 
 import geometry_msgs.Transform;
+import nav_msgs.MapMetaData;
 import nav_msgs.OccupancyGrid;
 import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.util.FleetVisualization;
@@ -65,6 +66,25 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 	private HashMap<Integer,visualization_msgs.Marker> envelopeMarkers = null;
 	private boolean ready = false;
 	private String mapFileName = null;
+	private OccupancyGrid occupancyMap = null;
+	
+	@Override
+	public boolean getInfo(MapMetaData info) {
+		if (occupancyMap != null) {
+			info = occupancyMap.getInfo();
+			return true;
+		}
+		return false;
+	}
+	
+	@Override
+	public boolean getMap(OccupancyGrid map) {
+		if (occupancyMap != null) {
+			map = occupancyMap;
+			return true;
+		}
+		return false;
+	}
 	
 	private static String rvizEntry = ""+
 			"    - Class: rviz/MarkerArray\n" + 
@@ -246,6 +266,7 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 				occMap.getInfo().setOrigin(pose);
 				double res = Double.parseDouble(Missions.getProperty("resolution", mapYAMLFile));
 				occMap.getInfo().setResolution((float)res);
+				occupancyMap = occMap;
 				final Publisher<OccupancyGrid> publisher = node.newPublisher("/map", OccupancyGrid._TYPE);
 				node.executeCancellableLoop(new CancellableLoop() {
 					@Override

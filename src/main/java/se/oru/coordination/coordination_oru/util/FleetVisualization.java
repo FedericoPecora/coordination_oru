@@ -3,6 +3,8 @@ package se.oru.coordination.coordination_oru.util;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 import com.vividsolutions.jts.geom.Polygon;
 
+import nav_msgs.MapMetaData;
+import nav_msgs.OccupancyGrid;
 import se.oru.coordination.coordination_oru.RobotReport;
 
 public interface FleetVisualization {
@@ -23,5 +25,9 @@ public interface FleetVisualization {
 	public void setMap(String yamlFile);
 	
 	public int periodicEnvelopeRefreshInMillis();
+
+	public boolean getInfo(MapMetaData info);
+
+	public boolean getMap(OccupancyGrid map);
 
 }

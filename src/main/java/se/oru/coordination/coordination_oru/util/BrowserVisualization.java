@@ -24,9 +24,13 @@ import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.Polygon;
 import com.vividsolutions.jts.geom.util.AffineTransformation;
 
+import nav_msgs.MapMetaData;
+import nav_msgs.OccupancyGrid;
 import se.oru.coordination.coordination_oru.RobotReport;
 
 public class BrowserVisualization implements FleetVisualization {
+	
+	//FIXME unimplemented method
 	
 	private ArrayList<String> msgQueue = new ArrayList<String>();
 	private static int UPDATE_PERIOD = 30;
@@ -338,6 +342,18 @@ public class BrowserVisualization implements FleetVisualization {
 	@Override
 	public int periodicEnvelopeRefreshInMillis() {
 		return 1000;
+	}
+
+	@Override
+	public boolean getInfo(MapMetaData info) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public boolean getMap(OccupancyGrid map) {
+		// TODO Auto-generated method stub
+		return false;
 	}
 
 }

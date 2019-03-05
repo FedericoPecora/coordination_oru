@@ -1,12 +1,24 @@
 package se.oru.coordination.coordination_oru;
 
-import org.apache.commons.math3.geometry.euclidean.twod.Vector2D;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.InputStream;
+import java.util.Map;
 
+import javax.imageio.ImageIO;
+
+import org.apache.commons.math3.geometry.euclidean.twod.Vector2D;
+import org.jboss.netty.buffer.ChannelBuffer;
+
+import com.google.common.base.Preconditions;
 import com.vividsolutions.jts.geom.Coordinate;
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
+import org.yaml.snakeyaml.Yaml;
 
 import edu.unc.cs.gamma.rvo.Simulator;
+import nav_msgs.MapMetaData;
+import nav_msgs.OccupancyGrid;
 import se.oru.coordination.coordination_oru.util.FleetVisualization;
 
 public class RVOSimulator { 
@@ -50,6 +62,25 @@ public class RVOSimulator {
 		}
 		viz.updateVisualization();
         return time;
+    }
+    
+    public void obstaclesFromYaml(String yamlFile) {
+    	viz.setMap(yamlFile);
+    	OccupancyGrid map = null;
+    	if (viz.getMap(map)) {
+		    final ChannelBuffer buffer = map.getData(); 
+		    int width = map.getInfo().getWidth();
+		    int height = map.getInfo().getHeight();
+		    int[] pixels = new int[width * height];
+		    for (int i = 0; i < pixels.length; i++) {
+		    	//FIXME!! READ THE MAP AND ACCORDING TO THE VALUES SET OBSTACLES IN THE SCENE!!
+		    }
+    	}
+    }
+    
+    protected void pixelToMeters(double origin_x, double origin_y, double res, int px, int py, double mx, double my) {
+    	mx = origin_x + (px+0.5)*res;
+    	my = origin_y + (py+0.5)*res;
     }
 
 }
