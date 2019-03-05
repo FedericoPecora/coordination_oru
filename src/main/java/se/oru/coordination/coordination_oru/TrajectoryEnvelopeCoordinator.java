@@ -47,6 +47,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.util.AffineTransformation;
 
 import aima.core.util.datastructure.Pair;
+import se.oru.coordination.coordination_oru.motionplanning.AbstractMotionPlanner;
 import se.oru.coordination.coordination_oru.util.FleetVisualization;
 import se.oru.coordination.coordination_oru.util.StringUtils;
 
@@ -138,6 +139,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected HashMap<Integer,TrackingCallback> trackingCallbacks = new HashMap<Integer, TrackingCallback>();	
 	protected Callback inferenceCallback = null;
 	
+	protected AbstractMotionPlanner defaultMotionPlanner = null;
+	protected HashMap<Integer,AbstractMotionPlanner> motionPlanners = new HashMap<Integer, AbstractMotionPlanner>();
 	protected HashSet<HashSet<Integer>> replanningSpawned = new HashSet<HashSet<Integer>>();
 	
 	//Network knowledge
@@ -979,7 +982,15 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		return ret.toArray(new Geometry[ret.size()]);
 	}
 	
-	protected abstract PoseSteering[] doReplanning(Pose fromPose, Pose toPose, Geometry ... obstaclesToConsider);
+	protected PoseSteering[] doReplanning(AbstractMotionPlanner mp, Pose fromPose, Pose toPose, Geometry... obstaclesToConsider) {
+		if (mp == null) return null;
+		mp.setStart(fromPose);
+		mp.setGoals(toPose);
+		mp.clearObstacles();
+		if (obstaclesToConsider != null && obstaclesToConsider.length > 0) mp.addObstacles(obstaclesToConsider);
+		if (mp.plan()) return mp.getPath();
+		return null;
+	}
 	
 	protected void rePlanPath(HashSet<Integer> robotsToReplan, HashSet<Integer> allRobots) {
 		for (int robotID : robotsToReplan) {
@@ -1008,7 +1019,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			Geometry[] obstacles = getObstaclesInCriticalPoints(otherRobotIDs);
 			
 			metaCSPLogger.info("Attempting to re-plan path of Robot" + robotID + " (with obstacles for robots " + Arrays.toString(otherRobotIDs) + ")...");
-			PoseSteering[] newPath = doReplanning(currentWaitingPose, currentWaitingGoal, obstacles);
+			AbstractMotionPlanner mp = null;
+			if (this.motionPlanners.containsKey(robotID)) mp = this.motionPlanners.get(robotID);
+			else mp = this.defaultMotionPlanner;
+			PoseSteering[] newPath = doReplanning(mp, currentWaitingPose, currentWaitingGoal, obstacles);
 			if (newPath != null && newPath.length > 0) {
 				PoseSteering[] newCompletePath = new PoseSteering[newPath.length+currentWaitingIndex];
 				for (int i = 0; i < newCompletePath.length; i++) {
@@ -1814,6 +1828,59 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			if (placementWaiting.intersects(placementDriving)) return false;
 		}
 		return true;
+	}
+	
+	
+	/**
+	 * Set a motion planner to be used for re-planning.
+	 * @param mp The motion planner that will be called for re-planning. 
+	 */
+	@Deprecated
+	public void setMotionPlanner(AbstractMotionPlanner mp) {
+		this.defaultMotionPlanner = mp;
+	}
+	
+
+	/**
+	 * Set a motion planner to be used for re-planning for all robots
+	 * (unless a specific motion planner is specified for an individual robot).
+	 * @param mp The motion planner that will be called for re-planning for any
+	 * robot for which a motion planner has not been specified. 
+	 */
+	public void setDefaultMotionPlanner(AbstractMotionPlanner mp) {
+		this.defaultMotionPlanner = mp;
+	}
+	
+
+	/**
+	 * Set a motion planner to be used for re-planning for a specific
+	 * robot.
+	 * @param robotID The robot for which the given motion planner should be used.
+	 * @param mp The motion planner that will be called for re-planning.
+	 */
+	public void setMotionPlanner(int robotID, AbstractMotionPlanner mp) {
+		this.motionPlanners.put(robotID, mp);
+	}
+	
+	
+	/**
+	 * Get the motion planner to be used for re-planning for all robots that do not
+	 * have a dedicated motion planner.
+	 * @return The motion planner used for re-planning for all robots that do not
+	 * have a dedicated motion planner.
+	 */
+	public AbstractMotionPlanner getDefaultMotionPlanner() {
+		return this.defaultMotionPlanner;
+	}
+	
+
+	/**
+	 * Get the motion planner used for re-planning for a specific robot.
+	 * @param robotID The ID of a robot.
+	 * @return The motion planner used for re-planning for the given robot.
+	 */
+	public AbstractMotionPlanner getMotionPlanner(int robotID) {
+		return this.motionPlanners.get(robotID);
 	}
 
 

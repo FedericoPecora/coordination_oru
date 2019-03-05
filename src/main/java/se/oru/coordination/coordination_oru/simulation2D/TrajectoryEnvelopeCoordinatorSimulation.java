@@ -31,7 +31,6 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	protected double MAX_ACCELERATION;
 	protected int trackingPeriodInMillis;
 	protected boolean useInternalCPs = true;
-	protected AbstractMotionPlanner mp = null;
 
 	public int getTrackingPeriod() {
 		return trackingPeriodInMillis;
@@ -39,10 +38,6 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 
 	public double getTemporalResolution() {
 		return 1000.0;
-	}
-
-	public void setMotionPlanner(AbstractMotionPlanner mp) {
-		this.mp = mp;
 	}
 
 	/**
@@ -187,15 +182,4 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 		return Calendar.getInstance().getTimeInMillis()-START_TIME;
 	}
 	
-	@Override
-	protected PoseSteering[] doReplanning(Pose fromPose, Pose toPose, Geometry... obstaclesToConsider) {
-		if (this.mp == null) return null;
-		mp.setStart(fromPose);
-		mp.setGoals(toPose);
-		mp.clearObstacles();
-		if (obstaclesToConsider != null && obstaclesToConsider.length > 0) mp.addObstacles(obstaclesToConsider);
-		if (mp.plan()) return mp.getPath();
-		return null;
-	}
-
 }

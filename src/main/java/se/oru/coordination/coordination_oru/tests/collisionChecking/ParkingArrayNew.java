@@ -20,6 +20,7 @@ import se.oru.coordination.coordination_oru.Mission;
 import se.oru.coordination.coordination_oru.NetworkConfiguration;
 import se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
+import se.oru.coordination.coordination_oru.motionplanning.AbstractMotionPlanner;
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
 import se.oru.coordination.coordination_oru.util.BrowserVisualization;
@@ -28,6 +29,18 @@ import se.oru.coordination.coordination_oru.util.RVizVisualization;
 
 @DemoDescription(desc = "Coordination of robots vertically. Goals are continually posted to robots. Paths are computed by using the ReedsSheppCarPlanner.")
 public class ParkingArrayNew {
+	
+	private static AbstractMotionPlanner createMotionPlanner(Coordinate[] footprint, String yamlFile) {
+		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
+		rsp.setMapFilename("maps"+File.separator+Missions.getProperty("image", yamlFile));
+		double res = Double.parseDouble(Missions.getProperty("resolution", yamlFile));
+		rsp.setMapResolution(res);
+		rsp.setRadius(0.1);
+		rsp.setFootprint(footprint);
+		rsp.setTurningRadius(4.0);
+		rsp.setDistanceBetweenPathPoints(0.3);
+		return rsp;
+	}
 	
 	private static void writeStat(String fileName, String stat) {
         try {
@@ -72,6 +85,7 @@ public class ParkingArrayNew {
 		tec.setupSolver(0, 100000000);
 		
 		tec.setUseInternalCriticalPoints(false);
+		tec.setCheckEscapePoses(true);
 		tec.setYieldIfParking(false);
 		tec.setBreakDeadlocksByReordering(false);
 		tec.setBreakDeadlocksByReplanning(true);
@@ -84,11 +98,13 @@ public class ParkingArrayNew {
 		tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, NetworkConfiguration.getMaximumTxDelay(), 0.02);
 				
 		//Set the footprint
-		Coordinate footprint1 = new Coordinate(-0.5,0.5);
-		Coordinate footprint2 = new Coordinate(0.5,0.5);
-		Coordinate footprint3 = new Coordinate(0.5,-0.5);
-		Coordinate footprint4 = new Coordinate(-0.5,-0.5);
-		tec.setDefaultFootprint(footprint1, footprint2, footprint3, footprint4);
+		Coordinate[] footprint = new Coordinate[] { 
+				new Coordinate(-0.5,0.5),
+				new Coordinate(0.5,0.5),
+				new Coordinate(0.5,-0.5),
+				new Coordinate(-0.5,-0.5),
+		};
+		tec.setDefaultFootprint(footprint);
 		
 		// Set the FW models and robotIDs
 		final int[] robotIDs = new int[] {1,2,3,4,5,6,7,8,9,10,11,12};
@@ -106,13 +122,16 @@ public class ParkingArrayNew {
 		inactiveRobots.add(11);
 		inactiveRobots.add(12);
 		
-		for (int i : robotIDs) {
-			tec.setForwardModel(i, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getTrackingPeriod()));
-		}
-		
 		//Set a map
 		String yamlFile = "maps/map-empty-circle.yaml";
 		
+		for (int i : robotIDs) {
+			tec.setForwardModel(i, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getTrackingPeriod()));
+			//In case deadlocks occur, we make the coordinator capable of re-planning on the fly (experimental, not working properly yet)
+			AbstractMotionPlanner rsp_i = createMotionPlanner(footprint, yamlFile);
+			tec.setMotionPlanner(i, rsp_i);
+		}
+				
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		RVizVisualization viz = new RVizVisualization();
 		//RVizVisualization.writeRVizConfigFile(robotIDs);
@@ -139,18 +158,7 @@ public class ParkingArrayNew {
 			Missions.setLocation(locationsDown.get(i), new Pose(offsetX+i*deltaX, offsetY, -Math.PI/2.0));
 		}
 		
-		//Set up motion planner
-		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-		rsp.setMapFilename("maps"+File.separator+Missions.getProperty("image", yamlFile));
-		double res = Double.parseDouble(Missions.getProperty("resolution", yamlFile));
-		rsp.setMapResolution(res);
-		rsp.setRadius(0.1);
-		rsp.setFootprint(tec.getDefaultFootprint());
-		rsp.setTurningRadius(4.0);
-		rsp.setDistanceBetweenPathPoints(0.3);
-		
-		//In case deadlocks occur, we make the coordinator capable of re-planning on the fly (experimental, not working properly yet)
-		tec.setMotionPlanner(rsp);
+		AbstractMotionPlanner rsp = createMotionPlanner(footprint, yamlFile);
 		
 		//Here we pre-compute all paths
 		for (int i = 0; i < numSlots; i++) {
@@ -203,6 +211,7 @@ public class ParkingArrayNew {
 
 		for (final int robotID : robotIDs) {
 			if (!inactiveRobots.contains(robotID)) {
+				tec.setMotionPlanner(robotID,rsp);
 				Thread t = new Thread() {
 					public void run() {
 //						while (true) {
