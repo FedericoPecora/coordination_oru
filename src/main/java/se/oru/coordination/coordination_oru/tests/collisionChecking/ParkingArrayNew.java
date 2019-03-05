@@ -10,15 +10,11 @@ import java.util.Random;
 import java.util.logging.Level;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
-import org.metacsp.utility.logging.MetaCSPLogging;
-
 import com.vividsolutions.jts.geom.Coordinate;
-
 import aima.core.util.datastructure.Pair;
 import se.oru.coordination.coordination_oru.ConstantAccelerationForwardModel;
 import se.oru.coordination.coordination_oru.Mission;
 import se.oru.coordination.coordination_oru.NetworkConfiguration;
-import se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.motionplanning.AbstractMotionPlanner;
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
@@ -139,15 +135,9 @@ public class ParkingArrayNew {
 		//viz.setMap(yamlFile);
 		//viz.setInitialTransform(60, 33.58, 13.49);
 		tec.setVisualization(viz);
-		
-		final String statFilename = System.getProperty("user.home")+File.separator+"stats.txt";
-		String header = "#";
-		for (int robotID : robotIDs) header += (robotID + "\t");
-		initStat(statFilename, header);
-		
+				
 		//Determine locations around the circle, with random orientation
 		long seed = 123123;//Calendar.getInstance().getTimeInMillis();
-		System.out.println("Seed random generator: " + seed);
 		Random rand = new Random(seed);
 		ArrayList<String> locationsUp = new ArrayList<String>();
 		ArrayList<String> locationsDown = new ArrayList<String>();
@@ -157,6 +147,11 @@ public class ParkingArrayNew {
 			Missions.setLocation(locationsUp.get(i), new Pose(offsetX+i*deltaX, offsetY+deltaY, -Math.PI/2.0));
 			Missions.setLocation(locationsDown.get(i), new Pose(offsetX+i*deltaX, offsetY, -Math.PI/2.0));
 		}
+		
+		final String statFilename = System.getProperty("user.home")+File.separator+"stats.txt";
+		String header = "Seed random generator: " + seed + "L.\n" + "#";
+		for (int robotID : robotIDs) header += (robotID + "\t");
+		initStat(statFilename, header);
 		
 		AbstractMotionPlanner rsp = createMotionPlanner(footprint, yamlFile);
 		
