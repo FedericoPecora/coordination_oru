@@ -35,6 +35,7 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 	protected Trajectory traj = null;
 	protected double temporalResolution = 0.0;
 	protected Integer externalCPCounter = -1;
+	protected Integer reportCounter = -1;
 	protected int criticalPoint = -1;
 	protected HashSet<TrajectoryEnvelope> startedGroundEnvelopes = new HashSet<TrajectoryEnvelope>();
 	protected HashSet<TrajectoryEnvelope> finishedGroundEnvelopes = new HashSet<TrajectoryEnvelope>();

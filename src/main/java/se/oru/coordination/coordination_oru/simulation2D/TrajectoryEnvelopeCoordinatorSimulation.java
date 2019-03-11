@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
@@ -18,10 +19,14 @@ import com.vividsolutions.jts.geom.util.AffineTransformation;
 
 import geometry_msgs.Point;
 import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeTracker;
+import se.oru.coordination.coordination_oru.CollisionEvent;
+import se.oru.coordination.coordination_oru.CriticalSection;
 import se.oru.coordination.coordination_oru.Dependency;
 import se.oru.coordination.coordination_oru.Mission;
+import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.TrackingCallback;
 import se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator;
+import se.oru.coordination.coordination_oru.TrajectoryEnvelopeTrackerDummy;
 import se.oru.coordination.coordination_oru.motionplanning.AbstractMotionPlanner;
 
 public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeCoordinator {
@@ -31,7 +36,33 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	protected double MAX_ACCELERATION;
 	protected int trackingPeriodInMillis;
 	protected boolean useInternalCPs = true;
+	
+	protected boolean checkCollisions = false;
+	protected ArrayList<CollisionEvent> collisionsList = new ArrayList<CollisionEvent>();
+	protected Thread collisionThread = null;
+	
+	protected AtomicInteger totalMsgsLost = new AtomicInteger(0);
+	protected AtomicInteger totalPacketsLost = new AtomicInteger(0);
+	
+	public void setCheckCollisions(boolean checkCollision) {
+		this.checkCollisions = checkCollision;
+	}
+		
 
+	/** 
+	 * Just for statistic purposes (simulation).
+	 */
+	public void incrementLostMsgsCounter() {
+		this.totalMsgsLost.incrementAndGet();
+	}
+	
+	/** 
+	 * Just for statistic purposes (simulation).
+	 */
+	public void incrementLostPacketsCounter() {
+		this.totalPacketsLost.incrementAndGet();
+	}
+	
 	public int getTrackingPeriod() {
 		return trackingPeriodInMillis;
 	}
@@ -180,6 +211,149 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	@Override
 	public long getCurrentTimeInMillis() {
 		return Calendar.getInstance().getTimeInMillis()-START_TIME;
+	}
+	
+	@Override
+	protected String[] getStatistics() {
+		
+		String CONNECTOR_BRANCH = (char)0x251C + "" + (char)0x2500 + " ";
+		String CONNECTOR_LEAF = (char)0x2514 + "" + (char)0x2500 + " ";
+		ArrayList<String> ret = new ArrayList<String>();
+		int numVar = solver.getConstraintNetwork().getVariables().length;
+		int numCon = solver.getConstraintNetwork().getConstraints().length;
+		
+		synchronized (trackers) {
+			ret.add("Status @ "  + getCurrentTimeInMillis() + " ms");
+			ret.add(CONNECTOR_BRANCH + "Eff period ..... " + EFFECTIVE_CONTROL_PERIOD + " ms");
+			ret.add(CONNECTOR_BRANCH + "Network ........ " + numVar + " variables, " + numCon + " constraints");
+			HashSet<Integer> allRobots = new HashSet<Integer>();
+			for (Integer robotID : trackers.keySet()) {
+				allRobots.add(robotID);
+			}
+			String st = CONNECTOR_BRANCH + "Robots really .. ";
+			for (Integer robotID : allRobots) {
+				AbstractTrajectoryEnvelopeTracker tracker = trackers.get(robotID);
+				RobotReport rr = tracker.getRobotReport(); 
+				int currentPP = rr.getPathIndex();
+				st += tracker.getTrajectoryEnvelope().getComponent();
+				if (tracker instanceof TrajectoryEnvelopeTrackerDummy) st += " (P)";
+				else st += " (D)";
+				st += ": " + currentPP + "   ";
+			}
+			ret.add(st);
+			st = CONNECTOR_BRANCH + "Robots view .... ";
+			for (Integer robotID : allRobots) {
+				AbstractTrajectoryEnvelopeTracker tracker = trackers.get(robotID);
+				RobotReport rr = getRobotReport(robotID); 
+				if (rr != null ) {
+					int currentPP = rr.getPathIndex();
+					st += tracker.getTrajectoryEnvelope().getComponent();
+					if (tracker instanceof TrajectoryEnvelopeTrackerDummy) st += " (P)";
+					else st += " (D)";
+					st += ": " + currentPP + "   ";
+				}
+			}
+			ret.add(st);
+		}
+		synchronized (currentDependencies) {
+			ret.add(CONNECTOR_BRANCH + "Dependencies ... " + currentDependencies);
+		}
+		if (checkCollisions) {
+			int numberOfCollisions = 0;
+			synchronized (collisionsList) {
+				numberOfCollisions = collisionsList.size();		
+				ret.add(CONNECTOR_BRANCH + "Number of collisions ... " + numberOfCollisions + ".");
+				if (numberOfCollisions>0) {
+					for (CollisionEvent ce : collisionsList) {
+						ret.add(CONNECTOR_BRANCH + " ....................... " + ce.toString());
+					}
+				}
+			}
+			
+		}
+		ret.add(CONNECTOR_BRANCH + "Total number of obsolete critical sections ... " + criticalSectionCounter.get() + ".");
+		ret.add(CONNECTOR_LEAF + "Total messages sent: ... " + totalMsgsSent.get() + ", lost: " + totalMsgsLost.get() + ", retransmitted: " + totalMsgsReTx.get() + ". Packets lost: " + totalPacketsLost.get() + ", number of replicas: " + numberOfReplicas + ".");
+		return ret.toArray(new String[ret.size()]);
+	}
+	
+	@Override
+	public void onCriticalSectionUpdate() {
+		
+		if (checkCollisions && (collisionThread == null) && (this.allCriticalSections.size() > 0)) {
+			// Start the collision checking thread. 
+			// The tread will be alive until there will be almost one critical section.
+			collisionThread = new Thread("Collision checking thread.") {
+
+				@Override
+				public void run() {
+					metaCSPLogger.info("Starting the collision checking thread.");
+					ArrayList<CriticalSection> previousCollidingCS = new ArrayList<CriticalSection>();
+					ArrayList<CriticalSection> newCollidingCS = new ArrayList<CriticalSection>();
+					
+					while(true) {
+						newCollidingCS.clear();
+						
+						//collisions can happen only in critical sections						
+						synchronized (allCriticalSections) {
+							if (allCriticalSections.isEmpty())
+								break; //break the thread if there are no critical sections to control
+							
+							for (CriticalSection cs : allCriticalSections) {
+								//check if both the robots are inside the critical section
+								
+								//FIXME sample the real pose of the robots (ok in simulation, but not otherwise)
+								RobotReport robotReport1, robotReport2;
+								AbstractTrajectoryEnvelopeTracker tracker1, tracker2;
+								try {
+									synchronized (trackers)	{
+										tracker1 = trackers.get(cs.getTe1().getRobotID());
+										robotReport1 = tracker1.getRobotReport();
+										tracker2 = trackers.get(cs.getTe2().getRobotID());
+										robotReport2 = tracker2.getRobotReport();
+									}
+								}
+								catch (NullPointerException e) {
+									continue; //skip this cycle
+								}
+								
+								if ( robotReport1 != null && robotReport2 != null &&
+								(robotReport1.getPathIndex() <= cs.getTe1End()) && (robotReport1.getPathIndex() >= cs.getTe1Start()) && //robot1 is inside
+								(robotReport2.getPathIndex() <= cs.getTe2End()) && (robotReport2.getPathIndex() >= cs.getTe2Start())  	//robot2 is inside
+								) {
+									//place robot  in pose and get geometry
+									PoseSteering[] path1 = cs.getTe1().getTrajectory().getPoseSteering();
+									Geometry placement1 = cs.getTe1().makeFootprint(path1[robotReport1.getPathIndex()]);
+									
+									PoseSteering[] path2 = cs.getTe2().getTrajectory().getPoseSteering();
+									Geometry placement2 = cs.getTe2().makeFootprint(path2[robotReport2.getPathIndex()]);
+									
+									//check intersection
+									if (placement1.intersects(placement2)) {
+										if (!previousCollidingCS.contains(cs)) {
+											metaCSPLogger.info(" * NEW COLLISION *");
+											CollisionEvent ce = new CollisionEvent(Calendar.getInstance().getTimeInMillis(),robotReport1,robotReport2);
+											synchronized (collisionsList) {
+												collisionsList.add(ce);
+											}		
+											newCollidingCS.add(cs);
+										}
+									}
+									else if (previousCollidingCS.contains(cs))
+										previousCollidingCS.remove(cs); //remove the ones that are not colliding anymore
+								}
+							}
+						}
+						previousCollidingCS.addAll(newCollidingCS);
+						
+						try { Thread.sleep((long)(1000.0/30.0)); }
+						catch (InterruptedException e) { e.printStackTrace(); }
+					}
+					metaCSPLogger.info("Ending the collision checking thread.");
+				}
+					
+			};
+			collisionThread.start();
+		}
 	}
 	
 }

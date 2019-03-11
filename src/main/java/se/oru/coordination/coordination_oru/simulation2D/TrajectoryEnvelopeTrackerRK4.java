@@ -45,7 +45,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 		this.useInternalCPs = value;
 	}
 	
-	public TrajectoryEnvelopeTrackerRK4(TrajectoryEnvelope te, int timeStep, double temporalResolution, TrajectoryEnvelopeCoordinator tec, TrackingCallback cb) {
+	public TrajectoryEnvelopeTrackerRK4(TrajectoryEnvelope te, int timeStep, double temporalResolution, TrajectoryEnvelopeCoordinatorSimulation tec, TrackingCallback cb) {
 		this(te, timeStep, temporalResolution, 1.0, 0.1, tec, cb);
 	}
 	
@@ -334,8 +334,10 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 					while(trial < numberOfReplicas) {
 						if (rand.nextDouble() < (1-NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS)) //the real one
 							send = true;
-						else
-							tec.incrementLostPacketsCounter();
+						else {
+							TrajectoryEnvelopeCoordinatorSimulation tc = (TrajectoryEnvelopeCoordinatorSimulation)tec;
+							tc.incrementLostPacketsCounter();
+						}
 						trial++;
 					}
 					if (send) {
@@ -355,7 +357,8 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 						}
 					}
 					else {
-						tec.incrementLostMsgsCounter();
+						TrajectoryEnvelopeCoordinatorSimulation tc = (TrajectoryEnvelopeCoordinatorSimulation)tec;
+						tc.incrementLostMsgsCounter();
 						metaCSPLogger.info("PACKET to Robot" + te.getRobotID() + " LOST, criticalPoint: " + criticalPoint + ", externalCPCounter: " + externalCPCount);
 					}
 				}
