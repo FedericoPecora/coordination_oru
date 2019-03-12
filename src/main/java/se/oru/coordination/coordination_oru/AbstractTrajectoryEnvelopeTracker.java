@@ -178,6 +178,22 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 	}
 	
 	/**
+	 * Set the current report counter.
+	 * @param The current report counter.
+	 */
+	public void setReportCounter(int reportCounter) {
+		this.reportCounter = reportCounter;
+	}
+	
+	/**
+	 * Returns the current report counter.
+	 * @return The current report counter.
+	 */
+	public int getReportCounter() {
+		return this.reportCounter;
+	}
+	
+	/**
 	 * Returns the current critical point.
 	 * @return The current critical point.
 	 */
