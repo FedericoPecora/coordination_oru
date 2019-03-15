@@ -239,11 +239,15 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 			RobotReport rrWaiting = getRobotReport();
 			synchronized (tec.getCurrentDependencies()) {
 				for (Dependency dep : tec.getCurrentDependencies()) {
-					if (dep.getWaitingTracker().equals(this)) {
-						if (dep.getDrivingTracker() != null) {
-							RobotReport rrDriving = dep.getDrivingTracker().getRobotReport();
-							String arrowIdentifier = "_"+dep.getWaitingRobotID()+"-"+dep.getDrivingRobotID();
-							tec.getVisualization().displayDependency(rrWaiting, rrDriving, arrowIdentifier);
+					synchronized (tec.trackers) {
+						AbstractTrajectoryEnvelopeTracker waitingTrackers = tec.trackers.get(dep.getWaitingRobotID());
+						AbstractTrajectoryEnvelopeTracker drivingTrackers = tec.trackers.get(dep.getDrivingRobotID());
+						if (waitingTrackers.equals(this)) {
+							if (drivingTrackers != null) {
+								RobotReport rrDriving = drivingTrackers.getRobotReport();
+								String arrowIdentifier = "_"+dep.getWaitingRobotID()+"-"+dep.getDrivingRobotID();
+								tec.getVisualization().displayDependency(rrWaiting, rrDriving, arrowIdentifier);
+							}
 						}
 					}
 				}							
@@ -396,7 +400,6 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 						//if (!startedGroundEnvelopes.isEmpty()) printStartedGroundEnvelopes();
 						
 						RobotReport rr = null;
-						//while ((rr = getRobotReport()) == null) {
 						while ((rr = tec.getRobotReport(te.getRobotID())) == null) {
 							metaCSPLogger.info("(waiting for "+te.getComponent()+"'s tracker to come online)");
 							try { Thread.sleep(100); }
@@ -420,7 +423,6 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 									if (subEnv.getSequenceNumberEnd() < te.getSequenceNumberEnd()) fixDeadline(subEnv, 0);
 								}
 								else if (!finishedGroundEnvelopes.contains(subEnv) && currentSeqNumber > prevSeqNumber) {
-									//prevSeqNumber = currentSeqNumber;
 									updateDeadline(subEnv, 0);
 								}
 							}							

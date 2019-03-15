@@ -17,15 +17,12 @@ public class Dependency implements Comparable<Dependency> {
 	private int robotIDWaiting, robotIDDriving;
 	private TrajectoryEnvelope teWaiting, teDriving;
 	private int waitingPoint, thresholdPoint;
-	private AbstractTrajectoryEnvelopeTracker waitingTracker, drivingTracker;
 	
-	public Dependency(TrajectoryEnvelope teWaiting, TrajectoryEnvelope teDriving, int waitingPoint, int thresholdPoint, AbstractTrajectoryEnvelopeTracker waitingTracker, AbstractTrajectoryEnvelopeTracker drivingTracker) {
+	public Dependency(TrajectoryEnvelope teWaiting, TrajectoryEnvelope teDriving, int waitingPoint, int thresholdPoint) {
 		this.teWaiting = teWaiting;
 		this.teDriving = teDriving;
 		this.waitingPoint = waitingPoint;
 		this.thresholdPoint = thresholdPoint;
-		this.waitingTracker = waitingTracker;
-		this.drivingTracker = drivingTracker;
 		this.robotIDWaiting = teWaiting.getRobotID();
 		if (teDriving != null) this.robotIDDriving = teDriving.getRobotID();
 		else this.robotIDDriving = 0;
@@ -80,14 +77,6 @@ public class Dependency implements Comparable<Dependency> {
 	
 	public int getReleasingPoint() {
 		return this.thresholdPoint;
-	}
-	
-	public AbstractTrajectoryEnvelopeTracker getWaitingTracker() {
-		return this.waitingTracker;
-	}
-	
-	public AbstractTrajectoryEnvelopeTracker getDrivingTracker() {
-		return this.drivingTracker;
 	}
 	
 	public int getWaitingRobotID() {
