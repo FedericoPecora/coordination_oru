@@ -127,6 +127,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected boolean checkEscapePoses = true;
 	protected boolean breakDeadlocksByReordering = true;
 	protected boolean breakDeadlocksByReplanning = true;
+	protected boolean breakDeadlocksByBackTracking = true;
 	protected HashSet<Dependency> disallowedDependencies = new HashSet<Dependency>();
 
 	protected HashMap<Integer,TrackingCallback> trackingCallbacks = new HashMap<Integer, TrackingCallback>();	
@@ -240,6 +241,15 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	public void setBreakDeadlocksByReordering(boolean value) {
 		this.breakDeadlocksByReordering = value;
 	}
+	
+	/**
+	 * Set whether the coordinator should try to break deadlocks by back-tracking the yielding robots
+	 * along their trajectories in order to let the driving robot leading its current location.
+	 * @param value <code>true</code> if deadlocks should be broken.
+	 */
+	public void setBreakDeadlocksByBackTracking(boolean value) {
+		this.breakDeadlocksByBackTracking = value;
+	}
 
 	/**
 	 * Set whether the coordinator should try to break deadlocks by both arbitrary
@@ -250,6 +260,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	public void setBreakDeadlocks(boolean value) {
 		this.setBreakDeadlocksByReordering(value);
 		this.setBreakDeadlocksByReplanning(value);
+		this.setBreakDeadlocksByBackTracking(value);
 	}
 
 	/**
@@ -839,12 +850,19 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				}
 				if (i == edgesAlongCycle.size()-2) {
 					metaCSPLogger.info("Cycle: " + edgesAlongCycle + " is NOT deadlock-free");
-					if (breakDeadlocksByReplanning) spawnReplanning(edgesAlongCycle);
+					if ( !breakDeadlocksByReordering || disallowedDependencies.contains(anUnsafeDep)) {
+						if (breakDeadlocksByBackTracking) {
+							boolean canBackTrack = tryBackTracking(edgesAlongCycle);
+							if (!canBackTrack && breakDeadlocksByReplanning) spawnReplanning(edgesAlongCycle);
+						}
+						else if (breakDeadlocksByReplanning) spawnReplanning(edgesAlongCycle);
+					}
 					if (breakDeadlocksByReordering) {
 						synchronized (disallowedDependencies) {
 							disallowedDependencies.add(anUnsafeDep);
 						}
 					}
+					
 				}
 			}
 		}
@@ -853,6 +871,24 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	
 	private boolean inParkingPose(int robotID) {
 		return this.getRobotReport(robotID).getPathIndex() == -1;
+	}
+	
+	private boolean tryBackTracking(ArrayList<ArrayList<Dependency>> deadlockedDeps) {
+		//find if there exist at least one robot that can backtrack (is not starting in critical section).
+		//Otherwise 
+		return false;
+		
+		//compute the number of steps required from each possible backtracking robot to exit from critical section.
+		
+		//select the backtracker with the minimum step to be performed as BACKTRACKER (brake the cycle by removing the dependency for which it was selected as leader
+		//and get as CYCLE LEADER the robot for which the backtracker is waiter).
+		//----------------------------------
+		//another possible choice can be related to the number of robots involved in the DOMINO effect for back-tracking
+		
+		//if the backtracking involves other critical sections, start a DOMINO effect (each robot should back track) in order to allow the CYCLE LEADER to 
+		//pass.
+		
+		//return true;
 	}
 	
 	private void spawnReplanning(ArrayList<ArrayList<Dependency>> deadlockedDeps) {
@@ -1128,23 +1164,18 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		//one possible ordering
 		synchronized (disallowedDependencies) {
 			for (Dependency dep : disallowedDependencies) {			
-				//due to delays, the robot may have already entered the critical section, so the precedence cannot be disallowed
-				boolean canBeRemoved1 = communicatedCPs.containsKey(robotTracker1) && communicatedCPs.get(robotTracker1).getFirst() != -1 && (communicatedCPs.get(robotTracker1).getFirst() < cs.getTe1Start());
-				boolean canBeRemoved2 = communicatedCPs.containsKey(robotTracker2) && communicatedCPs.get(robotTracker2).getFirst() != -1 && (communicatedCPs.get(robotTracker2).getFirst() < cs.getTe2Start());
-				if (canBeRemoved1 && canBeRemoved2) {
-					if (dep.getWaitingRobotID() == robotReport1.getRobotID() &&
-								dep.getDrivingRobotID() == robotReport2.getRobotID() && 
-								cs.getTe2End() == dep.getReleasingPoint()) {
-							metaCSPLogger.info("DISALLOWED " + dep.getWaitingRobotID() + " waits for " + dep.getDrivingRobotID());
-							return true;
-						}
-						else if (dep.getWaitingRobotID() == robotReport2.getRobotID() &&
-								dep.getDrivingRobotID() == robotReport1.getRobotID() && cs.getTe1End() == dep.getReleasingPoint()) {
-							metaCSPLogger.info("DISALLOWED " + dep.getWaitingRobotID() + " waits for " + dep.getDrivingRobotID());
-							return false;
-						}
-					}
+				if (dep.getWaitingRobotID() == robotReport1.getRobotID() &&
+							dep.getDrivingRobotID() == robotReport2.getRobotID() && 
+							cs.getTe2End() == dep.getReleasingPoint()) {
+						metaCSPLogger.info("DISALLOWED " + dep.getWaitingRobotID() + " waits for " + dep.getDrivingRobotID());
+						return true;
 				}
+				else if (dep.getWaitingRobotID() == robotReport2.getRobotID() &&
+						dep.getDrivingRobotID() == robotReport1.getRobotID() && cs.getTe1End() == dep.getReleasingPoint()) {
+					metaCSPLogger.info("DISALLOWED " + dep.getWaitingRobotID() + " waits for " + dep.getDrivingRobotID());
+					return false;
+				}
+			}
 		}
 		
 		RobotAtCriticalSection r1atcs = new RobotAtCriticalSection(robotReport1, cs);
