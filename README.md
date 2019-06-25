@@ -26,7 +26,8 @@ In short, a trajectory envelope is a set of spatio-temporal constraints on a rob
 
 ## Talks and Tutorials
 An overview of the approach is provided in the ICAPS 2018 presentation of the paper:
-[![Examples usages of the coordination_oru library](http://img.youtube.com/vi/XVSAqH3gt_s/0.jpg)](http://www.youtube.com/watch?v=XVSAqH3gt_s "ICAPS 2018: Federico Pecora on "A Loosely-Coupled Approach for Multi-Robot Coordination, Motion Planning and Control")
+
+[![ICAPS 2018 talk by Federico Pecora](http://img.youtube.com/vi/XVSAqH3gt_s/0.jpg)](http://www.youtube.com/watch?v=XVSAqH3gt_s "ICAPS 2018 talk by Federico Pecora")
 
 The approach is discussed in more detail in the tutorial on _Integrated Motion Planning, Coordination and Control for Fleets of Mobile Robots_, given at the <a href="http://icaps18.icaps-conference.org/tutorials/">2018 International Conference on Automated Planning and Scheduling (ICAPS)</a> by F. Pecora and M. Mansouri. Slides and source code of the tutorial are available <a href="https://gitsvn-nt.oru.se/fopa/coordination-tutorial-src-ICAPS-2018">here</a>.
 
