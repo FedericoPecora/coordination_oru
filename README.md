@@ -14,9 +14,13 @@ The algorithm provided by this implementation is detailed in
 
 * Federico Pecora, Henrik Andreasson, Masoumeh Mansouri, and Vilian Petkov, <a href="https://www.aaai.org/ocs/index.php/ICAPS/ICAPS18/paper/view/17746/16941">A loosely-coupled approach for multi-robot coordination, motion planning and control</a>. In Proc. of the International Conference on Automated Planning and Scheduling (ICAPS), 2018.
 
-[![Examples usages of the coordination_oru library](http://img.youtube.com/vi/jCgrCVWf8sE/0.jpg)](http://www.youtube.com/watch?v=jCgrCVWf8sE "Examples usages of the coordination_oru library")
+The corresponding talk at ICAPS 2018 is available below:
 
-The approach makes very few assumptions on robot controllers, and can be used with any motion planning method for computing kinematically-feasible paths. Coordination is seen as a high-level control scheme for the entire fleet. Heuristics are used to update precedences of robots through critical sections while the fleet is in motion, and the dynamic feasibility of precedences is guaranteed via the inclusion of user-definable models of robot dynamics. 
+[![ICAPS 2018 talk by Federico Pecora](http://img.youtube.com/vi/XVSAqH3gt_s/0.jpg)](http://www.youtube.com/watch?v=XVSAqH3gt_s "ICAPS 2018 talk by Federico Pecora")
+
+The approach makes very few assumptions on robot controllers, and can be used with any motion planning method for computing kinematically-feasible paths. Coordination is seen as a high-level control scheme for the entire fleet. Heuristics are used to update precedences of robots through critical sections while the fleet is in motion, and the dynamic feasibility of precedences is guaranteed via the inclusion of user-definable models of robot dynamics. Several examples with simulated and real robots are shown in the following video:
+
+[![Examples usages of the coordination_oru library](http://img.youtube.com/vi/jCgrCVWf8sE/0.jpg)](http://www.youtube.com/watch?v=jCgrCVWf8sE "Examples usages of the coordination_oru library")
 
 The coordination method is based on the _trajectory envelope_ representation provided by the <a href="http://metacsp.org">Meta-CSP framework</a>. This representation is detailed in
 
@@ -24,11 +28,7 @@ The coordination method is based on the _trajectory envelope_ representation pro
 
 In short, a trajectory envelope is a set of spatio-temporal constraints on a robot's trajectory. A trajectory envelope spans over a _path_, which is a sequence of _poses_ ```<p1, ... pn>```. In the current implementation, the spatial constraints defining a trajectory envelope are computed as the sweep of the robot's footprint over the path.
 
-## Talks and Tutorials
-An overview of the approach is provided in the following talk at ICAPS 2018:
-
-[![ICAPS 2018 talk by Federico Pecora](http://img.youtube.com/vi/XVSAqH3gt_s/0.jpg)](http://www.youtube.com/watch?v=XVSAqH3gt_s "ICAPS 2018 talk by Federico Pecora")
-
+## Tutorials
 The approach is discussed in more detail in the tutorial on _Integrated Motion Planning, Coordination and Control for Fleets of Mobile Robots_, given at the <a href="http://icaps18.icaps-conference.org/tutorials/">2018 International Conference on Automated Planning and Scheduling (ICAPS)</a> by F. Pecora and M. Mansouri. Slides and source code of the tutorial are available <a href="https://gitsvn-nt.oru.se/fopa/coordination-tutorial-src-ICAPS-2018">here</a>.
 
 ## Installation
