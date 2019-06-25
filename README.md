@@ -25,7 +25,7 @@ The coordination method is based on the _trajectory envelope_ representation pro
 In short, a trajectory envelope is a set of spatio-temporal constraints on a robot's trajectory. A trajectory envelope spans over a _path_, which is a sequence of _poses_ ```<p1, ... pn>```. In the current implementation, the spatial constraints defining a trajectory envelope are computed as the sweep of the robot's footprint over the path.
 
 ## Talks and Tutorials
-An overview of the approach is provided in the ICAPS 2018 presentation of the paper:
+An overview of the approach is provided in the following talk at ICAPS 2018:
 
 [![ICAPS 2018 talk by Federico Pecora](http://img.youtube.com/vi/XVSAqH3gt_s/0.jpg)](http://www.youtube.com/watch?v=XVSAqH3gt_s "ICAPS 2018 talk by Federico Pecora")
 
