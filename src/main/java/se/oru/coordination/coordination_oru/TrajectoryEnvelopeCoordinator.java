@@ -22,6 +22,7 @@ import java.util.logging.Logger;
 import javax.swing.SwingUtilities;
 
 import org.apache.commons.collections.comparators.ComparatorChain;
+import org.jgrapht.alg.ConnectivityInspector;
 import org.jgrapht.alg.cycle.JohnsonSimpleCycles;
 import org.jgrapht.graph.SimpleDirectedGraph;
 import org.metacsp.framework.Constraint;
@@ -131,7 +132,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	
 	protected AbstractMotionPlanner defaultMotionPlanner = null;
 	protected HashMap<Integer,AbstractMotionPlanner> motionPlanners = new HashMap<Integer, AbstractMotionPlanner>();
-	protected HashSet<HashSet<Integer>> replanningSpawned = new HashSet<HashSet<Integer>>();
+	protected HashSet<Integer> lockedRobots = new HashSet<Integer>();
 	
 	//Network knowledge
 	protected double packetLossProbability = NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS;
@@ -944,7 +945,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					}
 					depsAlongCycle.add(dep);
 				}
-				spawnReplanning(depsAlongCycle);
+				//Get other robots 
+				ConnectivityInspector<Integer,Dependency> connInsp = new ConnectivityInspector<Integer,Dependency>(g);
+				HashSet<Integer> allRobots = (HashSet<Integer>) connInsp.connectedSetOf(cycle.get(0));
+				spawnReplanning(depsAlongCycle, allRobots);
 			}
 		}
 	}
@@ -978,8 +982,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		return this.getRobotReport(robotID).getPathIndex() == -1;
 	}
 	
-	private void spawnReplanning(ArrayList<Dependency> deadlockedDeps) {
-		
+	private void spawnReplanning(ArrayList<Dependency> deadlockedDeps, HashSet<Integer> allConnectedRobots) {
+			
 		boolean tryReplanning = true;
 		final HashSet<Integer> deadlockedRobots = new HashSet<Integer>();
 		for (Dependency dep : deadlockedDeps) {
@@ -987,24 +991,24 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			deadlockedRobots.add(dep.getDrivingRobotID());
 			RobotReport rrWaiting = getRobotReport(dep.getWaitingRobotID());
 			if (inParkingPose(dep.getDrivingRobotID()) || inParkingPose(dep.getWaitingRobotID())
-					|| (dep.getWaitingPoint() == 0 ? (rrWaiting.getPathIndex() < 0) : (rrWaiting.getPathIndex() < dep.getWaitingPoint()-2))) {
+					|| (dep.getWaitingPoint() == 0 ? (rrWaiting.getPathIndex() < 0) : (rrWaiting.getPathIndex() < dep.getWaitingPoint()-1))) {
 				tryReplanning = false;
 				break;
 			}
 		}
 		
-		synchronized (replanningSpawned) {
-			if (tryReplanning && !replanningSpawned.contains(deadlockedRobots)) {
-				//Get other robots
-				final HashSet<Integer> allRobots = new HashSet<Integer>();
-				for (Integer robotID : deadlockedRobots) {
-					for (Dependency dep : currentDependencies) {
-						if (dep.getDrivingRobotID() == robotID) allRobots.add(dep.getWaitingRobotID());
-						else if (dep.getWaitingRobotID() == robotID) allRobots.add(dep.getDrivingRobotID());
-					}
+		synchronized (lockedRobots) {
+			boolean tryLocking = true;
+			for (int robotID : deadlockedRobots) {
+				if (lockedRobots.contains(robotID)) {
+					tryLocking = false;
+					break;
 				}
+			}
+			if (tryReplanning && tryLocking) {
+				final HashSet<Integer> allRobots = allConnectedRobots;
+				lockedRobots.addAll(deadlockedRobots);
 
-				replanningSpawned.add(deadlockedRobots);
 				metaCSPLogger.info("Will re-plan for one of the following deadlocked robots: " + deadlockedRobots + " (" + allRobots + ")...");
 				new Thread() {
 					public void run() {
@@ -1111,8 +1115,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				metaCSPLogger.info("Failed to re-plan path of Robot" + robotID);
 			}
 		}
-		synchronized (replanningSpawned) {
-			replanningSpawned.remove(robotsToReplan);
+		synchronized (lockedRobots) {
+			lockedRobots.removeAll(robotsToReplan);
 		}
 	}
 	
