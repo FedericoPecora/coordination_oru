@@ -921,13 +921,30 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							g = gTmp;
 							currentDependencies = currentDepsTmp;
 							currentDeps = allDeps;
-							unsafeCycles = unsafeCyclesTmp;
+							unsafeCycles = unsafeCyclesTmp; //FIXME termination
 							criticalSectionsToDepsOrder = criticalSectionsToDepsOrderTmp;
 							depsToCs = depsToCsTmp;
 							break;
 						}
 					}
 				}
+			}
+		}
+		if (breakDeadlocksByReplanning) {
+			for (List<Integer> cycle : unsafeCycles) {
+				//Get edges along the cycle...
+				ArrayList<Dependency> depsAlongCycle = new ArrayList<Dependency>();
+				for (int i = 0; i < cycle.size(); i++) {
+					Dependency dep = null;
+					if (i < cycle.size()-1) {
+						dep = g.getEdge(cycle.get(i), cycle.get(i+1));
+					}
+					else {
+						dep = g.getEdge(cycle.get(i), cycle.get(0));
+					}
+					depsAlongCycle.add(dep);
+				}
+				spawnReplanning(depsAlongCycle);
 			}
 		}
 	}
@@ -961,62 +978,40 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		return this.getRobotReport(robotID).getPathIndex() == -1;
 	}
 	
-	private void spawnReplanning(ArrayList<ArrayList<Dependency>> deadlockedDeps) {
+	private void spawnReplanning(ArrayList<Dependency> deadlockedDeps) {
 		
-		int maxSize = 0;
-		for (ArrayList<Dependency> oneDepList : deadlockedDeps) if (oneDepList.size() > maxSize) maxSize = oneDepList.size();
-		PermutationsWithRepetition gen = new PermutationsWithRepetition(maxSize, deadlockedDeps.size());
-		//Combination c = new Combination(maxSize, deadlockedDeps.size());
-		int[][] v = gen.getVariations();
-		ArrayList<ArrayList<Dependency>> newDeps = new ArrayList<ArrayList<Dependency>>();
-		for (int k = 0; k < v.length; k++) {
-			int[] oneComb = v[k];
-			//System.out.println("Selecting: " + Arrays.toString(oneComb));
-			ArrayList<Dependency> oneSelection = new ArrayList<Dependency>();
-			for (int i = 0; i < oneComb.length; i++) {
-				if (oneComb[i] < deadlockedDeps.get(i).size()) oneSelection.add(deadlockedDeps.get(i).get(oneComb[i]));
-				else {
-					oneSelection = null;
-					break;
-				}
+		boolean tryReplanning = true;
+		final HashSet<Integer> deadlockedRobots = new HashSet<Integer>();
+		for (Dependency dep : deadlockedDeps) {
+			deadlockedRobots.add(dep.getWaitingRobotID());
+			deadlockedRobots.add(dep.getDrivingRobotID());
+			RobotReport rrWaiting = getRobotReport(dep.getWaitingRobotID());
+			if (inParkingPose(dep.getDrivingRobotID()) || inParkingPose(dep.getWaitingRobotID())
+					|| (dep.getWaitingPoint() == 0 ? (rrWaiting.getPathIndex() < 0) : (rrWaiting.getPathIndex() < dep.getWaitingPoint()-2))) {
+				tryReplanning = false;
+				break;
 			}
-			if (oneSelection != null) newDeps.add(oneSelection);
 		}
-		for (ArrayList<Dependency> depList : newDeps) {
-			//System.out.println("DEPLIST: " + depList);
-			boolean tryReplanning = true;
-			final HashSet<Integer> deadlockedRobots = new HashSet<Integer>();
-			for (Dependency dep : depList) {
-				deadlockedRobots.add(dep.getWaitingRobotID());
-				deadlockedRobots.add(dep.getDrivingRobotID());
-				RobotReport rrWaiting = getRobotReport(dep.getWaitingRobotID());
-				if (inParkingPose(dep.getDrivingRobotID()) || inParkingPose(dep.getWaitingRobotID())
-						|| (dep.getWaitingPoint() == 0 ? (rrWaiting.getPathIndex() < 0) : (rrWaiting.getPathIndex() < dep.getWaitingPoint()-2))) {
-					tryReplanning = false;
-					break;
-				}
-			}
-			
-			synchronized (replanningSpawned) {
-				if (tryReplanning && !replanningSpawned.contains(deadlockedRobots)) {
-					//Get other robots
-					final HashSet<Integer> allRobots = new HashSet<Integer>();
-					for (Integer robotID : deadlockedRobots) {
-						for (Dependency dep : currentDependencies) {
-							if (dep.getDrivingRobotID() == robotID) allRobots.add(dep.getWaitingRobotID());
-							else if (dep.getWaitingRobotID() == robotID) allRobots.add(dep.getDrivingRobotID());
-						}
+		
+		synchronized (replanningSpawned) {
+			if (tryReplanning && !replanningSpawned.contains(deadlockedRobots)) {
+				//Get other robots
+				final HashSet<Integer> allRobots = new HashSet<Integer>();
+				for (Integer robotID : deadlockedRobots) {
+					for (Dependency dep : currentDependencies) {
+						if (dep.getDrivingRobotID() == robotID) allRobots.add(dep.getWaitingRobotID());
+						else if (dep.getWaitingRobotID() == robotID) allRobots.add(dep.getDrivingRobotID());
 					}
-	
-					replanningSpawned.add(deadlockedRobots);
-					metaCSPLogger.info("Will re-plan for one of the following deadlocked robots: " + deadlockedRobots + " (" + allRobots + ")...");
-					new Thread() {
-						public void run() {
-							rePlanPath(deadlockedRobots, allRobots);
-						}
-					}.start();
-	
 				}
+
+				replanningSpawned.add(deadlockedRobots);
+				metaCSPLogger.info("Will re-plan for one of the following deadlocked robots: " + deadlockedRobots + " (" + allRobots + ")...");
+				new Thread() {
+					public void run() {
+						rePlanPath(deadlockedRobots, allRobots);
+					}
+				}.start();
+
 			}
 		}
 	}
