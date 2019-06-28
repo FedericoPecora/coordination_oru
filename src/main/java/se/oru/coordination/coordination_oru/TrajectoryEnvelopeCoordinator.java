@@ -1993,7 +1993,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						te1Starts.add(j);
 					}
 					else if (started && !placement1.intersects(g)) {
-						te1Ends.add(j);
+						te1Ends.add(j-1 > 0 ? j-1 : 0);
 						started = false;
 					}
 					if (started && j == path1.length-1) {
@@ -2008,7 +2008,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						te2Starts.add(j);
 					}
 					else if (started && !placement2.intersects(g)) {
-						te2Ends.add(j);
+						te2Ends.add(j-1 > 0 ? j-1 : 0);
 						started = false;
 					}
 					if (started && j == path2.length-1) {
