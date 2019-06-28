@@ -732,7 +732,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		}
 
 		//Return pose at which yielding robot should stop given driving robot's projected sweep
-		for (int i = yieldingRobotStart; i < yieldingRobotEnd; i++) {
+		for (int i = yieldingRobotStart; i <= yieldingRobotEnd; i++) {
 			Pose yieldingRobotPose = yieldingRobotTE.getTrajectory().getPose()[i];
 			Geometry yieldingRobotInPose = TrajectoryEnvelope.getFootprint(yieldingRobotTE.getFootprint(), yieldingRobotPose.getX(), yieldingRobotPose.getY(), yieldingRobotPose.getTheta());
 			if (leadingRobotInPose.intersects(yieldingRobotInPose)) {
