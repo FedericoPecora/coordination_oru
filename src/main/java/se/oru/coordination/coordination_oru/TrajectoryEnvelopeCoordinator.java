@@ -869,7 +869,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					else {
 						dep = g.getEdge(cycle.get(i), cycle.get(0));
 					}
-					if (reversibleDeps.contains(dep)) reversibleDepsAlongCycle.add(dep);
+					if (reversibleDeps.contains(dep) && !artificialDeps.containsKey(dep.getWaitingRobotID())) reversibleDepsAlongCycle.add(dep);
 				}
 				
 				//For each reversible edge ... 
@@ -956,7 +956,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	private void updateCurrentDependencies(HashMap<Integer,TreeSet<Dependency>> allDeps, HashMap<Integer, TreeSet<Dependency>> artificialDeps, HashSet<Dependency> closestDeps, Set<Integer> robotIDs) {
 		closestDeps.clear();
 		for (Integer robotID : robotIDs) {						
-			if (allDeps.containsKey(robotID)) {
+			if (allDeps.containsKey(robotID) || artificialDeps.containsKey(robotID)) {
 				Dependency firstDep = null;
 				Dependency firstArtificialDep = null;
 				if (allDeps.containsKey(robotID)){
