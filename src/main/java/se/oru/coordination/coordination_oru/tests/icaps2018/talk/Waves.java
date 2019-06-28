@@ -160,7 +160,7 @@ public class Waves {
 		//RVizVisualization viz = new RVizVisualization();
 		//RVizVisualization.writeRVizConfigFile(robotIDs);
 		BrowserVisualization viz = new BrowserVisualization();
-		viz.setInitialTransform(20.0, 45, 20);
+		viz.setInitialTransform(40.0, 8.7, 5.7);
 		viz.setMap(yamlFile);
 		tec.setVisualization(viz);
 		
