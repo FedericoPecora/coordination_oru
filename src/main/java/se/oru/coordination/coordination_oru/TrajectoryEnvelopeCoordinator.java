@@ -1196,15 +1196,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			HashMap<Integer,TreeSet<Dependency>> currentDeps = new HashMap<Integer,TreeSet<Dependency>>();
 			HashMap<Integer,TreeSet<Dependency>> artificialDependencies = new HashMap<Integer,TreeSet<Dependency>>(); 
 			HashSet<Dependency> currentReversibleDependencies = new HashSet<Dependency>();
-			HashSet<CriticalSection> lockedCS = new HashSet<CriticalSection>();
-			
-			synchronized (currentDependencies) {
-				synchronized (lockedRobots) {
-					for (Dependency dep : currentDependencies) {
-							if (lockedRobots.contains(dep.getWaitingRobotID()))	lockedCS.add(depsToCriticalSections.get(dep));
-					}
-				}
-			}
 			
 			//Make deps from un-reached stopping points
 			Set<Integer> robotIDs = trackers.keySet();
@@ -1454,39 +1445,26 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							metaCSPLogger.finest("Both can't. Driving Robot" + drivingRobotID + " at " + drivingCurrentIndex + " makes " + waitingRobotID + " waiting at CS " + cs + ".");
 						}
 						
-						if (lockedCS.contains(cs) && criticalSectionsToDepsOrder.get(cs) != null) {
-							waitingRobotID = criticalSectionsToDepsOrder.get(cs).getFirst();
-							waitingPoint = criticalSectionsToDepsOrder.get(cs).getSecond();
-							waitingTE = cs.getTe1().getRobotID() == waitingRobotID ? cs.getTe1() : cs.getTe2();
-							drivingRobotID = cs.getTe1().getRobotID() == waitingRobotID ? cs.getTe2().getRobotID() : cs.getTe1().getRobotID();
-							drivingTE = cs.getTe1().getRobotID() == drivingRobotID ? cs.getTe1() : cs.getTe2();
-							drivingCurrentIndex = drivingRobotID == robotReport1.getRobotID() ? robotReport1.getPathIndex() : robotReport2.getPathIndex();
-							waitingTracker = waitingRobotID == robotReport1.getRobotID() ? robotTracker1 : robotTracker2;
-							drivingTracker = drivingRobotID == robotReport1.getRobotID() ? robotTracker1 : robotTracker2;
-							metaCSPLogger.info("Locked Robot" + waitingRobotID + "; set upperbound new critical point to " + waitingPoint + ".");
+						//Compute waiting path index point for waiting robot
+						waitingPoint = getCriticalPoint(waitingRobotID, cs, drivingCurrentIndex);
+						if (wakeUpinCSRobot1 && communicatedCPs.containsKey(robotTracker2)) {
+							if (communicatedCPs.get(robotTracker2).getFirst() > waitingPoint) {
+								metaCSPLogger.info("Wake-up Robot"+robotReport1.getRobotID()+"; revising waiting point of Robot" + robotReport2.getRobotID() + ": " + waitingPoint + "-->" + communicatedCPs.get(robotTracker2).getFirst());
+								waitingPoint = communicatedCPs.get(robotTracker2).getFirst();
+								escapingCSToWaitingRobotIDandCP.put(cs, new Pair<Integer,Integer>(robotReport2.getRobotID(),waitingPoint));
+							}
 						}
-						else {
-							//Compute waiting path index point for waiting robot
-							waitingPoint = getCriticalPoint(waitingRobotID, cs, drivingCurrentIndex);
-							if (wakeUpinCSRobot1 && communicatedCPs.containsKey(robotTracker2)) {
-								if (communicatedCPs.get(robotTracker2).getFirst() > waitingPoint) {
-									metaCSPLogger.info("Wake-up Robot"+robotReport1.getRobotID()+"; revising waiting point of Robot" + robotReport2.getRobotID() + ": " + waitingPoint + "-->" + communicatedCPs.get(robotTracker2).getFirst());
-									waitingPoint = communicatedCPs.get(robotTracker2).getFirst();
-									escapingCSToWaitingRobotIDandCP.put(cs, new Pair<Integer,Integer>(robotReport2.getRobotID(),waitingPoint));
-								}
+						else if (wakeUpinCSRobot2 && communicatedCPs.containsKey(robotTracker1)) {
+							if (communicatedCPs.get(robotTracker1).getFirst() > waitingPoint) {
+								metaCSPLogger.info("Wake-up Robot"+robotReport2.getRobotID()+"; revising waiting point of Robot" + robotReport1.getRobotID() + ": " + waitingPoint + "-->" + communicatedCPs.get(robotTracker1).getFirst());
+								waitingPoint = communicatedCPs.get(robotTracker1).getFirst();
+								escapingCSToWaitingRobotIDandCP.put(cs, new Pair<Integer,Integer>(robotReport1.getRobotID(),waitingPoint));
 							}
-							else if (wakeUpinCSRobot2 && communicatedCPs.containsKey(robotTracker1)) {
-								if (communicatedCPs.get(robotTracker1).getFirst() > waitingPoint) {
-									metaCSPLogger.info("Wake-up Robot"+robotReport2.getRobotID()+"; revising waiting point of Robot" + robotReport1.getRobotID() + ": " + waitingPoint + "-->" + communicatedCPs.get(robotTracker1).getFirst());
-									waitingPoint = communicatedCPs.get(robotTracker1).getFirst();
-									escapingCSToWaitingRobotIDandCP.put(cs, new Pair<Integer,Integer>(robotReport1.getRobotID(),waitingPoint));
-								}
-							}
-							
-							if (escapingCSToWaitingRobotIDandCP.containsKey(cs) && escapingCSToWaitingRobotIDandCP.get(cs).getFirst() == waitingRobotID) {
-								waitingPoint = escapingCSToWaitingRobotIDandCP.get(cs).getSecond();
-								metaCSPLogger.info("Use escaping waiting point. Make Robot" + waitingRobotID + " stopping at " + waitingPoint + ".");
-							}
+						}
+						
+						if (escapingCSToWaitingRobotIDandCP.containsKey(cs) && escapingCSToWaitingRobotIDandCP.get(cs).getFirst() == waitingRobotID) {
+							waitingPoint = escapingCSToWaitingRobotIDandCP.get(cs).getSecond();
+							metaCSPLogger.info("Use escaping waiting point. Make Robot" + waitingRobotID + " stopping at " + waitingPoint + ".");
 						}
 						
 						if (waitingPoint >= 0) {		
