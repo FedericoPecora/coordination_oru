@@ -1644,9 +1644,15 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 		int numberOfCriticalSections = 0;
 		
+		//Update the coordinator view
+		HashMap<Integer,RobotReport> currentReports = new HashMap<Integer,RobotReport>();
+		for (int robotID : trackers.keySet()) {
+			currentReports.put(robotID,this.getRobotReport(robotID));
+		}
+		
 		synchronized(allCriticalSections) {
 
-			//Collect all driving envelopes
+			//Collect all driving envelopes and current pose indices
 			ArrayList<TrajectoryEnvelope> drivingEnvelopes = new ArrayList<TrajectoryEnvelope>();
 			for (AbstractTrajectoryEnvelopeTracker atet : trackers.values()) {
 				if (!(atet instanceof TrajectoryEnvelopeTrackerDummy)) {
@@ -1659,7 +1665,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				for (int j = 0; j < envelopesToTrack.size(); j++) {	
 					if (!envelopesToTrack.get(j).equals(drivingEnvelopes.get(i))) {
 						for (CriticalSection cs : getCriticalSections(drivingEnvelopes.get(i), envelopesToTrack.get(j))) {
-							this.allCriticalSections.add(cs);
+							if (currentReports.get(cs.getTe1().getRobotID()).getPathIndex() <= cs.getTe1End() && currentReports.get(cs.getTe2().getRobotID()).getPathIndex() <= cs.getTe2End())
+								this.allCriticalSections.add(cs);
 							//metaCSPLogger.info("computeCriticalSections(): add (1) " + cs);
 						}
 					}
@@ -1670,7 +1677,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			for (int i = 0; i < envelopesToTrack.size(); i++) {
 				for (int j = i+1; j < envelopesToTrack.size(); j++) {
 					for (CriticalSection cs : getCriticalSections(envelopesToTrack.get(i), envelopesToTrack.get(j))) {
-						this.allCriticalSections.add(cs);
+						if (currentReports.get(cs.getTe1().getRobotID()).getPathIndex() <= cs.getTe1End() && currentReports.get(cs.getTe2().getRobotID()).getPathIndex() <= cs.getTe2End())
+							this.allCriticalSections.add(cs);
 						//metaCSPLogger.info("computeCriticalSections(): add (2) " + cs);
 					}
 				}
@@ -1681,7 +1689,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				for (int j = 0; j < currentParkingEnvelopes.size(); j++) {
 					if (drivingEnvelopes.get(i).getRobotID() != currentParkingEnvelopes.get(j).getRobotID()) {
 						for (CriticalSection cs : getCriticalSections(drivingEnvelopes.get(i), currentParkingEnvelopes.get(j))) {
-							this.allCriticalSections.add(cs);
+							if (currentReports.get(cs.getTe1().getRobotID()).getPathIndex() <= cs.getTe1End() && currentReports.get(cs.getTe2().getRobotID()).getPathIndex() <= cs.getTe2End())
+								this.allCriticalSections.add(cs);
 							//metaCSPLogger.info("computeCriticalSections(): add (3) " + cs);
 						}
 					}
@@ -1693,7 +1702,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				for (int j = 0; j < currentParkingEnvelopes.size(); j++) {
 					if (envelopesToTrack.get(i).getRobotID() != currentParkingEnvelopes.get(j).getRobotID()) {
 						for (CriticalSection cs : getCriticalSections(envelopesToTrack.get(i), currentParkingEnvelopes.get(j))) {
-							this.allCriticalSections.add(cs);
+							if (currentReports.get(cs.getTe1().getRobotID()).getPathIndex() <= cs.getTe1End() && currentReports.get(cs.getTe2().getRobotID()).getPathIndex() <= cs.getTe2End())
+								this.allCriticalSections.add(cs);
 							//metaCSPLogger.info("computeCriticalSections(): add (4) " + cs);
 						}
 					}
@@ -1730,7 +1740,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					viz.removeEnvelope(te);
 				}
 				
-				//get last communicated waipoint;
+				//get last communicated waypoint;
 				int lastCriticalPoint = -1;
 				synchronized (trackers) {
 					lastCriticalPoint = communicatedCPs.get(trackers.get(robotID)).getFirst();
