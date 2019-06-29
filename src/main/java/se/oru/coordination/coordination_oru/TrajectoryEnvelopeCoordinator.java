@@ -988,7 +988,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		boolean tryReplanning = true;
 		final HashSet<Integer> deadlockedRobots = new HashSet<Integer>();
 		
-		boolean staticReplan = true; //FIXME It should become a parameter to be set. 
+		boolean staticReplan = false; //FIXME It should become a parameter to be set. 
 		
 		for (Dependency dep : deadlockedDeps) {
 			deadlockedRobots.add(dep.getWaitingRobotID());
@@ -996,7 +996,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			RobotReport rrWaiting = getRobotReport(dep.getWaitingRobotID());
 			
 			if (inParkingPose(dep.getDrivingRobotID()) || inParkingPose(dep.getWaitingRobotID()) //if one deadlocked robot is parked
-					//static replan: wait for a deadlock to happen before starting the re-plan
+					//static re-plan: wait for a deadlock to happen before starting the re-plan
 					|| staticReplan && ((dep.getWaitingPoint() == 0 ? (rrWaiting.getPathIndex() < 0) : (rrWaiting.getPathIndex() < dep.getWaitingPoint()-1)))) {
 				tryReplanning = false;
 				break;
@@ -1462,7 +1462,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						//Compute waiting path index point for waiting robot
 						waitingPoint = getCriticalPoint(waitingRobotID, cs, drivingCurrentIndex);
 						
-						//Impose holding the previous in some cases
+						//Impose holding the previous dependence in some cases
 						if (wakeUpinCSRobot1 && communicatedCPs.containsKey(robotTracker2)) {
 							if (communicatedCPs.get(robotTracker2).getFirst() > waitingPoint) {
 								metaCSPLogger.info("Wake-up Robot"+robotReport1.getRobotID()+"; revising waiting point of Robot" + robotReport2.getRobotID() + ": " + waitingPoint + "-->" + communicatedCPs.get(robotTracker2).getFirst());
@@ -1726,8 +1726,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 * Replace the path of a robot's {@link TrajectoryEnvelope} on the fly.
 	 * @param robotID The ID of the robot whose {@link TrajectoryEnvelope} is to be recomputed.
 	 * @param newPath The path based on which the new {@link TrajectoryEnvelope} should be computed.
+	 * @param lockedRobotIDs The set of robots which have been locked when the re-plan started.
 	 */
-	public void replacePath(int robotID, PoseSteering[] newPath, HashSet<Integer> robotsToReplan) {
+	public void replacePath(int robotID, PoseSteering[] newPath, HashSet<Integer> lockedRobotIDs) {
 		
 		synchronized (solver) {
 			
@@ -1744,10 +1745,23 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				synchronized (trackers) {
 					lastCriticalPoint = communicatedCPs.get(trackers.get(robotID)).getFirst();
 				}
-								
+				
+				//------------------ (dynamic re-plan) --------------------
+				//store the order of precedence (and waiting points) for every 
+				//critical section involving the robot which is replanning
+				HashMap<CriticalSection,Pair<Integer,Integer>> holdingCS = new HashMap<CriticalSection,Pair<Integer,Integer>>();
+				for (CriticalSection cs : criticalSectionsToDepsOrder.keySet()) {
+					if (cs.getTe1().getRobotID() == robotID && cs.getTe1Start() <= lastCriticalPoint || 
+							cs.getTe2().getRobotID() == robotID && cs.getTe2Start() <= lastCriticalPoint) 
+						holdingCS.put(cs,criticalSectionsToDepsOrder.get(cs));
+				}
+				//---------------------------------------------------------
+				
+				//------------- (static/dynamic re-plan) ------------------
 				//Remove CSs involving this robot, clearing the history.
 				cleanUpRobotCS(te.getRobotID(),lastCriticalPoint);
-							
+				//---------------------------------------------------------
+				
 				//Make new envelope
 				TrajectoryEnvelope newTE = solver.createEnvelopeNoParking(robotID, newPath, "Driving", this.getFootprint(robotID));
 		
@@ -1789,17 +1803,42 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				//Recompute CSs involving this robot
 				computeCriticalSections();
 				
-				//The robot is waiting at its current critical point. Hence, it can stop by definition.
-				//To keep it simple, restart the communication.
-				synchronized (trackers) {
-					communicatedCPs.remove(trackers.get(robotID));
-				}
+				//------------------ (static re-plan) ----------------------
+					//The robot is waiting at its current critical point. Hence, it can stop by definition.
+					//To keep it simple, restart the communication.
+					//synchronized (trackers) {
+					//	communicatedCPs.remove(trackers.get(robotID));
+					//}
+				//---------------------------------------------------------
+					
+				//------------------ (dynamic re-plan) --------------------
+					for (CriticalSection cs1 : allCriticalSections) {
+						if (cs1.getTe1().getRobotID() == robotID && cs1.getTe1Start() <= lastCriticalPoint || 
+							cs1.getTe2().getRobotID() == robotID && cs1.getTe2Start() <= lastCriticalPoint) {
+							for (CriticalSection cs2 : holdingCS.keySet()) {
+								if (cs1.getTe1().getRobotID() == cs2.getTe1().getRobotID() && cs1.getTe2().getRobotID() == cs2.getTe2().getRobotID() ||
+									cs1.getTe1().getRobotID() == cs2.getTe2().getRobotID() && cs1.getTe2().getRobotID() == cs2.getTe1().getRobotID()) {
+									//the same set of robots
+									if ((cs1.getTe1().getRobotID() == robotID && cs2.getTe1().getRobotID() == robotID && cs1.getTe1Start() == cs2.getTe1Start() &&
+											(cs1.getTe2Start() == cs2.getTe2Start() || cs1.getTe2End() == cs2.getTe2End())) ||
+											(cs1.getTe1().getRobotID() == robotID && cs2.getTe2().getRobotID() == robotID && cs1.getTe1Start() == cs2.getTe2Start() &&
+											(cs1.getTe2Start() == cs2.getTe1Start() || cs1.getTe2End() == cs2.getTe1End())) ||
+											(cs1.getTe2().getRobotID() == robotID && cs2.getTe1().getRobotID() == robotID && cs1.getTe2Start() == cs2.getTe1Start() &&
+											(cs1.getTe1Start() == cs2.getTe2Start() || cs1.getTe1End() == cs2.getTe2End())) ||
+											(cs1.getTe2().getRobotID() == robotID && cs2.getTe2().getRobotID() == robotID && cs1.getTe2Start() == cs2.getTe2Start() &&
+											(cs1.getTe1Start() == cs2.getTe1Start() || cs1.getTe1End() == cs2.getTe1End())))
+										criticalSectionsToDepsOrder.put(cs2,holdingCS.get(cs1));
+								}		
+							}
+						}
+					}
+				//---------------------------------------------------------
 								
 				envelopesToTrack.remove(newTE);
 				
 				synchronized (lockedRobots) {
-					for (int ID : robotsToReplan) lockedRobots.remove(ID);
-					metaCSPLogger.info("Unlock robots: " + robotsToReplan.toString());
+					for (int ID : lockedRobotIDs) lockedRobots.remove(ID);
+					metaCSPLogger.info("Unlock robots: " + lockedRobotIDs.toString());
 				}
 				
 				updateDependencies();											
