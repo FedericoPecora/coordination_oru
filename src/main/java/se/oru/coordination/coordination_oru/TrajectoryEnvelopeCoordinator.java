@@ -127,6 +127,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	protected boolean checkEscapePoses = true;
 	protected boolean breakDeadlocksByReordering = true;
 	protected boolean breakDeadlocksByReplanning = true;
+	protected boolean staticReplan = false;
 
 	protected HashMap<Integer,TrackingCallback> trackingCallbacks = new HashMap<Integer, TrackingCallback>();	
 	protected Callback inferenceCallback = null;
@@ -265,6 +266,15 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 */
 	public void setCheckEscapePoses(boolean value) {
 		this.checkEscapePoses = value;
+	}
+	
+	/**
+	 * Set whether waiting for deadlocks to happen before starting re-plan to recover from deadlock.
+	 * @param value <code>true</code> if all the robots should yield at their deadlocking critical points 
+	 * before starting a recovery strategy based on re-plan.
+	 */
+	public void setStaticReplan(boolean value) {
+		this.staticReplan = value;
 	}
 
 	/**
@@ -987,8 +997,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			
 		boolean tryReplanning = true;
 		final HashSet<Integer> deadlockedRobots = new HashSet<Integer>();
-		
-		boolean staticReplan = false; //FIXME It should become a parameter to be set. 
+		final boolean useStaticReplan = staticReplan;
 		
 		for (Dependency dep : deadlockedDeps) {
 			deadlockedRobots.add(dep.getWaitingRobotID());
@@ -997,7 +1006,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			
 			if (inParkingPose(dep.getDrivingRobotID()) || inParkingPose(dep.getWaitingRobotID()) //if one deadlocked robot is parked
 					//static re-plan: wait for a deadlock to happen before starting the re-plan
-					|| staticReplan && ((dep.getWaitingPoint() == 0 ? (rrWaiting.getPathIndex() < 0) : (rrWaiting.getPathIndex() < dep.getWaitingPoint()-1)))) {
+					|| useStaticReplan && ((dep.getWaitingPoint() == 0 ? (rrWaiting.getPathIndex() < 0) : (rrWaiting.getPathIndex() < dep.getWaitingPoint()-1)))) {
 				tryReplanning = false;
 				break;
 			}
@@ -1021,7 +1030,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				metaCSPLogger.info("Will re-plan for one of the following deadlocked robots: " + deadlockedRobots + " (" + allRobots + ")...");
 				new Thread() {
 					public void run() {
-						rePlanPath(deadlockedRobots, allRobots);
+						rePlanPath(deadlockedRobots, allRobots, useStaticReplan);
 					}
 				}.start();
 
@@ -1079,7 +1088,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		return null;
 	}
 	
-	protected void rePlanPath(HashSet<Integer> robotsToReplan, HashSet<Integer> allRobots) {
+	protected void rePlanPath(HashSet<Integer> robotsToReplan, HashSet<Integer> allRobots, boolean useStaticReplan) {
 		for (int robotID : robotsToReplan) {
 			int currentWaitingIndex = -1;
 			Pose currentWaitingPose = null;
@@ -1116,7 +1125,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					if (i < currentWaitingIndex) newCompletePath[i] = oldPath[i];
 					else newCompletePath[i] = newPath[i-currentWaitingIndex];
 				}
-				replacePath(robotID, newCompletePath, robotsToReplan);
+				replacePath(robotID, newCompletePath, robotsToReplan, useStaticReplan);
 				metaCSPLogger.info("Successfully re-planned path of Robot" + robotID);
 				break;
 			}
@@ -1728,7 +1737,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 * @param newPath The path based on which the new {@link TrajectoryEnvelope} should be computed.
 	 * @param lockedRobotIDs The set of robots which have been locked when the re-plan started.
 	 */
-	public void replacePath(int robotID, PoseSteering[] newPath, HashSet<Integer> lockedRobotIDs) {
+	public void replacePath(int robotID, PoseSteering[] newPath, HashSet<Integer> lockedRobotIDs, boolean useStaticReplan) {
 		
 		synchronized (solver) {
 			
@@ -1750,14 +1759,15 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				//store the order of precedence (and waiting points) for every 
 				//critical section involving the robot which is replanning
 				HashMap<CriticalSection,Pair<Integer,Integer>> holdingCS = new HashMap<CriticalSection,Pair<Integer,Integer>>();
-				for (CriticalSection cs : criticalSectionsToDepsOrder.keySet()) {
-					if (cs.getTe1().getRobotID() == robotID && cs.getTe1Start() <= lastCriticalPoint || 
-							cs.getTe2().getRobotID() == robotID && cs.getTe2Start() <= lastCriticalPoint) 
-						holdingCS.put(cs,criticalSectionsToDepsOrder.get(cs));
+				if (!useStaticReplan) {
+					for (CriticalSection cs : criticalSectionsToDepsOrder.keySet()) {
+						if (cs.getTe1().getRobotID() == robotID && cs.getTe1Start() <= lastCriticalPoint || 
+								cs.getTe2().getRobotID() == robotID && cs.getTe2Start() <= lastCriticalPoint) 
+							holdingCS.put(cs,criticalSectionsToDepsOrder.get(cs));
+					}
 				}
 				//---------------------------------------------------------
 				
-				//------------- (static/dynamic re-plan) ------------------
 				//Remove CSs involving this robot, clearing the history.
 				cleanUpRobotCS(te.getRobotID(),lastCriticalPoint);
 				//---------------------------------------------------------
@@ -1804,14 +1814,16 @@ public abstract class TrajectoryEnvelopeCoordinator {
 				computeCriticalSections();
 				
 				//------------------ (static re-plan) ----------------------
+				if (useStaticReplan) {
 					//The robot is waiting at its current critical point. Hence, it can stop by definition.
 					//To keep it simple, restart the communication.
-					//synchronized (trackers) {
-					//	communicatedCPs.remove(trackers.get(robotID));
-					//}
-				//---------------------------------------------------------
+					synchronized (trackers) {
+						communicatedCPs.remove(trackers.get(robotID));
+					}
+				}
+				else {
 					
-				//------------------ (dynamic re-plan) --------------------
+					//------------------ (dynamic re-plan) --------------------
 					for (CriticalSection cs1 : allCriticalSections) {
 						if (cs1.getTe1().getRobotID() == robotID && cs1.getTe1Start() <= lastCriticalPoint || 
 							cs1.getTe2().getRobotID() == robotID && cs1.getTe2Start() <= lastCriticalPoint) {
@@ -1827,12 +1839,12 @@ public abstract class TrajectoryEnvelopeCoordinator {
 											(cs1.getTe1Start() == cs2.getTe2Start() || cs1.getTe1End() == cs2.getTe2End())) ||
 											(cs1.getTe2().getRobotID() == robotID && cs2.getTe2().getRobotID() == robotID && cs1.getTe2Start() == cs2.getTe2Start() &&
 											(cs1.getTe1Start() == cs2.getTe1Start() || cs1.getTe1End() == cs2.getTe1End())))
-										criticalSectionsToDepsOrder.put(cs2,holdingCS.get(cs1));
+										criticalSectionsToDepsOrder.put(cs1,holdingCS.get(cs2));
 								}		
 							}
 						}
 					}
-				//---------------------------------------------------------
+				}
 								
 				envelopesToTrack.remove(newTE);
 				
@@ -1864,7 +1876,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					PoseSteering[] truncatedPath = Arrays.copyOf(te.getTrajectory().getPoseSteering(), earliestStoppingPathIndex+1);
 					
 					//replace the path of this robot (will compute new envelope)
-					replacePath(robotID, truncatedPath, new HashSet<Integer>(robotID));
+					replacePath(robotID, truncatedPath, new HashSet<Integer>(robotID),false);
 					
 				}
 			}
@@ -1891,7 +1903,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					for (int i = 1; i < truncatedPath.length; i++) overallPath[truncatedPath.length-1+i] = truncatedPath[truncatedPath.length-i];
 										
 					//replace the path of this robot (will compute new envelope)
-					replacePath(robotID, overallPath, new HashSet<Integer>(robotID));
+					replacePath(robotID, overallPath, new HashSet<Integer>(robotID),false);
 					
 				}
 			}
