@@ -435,6 +435,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	 * path index.  
 	 * @param robotID The ID of the robot.
 	 * @param criticalPoint The index of the path pose beyond which the robot should not navigate.
+	 * @param retransmitt True if the message should be send once again.
 	 */
 	public void setCriticalPoint(int robotID, int criticalPoint, boolean retransmitt) {
 		
@@ -445,7 +446,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			if (tracker != null && !muted.contains(robotID) && !(tracker instanceof TrajectoryEnvelopeTrackerDummy)) {
 				long timeNow = Calendar.getInstance().getTimeInMillis();
 					
-				if (!communicatedCPs.containsKey(tracker) || (communicatedCPs.containsKey(tracker) && !(communicatedCPs.get(tracker).getFirst() == criticalPoint)) || retransmitt ) {
+				if (!communicatedCPs.containsKey(tracker) || communicatedCPs.containsKey(tracker) && communicatedCPs.get(tracker).getFirst() != criticalPoint || retransmitt ) {
 					communicatedCPs.put(tracker, new Pair<Integer,Long>(criticalPoint, timeNow));
 					externalCPCounters.replace(tracker,externalCPCounters.get(tracker)+1);
 					tracker.setCriticalPoint(criticalPoint, externalCPCounters.get(tracker)%Integer.MAX_VALUE);
@@ -1080,12 +1081,14 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	
 	protected PoseSteering[] doReplanning(AbstractMotionPlanner mp, Pose fromPose, Pose toPose, Geometry... obstaclesToConsider) {
 		if (mp == null) return null;
-		mp.setStart(fromPose);
-		mp.setGoals(toPose);
-		mp.clearObstacles();
-		if (obstaclesToConsider != null && obstaclesToConsider.length > 0) mp.addObstacles(obstaclesToConsider);
-		if (mp.plan()) return mp.getPath();
-		return null;
+		synchronized (mp) {
+			mp.setStart(fromPose);
+			mp.setGoals(toPose);
+			mp.clearObstacles();
+			if (obstaclesToConsider != null && obstaclesToConsider.length > 0) mp.addObstacles(obstaclesToConsider);
+			if (mp.plan()) return mp.getPath();
+			return null;
+		}
 	}
 	
 	protected void rePlanPath(HashSet<Integer> robotsToReplan, HashSet<Integer> allRobots, boolean useStaticReplan) {
@@ -1118,19 +1121,21 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			AbstractMotionPlanner mp = null;
 			if (this.motionPlanners.containsKey(robotID)) mp = this.motionPlanners.get(robotID);
 			else mp = this.defaultMotionPlanner;
-			PoseSteering[] newPath = doReplanning(mp, currentWaitingPose, currentWaitingGoal, obstacles);
-			if (newPath != null && newPath.length > 0) {
-				PoseSteering[] newCompletePath = new PoseSteering[newPath.length+currentWaitingIndex];
-				for (int i = 0; i < newCompletePath.length; i++) {
-					if (i < currentWaitingIndex) newCompletePath[i] = oldPath[i];
-					else newCompletePath[i] = newPath[i-currentWaitingIndex];
+			synchronized (mp) {
+				PoseSteering[] newPath = doReplanning(mp, currentWaitingPose, currentWaitingGoal, obstacles);
+				if (newPath != null && newPath.length > 0) {
+					PoseSteering[] newCompletePath = new PoseSteering[newPath.length+currentWaitingIndex];
+					for (int i = 0; i < newCompletePath.length; i++) {
+						if (i < currentWaitingIndex) newCompletePath[i] = oldPath[i];
+						else newCompletePath[i] = newPath[i-currentWaitingIndex];
+					}
+					replacePath(robotID, newCompletePath, robotsToReplan, useStaticReplan);
+					metaCSPLogger.info("Successfully re-planned path of Robot" + robotID);
+					break;
 				}
-				replacePath(robotID, newCompletePath, robotsToReplan, useStaticReplan);
-				metaCSPLogger.info("Successfully re-planned path of Robot" + robotID);
-				break;
-			}
-			else {
-				metaCSPLogger.info("Failed to re-plan path of Robot" + robotID);
+				else {
+					metaCSPLogger.info("Failed to re-plan path of Robot" + robotID);
+				}
 			}
 		}
 		synchronized (lockedRobots) {
@@ -1550,7 +1555,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					synchronized (trackers) {
 							tracker = trackers.get(robotID);
 						}
-					int maxDelay = 2*(MAX_TX_DELAY+EFFECTIVE_CONTROL_PERIOD+tracker.getTrackingPeriodInMillis());
+					int maxDelay = 2*(MAX_TX_DELAY+CONTROL_PERIOD+tracker.getTrackingPeriodInMillis());
 					if (constrainedRobotIDs.containsKey(robotID)) {
 						Dependency dep = constrainedRobotIDs.get(robotID);
 						metaCSPLogger.finest("Set critical point " + dep.getWaitingPoint() + " to Robot" + dep.getWaitingRobotID() +".");
