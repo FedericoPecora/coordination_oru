@@ -22,8 +22,13 @@ import java.util.logging.Logger;
 import javax.swing.SwingUtilities;
 
 import org.apache.commons.collections.comparators.ComparatorChain;
+import org.jgrapht.DirectedGraph;
 import org.jgrapht.alg.ConnectivityInspector;
 import org.jgrapht.alg.cycle.JohnsonSimpleCycles;
+import org.jgrapht.graph.ClassBasedEdgeFactory;
+import org.jgrapht.graph.DefaultDirectedGraph;
+import org.jgrapht.graph.DefaultEdge;
+import org.jgrapht.graph.DirectedMultigraph;
 import org.jgrapht.graph.SimpleDirectedGraph;
 import org.metacsp.framework.Constraint;
 import org.metacsp.meta.spatioTemporal.paths.Map;
@@ -49,6 +54,7 @@ import aima.core.util.datastructure.Pair;
 import se.oru.coordination.coordination_oru.motionplanning.AbstractMotionPlanner;
 import se.oru.coordination.coordination_oru.util.FleetVisualization;
 import se.oru.coordination.coordination_oru.util.StringUtils;
+import se.oru.coordination.coordination_oru.SCCsAndJohnsonSympleCycles;
 
 /**
  * This class provides coordination for a fleet of robots. An instantiatable {@link TrajectoryEnvelopeCoordinator}
@@ -106,6 +112,9 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 	protected HashMap<Integer,AbstractTrajectoryEnvelopeTracker> trackers = new HashMap<Integer, AbstractTrajectoryEnvelopeTracker>();
 	protected HashSet<Dependency> currentDependencies = new HashSet<Dependency>();
+	//protected DirectedMultigraph<Integer,Dependency> currentDependancyGraph = new DirectedMultigraph<Integer,Dependency>(Dependency.class);
+	protected SimpleDirectedGraph<Integer,Integer> currentCyclesGraph = new SimpleDirectedGraph<Integer,Integer>(Integer.class);
+	protected HashMap<Pair<Integer,Integer>, ArrayList<ArrayList<Integer>>> cyclesList = new HashMap<Pair<Integer,Integer>, ArrayList<ArrayList<Integer>>>();
 
 	protected Logger metaCSPLogger = MetaCSPLogging.getLogger(TrajectoryEnvelopeCoordinator.class);
 	protected String logDirName = null;
@@ -2638,5 +2647,67 @@ public abstract class TrajectoryEnvelopeCoordinator {
 			startTrackingAddedMissions();
 		}
 	}
+	
+	protected void deleteSet(ArrayList<Pair<Integer,Integer>> edgesToDelete) {
+		synchronized (currentCyclesGraph) {
+			synchronized (cyclesList) {
+				for (Pair<Integer,Integer> edge : edgesToDelete) {
+					if (cyclesList.containsKey(edge)) {
+						for (ArrayList<Integer> cycle : cyclesList.get(edge)) {
+							for (int i = 0; i < cycle.size(); i++) {
+								Pair<Integer,Integer> otherEdge = new Pair<Integer,Integer>(cycle.get(i),cycle.get(i<cycle.size()-1 ? i+1 : 0));
+								if (otherEdge != edge) cyclesList.get(otherEdge).remove(cycle);
+							}
+						}
+						cyclesList.remove(edge);
+					}
+					currentCyclesGraph.removeEdge(edge.getFirst(), edge.getSecond());
+				}			
+			}
+		}
+	}
+	
+	protected void addSet(ArrayList<Pair<Integer,Integer>> edgesToAdd) {
+		synchronized (currentCyclesGraph) {
+			synchronized (cyclesList) {
+				//add the edge if not already contained in the graph
+				for (Pair<Integer,Integer> edge : edgesToAdd) {
+					if (!currentCyclesGraph.containsEdge(edge.getFirst(), edge.getSecond())) {
+						if (!currentCyclesGraph.containsVertex(edge.getFirst())) currentCyclesGraph.addVertex(edge.getFirst());
+						if (!currentCyclesGraph.containsVertex(edge.getSecond())) currentCyclesGraph.addVertex(edge.getSecond());
+						currentCyclesGraph.addEdge(edge.getFirst(), edge.getSecond());
+					}
+				}
+				
+				//compute strongly connected components
+				SCCsAndJohnsonSympleCycles<Integer,Integer> sccAndCyclesFinder = new SCCsAndJohnsonSympleCycles<Integer,Integer>(currentCyclesGraph);
+				List<Set<Integer>> sccs = sccAndCyclesFinder.findAllSCCS();
+
+				//update the cycle list
+				for (Pair<Integer,Integer> pair : edgesToAdd) {
+					for (Set<Integer> oneSCC : sccs) {
+						if (oneSCC.contains(pair.getFirst()) && oneSCC.contains(pair.getSecond())) {
+							//get cycles in this strongly connected components
+							ArrayList<List<Integer>> cycles = (ArrayList<List<Integer>>) sccAndCyclesFinder.getCyclesInSCG(pair.getFirst(),pair.getFirst(),sccAndCyclesFinder.SCCToSubGraph(oneSCC));
+							for(List<Integer> cycle : cycles) {
+								//update cycle list
+								for (int i = 0; i < cycle.size(); i++) {
+									Pair<Integer,Integer> edge = new Pair<Integer,Integer>(cycle.get(i), cycle.get(i<cycles.size()-1 ? i+1 : 0));
+									if (cyclesList.containsKey(edge)) cyclesList.get(edge).add((ArrayList<Integer>)cycle);
+									else { 
+										ArrayList<ArrayList<Integer>> cl = new ArrayList<ArrayList<Integer>>();
+										cl.add((ArrayList<Integer>)cycle);
+										cyclesList.put(edge, cl);
+									}
+								}
+							}
+							break; //move to next pair
+						}
+					}
+				}
+			}
+		}
+	}
+	
 
 }

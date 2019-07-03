@@ -22,7 +22,6 @@ import java.util.*;
 
 import org.jgrapht.*;
 import org.jgrapht.alg.cycle.*;
-//import org.jgrapht.alg.cycle.DirectedSimpleCycles;
 import org.jgrapht.graph.*;
 
 /**
@@ -39,7 +38,7 @@ import org.jgrapht.graph.*;
  * @author Nikolay Ognyanov
  */
 
-public class SCCAndJohnsonSympleCycles<V, E>
+public class SCCsAndJohnsonSympleCycles<V, E>
     implements DirectedSimpleCycles<V, E>
 {
     // The graph.
@@ -81,7 +80,7 @@ public class SCCAndJohnsonSympleCycles<V, E>
     /**
      * Create a simple cycle finder with an unspecified graph.
      */
-    public SCCAndJohnsonSympleCycles()
+    public SCCsAndJohnsonSympleCycles()
     {
     }
 
@@ -93,7 +92,7 @@ public class SCCAndJohnsonSympleCycles<V, E>
      * @throws IllegalArgumentException if the graph argument is <code>
      * null</code>.
      */
-    public SCCAndJohnsonSympleCycles(DirectedGraph<V, E> graph)
+    public SCCsAndJohnsonSympleCycles(DirectedGraph<V, E> graph)
     {
         if (graph == null) {
             throw new IllegalArgumentException("Null graph argument.");
@@ -159,7 +158,7 @@ public class SCCAndJohnsonSympleCycles<V, E>
         return result;
     }
     
-    public Object[] findMinSCSG(int startIndex)
+    private Object[] findMinSCSG(int startIndex)
     {
         // Per Johnson : "adjacency structure of strong
         // component K with least vertex in subgraph of
@@ -194,16 +193,7 @@ public class SCCAndJohnsonSympleCycles<V, E>
         // build a graph for the SCC found
         @SuppressWarnings("unchecked") DirectedGraph<V, E> resultGraph = new DefaultDirectedGraph<V,E>(
             new ClassBasedEdgeFactory<V,E>((Class<? extends E>) DefaultEdge.class));
-        for (V v : minSCC) {
-            resultGraph.addVertex(v);
-        }
-        for (V v : minSCC) {
-            for (V w : minSCC) {
-                if (graph.containsEdge(v, w)) {
-                    resultGraph.addEdge(v, w);
-                }
-            }
-        }
+        resultGraph = SCCToSubGraph(minSCC);
 
         // It is ugly to return results in an array
         // of Object but the idea is to restrict
@@ -216,14 +206,14 @@ public class SCCAndJohnsonSympleCycles<V, E>
         return result;
     }
 
-    public List<Set<V>> findAllSCCS(int startIndex) {
+    public List<Set<V>> findAllSCCS() {
         if (graph == null) {
             throw new IllegalArgumentException("Null graph.");
         }
         initState();
     	initMinSCGState();
         
-        List<Set<V>> SCCs = findSCCS(startIndex);
+        List<Set<V>> SCCs = findSCCS(0);
         //System.out.println("Strongly connected components: " + SCCs.toString());
         
         clearMinSCCState();
@@ -305,7 +295,7 @@ public class SCCAndJohnsonSympleCycles<V, E>
         }
     }
 
-    public boolean findCyclesInSCG(int startIndex, int vertexIndex, DirectedGraph<V, E> scg)
+    private boolean findCyclesInSCG(int startIndex, int vertexIndex, DirectedGraph<V, E> scg)
     {
         // Find cycles in a strongly connected graph
         // per Johnson.
@@ -338,6 +328,43 @@ public class SCCAndJohnsonSympleCycles<V, E>
         }
         stack.pop();
         return foundCycle;
+    }
+    
+    public List<List<V>> getCyclesInSCG(int startIndex, int vertexIndex, DirectedGraph<V, E> scg)
+    {
+    	initState();
+    	
+        // Find cycles in a strongly connected graph.
+        boolean foundCycle = false;
+        V vertex = toV(vertexIndex);
+        stack.push(vertex);
+        blocked.add(vertex);
+
+        for (E e : scg.outgoingEdgesOf(vertex)) {
+            V successor = scg.getEdgeTarget(e);
+            int successorIndex = toI(successor);
+            if (successorIndex == startIndex) {
+                List<V> cycle = new ArrayList<V>();
+                cycle.addAll(stack);
+                cycles.add(cycle);
+                foundCycle = true;
+            } else if (!blocked.contains(successor)) {
+                boolean gotCycle = findCyclesInSCG(startIndex, successorIndex, scg);
+                foundCycle = foundCycle || gotCycle;
+            }
+        }
+        if (foundCycle) {
+            unblock(vertex);
+        } else {
+            for (E ew : scg.outgoingEdgesOf(vertex)) {
+                V w = scg.getEdgeTarget(ew);
+                Set<V> bSet = getBSet(w);
+                bSet.add(vertex);
+            }
+        }
+        stack.pop();
+        clearState();
+        return cycles;
     }
 
     private void unblock(V vertex)
@@ -418,5 +445,24 @@ public class SCCAndJohnsonSympleCycles<V, E>
             bSets.put(v, result);
         }
         return result;
+    }
+    
+    public DirectedGraph<V, E> SCCToSubGraph(Set<V> SCC) {
+    	if (graph == null) {
+            throw new IllegalArgumentException("Null graph argument.");
+        }
+    	@SuppressWarnings("unchecked") DirectedGraph<V, E> resultGraph = new DefaultDirectedGraph<V,E>(
+                new ClassBasedEdgeFactory<V,E>((Class<? extends E>) DefaultEdge.class));
+        for (V v : SCC) {
+            resultGraph.addVertex(v);
+        }
+        for (V v : SCC) {
+            for (V w : SCC) {
+                if (graph.containsEdge(v, w)) {
+                    resultGraph.addEdge(v, w);
+                }
+            }
+        }
+        return resultGraph;
     }
 }
