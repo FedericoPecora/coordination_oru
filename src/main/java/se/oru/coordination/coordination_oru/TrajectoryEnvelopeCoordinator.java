@@ -2648,33 +2648,44 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		}
 	}
 	
-	protected void deleteSet(ArrayList<Pair<Integer,Integer>> edgesToDelete) {
+	protected void deleteEdges(HashSet<Pair<Integer,Integer>> edgesToDelete) {
 		
 		if (edgesToDelete == null) return;
 		
 		synchronized (currentCyclesGraph) {
 			synchronized (cyclesList) {
 				for (Pair<Integer,Integer> edge : edgesToDelete) {
-					if (cyclesList.containsKey(edge)) {
-						for (ArrayList<Integer> cycle : cyclesList.get(edge)) {
-							for (int i = 0; i < cycle.size(); i++) {
-								Pair<Integer,Integer> otherEdge = new Pair<Integer,Integer>(cycle.get(i),cycle.get(i < cycle.size()-1 ? i+1 : 0));
-								if (otherEdge != edge) cyclesList.get(otherEdge).remove(cycle);
-							}
-						}
-						cyclesList.remove(edge);
-					}
-					currentCyclesGraph.removeEdge(edge.getFirst(), edge.getSecond());
+					deleteEdge(edge);
 				}			
 			}
 		}
 	}
 	
-	protected void addSet(ArrayList<Pair<Integer,Integer>> edgesSet) {
+	protected void deleteEdge(Pair<Integer,Integer> edge) {
+		
+		if (edge == null) return;
+		
+		synchronized (currentCyclesGraph) {
+			synchronized (cyclesList) {
+				if (cyclesList.containsKey(edge) && currentCyclesGraph.getEdge(edge.getFirst(), edge.getSecond()) != null) {
+					for (ArrayList<Integer> cycle : cyclesList.get(edge)) {
+						for (int i = 0; i < cycle.size(); i++) {
+							Pair<Integer,Integer> otherEdge = new Pair<Integer,Integer>(cycle.get(i),cycle.get(i < cycle.size()-1 ? i+1 : 0));
+							if (otherEdge != edge) cyclesList.get(otherEdge).remove(cycle);
+						}
+					}
+					cyclesList.remove(edge);
+					currentCyclesGraph.removeEdge(edge.getFirst(), edge.getSecond());
+				}
+			}
+		}
+	}
+	
+	protected void addEdges(HashSet<Pair<Integer,Integer>> edgesSet) {
 		
 		if (edgesSet == null) return;
 		
-		ArrayList<Pair<Integer,Integer>> edgesToAdd = new ArrayList<Pair<Integer,Integer>>();
+		HashSet<Pair<Integer,Integer>> edgesToAdd = new HashSet<Pair<Integer,Integer>>();
 		synchronized (currentCyclesGraph) {
 			synchronized (cyclesList) {
 				//add the edge if not already contained in the graph
@@ -2713,56 +2724,23 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		}
 	}
 	
-	protected void updateGraph(ArrayList<Dependency> depsToDelete, ArrayList<Dependency> depsToAdd) {
+	protected void updateGraph(HashSet<Pair<Integer,Integer>> edgesToDelete, HashSet<Pair<Integer,Integer>> edgesToAdd) {
 		
-		if (depsToDelete == null || depsToAdd == null) {
+		if (edgesToDelete == null || edgesToAdd == null) {
 			metaCSPLogger.severe("Null arguments in updateGraph function");
 			throw new Error("Null arguments in updateGraph function!!");
 		}
 		
-		synchronized (depsToCriticalSections) {
-			
-			ArrayList<Pair<Integer,Integer>> edgesToDelete = new ArrayList<Pair<Integer,Integer>>();
-			ArrayList<Pair<Integer,Integer>> edgesToAdd = new ArrayList<Pair<Integer,Integer>>();
-
-			//count dependencies
-			HashMap<Pair<Integer,Integer>,Integer> toDeleteCounter = new HashMap<Pair<Integer,Integer>,Integer>();
-			if (depsToDelete == null) {
-			for (Dependency dep : depsToDelete) {
-				Pair<Integer,Integer> pair = new Pair<Integer,Integer>(dep.getWaitingRobotID(), dep.getDrivingRobotID());
-				if (!toDeleteCounter.containsKey(pair)) toDeleteCounter.put(pair, 0);
-				toDeleteCounter.put(pair, toDeleteCounter.get(pair).intValue() + 1);			
+		HashSet<Pair<Integer,Integer>> toDelete = new HashSet<Pair<Integer,Integer>>(edgesToDelete);
+		toDelete.removeAll(edgesToAdd);
+		HashSet<Pair<Integer,Integer>> toAdd = new HashSet<Pair<Integer,Integer>>(edgesToAdd);
+		toAdd.removeAll(toDelete);
+		
+		synchronized (currentCyclesGraph) {		
+			synchronized (cyclesList) {
+				deleteEdges(toDelete);			
+				addEdges(toAdd);
 			}
-			
-			
-			HashMap<Pair<Integer,Integer>,Integer> toAddCounter = new HashMap<Pair<Integer,Integer>,Integer>();
-			for (Dependency dep : depsToAdd) {
-				Pair<Integer,Integer> pair = new Pair<Integer,Integer>(dep.getWaitingRobotID(), dep.getDrivingRobotID());
-				if (!toAddCounter.containsKey(pair)) toAddCounter.put(pair, 0);
-				toAddCounter.put(pair, toAddCounter.get(pair).intValue() + 1);			
-			}
-			
-			HashMap<Pair<Integer,Integer>,Integer> oldCounter = new HashMap<Pair<Integer,Integer>,Integer>();
-			for (Dependency dep : depsToCriticalSections.keySet()) {
-				Pair<Integer,Integer> pair = new Pair<Integer,Integer>(dep.getWaitingRobotID(), dep.getDrivingRobotID());
-				if (!oldCounter.containsKey(pair)) oldCounter.put(pair, 0);
-				oldCounter.put(pair, oldCounter.get(pair).intValue() + 1);			
-			}
-			
-			for (Dependency dep : depsToDelete) {
-				Pair<Integer,Integer> pair = new Pair<Integer,Integer>(dep.getWaitingRobotID(), dep.getDrivingRobotID());
-				if (oldCounter.containsKey(pair) && !edgesToDelete.contains(pair)) {
-					//continua
-				}
-			}
-			
-			for (Dependency dep : depsToAdd) {
-				Pair<Integer,Integer> pair = new Pair<Integer,Integer>(dep.getWaitingRobotID(), dep.getDrivingRobotID());
-				if (oldCounter.containsKey(pair) && !edgesToAdd.contains(pair)) {
-					edgesToAdd.add(pair);
-				}
-			}
-			addSet(edgesToAdd);
 		}
 		
 	}
