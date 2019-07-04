@@ -1267,9 +1267,52 @@ public abstract class TrajectoryEnvelopeCoordinator {
 	
 					//The critical section could be still active. One of the two robots could already have exited the critical section,
 					//but the information has not been received.
+					int waitingPoint = -1;
 					
 					if (robotTracker1 instanceof TrajectoryEnvelopeTrackerDummy || robotTracker2 instanceof TrajectoryEnvelopeTrackerDummy) {
-						makeParkingDep(cs, robotTracker1, robotTracker2, robotReport1, robotReport2, currentDeps, waintingRobotIDandCP);												
+						
+						boolean createAParkingDep = false;
+						
+						//Robot1 is parking in critical section. If it is the driver, make robot 2 wait.
+						if (robotTracker1 instanceof TrajectoryEnvelopeTrackerDummy) {
+							drivingRobotID = robotReport1.getRobotID();
+							waitingRobotID = robotReport2.getRobotID();
+							drivingTE = robotTracker1.getTrajectoryEnvelope();
+							waitingTE = robotTracker2.getTrajectoryEnvelope();
+							drivingTracker = robotTracker1;
+							waitingTracker = robotTracker2;
+							waitingPoint = getCriticalPoint(robotReport2.getRobotID(), cs, robotReport1.getPathIndex());
+	
+							if (!communicatedCPs.containsKey(waitingTracker) && robotReport1.getPathIndex() <= waitingPoint 
+									|| communicatedCPs.containsKey(waitingTracker) && communicatedCPs.get(waitingTracker).getFirst() != -1 && communicatedCPs.get(waitingTracker).getFirst() <= waitingPoint) {
+								createAParkingDep = true;
+							}
+							
+						}
+						else if (robotTracker2 instanceof TrajectoryEnvelopeTrackerDummy) {
+							drivingRobotID = robotReport2.getRobotID();
+							waitingRobotID = robotReport1.getRobotID();
+							drivingTE = robotTracker2.getTrajectoryEnvelope();
+							waitingTE = robotTracker1.getTrajectoryEnvelope();
+							drivingTracker = robotTracker2;
+							waitingTracker = robotTracker1;
+							waitingPoint = getCriticalPoint(robotReport1.getRobotID(), cs, robotReport2.getPathIndex());
+													
+							if (!communicatedCPs.containsKey(waitingTracker) && robotReport2.getPathIndex() <= waitingPoint
+									|| communicatedCPs.containsKey(waitingTracker) && communicatedCPs.get(waitingTracker).getFirst() != -1 && communicatedCPs.get(waitingTracker).getFirst() <= waitingPoint) {
+								createAParkingDep = true;						
+							}
+						}
+						
+						if (createAParkingDep) {
+							int drivingCSEnd = drivingRobotID == cs.getTe1().getRobotID() ? cs.getTe1End() : cs.getTe2End();
+							metaCSPLogger.finest("Robot" + drivingRobotID + " is parked, so Robot" + waitingRobotID + " will have to wait");
+							waintingRobotIDandCP = new Pair<Integer,Integer>(waitingTE.getRobotID(),waitingPoint);
+							if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
+							Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd);
+							currentDeps.get(waitingRobotID).add(dep);
+							depsToCriticalSections.put(dep, cs);
+						}
 					}
 					else {//Both robots are driving, let's determine an ordering for them through this critical section
 						
@@ -1417,7 +1460,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						}
 						
 						//Compute waiting path index point for waiting robot
-						int waitingPoint = getCriticalPoint(waitingRobotID, cs, drivingCurrentIndex);
+						waitingPoint = getCriticalPoint(waitingRobotID, cs, drivingCurrentIndex);
 						
 						//Impose holding the previous dependence in some cases
 						if (wakeUpinCSRobot1 && communicatedCPs.containsKey(robotTracker2)) {
@@ -2706,60 +2749,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		}
 	}
 	
-	private void makeParkingDep(CriticalSection cs, AbstractTrajectoryEnvelopeTracker robotTracker1, AbstractTrajectoryEnvelopeTracker robotTracker2, RobotReport robotReport1, RobotReport robotReport2, HashMap<Integer,TreeSet<Dependency>> currentDeps, Pair<Integer,Integer> waintingRobotIDandCP) {
-		
-		boolean createAParkingDep = false;
-		int waitingRobotID = -1;
-		int drivingRobotID = -1;
-		AbstractTrajectoryEnvelopeTracker waitingTracker = null;
-		AbstractTrajectoryEnvelopeTracker drivingTracker = null;
-		int drivingCurrentIndex = -1;
-		TrajectoryEnvelope waitingTE = null;
-		TrajectoryEnvelope drivingTE = null;
-		int waitingPoint = -1;
-		
-		//Robot1 is parking in critical section. If it is the driver, make robot 2 wait.
-		if (robotTracker1 instanceof TrajectoryEnvelopeTrackerDummy) {
-			drivingRobotID = robotReport1.getRobotID();
-			waitingRobotID = robotReport2.getRobotID();
-			drivingTE = robotTracker1.getTrajectoryEnvelope();
-			waitingTE = robotTracker2.getTrajectoryEnvelope();
-			drivingTracker = robotTracker1;
-			waitingTracker = robotTracker2;
-			waitingPoint = getCriticalPoint(robotReport2.getRobotID(), cs, robotReport1.getPathIndex());
-
-			if (!communicatedCPs.containsKey(waitingTracker) && robotReport1.getPathIndex() <= waitingPoint 
-					|| communicatedCPs.containsKey(waitingTracker) && communicatedCPs.get(waitingTracker).getFirst() != -1 && communicatedCPs.get(waitingTracker).getFirst() <= waitingPoint) {
-				createAParkingDep = true;
-			}
-			
-		}
-		else if (robotTracker2 instanceof TrajectoryEnvelopeTrackerDummy) {
-			drivingRobotID = robotReport2.getRobotID();
-			waitingRobotID = robotReport1.getRobotID();
-			drivingTE = robotTracker2.getTrajectoryEnvelope();
-			waitingTE = robotTracker1.getTrajectoryEnvelope();
-			drivingTracker = robotTracker2;
-			waitingTracker = robotTracker1;
-			waitingPoint = getCriticalPoint(robotReport1.getRobotID(), cs, robotReport2.getPathIndex());
-									
-			if (!communicatedCPs.containsKey(waitingTracker) && robotReport2.getPathIndex() <= waitingPoint
-					|| communicatedCPs.containsKey(waitingTracker) && communicatedCPs.get(waitingTracker).getFirst() != -1 && communicatedCPs.get(waitingTracker).getFirst() <= waitingPoint) {
-				createAParkingDep = true;						
-			}
-		}
-		
-		if (createAParkingDep) {
-			int drivingCSEnd = drivingRobotID == cs.getTe1().getRobotID() ? cs.getTe1End() : cs.getTe2End();
-			metaCSPLogger.finest("Robot" + drivingRobotID + " is parked, so Robot" + waitingRobotID + " will have to wait");
-			waintingRobotIDandCP = new Pair<Integer,Integer>(waitingTE.getRobotID(),waitingPoint);
-			if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
-			Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd);
-			currentDeps.get(waitingRobotID).add(dep);
-			depsToCriticalSections.put(dep, cs);
-		}
-	}
-	
 	protected void checkAndRevise() {
 		
 		synchronized(solver) {
@@ -2889,7 +2878,6 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						
 						if (!canStopRobot1 && !canStopRobot2) {
 							//get previous order
-							
 							
 							//update critical point
 						}
