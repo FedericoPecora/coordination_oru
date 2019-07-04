@@ -2748,9 +2748,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		
 		synchronized(solver) {
 			HashMap<Integer,TreeSet<Dependency>> currentDeps = new HashMap<Integer,TreeSet<Dependency>>();
-			HashSet<Dependency> currentReversibleDependencies = new HashSet<Dependency>();
+			HashMap<Integer,TreeSet<Dependency>> artificialDependencies = new HashMap<Integer,TreeSet<Dependency>>(); 
 			HashSet<Pair<Integer,Integer>> edgesToDelete = new HashSet<Pair<Integer,Integer>>();
 			HashSet<Pair<Integer,Integer>> edgesToAdd = new HashSet<Pair<Integer,Integer>>();
+			HashSet<CriticalSection> reversibleCS = new HashSet<CriticalSection>();
 			
 			//Make deps from un-reached stopping points
 			Set<Integer> robotIDs = trackers.keySet();
@@ -2868,8 +2869,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							depsToCriticalSections.put(dep, cs);
 						}
 					}
-					else { //both the robots are driving
-						//Is reversible?
+					else { //both the robots are driving. Check if the precedence is reversible.
 						
 						//Check if the robots can stop while changing the current order of accessing the critical section.
 						ForwardModel fm1 = getForwardModel(robotReport1.getRobotID());
@@ -2893,19 +2893,95 @@ public abstract class TrajectoryEnvelopeCoordinator {
 							canStopRobot2 = true;
 						else canStopRobot2 = fm2.canStop(robotTracker2.getTrajectoryEnvelope(), robotReport2, cs.getTe2Start(), false);
 						
-						if (!canStopRobot1 && !canStopRobot2) {
-							//get previous order
+						if (canStopRobot1 && canStopRobot2) {
+							reversibleCS.add(cs);
+							continue;
+						}
+						else {//Both robots in critical section --> re-impose previously decided dependency if possible
 							
-							//update critical point
-						}
-						else {
-							//is constrained for liveness?
-						}
+							//Handle the particular case of starting from a critical section at the FIRST communication.
+							wakeUpinCSRobot1 = !communicatedCPs.containsKey(robotTracker1) && Math.max(robotReport1.getPathIndex(), 0) >= cs.getTe1Start();
+							wakeUpinCSRobot2 = !communicatedCPs.containsKey(robotTracker2) && Math.max(robotReport2.getPathIndex(), 0) >= cs.getTe2Start();
+							if (wakeUpinCSRobot1 || wakeUpinCSRobot2) {
+								//Check if the robot that is parked can exit from critical section.
+								drivingRobotID = wakeUpinCSRobot1 ? robotReport1.getRobotID() : robotReport2.getRobotID();
+								waitingRobotID = wakeUpinCSRobot1 ? robotReport2.getRobotID() : robotReport1.getRobotID();	
+								metaCSPLogger.finest("Robot" + robotReport1.getRobotID() + " wake up: " +wakeUpinCSRobot1 + ", Robot"+ robotReport2.getRobotID() + " wake up: " + wakeUpinCSRobot2 +" in CS " + cs);
+
+							}
+							else {
+								if (this.criticalSectionsToDepsOrder.containsKey(cs) && this.criticalSectionsToDepsOrder.get(cs) != null) {
+									//The critical section is not new and no re-plan happens.
+									//Standard case: there is just one dependency in the previous set. Let's impose that.
+									waitingRobotID = this.criticalSectionsToDepsOrder.get(cs).getFirst();
+									drivingRobotID = waitingRobotID == robotReport1.getRobotID() ? robotReport2.getRobotID() : robotReport1.getRobotID();
+									
+									//If one of the robot was parked previously in critical section and has just started driving again,
+									//then the set of previous constraints contains at least one dependency (due to parking).
+								}
+								else {
+										metaCSPLogger.severe("Both cannot stop but lost critical section to dep. CS: " + cs + ", TE: " + cs.getTe1().getID() + ", " + cs.getTe2().getID() + ".");
+										throw new Error("FIXME! Lost dependency! " );							
+								}			
+							}
+
+							drivingCurrentIndex = drivingRobotID == robotReport1.getRobotID() ? robotReport1.getPathIndex() : robotReport2.getPathIndex();
+							drivingTE = drivingRobotID == robotReport1.getRobotID() ? robotTracker1.getTrajectoryEnvelope() : robotTracker2.getTrajectoryEnvelope();
+							waitingTE = waitingRobotID == robotReport1.getRobotID() ? robotTracker1.getTrajectoryEnvelope() : robotTracker2.getTrajectoryEnvelope();	
+							waitingTracker = waitingRobotID == robotReport1.getRobotID() ? robotTracker1 : robotTracker2;
+							drivingTracker = drivingRobotID == robotReport1.getRobotID() ? robotTracker1 : robotTracker2;
+																
+							//check if the driving robot can really escape
+							int waitingCurrentIndex = communicatedCPs.containsKey(waitingTracker) ? 
+									//((communicatedCPs.get(trackers.get(waitingRobotID)).getFirst() == -1) ? 
+									//		waitingTE.getPathLength()-1 : 
+												communicatedCPs.get(waitingTracker).getFirst() : (
+										waitingRobotID == robotReport1.getRobotID() ? robotReport1.getPathIndex() : robotReport2.getPathIndex());
+							int lastIndexOfCSDriving = drivingRobotID == cs.getTe1().getRobotID() ? cs.getTe1End() : cs.getTe2End();
+							//if (lastWaitingRobotCP >= startingWaitingRobotCS) {
+							if (!canExitCriticalSection(drivingCurrentIndex, waitingCurrentIndex, drivingTE, waitingTE,lastIndexOfCSDriving)) {
+								//it's too late for escaping. Let's create a deadlock: the parked robot should wait for the moving one,
+								//while the other should be commanded to do not proceed beyond its last communicated CP. Both the dependencies should be added to the current set.									
+								
+								//The parked robot should wait for the other at its current path index till the moving robot has not been exited from its critical section.
+								int artWaitingPoint = communicatedCPs.containsKey(drivingTracker) ? communicatedCPs.get(drivingTracker).getFirst() :
+										(drivingRobotID == robotReport1.getRobotID() ? robotReport1.getPathIndex() : robotReport2.getPathIndex());
+								int artDrivingCSEnd = waitingRobotID == cs.getTe1().getRobotID() ? cs.getTe1End() : cs.getTe2End();
+								Dependency dep = new Dependency(drivingTE,waitingTE,Math.max(0, artWaitingPoint),artDrivingCSEnd);
+								if (!artificialDependencies.containsKey(drivingRobotID)) artificialDependencies.put(drivingRobotID, new TreeSet<Dependency>());
+								artificialDependencies.get(drivingRobotID).add(dep);
+								metaCSPLogger.info("Robot" + drivingRobotID + " cannot escape from CS: " + cs + ". Let's create a deadlock. Add artificial dependency for Robot" + drivingRobotID + " at " + dep.getWaitingPoint() + ".");
+							}	
+							metaCSPLogger.finest("Both can't. Driving Robot" + drivingRobotID + " at " + drivingCurrentIndex + " makes " + waitingRobotID + " waiting at CS " + cs + ".");
+						}	
 						
-						
+						//continue ... get critical point.
 					}
 				}
 			}
+			//checkAndAdd() ...
 		}		
 	}
 }
+
+/*////////////////////////////////////////////////////////////////
+			//FIXME Not here!!
+			
+			if (!criticalSectionsToDepsOrder.containsKey(cs)) {
+				//the dependency is new: the starting robot should yield.
+				
+				//update the dependency
+				boolean robot1Yields = robotTracker1.getStartingTimeInMillis() < robotTracker2.getStartingTimeInMillis();
+				drivingRobotID = robot1Yields ? robotReport2.getRobotID() : robotReport1.getRobotID();
+				waitingRobotID = robot1Yields ? robotReport1.getRobotID() : robotReport2.getRobotID();
+				drivingTE = robot1Yields ? robotTracker2.getTrajectoryEnvelope() : robotTracker1.getTrajectoryEnvelope();
+				waitingTE = robot1Yields ? robotTracker1.getTrajectoryEnvelope() : robotTracker2.getTrajectoryEnvelope();
+				drivingTracker = robot1Yields ? robotTracker2 : robotTracker1;
+				waitingTracker = robot1Yields ? robotTracker1 : robotTracker2;
+				waitingPoint = getCriticalPoint(waitingRobotID, cs, robot1Yields ? robotReport2.getPathIndex() : robotReport1.getPathIndex());
+				
+				//update the of edges to add
+				edgesToAdd.add(new Pair<Integer,Integer>(waitingRobotID, drivingRobotID));
+			}
+////////////////////////////////////////////////////////////////////
+*/
