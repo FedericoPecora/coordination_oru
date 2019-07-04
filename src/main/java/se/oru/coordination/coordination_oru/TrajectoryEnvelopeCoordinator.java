@@ -2655,7 +2655,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					if (cyclesList.containsKey(edge)) {
 						for (ArrayList<Integer> cycle : cyclesList.get(edge)) {
 							for (int i = 0; i < cycle.size(); i++) {
-								Pair<Integer,Integer> otherEdge = new Pair<Integer,Integer>(cycle.get(i),cycle.get(i<cycle.size()-1 ? i+1 : 0));
+								Pair<Integer,Integer> otherEdge = new Pair<Integer,Integer>(cycle.get(i),cycle.get(i < cycle.size()-1 ? i+1 : 0));
 								if (otherEdge != edge) cyclesList.get(otherEdge).remove(cycle);
 							}
 						}
@@ -2667,12 +2667,16 @@ public abstract class TrajectoryEnvelopeCoordinator {
 		}
 	}
 	
-	protected void addSet(ArrayList<Pair<Integer,Integer>> edgesToAdd) {
+	protected void addSet(ArrayList<Pair<Integer,Integer>> edgesSet) {
+		
+		ArrayList<Pair<Integer,Integer>> edgesToAdd = new ArrayList<Pair<Integer,Integer>>();
+		
 		synchronized (currentCyclesGraph) {
 			synchronized (cyclesList) {
 				//add the edge if not already contained in the graph
-				for (Pair<Integer,Integer> edge : edgesToAdd) {
+				for (Pair<Integer,Integer> edge : edgesSet) {
 					if (!currentCyclesGraph.containsEdge(edge.getFirst(), edge.getSecond())) {
+						edgesToAdd.add(edge);
 						if (!currentCyclesGraph.containsVertex(edge.getFirst())) currentCyclesGraph.addVertex(edge.getFirst());
 						if (!currentCyclesGraph.containsVertex(edge.getSecond())) currentCyclesGraph.addVertex(edge.getSecond());
 						currentCyclesGraph.addEdge(edge.getFirst(), edge.getSecond());
@@ -2688,17 +2692,13 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					for (Set<Integer> oneSCC : sccs) {
 						if (oneSCC.contains(pair.getFirst()) && oneSCC.contains(pair.getSecond())) {
 							//get cycles in this strongly connected components
-							ArrayList<List<Integer>> cycles = (ArrayList<List<Integer>>) sccAndCyclesFinder.getCyclesInSCG(pair.getFirst(),pair.getFirst(),sccAndCyclesFinder.SCCToSubGraph(oneSCC));
+							ArrayList<List<Integer>> cycles = (ArrayList<List<Integer>>) sccAndCyclesFinder.getCyclesInSCG(pair.getFirst(), pair.getFirst(), sccAndCyclesFinder.SCCToSubGraph(oneSCC));
 							for(List<Integer> cycle : cycles) {
-								//update cycle list
+								//update the list of cycles for each edge
 								for (int i = 0; i < cycle.size(); i++) {
-									Pair<Integer,Integer> edge = new Pair<Integer,Integer>(cycle.get(i), cycle.get(i<cycles.size()-1 ? i+1 : 0));
-									if (cyclesList.containsKey(edge)) cyclesList.get(edge).add((ArrayList<Integer>)cycle);
-									else { 
-										ArrayList<ArrayList<Integer>> cl = new ArrayList<ArrayList<Integer>>();
-										cl.add((ArrayList<Integer>)cycle);
-										cyclesList.put(edge, cl);
-									}
+									Pair<Integer,Integer> edge = new Pair<Integer,Integer>(cycle.get(i), cycle.get(i < cycles.size()-1 ? i+1 : 0));
+									if (!cyclesList.containsKey(edge)) cyclesList.put(edge, new ArrayList<ArrayList<Integer>>());
+									cyclesList.get(edge).add((ArrayList<Integer>)cycle);
 								}
 							}
 							break; //move to next pair
