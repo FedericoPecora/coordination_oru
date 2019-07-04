@@ -48,6 +48,7 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 	protected boolean calledStartTracking = false;
 	protected Callback extraStatusCallback = null;
 	protected boolean canStartTracking = false;
+	protected long startingTimeInMillis = -1;
 	
 	protected Logger metaCSPLogger = MetaCSPLogging.getLogger(AbstractTrajectoryEnvelopeTracker.class);
 
@@ -68,11 +69,19 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 		this.externalCPCounter = -1;
 		this.criticalPoint = -1;
 		this.temporalResolution = temporalResolution;
+		this.startingTimeInMillis = tec.getCurrentTimeInMillis();
 		this.tec = tec;
 		this.solver = tec.getSolver();
 		this.trackingPeriodInMillis = trackingPeriodInMillis;
 		this.cb = cb;
 		startMonitoringThread();
+	}
+	
+	/**
+	 * Return the coordination time (in milli-seconds) at which the tracker has started its mission.
+	 */
+	public long getStartingTimeInMillis() {
+		return this.startingTimeInMillis;
 	}
 	
 	/**

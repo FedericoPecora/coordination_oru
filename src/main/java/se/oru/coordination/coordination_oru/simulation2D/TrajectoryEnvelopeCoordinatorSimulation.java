@@ -199,7 +199,7 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 			//Method for measuring time in the trajectory envelope tracker
 			@Override
 			public long getCurrentTimeInMillis() {
-				return Calendar.getInstance().getTimeInMillis()-START_TIME;
+				return tec.getCurrentTimeInMillis();
 			}
 		};
 		//ret.setUseInternalCriticalPoints(this.useInternalCPs);
