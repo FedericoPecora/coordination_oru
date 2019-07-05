@@ -313,9 +313,13 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			}
 		}
 		if (breakDeadlocksByReplanning) {
+			HashSet<Integer> spawnedThreadRobotSet = new HashSet<Integer>();
 			for (List<Integer> cycle : unsafeCycles) {
+				boolean spawnThread = true;
+				
 				//Get edges along the cycle...
 				ArrayList<Dependency> depsAlongCycle = new ArrayList<Dependency>();
+				HashSet<Integer> deadlockedRobots = new HashSet<Integer>();
 				for (int i = 0; i < cycle.size(); i++) {
 					Dependency dep = null;
 					if (i < cycle.size()-1) {
@@ -325,11 +329,17 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						dep = g.getEdge(cycle.get(i), cycle.get(0));
 					}
 					depsAlongCycle.add(dep);
+					deadlockedRobots.add(dep.getWaitingRobotID());
+					if (spawnedThreadRobotSet.contains(dep.getWaitingRobotID())) spawnThread = false;
 				}
-				//Get other robots 
-				ConnectivityInspector<Integer,Dependency> connInsp = new ConnectivityInspector<Integer,Dependency>(g);
-				HashSet<Integer> allRobots = (HashSet<Integer>) connInsp.connectedSetOf(cycle.get(0));
-				spawnReplanning(depsAlongCycle, allRobots);
+				
+				if (spawnThread) {
+					//Get other robots 
+					ConnectivityInspector<Integer,Dependency> connInsp = new ConnectivityInspector<Integer,Dependency>(g);
+					HashSet<Integer> allRobots = (HashSet<Integer>) connInsp.connectedSetOf(cycle.get(0));
+					spawnReplanning(depsAlongCycle, allRobots);
+					spawnedThreadRobotSet.addAll(deadlockedRobots);
+				}
 			}
 		}
 	}
@@ -866,7 +876,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					for (CriticalSection cs : criticalSectionsToDepsOrder.keySet()) {
 						if (cs.getTe1().getRobotID() == robotID && cs.getTe1Start() <= lastCriticalPoint || 
 								cs.getTe2().getRobotID() == robotID && cs.getTe2Start() <= lastCriticalPoint) 
-							holdingCS.put(cs,criticalSectionsToDepsOrder.get(cs));
+							holdingCS.put(cs, criticalSectionsToDepsOrder.get(cs));
 					}
 				}
 				//---------------------------------------------------------
@@ -942,7 +952,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 											(cs1.getTe1Start() == cs2.getTe2Start() || cs1.getTe1End() == cs2.getTe2End())) ||
 											(cs1.getTe2().getRobotID() == robotID && cs2.getTe2().getRobotID() == robotID && cs1.getTe2Start() == cs2.getTe2Start() &&
 											(cs1.getTe1Start() == cs2.getTe1Start() || cs1.getTe1End() == cs2.getTe1End())))
-										criticalSectionsToDepsOrder.put(cs1,holdingCS.get(cs2));
+										criticalSectionsToDepsOrder.put(cs1, holdingCS.get(cs2));
 								}		
 							}
 						}
