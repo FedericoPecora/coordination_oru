@@ -68,9 +68,15 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	
 	protected SimpleDirectedGraph<Integer,Integer> currentCyclesGraph = new SimpleDirectedGraph<Integer,Integer>(Integer.class);
 	protected HashMap<Pair<Integer,Integer>, ArrayList<ArrayList<Integer>>> cyclesList = new HashMap<Pair<Integer,Integer>, ArrayList<ArrayList<Integer>>>();
-
+	
+	//Robots currently involved in a re-plan which critical point cannot increase beyond the one used for re-plan
+	//till the re-plan has not finished yet.
+	protected HashMap<Integer,CriticalSection> lockedRobots = new HashMap<Integer,CriticalSection>();
+	
 	protected boolean breakDeadlocksByReordering = true;
 	protected boolean breakDeadlocksByReplanning = true;
+	
+	//True if waiting for deadlocks to happen.
 	protected boolean staticReplan = false;
 	
 	/**
@@ -84,7 +90,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	
 	/**
 	 * Set whether the coordinator should try to break deadlocks by disallowing an arbitrary
-	 * ordering involved in a loop in the dependency multigraph.
+	 * ordering involved in a loop in the current dependency graph.
 	 * @param value <code>true</code> if deadlocks should be broken.
 	 */
 	public void setBreakDeadlocksByReordering(boolean value) {
@@ -223,6 +229,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	
 	private void findCurrentCycles(HashMap<Integer,TreeSet<Dependency>> currentDeps, HashMap<Integer,TreeSet<Dependency>> artificialDeps, HashSet<Dependency> reversibleDeps, HashMap<Integer,RobotReport> currentReports, HashMap<Dependency, CriticalSection> depsToCs, Set<Integer> robotIDs) {
 		
+		@SuppressWarnings("unchecked")
 		HashMap<Integer,TreeSet<Dependency>> allDeps = (HashMap<Integer, TreeSet<Dependency>>)currentDeps.clone();
 		
 		//Dep graph G = (V,E)
@@ -283,10 +290,12 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						if (allOldWaitingRobotDeps.isEmpty()) allDeps.remove(dep.getWaitingRobotID());
 											
 						//update a temporary map between critical sections and orders
+						@SuppressWarnings("unchecked")
 						HashMap<CriticalSection, Pair<Integer,Integer>> criticalSectionsToDepsOrderTmp = (HashMap<CriticalSection, Pair<Integer,Integer>>) criticalSectionsToDepsOrder.clone();
 						criticalSectionsToDepsOrderTmp.put(cs, new Pair<Integer,Integer>(waitingRobotID,revDep.getWaitingPoint()));
 						
 						//create a temporary map between dependencies and critical sections
+						@SuppressWarnings("unchecked")
 						HashMap<Dependency,CriticalSection> depsToCsTmp = (HashMap<Dependency, CriticalSection>) depsToCs.clone();
 						depsToCsTmp.remove(dep);
 						depsToCsTmp.put(revDep,cs);
@@ -330,7 +339,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					}
 					depsAlongCycle.add(dep);
 					deadlockedRobots.add(dep.getWaitingRobotID());
-					if (spawnedThreadRobotSet.contains(dep.getWaitingRobotID())) spawnThread = false;
+					if (spawnedThreadRobotSet.contains(dep.getWaitingRobotID())) {
+						spawnThread = false;
+						break;
+					}
 				}
 				
 				if (spawnThread) {
@@ -1372,42 +1384,121 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						}
 					
 					}
+					
+					//Update the history of decisions for each critical section that has been updated
+					if (waintingRobotIDandCP != null)
+						this.criticalSectionsToDepsOrder.put(cs, waintingRobotIDandCP);
 				}
-			}
+	
+				//Remove obsolete critical sections
+				for (CriticalSection cs : toRemove) {
+					this.allCriticalSections.remove(cs);
+					//this.criticalSectionsToDepsOrder.remove(cs); //This command has been removed to allow restoring the correct precedence constraint in case of re-plan. 
+															  //the history of decisions for accessing a critical section can be removed only when the robot completes a mission.
+															  //In case of re-plan, the history related to CSs containing indices before the point at which the path is changed should be maintained.
+															  //Otherwise (CSs related to pieces of path that have been completely replaced), the history can be removed.
+					escapingCSToWaitingRobotIDandCP.remove(cs);
+				}
+				
+				//increment the counter
+				this.criticalSectionCounter.addAndGet(toRemove.size());		
 			
-			//update graph with all the unreversible constraints
-			updateGraph(edgesToDelete, edgesToAdd);
+				//update graph with all the unreversible constraints
+				updateGraph(edgesToDelete, edgesToAdd);
 			
-			//checkAndAdd() ...
-			for (CriticalSection cs : reversibleCS) {
-				//preload holding the previous precedence
-				
-				//try to reverse
-				
-				//try updating the graph
-			}
-		}		
-	}
-}
-
-/*////////////////////////////////////////////////////////////////
-			//FIXME Not here!!
 			
-			if (!criticalSectionsToDepsOrder.containsKey(cs)) {
-				//the dependency is new: the starting robot should yield.
+				//checkAndAdd() ...
+				for (CriticalSection cs : reversibleCS) {
 				
-				//update the dependency
-				boolean robot1Yields = robotTracker1.getStartingTimeInMillis() < robotTracker2.getStartingTimeInMillis();
-				drivingRobotID = robot1Yields ? robotReport2.getRobotID() : robotReport1.getRobotID();
-				waitingRobotID = robot1Yields ? robotReport1.getRobotID() : robotReport2.getRobotID();
-				drivingTE = robot1Yields ? robotTracker2.getTrajectoryEnvelope() : robotTracker1.getTrajectoryEnvelope();
-				waitingTE = robot1Yields ? robotTracker1.getTrajectoryEnvelope() : robotTracker2.getTrajectoryEnvelope();
-				drivingTracker = robot1Yields ? robotTracker2 : robotTracker1;
-				waitingTracker = robot1Yields ? robotTracker1 : robotTracker2;
-				waitingPoint = getCriticalPoint(waitingRobotID, cs, robot1Yields ? robotReport2.getPathIndex() : robotReport1.getPathIndex());
+					//Store the current set of order of traveling through this critical section (waiting robot ID and the related waiting point).
+					Pair<Integer,Integer> waintingRobotIDandCP = null;
+					
+					//Will be assigned depending on current situation of robot reports...
+					//index 0: holding;
+					//index 1: new proposed value;
+					int[] waitingPoint = {-1,-1};
+					int[] waitingRobotID = {-1,-1};
+					int[] drivingRobotID = {-1,-1};
+					AbstractTrajectoryEnvelopeTracker[] waitingTracker = {null,null};
+					AbstractTrajectoryEnvelopeTracker[] drivingTracker = {null,null};
+					int drivingCurrentIndex[] = {-1,-1};
+					TrajectoryEnvelope[] waitingTE = {null,null};
+					TrajectoryEnvelope[] drivingTE = {null,null};
+	
+					AbstractTrajectoryEnvelopeTracker robotTracker1 = trackers.get(cs.getTe1().getRobotID());
+					RobotReport robotReport1 = currentReports.get(cs.getTe1().getRobotID());
+					AbstractTrajectoryEnvelopeTracker robotTracker2 = trackers.get(cs.getTe2().getRobotID());
+					RobotReport robotReport2 = currentReports.get(cs.getTe2().getRobotID());
+					
+					/*/////////////////////////////
+								PRE-LOAD
+					/////////////////////////////*/
+					
+					//If the dependency is new, the starting robot should yield (ESTF heuristic).
+					//Otherwise, preload the previous precedence order
+					boolean[] robot2Yields = {true,true};	
+					if (!criticalSectionsToDepsOrder.containsKey(cs)) 
+						robot2Yields[0] = robotTracker2.getStartingTimeInMillis() < robotTracker1.getStartingTimeInMillis();
+					else robot2Yields[0] = criticalSectionsToDepsOrder.get(cs).getFirst() == robotReport2.getRobotID();
+					
+					drivingRobotID[0] = robot2Yields[0] ? robotReport1.getRobotID() : robotReport2.getRobotID();
+					waitingRobotID[0] = robot2Yields[0] ? robotReport2.getRobotID() : robotReport1.getRobotID();
+					drivingTE[0] = robot2Yields[0] ? robotTracker1.getTrajectoryEnvelope() : robotTracker2.getTrajectoryEnvelope();
+					waitingTE[0] = robot2Yields[0] ? robotTracker2.getTrajectoryEnvelope() : robotTracker1.getTrajectoryEnvelope();
+					drivingTracker[0] = robot2Yields[0] ? robotTracker1 : robotTracker2;
+					waitingTracker[0] = robot2Yields[0] ? robotTracker2 : robotTracker1;
+					waitingPoint[0] = getCriticalPoint(waitingRobotID[0], cs, robot2Yields[0] ? robotReport1.getPathIndex() : robotReport2.getPathIndex());
+					
+					//If cs is new, update the of edges to add (otherwise, it is already in the graph)
+					if (!criticalSectionsToDepsOrder.containsKey(cs))
+						edgesToAdd.add(new Pair<Integer,Integer>(waitingRobotID[0], drivingRobotID[0]));
+					
+					/*/////////////////////////////
+							CHECK HEURISTIC
+					/////////////////////////////*/
+					robot2Yields[1] = getOrder(robotTracker1, robotReport1, robotTracker2, robotReport2, cs); //true if robot1 should go before robot2, false vice versa
 				
-				//update the of edges to add
-				edgesToAdd.add(new Pair<Integer,Integer>(waitingRobotID, drivingRobotID));
-			}
-////////////////////////////////////////////////////////////////////
-*/
+					int index = 0; //preload the previous
+					if (robot2Yields[1] != robot2Yields[0]) index = 1; //update
+								
+					drivingRobotID[1] = robot2Yields[index] ? robotReport1.getRobotID() : robotReport2.getRobotID();
+					waitingRobotID[1] = robot2Yields[index] ? robotReport2.getRobotID() : robotReport1.getRobotID();
+					drivingTE[1] = robot2Yields[index] ? robotTracker1.getTrajectoryEnvelope() : robotTracker2.getTrajectoryEnvelope();
+					waitingTE[1] = robot2Yields[index] ? robotTracker2.getTrajectoryEnvelope() : robotTracker1.getTrajectoryEnvelope();
+					drivingTracker[1] = robot2Yields[index] ? robotTracker1 : robotTracker2;
+					waitingTracker[1] = robot2Yields[index] ? robotTracker2 : robotTracker1;
+					waitingPoint[1] = getCriticalPoint(waitingRobotID[index], cs, robot2Yields[index] ? robotReport1.getPathIndex() : robotReport2.getPathIndex());
+					
+					if (robot2Yields[1] != robot2Yields[0]) {
+						edgesToDelete.add(new Pair<Integer,Integer>(waitingRobotID[0], drivingRobotID[0]));
+						edgesToAdd.add(new Pair<Integer,Integer>(waitingRobotID[1], drivingRobotID[1]));
+					
+					
+						//Store previous
+						SimpleDirectedGraph<Integer,Integer> backupGraph = null;
+						HashMap<Pair<Integer, Integer>, ArrayList<ArrayList<Integer>>> backupCyclesList = null;
+						synchronized (currentCyclesGraph) {		
+							synchronized (cyclesList) {
+								backupGraph = (SimpleDirectedGraph<Integer, Integer>) currentCyclesGraph.clone();
+								backupCyclesList = (HashMap<Pair<Integer, Integer>, ArrayList<ArrayList<Integer>>>) cyclesList.clone();
+							}
+						}
+						updateGraph(edgesToDelete, edgesToAdd);
+						
+						//CONTINUE here
+						
+						//check cycles
+					}
+					
+					//Update the history of decisions for each critical section that has been updated
+					if (waintingRobotIDandCP != null)
+						this.criticalSectionsToDepsOrder.put(cs, waintingRobotIDandCP);
+				}
+				
+			}//end synchronized(allCriticalSections)
+			
+		}//end synchronized(solver)
+		
+	}//end checkAndRevise
+	
+}//end class

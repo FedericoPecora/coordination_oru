@@ -124,7 +124,6 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	
 	protected AbstractMotionPlanner defaultMotionPlanner = null;
 	protected HashMap<Integer,AbstractMotionPlanner> motionPlanners = new HashMap<Integer, AbstractMotionPlanner>();
-	protected HashMap<Integer,CriticalSection> lockedRobots = new HashMap<Integer,CriticalSection>();
 	
 	//Network knowledge
 	protected double packetLossProbability = NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS;
