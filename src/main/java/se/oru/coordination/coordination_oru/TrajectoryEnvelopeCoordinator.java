@@ -1035,10 +1035,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		}
 	}
 	
-	protected void deleteEdges(HashSet<Pair<Integer,Integer>> edgesToDelete) {
-		
+	protected void deleteEdges(HashSet<Pair<Integer,Integer>> edgesToDelete) {	
 		if (edgesToDelete == null) return;
-		
 		synchronized (currentCyclesGraph) {
 			synchronized (cyclesList) {
 				for (Pair<Integer,Integer> edge : edgesToDelete) {
@@ -1049,9 +1047,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	}
 	
 	protected void deleteEdge(Pair<Integer,Integer> edge) {
-		
 		if (edge == null) return;
-		
 		synchronized (currentCyclesGraph) {
 			synchronized (cyclesList) {
 				if (cyclesList.containsKey(edge) && currentCyclesGraph.getEdge(edge.getFirst(), edge.getSecond()) != null) {
@@ -1113,16 +1109,18 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	}
 	
 	protected void updateGraph(HashSet<Pair<Integer,Integer>> edgesToDelete, HashSet<Pair<Integer,Integer>> edgesToAdd) {
-		
-		if (edgesToDelete == null || edgesToAdd == null) {
-			metaCSPLogger.severe("Null arguments in updateGraph function");
-			throw new Error("Null arguments in updateGraph function!!");
+				
+		HashSet<Pair<Integer,Integer>> toDelete = null;
+		if (edgesToDelete != null) {
+			toDelete = new HashSet<Pair<Integer,Integer>>(edgesToDelete);
+			toDelete.removeAll(edgesToAdd);
 		}
-		
-		HashSet<Pair<Integer,Integer>> toDelete = new HashSet<Pair<Integer,Integer>>(edgesToDelete);
-		toDelete.removeAll(edgesToAdd);
-		HashSet<Pair<Integer,Integer>> toAdd = new HashSet<Pair<Integer,Integer>>(edgesToAdd);
-		toAdd.removeAll(toDelete);
+
+		HashSet<Pair<Integer,Integer>> toAdd = null;
+		if (edgesToAdd != null) {
+			toAdd = new HashSet<Pair<Integer,Integer>>(edgesToAdd);
+			toAdd.removeAll(toDelete);
+		}
 		
 		synchronized (currentCyclesGraph) {		
 			synchronized (cyclesList) {
@@ -1413,6 +1411,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					//Store the current set of order of traveling through this critical section (waiting robot ID and the related waiting point).
 					Pair<Integer,Integer> waintingRobotIDandCP = null;
 					
+					//check each edge one by one
+					edgesToDelete.clear();
+					edgesToAdd.clear();
+					
 					//Will be assigned depending on current situation of robot reports...
 					//index 0: holding;
 					//index 1: new proposed value;
@@ -1473,8 +1475,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						edgesToDelete.add(new Pair<Integer,Integer>(waitingRobotID[0], drivingRobotID[0]));
 						edgesToAdd.add(new Pair<Integer,Integer>(waitingRobotID[1], drivingRobotID[1]));
 					
-					
-						//Store previous
+						//Store previous graph
 						SimpleDirectedGraph<Integer,Integer> backupGraph = null;
 						HashMap<Pair<Integer, Integer>, ArrayList<ArrayList<Integer>>> backupCyclesList = null;
 						synchronized (currentCyclesGraph) {		
@@ -1485,10 +1486,11 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						}
 						updateGraph(edgesToDelete, edgesToAdd);
 						
-						//CONTINUE here
-						
+						//CONTINUE here, ...	
 						//check cycles
 					}
+					else
+						updateGraph(edgesToDelete, edgesToAdd);
 					
 					//Update the history of decisions for each critical section that has been updated
 					if (waintingRobotIDandCP != null)
