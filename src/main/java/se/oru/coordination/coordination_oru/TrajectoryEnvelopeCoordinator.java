@@ -1179,6 +1179,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					Pair<Integer,Integer> waintingRobotIDandCP = null;
 					
 					//Will be assigned depending on current situation of robot reports...
+					int waitingPoint = -1;
 					int waitingRobotID = -1;
 					int drivingRobotID = -1;
 					AbstractTrajectoryEnvelopeTracker waitingTracker = null;
@@ -1204,8 +1205,6 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						continue;
 					}
 				
-					int waitingPoint = -1;
-					
 					//If the precedence IS CONSTRAINED ...
 					if (robotTracker1 instanceof TrajectoryEnvelopeTrackerDummy || robotTracker2 instanceof TrajectoryEnvelopeTrackerDummy) {
 						
@@ -1422,7 +1421,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				//increment the counter
 				this.criticalSectionCounter.addAndGet(toRemove.size());		
 			
-				//update graph with all the unreversible constraints
+				//update graph with all the not reversible constraints
 				updateGraph(edgesToDelete, edgesToAdd);
 			
 			
@@ -1432,15 +1431,6 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							PRE-LOAD
 				/////////////////////////////*/
 				for (CriticalSection cs : reversibleCS) {
-					
-					//Will be assigned depending on current situation of robot reports...
-					int waitingPoint = -1;
-					int waitingRobotID = -1;
-					int drivingRobotID = -1;
-					AbstractTrajectoryEnvelopeTracker waitingTracker = null;
-					AbstractTrajectoryEnvelopeTracker drivingTracker = null;
-					TrajectoryEnvelope waitingTE = null;
-					TrajectoryEnvelope drivingTE = null;
 					
 					//check each edge one by one
 					edgesToDelete.clear();
@@ -1458,13 +1448,11 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						robot2Yields = robotTracker2.getStartingTimeInMillis() < robotTracker1.getStartingTimeInMillis();
 					else robot2Yields = criticalSectionsToDepsOrder.get(cs).getFirst() == robotReport2.getRobotID();
 					
-					drivingRobotID = robot2Yields ? robotReport1.getRobotID() : robotReport2.getRobotID();
-					waitingRobotID = robot2Yields ? robotReport2.getRobotID() : robotReport1.getRobotID();
-					drivingTE = robot2Yields ? robotTracker1.getTrajectoryEnvelope() : robotTracker2.getTrajectoryEnvelope();
-					waitingTE = robot2Yields ? robotTracker2.getTrajectoryEnvelope() : robotTracker1.getTrajectoryEnvelope();
-					drivingTracker = robot2Yields ? robotTracker1 : robotTracker2;
-					waitingTracker = robot2Yields ? robotTracker2 : robotTracker1;
-					waitingPoint = getCriticalPoint(waitingRobotID, cs, robot2Yields? robotReport1.getPathIndex() : robotReport2.getPathIndex());
+					int drivingRobotID = robot2Yields ? robotReport1.getRobotID() : robotReport2.getRobotID();
+					int waitingRobotID = robot2Yields ? robotReport2.getRobotID() : robotReport1.getRobotID();
+					TrajectoryEnvelope drivingTE = robot2Yields ? robotTracker1.getTrajectoryEnvelope() : robotTracker2.getTrajectoryEnvelope();
+					TrajectoryEnvelope waitingTE = robot2Yields ? robotTracker2.getTrajectoryEnvelope() : robotTracker1.getTrajectoryEnvelope();
+					int waitingPoint = getCriticalPoint(waitingRobotID, cs, robot2Yields? robotReport1.getPathIndex() : robotReport2.getPathIndex());
 					
 					//If cs is new, update the of edges to add (otherwise, it is already in the graph)
 					if (!criticalSectionsToDepsOrder.containsKey(cs))
@@ -1498,16 +1486,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						CHECK HEURISTIC
 				/////////////////////////////*/
 				for (CriticalSection cs : reversibleCS) {
-					
-					//Will be assigned depending on current situation of robot reports...
-					int waitingPoint = -1;
-					int waitingRobotID = -1;
-					int drivingRobotID = -1;
-					AbstractTrajectoryEnvelopeTracker waitingTracker = null;
-					AbstractTrajectoryEnvelopeTracker drivingTracker = null;
-					TrajectoryEnvelope waitingTE = null;
-					TrajectoryEnvelope drivingTE = null;
-					
+										
 					//check each edge one by one
 					edgesToDelete.clear();
 					edgesToAdd.clear();
@@ -1522,13 +1501,11 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					if (criticalSectionsToDepsOrder.get(cs).getFirst() != robotReport2.getRobotID()) {
 						//try reversing the order
 		
-						drivingRobotID = robot2Yields ? robotReport1.getRobotID() : robotReport2.getRobotID();
-						waitingRobotID = robot2Yields ? robotReport2.getRobotID() : robotReport1.getRobotID();
-						drivingTE = robot2Yields ? robotTracker1.getTrajectoryEnvelope() : robotTracker2.getTrajectoryEnvelope();
-						waitingTE = robot2Yields ? robotTracker2.getTrajectoryEnvelope() : robotTracker1.getTrajectoryEnvelope();
-						drivingTracker = robot2Yields ? robotTracker1 : robotTracker2;
-						waitingTracker = robot2Yields ? robotTracker2 : robotTracker1;
-						waitingPoint = getCriticalPoint(waitingRobotID, cs, robot2Yields ? robotReport1.getPathIndex() : robotReport2.getPathIndex());
+						int drivingRobotID = robot2Yields ? robotReport1.getRobotID() : robotReport2.getRobotID();
+						int waitingRobotID = robot2Yields ? robotReport2.getRobotID() : robotReport1.getRobotID();
+						TrajectoryEnvelope drivingTE = robot2Yields ? robotTracker1.getTrajectoryEnvelope() : robotTracker2.getTrajectoryEnvelope();
+						TrajectoryEnvelope waitingTE = robot2Yields ? robotTracker2.getTrajectoryEnvelope() : robotTracker1.getTrajectoryEnvelope();
+						int waitingPoint = getCriticalPoint(waitingRobotID, cs, robot2Yields ? robotReport1.getPathIndex() : robotReport2.getPathIndex());
 						
 						//Update graphs
 						if (waitingPoint >= 0) {		
@@ -1536,7 +1513,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							//Store previous graph
 							DirectedMultigraph<Integer,Dependency> backupDepsGraph = (DirectedMultigraph<Integer, Dependency>) depsGraph.clone();
 							SimpleDirectedGraph<Integer,Integer> backupGraph = (SimpleDirectedGraph<Integer, Integer>) currentCyclesGraph.clone();
-							HashMap<Pair<Integer, Integer>, ArrayList<ArrayList<Integer>>> backupCyclesList = backupCyclesList = (HashMap<Pair<Integer, Integer>, ArrayList<ArrayList<Integer>>>) cyclesList.clone();
+							HashMap<Pair<Integer, Integer>, ArrayList<ArrayList<Integer>>> backupCyclesList = (HashMap<Pair<Integer, Integer>, ArrayList<ArrayList<Integer>>>) cyclesList.clone();
 							
 							edgesToDelete.add(new Pair<Integer,Integer>(drivingRobotID, waitingRobotID));
 							Pair<Integer,Integer> newEdge = new Pair<Integer,Integer>(waitingRobotID, drivingRobotID);
@@ -1557,13 +1534,53 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 								depsGraph.addEdge(dep.getWaitingRobotID(), dep.getDrivingRobotID(), dep);
 							}
 							
-							//check if safe (continue here) FIXME!! Starting from critical section.
-							
+							//check if safe (continue here) 
+							boolean safe = true;
+							for (List<Integer> cycle : cyclesList.get(newEdge)) {
+								
+								//Get edges along the cycle...
+								//  Recall: there could be more than one edge per pair of verts, as this is a multi-graph
+								ArrayList<ArrayList<Dependency>> edgesAlongCycle = new ArrayList<ArrayList<Dependency>>();
+								for (int i = 0; i < cycle.size(); i++) {
+									int j = i < cycle.size()-1 ? i+1 : 0;
+									if (i == dep.getWaitingRobotID() && j == dep.getDrivingRobotID()) {
+										ArrayList<Dependency> array = new ArrayList<Dependency>();
+										array.add(dep);
+										edgesAlongCycle.add(array);
+									}
+									edgesAlongCycle.add(new ArrayList<Dependency>(depsGraph.getAllEdges(cycle.get(i), cycle.get(j))));
+								}
+								
+								//Check for unsafe cycles, that is:
+								//  All along the cycle, check if there are (u,v,dep1) and (v,w,dep2) such that
+								//    v.dep2.waitingpoint <= v.dep1.releasingpoint
+								//  And if so mark cycle as deadlock
+								for (int i = 0; i < edgesAlongCycle.size()-1; i++) {
+									for (Dependency dep1 : edgesAlongCycle.get(i)) {
+										for (Dependency dep2 : edgesAlongCycle.get(i+1)) {
+											if (unsafePair(dep1, dep2)) {
+												safe = false;
+												break;
+											}
+										}
+									}
+								}
+								if (!safe) break;
+							}
+							if (!safe) {
+								//restore the previous
+								depsGraph = backupDepsGraph;
+								currentCyclesGraph = backupGraph;
+								cyclesList = backupCyclesList;
+							}
+							else {
+								//update the maps
+								criticalSectionsToDepsOrder.put(cs,new Pair<Integer,Integer>(waitingRobotID, waitingPoint));
+								depsToCriticalSections.put(dep, cs);
+							}
 						}
-						
-						//continue here
 					}
-				}
+				}//end for reversibleCS
 				
 			}//end synchronized(allCriticalSections)
 			
@@ -1574,67 +1591,4 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 }//end class
 
 
-/*Notes: old findCycles()
-//Dep multi-graph G = (V,E)
-		//  V = robots incolved in deps
-		//  E = {(u,v,dep) | exists dep stating that robot u should wait for robot v}
-		//Deadlock iff:
-		//  Cycle <r_1, r_2, ... r_1> in G
-		//  Exists one selection of edges along the cycle (this is a multi-graph) such that
-		//    Exists (u,v,dep1) and (v,w,dep2) such that
-		//      v.dep2.waitingpoint <= v.dep1.releasingpoint
-		
-		DirectedMultigraph<Integer,Dependency> g = new DirectedMultigraph<Integer, Dependency>(Dependency.class);
-		for (Dependency dep : currentDependencies) {
-			if (!g.containsVertex(dep.getWaitingRobotID())) g.addVertex(dep.getWaitingRobotID());
-			if (!g.containsVertex(dep.getDrivingRobotID())) g.addVertex(dep.getDrivingRobotID());
-			g.addEdge(dep.getWaitingRobotID(), dep.getDrivingRobotID(), dep);
-		}
-		JohnsonSimpleCycles<Integer, Dependency> cycleFinder = new JohnsonSimpleCycles<Integer, Dependency>(g);
-		List<List<Integer>> cycles = cycleFinder.findSimpleCycles();
-		
-		//For each cycle...
-		for (List<Integer> cycle : cycles) {
-			
-			//Get edges along the cycle...
-			//  Recall: there could be more than one edge per pair of verts, as this is a multi-graph
-			ArrayList<ArrayList<Dependency>> edgesAlongCycle = new ArrayList<ArrayList<Dependency>>();
-			Collections.reverse(cycle);
-			for (int i = 0; i < cycle.size(); i++) {
-				if (i < cycle.size()-1) {
-					edgesAlongCycle.add(new ArrayList<Dependency>(g.getAllEdges(cycle.get(i), cycle.get(i+1))));
-				}
-				else {
-					edgesAlongCycle.add(new ArrayList<Dependency>(g.getAllEdges(cycle.get(i), cycle.get(0))));
-				}
-			}
-
-			//Check for unsafe cycles, that is:
-			//  All along the cycle, check if there are (u,v,dep1) and (v,w,dep2) such that
-			//    v.dep2.waitingpoint <= v.dep1.releasingpoint
-			//  And if so mark cycle as deadlock
-			Dependency anUnsafeDep = null;
-			for (int i = 0; i < edgesAlongCycle.size()-1; i++) {
-				boolean safe = true;
-				for (Dependency dep1 : edgesAlongCycle.get(i)) {
-					for (Dependency dep2 : edgesAlongCycle.get(i+1)) {
-						if (unsafePair(dep1, dep2)) {
-							safe = false;
-							anUnsafeDep = dep1;
-						}
-					}
-				}
-				if (safe) {
-					metaCSPLogger.finest("Cycle: " + edgesAlongCycle + " is deadlock-free");
-					break;
-				}
-				if (i == edgesAlongCycle.size()-2) {
-					metaCSPLogger.info("Cycle: " + edgesAlongCycle + " is NOT deadlock-free");
-					if (breakDeadlocksByReplanning) spawnReplanning(edgesAlongCycle);
-					if (breakDeadlocksByReordering) {
-						synchronized (disallowedDependencies) {
-							disallowedDependencies.add(anUnsafeDep);
-						}
-					}
-				}
-}*/
+//FIXME Strating from critical section with checkAndRevise
