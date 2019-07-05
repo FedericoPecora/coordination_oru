@@ -889,14 +889,14 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	public void computeCriticalSections() {
 
 		int numberOfCriticalSections = 0;
-		
-		//Update the coordinator view
-		HashMap<Integer,RobotReport> currentReports = new HashMap<Integer,RobotReport>();
-		for (int robotID : trackers.keySet()) {
-			currentReports.put(robotID,this.getRobotReport(robotID));
-		}
-		
+				
 		synchronized(allCriticalSections) {
+			
+			//Update the coordinator view
+			HashMap<Integer,RobotReport> currentReports = new HashMap<Integer,RobotReport>();
+			for (int robotID : trackers.keySet()) {
+				currentReports.put(robotID,this.getRobotReport(robotID));
+			}
 
 			//Collect all driving envelopes and current pose indices
 			ArrayList<TrajectoryEnvelope> drivingEnvelopes = new ArrayList<TrajectoryEnvelope>();
