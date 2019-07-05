@@ -27,7 +27,7 @@ public abstract class TrajectoryEnvelopeTrackerDummy extends AbstractTrajectoryE
 	 * @param solver The {@link TrajectoryEnvelopeSolver} that maintains the parking {@link TrajectoryEnvelope}.
 	 * @param cb An optional callback that will be called during tracking.
 	 */
-	public TrajectoryEnvelopeTrackerDummy(TrajectoryEnvelope te, int timeStep, double temporalResolution, TrajectoryEnvelopeCoordinator tec, TrackingCallback cb) {
+	public TrajectoryEnvelopeTrackerDummy(TrajectoryEnvelope te, int timeStep, double temporalResolution, AbstractTrajectoryEnvelopeCoordinator tec, TrackingCallback cb) {
 		super(te, temporalResolution, tec, timeStep, cb);
 		this.te = te;
 		this.traj = te.getTrajectory();
