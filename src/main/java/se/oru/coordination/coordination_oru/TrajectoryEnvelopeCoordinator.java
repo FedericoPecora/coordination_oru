@@ -228,7 +228,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		return closestDeps;
 	}
 	
-	private void findCurrentCycles(HashMap<Integer,TreeSet<Dependency>> currentDeps, HashMap<Integer,TreeSet<Dependency>> artificialDeps, HashSet<Dependency> reversibleDeps, HashMap<Integer,RobotReport> currentReports, HashMap<Dependency, CriticalSection> depsToCs, Set<Integer> robotIDs) {
+	private void findCurrentCycles(HashMap<Integer,TreeSet<Dependency>> currentDeps, HashMap<Integer,TreeSet<Dependency>> artificialDeps, HashSet<Dependency> reversibleDeps, HashMap<Integer,RobotReport> currentReports, Set<Integer> robotIDs) {
 		
 		@SuppressWarnings("unchecked")
 		HashMap<Integer,TreeSet<Dependency>> allDeps = (HashMap<Integer, TreeSet<Dependency>>)currentDeps.clone();
@@ -243,7 +243,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		//      v.dep2.waitingpoint <= v.dep1.releasingpoint
 		
 		SimpleDirectedGraph<Integer,Dependency> g = new SimpleDirectedGraph<Integer, Dependency>(Dependency.class);
-		g = depsToGraph(g,currentDependencies);
+		g = depsToGraph(g, currentDependencies);
 		
 		List<List<Integer>> unsafeCycles = findSimpleUnsafeCycles(g);	
 		
@@ -267,8 +267,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				//nor one related to an active parking critical section)
 				for (Dependency dep : reversibleDepsAlongCycle) {
 					
-					if (depsToCs.containsKey(dep)) {
-						CriticalSection cs = depsToCs.get(dep);
+					if (depsToCriticalSections.containsKey(dep)) {
+						CriticalSection cs = depsToCriticalSections.get(dep);
 						
 						//Try reversing the precedence
 						int waitingRobotID = dep.getDrivingRobotID();
@@ -297,7 +297,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						
 						//create a temporary map between dependencies and critical sections
 						@SuppressWarnings("unchecked")
-						HashMap<Dependency,CriticalSection> depsToCsTmp = (HashMap<Dependency, CriticalSection>) depsToCs.clone();
+						HashMap<Dependency,CriticalSection> depsToCsTmp = (HashMap<Dependency, CriticalSection>) depsToCriticalSections.clone();
 						depsToCsTmp.remove(dep);
 						depsToCsTmp.put(revDep,cs);
 
@@ -315,7 +315,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							currentDeps = allDeps;
 							unsafeCycles = unsafeCyclesTmp; //FIXME termination
 							criticalSectionsToDepsOrder = criticalSectionsToDepsOrderTmp;
-							depsToCs = depsToCsTmp;
+							depsToCriticalSections = depsToCsTmp;
 							break;
 						}
 					}
@@ -723,7 +723,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				currentDependencies = updateCurrentDependencies(currentDeps, artificialDependencies, robotIDs);
 				
 				//find cycles and revise dependencies if necessary
-				findCurrentCycles(currentDeps, artificialDependencies, currentReversibleDependencies, currentReports, depsToCriticalSections, robotIDs);
+				findCurrentCycles(currentDeps, artificialDependencies, currentReversibleDependencies, currentReports, robotIDs);
 			
 				//send revised dependencies
 				HashMap<Integer,Dependency> constrainedRobotIDs = new HashMap<Integer,Dependency>();
