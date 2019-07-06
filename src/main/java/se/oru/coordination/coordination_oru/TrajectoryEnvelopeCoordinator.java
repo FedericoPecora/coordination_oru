@@ -24,11 +24,13 @@ import javax.swing.SwingUtilities;
 import org.apache.commons.collections.comparators.ComparatorChain;
 import org.jgrapht.DirectedGraph;
 import org.jgrapht.alg.ConnectivityInspector;
+import org.jgrapht.alg.KosarajuStrongConnectivityInspector;
 import org.jgrapht.alg.cycle.JohnsonSimpleCycles;
 import org.jgrapht.graph.ClassBasedEdgeFactory;
 import org.jgrapht.graph.DefaultDirectedGraph;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.DirectedMultigraph;
+import org.jgrapht.graph.DirectedSubgraph;
 import org.jgrapht.graph.SimpleDirectedGraph;
 import org.metacsp.framework.Constraint;
 import org.metacsp.meta.spatioTemporal.paths.Map;
@@ -67,7 +69,7 @@ import se.oru.coordination.coordination_oru.SCCsAndJohnsonSympleCycles;
 public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEnvelopeCoordinator {
 	
 	//@note: currentCyclesGraph and cyclesList should be synchronized with allCriticalSection variable.
-	protected SimpleDirectedGraph<Integer,Integer> currentCyclesGraph = new SimpleDirectedGraph<Integer,Integer>(Integer.class);
+	protected SimpleDirectedGraph<Integer,String> currentCyclesGraph = new SimpleDirectedGraph<Integer,String>(String.class);
 	protected HashMap<Pair<Integer,Integer>, ArrayList<ArrayList<Integer>>> cyclesList = new HashMap<Pair<Integer,Integer>, ArrayList<ArrayList<Integer>>>();
 	
 	//Robots currently involved in a re-plan which critical point cannot increase beyond the one used for re-plan
@@ -106,7 +108,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 * @param value <code>true</code> if deadlocks should be broken.
 	 */
 	public void setAvoidDeadlocksGlobally(boolean value) {
-		this.setBreakDeadlocks(!value);
+		this.breakDeadlocksByReordering = !value;
+		this.breakDeadlocksByReplanning = !value;
+		this.avoidDeadlockGlobally = value;
 	}
 	
 	/**
@@ -116,7 +120,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 */
 	@Deprecated
 	public void setBreakDeadlocks(boolean value) {
-		this.avoidDeadlockGlobally = !value;
+		this.avoidDeadlockGlobally = false;
 		this.setBreakDeadlocksByReordering(value);
 		this.setBreakDeadlocksByReplanning(value);
 	}
@@ -403,7 +407,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	@Override
 	protected void updateDependencies() {
 		synchronized(solver) {
-			if (this.avoidDeadlockGlobally) globalCheckAndRevise();
+			if (true) globalCheckAndRevise();
 			else localCheckAndRevise();
 		}
 	}
@@ -1061,9 +1065,11 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			if (edgesToDelete == null) return;
 			synchronized (currentCyclesGraph) {
 				synchronized (cyclesList) {
+					metaCSPLogger.info("deleteEdges. Deleting edges " + edgesToDelete.toString() +". Current graph: " + currentCyclesGraph.toString());
 					for (Pair<Integer,Integer> edge : edgesToDelete) {
 						deleteEdge(edge);
-					}			
+					}	
+					metaCSPLogger.info("Updated graph: " + currentCyclesGraph.toString());
 				}
 			}
 		}
@@ -1080,12 +1086,16 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					}
 				}
 				cyclesList.remove(edge);
-				int numEdge = currentCyclesGraph.getEdge(edge.getFirst(), edge.getSecond()).intValue();
+				//hashcode: "s" + startVertex + "t" + targetVertex + "c" + number of edges from startVertex to targetVertex
+				String hashCode = currentCyclesGraph.getEdge(edge.getFirst(), edge.getSecond());
+				int cmark = hashCode.indexOf("c");
+				int numEdge = Integer.valueOf(hashCode.substring(cmark+1, hashCode.length()));
 				currentCyclesGraph.removeEdge(edge.getFirst(), edge.getSecond());
 				if (numEdge > 1) {
 					if (!currentCyclesGraph.containsVertex(edge.getFirst())) currentCyclesGraph.addVertex(edge.getFirst());
 					if (!currentCyclesGraph.containsVertex(edge.getSecond())) currentCyclesGraph.addVertex(edge.getSecond());
-					currentCyclesGraph.addEdge(edge.getFirst(), edge.getSecond(), numEdge-1);
+					String newHashCode = new String(hashCode.substring(0,cmark+1).concat(String.valueOf(numEdge-1)));
+					currentCyclesGraph.addEdge(edge.getFirst(), edge.getSecond(),newHashCode);
 				}
 			}
 		}
@@ -1094,6 +1104,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	protected void addEdges(HashSet<Pair<Integer,Integer>> edgesToAdd) {
 		
 		if (edgesToAdd == null || edgesToAdd.isEmpty()) return;
+		
 		synchronized(allCriticalSections) {
 			HashSet<Pair<Integer,Integer>> toAdd = new HashSet<Pair<Integer,Integer>>();
 			
@@ -1103,35 +1114,44 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					toAdd.add(edge);
 					if (!currentCyclesGraph.containsVertex(edge.getFirst())) currentCyclesGraph.addVertex(edge.getFirst());
 					if (!currentCyclesGraph.containsVertex(edge.getSecond())) currentCyclesGraph.addVertex(edge.getSecond());
-					currentCyclesGraph.addEdge(edge.getFirst(), edge.getSecond(), 1);
+					String hashCode = new String("s"+ String.valueOf(edge.getFirst()) + "t" + String.valueOf(edge.getSecond()) + "c" + String.valueOf(1));
+					currentCyclesGraph.addEdge(edge.getFirst(), edge.getSecond(), hashCode);
+					metaCSPLogger.info("Add edge:" + edge.toString());
 				}
 				else {
-					int numEdge = currentCyclesGraph.getEdge(edge.getFirst(), edge.getSecond()).intValue();
+					String hashCode = currentCyclesGraph.getEdge(edge.getFirst(), edge.getSecond());
+					int cmark = hashCode.indexOf("c");
+					int numEdge = Integer.valueOf(hashCode.substring(cmark+1, hashCode.length()));
 					currentCyclesGraph.removeEdge(edge.getFirst(), edge.getSecond());
 					if (!currentCyclesGraph.containsVertex(edge.getFirst())) currentCyclesGraph.addVertex(edge.getFirst());
 					if (!currentCyclesGraph.containsVertex(edge.getSecond())) currentCyclesGraph.addVertex(edge.getSecond());
-					currentCyclesGraph.addEdge(edge.getFirst(), edge.getSecond(), numEdge+1);
+					String newHashCode = new String(hashCode.substring(0,cmark+1).concat(String.valueOf(numEdge+1)));
+					currentCyclesGraph.addEdge(edge.getFirst(), edge.getSecond(),newHashCode);
 				}
 			}
 			if (toAdd.isEmpty()) return;
 			
 			//compute strongly connected components
-			SCCsAndJohnsonSympleCycles<Integer,Integer> sccAndCyclesFinder = new SCCsAndJohnsonSympleCycles<Integer,Integer>(currentCyclesGraph);
-			List<Set<Integer>> sccs = sccAndCyclesFinder.findAllSCCS();
+			KosarajuStrongConnectivityInspector<Integer,String> ksccFinder = new KosarajuStrongConnectivityInspector<Integer,String>(currentCyclesGraph);
+			List<DirectedSubgraph<Integer,String>> sccs = ksccFinder.stronglyConnectedSubgraphs();
+			metaCSPLogger.info("Connected components: " + sccs.toString());
 	
 			//update the cycle list
 			for (Pair<Integer,Integer> pair : toAdd) {
 				//search the strongly connected components containing the two vertices
-				for (Set<Integer> oneSCC : sccs) {
-					if (oneSCC.contains(pair.getFirst()) || oneSCC.contains(pair.getSecond())) {
-						if (oneSCC.contains(pair.getFirst()) && oneSCC.contains(pair.getSecond())) {
+				for (DirectedSubgraph<Integer,String> ssc : sccs) {
+					if (ssc.containsVertex(pair.getFirst()) || ssc.containsVertex(pair.getSecond())) {
+						if (ssc.containsVertex(pair.getFirst()) && ssc.containsVertex(pair.getSecond())) {
 							//get cycles in this strongly connected components
-							ArrayList<List<Integer>> cycles = (ArrayList<List<Integer>>) sccAndCyclesFinder.getCyclesInSCG(pair.getFirst(), sccAndCyclesFinder.SCCToSubGraph(oneSCC));
+							JohnsonSimpleCycles<Integer,String> cycleFinder = new JohnsonSimpleCycles<Integer,String>(ssc);
+							List<List<Integer>> cycles = cycleFinder.findSimpleCycles();
+							metaCSPLogger.info("cycles: " + cycles);
 							if (cycles != null && !cycles.isEmpty()) {
 								for(List<Integer> cycle : cycles) {
 									//update the list of cycles for each edge
 									for (int i = 0; i < cycle.size(); i++) {
-										Pair<Integer,Integer> edge = new Pair<Integer,Integer>(cycle.get(i), cycle.get(i < cycles.size()-1 ? i+1 : 0));
+										int j = i < cycle.size()-1 ? i+1 : 0;
+										Pair<Integer,Integer> edge = new Pair<Integer,Integer>(cycle.get(i), cycle.get(j));
 										if (!cyclesList.containsKey(edge)) cyclesList.put(edge, new ArrayList<ArrayList<Integer>>());
 										cyclesList.get(edge).add((ArrayList<Integer>)cycle);
 									}
@@ -1462,7 +1482,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			
 				//update graph with all the not reversible constraints
 				updateGraph(edgesToDelete, edgesToAdd);
-			
+				metaCSPLogger.info("Constrained precedences leads to graph: " + currentCyclesGraph.toString() + ".");		
 			
 				//checkAndAdd() ...				
 				
@@ -1500,6 +1520,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					//Update graphs
 					if (waitingPoint >= 0) {		
 						updateGraph(edgesToDelete, edgesToAdd);
+						metaCSPLogger.info("Preload precedences leads to graph: " + currentCyclesGraph.toString() + ".");		
 						
 						//Make new dependency
 						int drivingCSEnd =  drivingRobotID == cs.getTe1().getRobotID() ? cs.getTe1End() : cs.getTe2End();
@@ -1540,6 +1561,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					boolean robot2Yields = getOrder(robotTracker1, robotReport1, robotTracker2, robotReport2, cs); //true if robot1 should go before robot2, false vice versa
 				
 					if (criticalSectionsToDepsOrder.get(cs).getFirst() != robotReport2.getRobotID() && robot2Yields) {
+						metaCSPLogger.info("Trying reversing a precedence: old yielding Robot" + criticalSectionsToDepsOrder.get(cs).getFirst() + " at critical point " + 
+								criticalSectionsToDepsOrder.get(cs).getSecond() + " at cs "+ cs);
+					
 						//try reversing the order
 		
 						int drivingRobotID = robot2Yields ? robotReport1.getRobotID() : robotReport2.getRobotID();
@@ -1553,13 +1577,14 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 												
 							//Store previous graph
 							DirectedMultigraph<Integer,Dependency> backupDepsGraph = (DirectedMultigraph<Integer, Dependency>) depsGraph.clone();
-							SimpleDirectedGraph<Integer,Integer> backupGraph = (SimpleDirectedGraph<Integer, Integer>) currentCyclesGraph.clone();
+							SimpleDirectedGraph<Integer,String> backupGraph = (SimpleDirectedGraph<Integer, String>) currentCyclesGraph.clone();
 							HashMap<Pair<Integer, Integer>, ArrayList<ArrayList<Integer>>> backupCyclesList = (HashMap<Pair<Integer, Integer>, ArrayList<ArrayList<Integer>>>) cyclesList.clone();
 							
 							edgesToDelete.add(new Pair<Integer,Integer>(drivingRobotID, waitingRobotID));
 							Pair<Integer,Integer> newEdge = new Pair<Integer,Integer>(waitingRobotID, drivingRobotID);
 							edgesToAdd.add(newEdge);
 							updateGraph(edgesToDelete, edgesToAdd);
+							metaCSPLogger.info("Update precedences leads to graph: " + currentCyclesGraph.toString() + ".");		
 							
 							//Make new dependency
 							int drivingCSEnd =  drivingRobotID == cs.getTe1().getRobotID() ? cs.getTe1End() : cs.getTe2End();
@@ -1577,11 +1602,12 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							
 							//check if safe (continue here) 
 							boolean safe = true;
+							metaCSPLogger.info("cycles: " + cyclesList.get(newEdge));
 							if (cyclesList.get(newEdge) != null) {
 								for (List<Integer> cycle : cyclesList.get(newEdge)) {
 									
 									//Get edges along the cycle...
-									//  Recall: there could be more than one edge per pair of verts, as this is a multi-graph
+									//  Recall: there could be more than one edge per pair of vertices, as this is a multi-graph
 									ArrayList<ArrayList<Dependency>> edgesAlongCycle = new ArrayList<ArrayList<Dependency>>();
 									for (int i = 0; i < cycle.size(); i++) {
 										int j = i < cycle.size()-1 ? i+1 : 0;
@@ -1598,21 +1624,26 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 									//    v.dep2.waitingpoint <= v.dep1.releasingpoint
 									//  And if so mark cycle as deadlock
 									for (int i = 0; i < edgesAlongCycle.size()-1; i++) {
+										safe = true;
 										for (Dependency dep1 : edgesAlongCycle.get(i)) {
 											for (Dependency dep2 : edgesAlongCycle.get(i+1)) {
 												if (unsafePair(dep1, dep2)) {
 													safe = false;
-													metaCSPLogger.info("Proposed dependency " + " makes the graph unsafe");
+												}
+												if (safe) {
+													metaCSPLogger.info("Cycle: " + edgesAlongCycle + " is deadlock-free");
+													break;
+												}
+												if (i == edgesAlongCycle.size()-2) {
+													metaCSPLogger.info("Cycle: " + edgesAlongCycle + " is NOT deadlock-free");
 													break;
 												}
 											}
 										}
 									}
-									if (!safe) break;
 								}
 							}
 							if (!safe) {
-								//restore the previous
 								depsGraph = backupDepsGraph;
 								currentCyclesGraph = backupGraph;
 								cyclesList = backupCyclesList;
@@ -1627,6 +1658,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 								depsToCriticalSections.put(dep, cs);
 								metaCSPLogger.info("Update precedences " + dep + " according to heuristic.");
 							}
+							metaCSPLogger.info("Final graph: " + currentCyclesGraph.toString() + ".");		
 						}
 					}
 				}//end for reversibleCS
