@@ -1503,7 +1503,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						
 						//Make new dependency
 						int drivingCSEnd =  drivingRobotID == cs.getTe1().getRobotID() ? cs.getTe1End() : cs.getTe2End();
+						if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
 						Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd);
+						currentDeps.get(waitingRobotID).add(dep);
 						
 						//update the global graph
 						if (!depsGraph.containsEdge(dep)) {
@@ -1537,7 +1539,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					
 					boolean robot2Yields = getOrder(robotTracker1, robotReport1, robotTracker2, robotReport2, cs); //true if robot1 should go before robot2, false vice versa
 				
-					if (criticalSectionsToDepsOrder.get(cs).getFirst() != robotReport2.getRobotID()) {
+					if (criticalSectionsToDepsOrder.get(cs).getFirst() != robotReport2.getRobotID() && robot2Yields) {
 						//try reversing the order
 		
 						int drivingRobotID = robot2Yields ? robotReport1.getRobotID() : robotReport2.getRobotID();
@@ -1565,7 +1567,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd);
 							Dependency depOld = new Dependency(drivingTE, waitingTE, criticalSectionsToDepsOrder.get(cs).getSecond(), drivingCSEndOld);
 							
-							//update the global graph
+							//update the global graph and treeset
 							depsGraph.removeEdge(depOld);
 							if (!depsGraph.containsEdge(dep)) {
 								if (!depsGraph.containsVertex(dep.getWaitingRobotID())) depsGraph.addVertex(dep.getWaitingRobotID());
@@ -1600,6 +1602,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 											for (Dependency dep2 : edgesAlongCycle.get(i+1)) {
 												if (unsafePair(dep1, dep2)) {
 													safe = false;
+													metaCSPLogger.info("Proposed dependency " + " makes the graph unsafe");
 													break;
 												}
 											}
@@ -1617,7 +1620,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							}
 							else {
 								//update the maps
-								criticalSectionsToDepsOrder.put(cs,new Pair<Integer,Integer>(waitingRobotID, waitingPoint));
+								currentDeps.get(drivingRobotID).remove(depOld);
+								if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
+								currentDeps.get(waitingRobotID).add(dep);
+								criticalSectionsToDepsOrder.put(cs, new Pair<Integer,Integer>(waitingRobotID, waitingPoint));
 								depsToCriticalSections.put(dep, cs);
 								metaCSPLogger.info("Update precedences " + dep + " according to heuristic.");
 							}
