@@ -330,13 +330,13 @@ public class SCCsAndJohnsonSympleCycles<V, E>
         return foundCycle;
     }
     
-    public List<List<V>> getCyclesInSCG(int startIndex, int vertexIndex, DirectedGraph<V, E> scg)
+    public List<List<V>> getCyclesInSCG(V vertex, DirectedGraph<V, E> scg)
     {
     	initState();
     	
         // Find cycles in a strongly connected graph.
         boolean foundCycle = false;
-        V vertex = toV(vertexIndex);
+        int startIndex = toI(vertex);
         stack.push(vertex);
         blocked.add(vertex);
 

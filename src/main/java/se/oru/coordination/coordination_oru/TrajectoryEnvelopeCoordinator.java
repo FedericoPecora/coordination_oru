@@ -1067,7 +1067,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	
 	protected void addEdges(HashSet<Pair<Integer,Integer>> edgesToAdd) {
 		
-		if (edgesToAdd == null) return;
+		if (edgesToAdd == null || edgesToAdd.isEmpty()) return;
 		synchronized(allCriticalSections) {
 			HashSet<Pair<Integer,Integer>> toAdd = new HashSet<Pair<Integer,Integer>>();
 			
@@ -1077,9 +1077,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					toAdd.add(edge);
 					if (!currentCyclesGraph.containsVertex(edge.getFirst())) currentCyclesGraph.addVertex(edge.getFirst());
 					if (!currentCyclesGraph.containsVertex(edge.getSecond())) currentCyclesGraph.addVertex(edge.getSecond());
-					currentCyclesGraph.addEdge(edge.getFirst(), edge.getSecond());
+					currentCyclesGraph.addEdge(edge.getFirst(), edge.getSecond(), currentCyclesGraph.edgeSet().size());
 				}
 			}
+			if (toAdd.isEmpty()) return;
 			
 			//compute strongly connected components
 			SCCsAndJohnsonSympleCycles<Integer,Integer> sccAndCyclesFinder = new SCCsAndJohnsonSympleCycles<Integer,Integer>(currentCyclesGraph);
@@ -1087,16 +1088,21 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	
 			//update the cycle list
 			for (Pair<Integer,Integer> pair : toAdd) {
+				//search the strongly connected components containing the two vertices
 				for (Set<Integer> oneSCC : sccs) {
-					if (oneSCC.contains(pair.getFirst()) && oneSCC.contains(pair.getSecond())) {
-						//get cycles in this strongly connected components
-						ArrayList<List<Integer>> cycles = (ArrayList<List<Integer>>) sccAndCyclesFinder.getCyclesInSCG(pair.getFirst(), pair.getFirst(), sccAndCyclesFinder.SCCToSubGraph(oneSCC));
-						for(List<Integer> cycle : cycles) {
-							//update the list of cycles for each edge
-							for (int i = 0; i < cycle.size(); i++) {
-								Pair<Integer,Integer> edge = new Pair<Integer,Integer>(cycle.get(i), cycle.get(i < cycles.size()-1 ? i+1 : 0));
-								if (!cyclesList.containsKey(edge)) cyclesList.put(edge, new ArrayList<ArrayList<Integer>>());
-								cyclesList.get(edge).add((ArrayList<Integer>)cycle);
+					if (oneSCC.contains(pair.getFirst()) || oneSCC.contains(pair.getSecond())) {
+						if (oneSCC.contains(pair.getFirst()) && oneSCC.contains(pair.getSecond())) {
+							//get cycles in this strongly connected components
+							ArrayList<List<Integer>> cycles = (ArrayList<List<Integer>>) sccAndCyclesFinder.getCyclesInSCG(pair.getFirst(), sccAndCyclesFinder.SCCToSubGraph(oneSCC));
+							if (cycles != null && !cycles.isEmpty()) {
+								for(List<Integer> cycle : cycles) {
+									//update the list of cycles for each edge
+									for (int i = 0; i < cycle.size(); i++) {
+										Pair<Integer,Integer> edge = new Pair<Integer,Integer>(cycle.get(i), cycle.get(i < cycles.size()-1 ? i+1 : 0));
+										if (!cyclesList.containsKey(edge)) cyclesList.put(edge, new ArrayList<ArrayList<Integer>>());
+										cyclesList.get(edge).add((ArrayList<Integer>)cycle);
+									}
+								}
 							}
 						}
 						break; //move to next pair
@@ -1536,36 +1542,38 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							
 							//check if safe (continue here) 
 							boolean safe = true;
-							for (List<Integer> cycle : cyclesList.get(newEdge)) {
-								
-								//Get edges along the cycle...
-								//  Recall: there could be more than one edge per pair of verts, as this is a multi-graph
-								ArrayList<ArrayList<Dependency>> edgesAlongCycle = new ArrayList<ArrayList<Dependency>>();
-								for (int i = 0; i < cycle.size(); i++) {
-									int j = i < cycle.size()-1 ? i+1 : 0;
-									if (i == dep.getWaitingRobotID() && j == dep.getDrivingRobotID()) {
-										ArrayList<Dependency> array = new ArrayList<Dependency>();
-										array.add(dep);
-										edgesAlongCycle.add(array);
+							if (cyclesList.get(newEdge) != null) {
+								for (List<Integer> cycle : cyclesList.get(newEdge)) {
+									
+									//Get edges along the cycle...
+									//  Recall: there could be more than one edge per pair of verts, as this is a multi-graph
+									ArrayList<ArrayList<Dependency>> edgesAlongCycle = new ArrayList<ArrayList<Dependency>>();
+									for (int i = 0; i < cycle.size(); i++) {
+										int j = i < cycle.size()-1 ? i+1 : 0;
+										if (i == dep.getWaitingRobotID() && j == dep.getDrivingRobotID()) {
+											ArrayList<Dependency> array = new ArrayList<Dependency>();
+											array.add(dep);
+											edgesAlongCycle.add(array);
+										}
+										edgesAlongCycle.add(new ArrayList<Dependency>(depsGraph.getAllEdges(cycle.get(i), cycle.get(j))));
 									}
-									edgesAlongCycle.add(new ArrayList<Dependency>(depsGraph.getAllEdges(cycle.get(i), cycle.get(j))));
-								}
-								
-								//Check for unsafe cycles, that is:
-								//  All along the cycle, check if there are (u,v,dep1) and (v,w,dep2) such that
-								//    v.dep2.waitingpoint <= v.dep1.releasingpoint
-								//  And if so mark cycle as deadlock
-								for (int i = 0; i < edgesAlongCycle.size()-1; i++) {
-									for (Dependency dep1 : edgesAlongCycle.get(i)) {
-										for (Dependency dep2 : edgesAlongCycle.get(i+1)) {
-											if (unsafePair(dep1, dep2)) {
-												safe = false;
-												break;
+									
+									//Check for unsafe cycles, that is:
+									//  All along the cycle, check if there are (u,v,dep1) and (v,w,dep2) such that
+									//    v.dep2.waitingpoint <= v.dep1.releasingpoint
+									//  And if so mark cycle as deadlock
+									for (int i = 0; i < edgesAlongCycle.size()-1; i++) {
+										for (Dependency dep1 : edgesAlongCycle.get(i)) {
+											for (Dependency dep2 : edgesAlongCycle.get(i+1)) {
+												if (unsafePair(dep1, dep2)) {
+													safe = false;
+													break;
+												}
 											}
 										}
 									}
+									if (!safe) break;
 								}
-								if (!safe) break;
 							}
 							if (!safe) {
 								//restore the previous
