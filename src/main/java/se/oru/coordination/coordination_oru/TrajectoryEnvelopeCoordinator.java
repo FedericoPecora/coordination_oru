@@ -403,7 +403,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	@Override
 	protected void updateDependencies() {
 		synchronized(solver) {
-			if (true) globalCheckAndRevise();
+			if (this.avoidDeadlockGlobally) globalCheckAndRevise();
 			else localCheckAndRevise();
 		}
 	}
