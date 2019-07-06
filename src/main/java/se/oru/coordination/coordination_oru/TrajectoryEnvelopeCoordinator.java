@@ -76,6 +76,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	
 	protected boolean breakDeadlocksByReordering = true;
 	protected boolean breakDeadlocksByReplanning = true;
+	protected boolean avoidDeadlockGlobally = false;
 	
 	//True if waiting for deadlocks to happen.
 	protected boolean staticReplan = false;
@@ -87,6 +88,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 */
 	public void setBreakDeadlocksByReplanning(boolean value) {
 		this.breakDeadlocksByReplanning = value;
+		this.avoidDeadlockGlobally = false;
 	}
 	
 	/**
@@ -96,8 +98,17 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 */
 	public void setBreakDeadlocksByReordering(boolean value) {
 		this.breakDeadlocksByReordering = value;
+		this.avoidDeadlockGlobally = false;
 	}
 
+	/**
+	 * Set whether the coordinator should use the global strategy to avoid deadlocks
+	 * @param value <code>true</code> if deadlocks should be broken.
+	 */
+	public void setAvoidDeadlocksGlobally(boolean value) {
+		this.setBreakDeadlocks(!value);
+	}
+	
 	/**
 	 * Set whether the coordinator should try to break deadlocks by both arbitrary
 	 * re-ordering and re-planning.
@@ -105,9 +116,11 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 */
 	@Deprecated
 	public void setBreakDeadlocks(boolean value) {
+		this.avoidDeadlockGlobally = !value;
 		this.setBreakDeadlocksByReordering(value);
 		this.setBreakDeadlocksByReplanning(value);
 	}
+	
 	
 	/**
 	 * Set whether waiting for deadlocks to happen before starting re-plan to recover from deadlock.
@@ -389,6 +402,13 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	
 	@Override
 	protected void updateDependencies() {
+		synchronized(solver) {
+			if (true) globalCheckAndRevise();
+			else localCheckAndRevise();
+		}
+	}
+	
+	protected void localCheckAndRevise() {
 
 		//System.out.println("Caller of updateDependencies(): " + Thread.currentThread().getStackTrace()[2]);
 		synchronized(solver) {
@@ -1131,7 +1151,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		}
 	}
 	
-	protected void checkAndRevise() {
+	protected void globalCheckAndRevise() {
 		
 		synchronized(solver) {
 			HashMap<Integer,TreeSet<Dependency>> currentDeps = new HashMap<Integer,TreeSet<Dependency>>();
