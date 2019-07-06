@@ -1080,7 +1080,13 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					}
 				}
 				cyclesList.remove(edge);
+				int numEdge = currentCyclesGraph.getEdge(edge.getFirst(), edge.getSecond()).intValue();
 				currentCyclesGraph.removeEdge(edge.getFirst(), edge.getSecond());
+				if (numEdge > 1) {
+					if (!currentCyclesGraph.containsVertex(edge.getFirst())) currentCyclesGraph.addVertex(edge.getFirst());
+					if (!currentCyclesGraph.containsVertex(edge.getSecond())) currentCyclesGraph.addVertex(edge.getSecond());
+					currentCyclesGraph.addEdge(edge.getFirst(), edge.getSecond(), numEdge-1);
+				}
 			}
 		}
 	}
@@ -1097,7 +1103,14 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					toAdd.add(edge);
 					if (!currentCyclesGraph.containsVertex(edge.getFirst())) currentCyclesGraph.addVertex(edge.getFirst());
 					if (!currentCyclesGraph.containsVertex(edge.getSecond())) currentCyclesGraph.addVertex(edge.getSecond());
-					currentCyclesGraph.addEdge(edge.getFirst(), edge.getSecond(), currentCyclesGraph.edgeSet().size());
+					currentCyclesGraph.addEdge(edge.getFirst(), edge.getSecond(), 1);
+				}
+				else {
+					int numEdge = currentCyclesGraph.getEdge(edge.getFirst(), edge.getSecond()).intValue();
+					currentCyclesGraph.removeEdge(edge.getFirst(), edge.getSecond());
+					if (!currentCyclesGraph.containsVertex(edge.getFirst())) currentCyclesGraph.addVertex(edge.getFirst());
+					if (!currentCyclesGraph.containsVertex(edge.getSecond())) currentCyclesGraph.addVertex(edge.getSecond());
+					currentCyclesGraph.addEdge(edge.getFirst(), edge.getSecond(), numEdge+1);
 				}
 			}
 			if (toAdd.isEmpty()) return;
@@ -1600,11 +1613,13 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 								depsGraph = backupDepsGraph;
 								currentCyclesGraph = backupGraph;
 								cyclesList = backupCyclesList;
+								metaCSPLogger.info("Restore previous precedence " + dep + ".");
 							}
 							else {
 								//update the maps
 								criticalSectionsToDepsOrder.put(cs,new Pair<Integer,Integer>(waitingRobotID, waitingPoint));
 								depsToCriticalSections.put(dep, cs);
+								metaCSPLogger.info("Update precedences " + dep + " according to heuristic.");
 							}
 						}
 					}
