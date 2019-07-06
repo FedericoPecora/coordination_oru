@@ -56,7 +56,7 @@ import aima.core.util.datastructure.Pair;
 import se.oru.coordination.coordination_oru.motionplanning.AbstractMotionPlanner;
 import se.oru.coordination.coordination_oru.util.FleetVisualization;
 import se.oru.coordination.coordination_oru.util.StringUtils;
-import se.oru.coordination.coordination_oru.SCCsAndJohnsonSympleCycles;
+
 
 /**
  * This class provides coordination for a fleet of robots. An instantiatable {@link TrajectoryEnvelopeCoordinator}
@@ -1078,24 +1078,37 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	protected void deleteEdge(Pair<Integer,Integer> edge) {
 		synchronized(allCriticalSections) {
 			if (edge == null) return;
-			if (cyclesList.containsKey(edge) && currentCyclesGraph.getEdge(edge.getFirst(), edge.getSecond()) != null) {
-				for (ArrayList<Integer> cycle : cyclesList.get(edge)) {
-					for (int i = 0; i < cycle.size(); i++) {
-						Pair<Integer,Integer> otherEdge = new Pair<Integer,Integer>(cycle.get(i),cycle.get(i < cycle.size()-1 ? i+1 : 0));
-						if (otherEdge != edge) cyclesList.get(otherEdge).remove(cycle);
+			if (currentCyclesGraph.getEdge(edge.getFirst(), edge.getSecond()) != null) {
+				if (cyclesList.containsKey(edge)) {
+					HashMap<Pair<Integer, Integer>, ArrayList<ArrayList<Integer>>> toRemove = new HashMap<Pair<Integer, Integer>, ArrayList<ArrayList<Integer>>>();
+					for (ArrayList<Integer> cycle : cyclesList.get(edge)) {
+						for (int i = 0; i < cycle.size(); i++) {
+							Pair<Integer,Integer> otherEdge = new Pair<Integer,Integer>(cycle.get(i),cycle.get(i < cycle.size()-1 ? i+1 : 0));
+							if (otherEdge != edge) {
+								if (!toRemove.containsKey(otherEdge)) toRemove.put(otherEdge, new ArrayList<ArrayList<Integer>>());
+								toRemove.get(otherEdge).add(cycle);
+							}
+						}
+					}
+					cyclesList.remove(edge);
+					for (Pair<Integer, Integer> key : toRemove.keySet()) {
+						if (cyclesList.containsKey(key)) {
+							cyclesList.get(key).removeAll(toRemove.get(key));
+							if (cyclesList.get(key).isEmpty()) cyclesList.remove(key);
+						}
 					}
 				}
-				cyclesList.remove(edge);
 				//hashcode: "s" + startVertex + "t" + targetVertex + "c" + number of edges from startVertex to targetVertex
 				String hashCode = currentCyclesGraph.getEdge(edge.getFirst(), edge.getSecond());
 				int cmark = hashCode.indexOf("c");
 				int numEdge = Integer.valueOf(hashCode.substring(cmark+1, hashCode.length()));
 				currentCyclesGraph.removeEdge(edge.getFirst(), edge.getSecond());
+				metaCSPLogger.info("delating one edge " + edge.toString() + "updating the counter from " + numEdge);
 				if (numEdge > 1) {
 					if (!currentCyclesGraph.containsVertex(edge.getFirst())) currentCyclesGraph.addVertex(edge.getFirst());
 					if (!currentCyclesGraph.containsVertex(edge.getSecond())) currentCyclesGraph.addVertex(edge.getSecond());
 					String newHashCode = new String(hashCode.substring(0,cmark+1).concat(String.valueOf(numEdge-1)));
-					currentCyclesGraph.addEdge(edge.getFirst(), edge.getSecond(),newHashCode);
+					currentCyclesGraph.addEdge(edge.getFirst(), edge.getSecond(), newHashCode);
 				}
 			}
 		}
@@ -1148,12 +1161,14 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							metaCSPLogger.info("cycles: " + cycles);
 							if (cycles != null && !cycles.isEmpty()) {
 								for(List<Integer> cycle : cycles) {
+									Collections.reverse(cycle);
 									//update the list of cycles for each edge
 									for (int i = 0; i < cycle.size(); i++) {
 										int j = i < cycle.size()-1 ? i+1 : 0;
 										Pair<Integer,Integer> edge = new Pair<Integer,Integer>(cycle.get(i), cycle.get(j));
 										if (!cyclesList.containsKey(edge)) cyclesList.put(edge, new ArrayList<ArrayList<Integer>>());
 										cyclesList.get(edge).add((ArrayList<Integer>)cycle);
+										//metaCSPLogger.info("edge: " + edge.toString() + "cyclesList:" + cyclesList.get(edge));
 									}
 								}
 							}
@@ -1602,7 +1617,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							
 							//check if safe (continue here) 
 							boolean safe = true;
-							metaCSPLogger.info("cycles: " + cyclesList.get(newEdge));
+							metaCSPLogger.info("cyclesList: " + cyclesList.toString());
 							if (cyclesList.get(newEdge) != null) {
 								for (List<Integer> cycle : cyclesList.get(newEdge)) {
 									
@@ -1647,11 +1662,12 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 								depsGraph = backupDepsGraph;
 								currentCyclesGraph = backupGraph;
 								cyclesList = backupCyclesList;
-								metaCSPLogger.info("Restore previous precedence " + dep + ".");
+								metaCSPLogger.info("Restore previous precedence " + depOld + ".");
 							}
 							else {
 								//update the maps
 								currentDeps.get(drivingRobotID).remove(depOld);
+								if (currentDeps.get(drivingRobotID).isEmpty()) currentDeps.remove(drivingRobotID);
 								if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
 								currentDeps.get(waitingRobotID).add(dep);
 								criticalSectionsToDepsOrder.put(cs, new Pair<Integer,Integer>(waitingRobotID, waitingPoint));
@@ -1659,6 +1675,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 								metaCSPLogger.info("Update precedences " + dep + " according to heuristic.");
 							}
 							metaCSPLogger.info("Final graph: " + currentCyclesGraph.toString() + ".");		
+							metaCSPLogger.info("currentDeps: " + currentDeps.toString() + ".");	
 						}
 					}
 				}//end for reversibleCS
