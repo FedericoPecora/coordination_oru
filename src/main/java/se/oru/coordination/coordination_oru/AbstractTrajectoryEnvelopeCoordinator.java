@@ -90,8 +90,8 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	protected ArrayList<TrajectoryEnvelope> envelopesToTrack = new ArrayList<TrajectoryEnvelope>();
 	protected ArrayList<TrajectoryEnvelope> currentParkingEnvelopes = new ArrayList<TrajectoryEnvelope>();
 	protected HashSet<CriticalSection> allCriticalSections = new HashSet<CriticalSection>();
-	protected HashMap<CriticalSection,Pair<Integer,Integer>> criticalSectionsToDepsOrder = new HashMap<CriticalSection,Pair<Integer,Integer>>(); 
-	HashMap<Dependency,CriticalSection> depsToCriticalSections = new HashMap<Dependency, CriticalSection>();
+	protected HashMap<CriticalSection,Pair<Integer,Integer>> CSToDepsOrder = new HashMap<CriticalSection,Pair<Integer,Integer>>(); 
+	HashMap<Dependency,CriticalSection> depsToCS = new HashMap<Dependency, CriticalSection>();
 	protected HashMap<CriticalSection,Pair<Integer,Integer>> escapingCSToWaitingRobotIDandCP = new HashMap<CriticalSection, Pair<Integer,Integer>>(); 
 	protected HashMap<Integer,ArrayList<Integer>> stoppingPoints = new HashMap<Integer,ArrayList<Integer>>();
 	protected HashMap<Integer,ArrayList<Integer>> stoppingTimes = new HashMap<Integer,ArrayList<Integer>>();
@@ -1017,12 +1017,12 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			for (CriticalSection cs : toRemove) {
 				this.allCriticalSections.remove(cs);
 				//metaCSPLogger.info("filterCriticalSection(): remove (1) " + cs);
-//				this.criticalSectionsToDepsOrder.remove(cs);
+//				this.CSToDepsOrder.remove(cs);
 			}
 			for (CriticalSection cs : toAdd) {
 				this.allCriticalSections.add(cs);
 				//metaCSPLogger.info("filterCriticalSection(): add (1) " + cs);
-				//this.criticalSectionsToDepsOrder.put(cs, new HashSet<Dependency>());
+				//this.CSToDepsOrder.put(cs, new HashSet<Dependency>());
 			}
 		}
 		while (!toAdd.isEmpty() || !toRemove.isEmpty());
@@ -1058,7 +1058,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		for (CriticalSection cs : toRemove) {
 			this.allCriticalSections.remove(cs);
 			//metaCSPLogger.info("filterCriticalSection(): remove (2) " + cs);
-//			this.criticalSectionsToDepsOrder.remove(cs);
+//			this.CSToDepsOrder.remove(cs);
 		}
 
 	}
@@ -1221,7 +1221,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			metaCSPLogger.info("Cleaning up critical sections of Robot" + robotID);
 			ArrayList<CriticalSection> toRemove = new ArrayList<CriticalSection>();
 			//Clear the critical sections for which we have stored a dependency ...
-			for (CriticalSection cs : criticalSectionsToDepsOrder.keySet()) {
+			for (CriticalSection cs : CSToDepsOrder.keySet()) {
 				if (cs.getTe1().getRobotID() == robotID || cs.getTe2().getRobotID() == robotID) toRemove.add(cs);
 			}
 			//... and all the critical sections which are currently alive.
@@ -1235,7 +1235,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				}
 			}
 			for (CriticalSection cs : toRemove) {
-				criticalSectionsToDepsOrder.remove(cs);
+				CSToDepsOrder.remove(cs);
 				allCriticalSections.remove(cs);
 				escapingCSToWaitingRobotIDandCP.remove(cs);
 			}
