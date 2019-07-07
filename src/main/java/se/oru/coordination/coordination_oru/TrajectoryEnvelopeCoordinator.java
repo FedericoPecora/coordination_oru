@@ -221,6 +221,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	}
 	
 	private HashSet<Dependency> updateCurrentDependencies(HashMap<Integer,TreeSet<Dependency>> allDeps, HashMap<Integer, TreeSet<Dependency>> artificialDeps, Set<Integer> robotIDs) {
+		metaCSPLogger.info("currentDeps: " + allDeps.toString() + ".");	
+		metaCSPLogger.info("artificialDeps: " + artificialDeps.toString() + ".");	
 		HashSet<Dependency> closestDeps = new HashSet<Dependency>();
 		for (Integer robotID : robotIDs) {						
 			if (allDeps.containsKey(robotID) || artificialDeps.containsKey(robotID)) {
@@ -1485,16 +1487,18 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				//Remove obsolete critical sections
 				for (CriticalSection cs : toRemove) {
 					this.allCriticalSections.remove(cs);
-					//this.criticalSectionsToDepsOrder.remove(cs); //This command has been removed to allow restoring the correct precedence constraint in case of re-plan. 
-															  //the history of decisions for accessing a critical section can be removed only when the robot completes a mission.
-															  //In case of re-plan, the history related to CSs containing indices before the point at which the path is changed should be maintained.
-															  //Otherwise (CSs related to pieces of path that have been completely replaced), the history can be removed.
-					escapingCSToWaitingRobotIDandCP.remove(cs);
+					int waitingRobotID = this.criticalSectionsToDepsOrder.get(cs).getFirst();
+					int drivingRobotID = waitingRobotID == cs.getTe1().getRobotID() ? cs.getTe2().getRobotID() : cs.getTe1().getRobotID();
+					Pair<Integer,Integer> edge = new Pair<Integer,Integer>(waitingRobotID, drivingRobotID);
+					edgesToDelete.add(edge);
+					this.criticalSectionsToDepsOrder.remove(cs);
+					this.escapingCSToWaitingRobotIDandCP.remove(cs);
+					//FIXME Clearing depsToCs?
 				}
 				
 				//increment the counter
 				this.criticalSectionCounter.addAndGet(toRemove.size());		
-			
+				
 				//update graph with all the not reversible constraints
 				updateGraph(edgesToDelete, edgesToAdd);
 				metaCSPLogger.info("Constrained precedences leads to graph: " + currentCyclesGraph.toString() + ".");		
@@ -1662,7 +1666,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 								depsGraph = backupDepsGraph;
 								currentCyclesGraph = backupGraph;
 								cyclesList = backupCyclesList;
-								metaCSPLogger.info("Restore previous precedence " + depOld + ".");
+								metaCSPLogger.info("Restore previous precedence " + depOld + "."); //FIXME here there is a bug.
 							}
 							else {
 								//update the maps
@@ -1675,7 +1679,6 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 								metaCSPLogger.info("Update precedences " + dep + " according to heuristic.");
 							}
 							metaCSPLogger.info("Final graph: " + currentCyclesGraph.toString() + ".");		
-							metaCSPLogger.info("currentDeps: " + currentDeps.toString() + ".");	
 						}
 					}
 				}//end for reversibleCS
