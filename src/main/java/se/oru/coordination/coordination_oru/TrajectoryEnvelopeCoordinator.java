@@ -221,8 +221,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	}
 	
 	private HashSet<Dependency> updateCurrentDependencies(HashMap<Integer,TreeSet<Dependency>> allDeps, HashMap<Integer, TreeSet<Dependency>> artificialDeps, Set<Integer> robotIDs) {
-		metaCSPLogger.info("currentDeps: " + allDeps.toString() + ".");	
-		metaCSPLogger.info("artificialDeps: " + artificialDeps.toString() + ".");	
+		
+		metaCSPLogger.finest("currentDeps: " + allDeps.toString() + ".");	
+		metaCSPLogger.finest("artificialDeps: " + artificialDeps.toString() + ".");	
+		
 		HashSet<Dependency> closestDeps = new HashSet<Dependency>();
 		for (Integer robotID : robotIDs) {						
 			if (allDeps.containsKey(robotID) || artificialDeps.containsKey(robotID)) {
@@ -409,7 +411,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	@Override
 	protected void updateDependencies() {
 		synchronized(solver) {
-			if (true) globalCheckAndRevise();
+			if (this.avoidDeadlockGlobally) globalCheckAndRevise();
 			else localCheckAndRevise();
 		}
 	}
@@ -456,7 +458,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	
 			//Make deps from critical sections, and remove obsolete critical sections
 			synchronized(allCriticalSections) {
-	
+				
+				depsToCriticalSections.clear();
+				
 				HashSet<CriticalSection> toRemove = new HashSet<CriticalSection>();
 				for (CriticalSection cs : this.allCriticalSections) {
 					
@@ -733,11 +737,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				//Remove obsolete critical sections
 				for (CriticalSection cs : toRemove) {
 					this.allCriticalSections.remove(cs);
-					//this.criticalSectionsToDepsOrder.remove(cs); //This command has been removed to allow restoring the correct precedence constraint in case of re-plan. 
-															  //the history of decisions for accessing a critical section can be removed only when the robot completes a mission.
-															  //In case of re-plan, the history related to CSs containing indices before the point at which the path is changed should be maintained.
-															  //Otherwise (CSs related to pieces of path that have been completely replaced), the history can be removed.
-					escapingCSToWaitingRobotIDandCP.remove(cs);
+					this.criticalSectionsToDepsOrder.remove(cs);
+					this.escapingCSToWaitingRobotIDandCP.remove(cs);
 				}
 				
 				//increment the counter
@@ -1246,6 +1247,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	
 			//Make deps from critical sections, and remove obsolete critical sections
 			synchronized(allCriticalSections) {
+				
+				depsToCriticalSections.clear();
 	
 				HashSet<CriticalSection> toRemove = new HashSet<CriticalSection>();
 				
