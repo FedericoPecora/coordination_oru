@@ -413,14 +413,18 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		
 		//NO MORE USED
 		if (yieldIfParking) {
-			if (cs.getTe1End() == cs.getTe1().getPathLength()-1) {
+			boolean robot1ParksInCS = cs.getTe1End() == cs.getTe1().getPathLength()-1;
+			boolean robot2ParksInCS = cs.getTe2End() == cs.getTe2().getPathLength()-1;
+			if (robot1ParksInCS && !robot2ParksInCS) {
 				metaCSPLogger.info("Robot" + cs.getTe1().getRobotID() + " will park in " + cs + ", letting Robot" + cs.getTe2().getRobotID() + " go first");
 				return false;
 			}
-			if (cs.getTe2End() == cs.getTe2().getPathLength()-1) {
+			else if (!robot1ParksInCS && robot2ParksInCS) {
 				metaCSPLogger.info("Robot" + cs.getTe2().getRobotID() + " will park in " + cs + ", letting Robot" + cs.getTe1().getRobotID() + " go first");
 				return true;
 			}
+			else
+				metaCSPLogger.info("Both Robot" + cs.getTe1().getRobotID() + " and Robot" + cs.getTe2().getRobotID() + " will park in " + cs + ". Decide according to the heuristic.");
 		}
 			
 		RobotAtCriticalSection r1atcs = new RobotAtCriticalSection(robotReport1, cs);
