@@ -122,7 +122,7 @@ public class ParkingArrayNew {
 		String yamlFile = "maps/map-empty-circle.yaml";
 		
 		for (int i : robotIDs) {
-			tec.setForwardModel(i, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getTrackingPeriod()));
+			tec.setForwardModel(i, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
 			//In case deadlocks occur, we make the coordinator capable of re-planning on the fly (experimental, not working properly yet)
 			AbstractMotionPlanner rsp_i = createMotionPlanner(footprint, yamlFile);
 			tec.setMotionPlanner(i, rsp_i);

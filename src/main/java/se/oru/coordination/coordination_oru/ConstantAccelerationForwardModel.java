@@ -12,11 +12,13 @@ public class ConstantAccelerationForwardModel implements ForwardModel {
 	private double maxAccel, maxVel;
 	private double temporalResolution = -1;
 	private int trackingPeriodInMillis = 0;
+	private int controlPeriodInMillis = -1;
 	
-	public ConstantAccelerationForwardModel(double maxAccel, double maxVel, double temporalResolution, int trackingPeriodInMillis) {
+	public ConstantAccelerationForwardModel(double maxAccel, double maxVel, double temporalResolution, int controlPeriodInMillis, int trackingPeriodInMillis) {
 		this.maxAccel = maxAccel;
 		this.maxVel = maxVel;	
 		this.temporalResolution = temporalResolution;
+		this.controlPeriodInMillis = controlPeriodInMillis;
 		this.trackingPeriodInMillis = trackingPeriodInMillis;
 	}
 
@@ -27,7 +29,7 @@ public class ConstantAccelerationForwardModel implements ForwardModel {
 		State state = new State(0.0, currentState.getVelocity());
 		double time = 0.0;
 		double deltaTime = 0.0001;
-		long lookaheadInMillis = 2*(TrajectoryEnvelopeCoordinator.EFFECTIVE_CONTROL_PERIOD + TrajectoryEnvelopeCoordinator.MAX_TX_DELAY + trackingPeriodInMillis);
+		long lookaheadInMillis = 2*(this.controlPeriodInMillis + TrajectoryEnvelopeCoordinator.MAX_TX_DELAY + trackingPeriodInMillis);
 		if (lookaheadInMillis > 0) {
 			while (time*this.temporalResolution < lookaheadInMillis) {
 				se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeTrackerRK4.integrateRK4(state, time, deltaTime, false, maxVel, 1.0, maxAccel);
@@ -72,7 +74,7 @@ public class ConstantAccelerationForwardModel implements ForwardModel {
 		State state = new State(currentState.getDistanceTraveled(), currentState.getVelocity());
 		double time = 0.0;
 		double deltaTime = 0.0001;
-		long lookaheadInMillis = 2*(TrajectoryEnvelopeCoordinator.EFFECTIVE_CONTROL_PERIOD + TrajectoryEnvelopeCoordinator.MAX_TX_DELAY + trackingPeriodInMillis);
+		long lookaheadInMillis = 2*(this.controlPeriodInMillis + TrajectoryEnvelopeCoordinator.MAX_TX_DELAY + trackingPeriodInMillis);
 		if (lookaheadInMillis > 0) {
 			while (time*temporalResolution < lookaheadInMillis) {
 				se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeTrackerRK4.integrateRK4(state, time, deltaTime, false, maxVel, 1.0, maxAccel*1.1);
