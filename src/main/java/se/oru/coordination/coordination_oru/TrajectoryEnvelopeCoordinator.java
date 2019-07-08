@@ -370,7 +370,31 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				}
 				
 				if (spawnThread) {
-					//Get other robots 
+					//Get other robots (all the robot in the maximum connected set of a deadlocked one)
+					
+					/*------------------------------------------------------------------------------------------
+					 * Notes on connectivity: example code. While strongly connected components are useful for 
+					 * computing cycles, connected components are used to get the set of robots to be considered 
+					 * as obstacles when replanning.
+					 * -----------------------------------------------------------------------------------------
+					 * 
+					 * 	SimpleDirectedGraph<Integer,Integer> g = new SimpleDirectedGraph(Integer.class);
+						for (int v=1; v< 6; v++) g.addVertex(v);
+						g.addEdge(1,2,1);
+						g.addEdge(2,3,2);
+						g.addEdge(3,1,3);
+						g.addEdge(4,2,4);
+						g.addEdge(3,5,5);
+						ConnectivityInspector<Integer,Integer> connInsp = new ConnectivityInspector<Integer,Integer>(g);
+						KosarajuStrongConnectivityInspector<Integer,Integer> kconnInsp = new KosarajuStrongConnectivityInspector<Integer,Integer>(g);
+						Set<Integer> cc2 = connInsp.connectedSetOf(2);
+						Set<Integer> cc3 = connInsp.connectedSetOf(3);
+						List<Set<Integer>> scc = kconnInsp.stronglyConnectedSets();
+						System.out.println("cc2: " + cc2.toString() + ", cc3: " + cc3.toString() + ", scc: " + scc.toString());
+						//Result: cc2: [1, 2, 3, 4, 5], cc3: [1, 2, 3, 4, 5], scc: [[4], [1, 2, 3], [5]]
+						---------------------------------------------------------------------------------------
+					 */
+					
 					ConnectivityInspector<Integer,Dependency> connInsp = new ConnectivityInspector<Integer,Dependency>(g);
 					HashSet<Integer> allRobots = (HashSet<Integer>) connInsp.connectedSetOf(cycle.get(0));
 					spawnReplanning(depsAlongCycle, allRobots);
