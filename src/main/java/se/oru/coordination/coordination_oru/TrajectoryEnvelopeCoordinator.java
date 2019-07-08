@@ -1334,9 +1334,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
 							Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd);
 							currentDeps.get(waitingRobotID).add(dep);
-							
-							//add the dependency to the reduced graph if necessary
-							if (!currentOrdersGraph.containsEdge(waitingRobotID, drivingRobotID)) edgesToAdd.add(new Pair<Integer,Integer>(waitingRobotID,drivingRobotID));
+
+							//If cs is new, update the of edges to add (otherwise, it is already in the graph)
+							if (!CSToDepsOrder.containsKey(cs))
+								edgesToAdd.add(new Pair<Integer,Integer>(dep.getWaitingRobotID(), dep.getDrivingRobotID()));
 							
 							//update the global graph
 							if (!depsGraph.containsEdge(dep)) {
@@ -1474,6 +1475,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
 							Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd);
 							currentDeps.get(waitingRobotID).add(dep);
+							
+							//If cs is new, update the of edges to add (otherwise, it is already in the graph)
+							if (!CSToDepsOrder.containsKey(cs))
+								edgesToAdd.add(new Pair<Integer,Integer>(dep.getWaitingRobotID(), dep.getDrivingRobotID()));
 							
 							//update the global graph
 							if (!depsGraph.containsEdge(dep)) {
