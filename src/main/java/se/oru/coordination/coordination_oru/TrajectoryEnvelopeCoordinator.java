@@ -1389,7 +1389,32 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							reversibleCS.add(cs);
 							continue;
 						}
-						else {//Otherwise re-impose previously decided dependency if possible
+						
+						//Robot 1 can stop before entering the critical section, robot 2 can't --> robot 1 waits
+						if (canStopRobot1 && !canStopRobot2) {
+							drivingCurrentIndex = robotReport2.getPathIndex();
+							drivingRobotID = robotReport2.getRobotID();
+							waitingRobotID = robotReport1.getRobotID();
+							drivingTE = robotTracker2.getTrajectoryEnvelope();
+							waitingTE = robotTracker1.getTrajectoryEnvelope();
+							drivingTracker = robotTracker2;
+							waitingTracker = robotTracker1;
+							metaCSPLogger.finest("One-can-one-can't-stop (1) and Robot" + drivingTE.getRobotID() + " (can't) is ahead of Robot" + waitingTE.getRobotID() + " (can) and CS is: " + cs);						
+						}
+	
+						//Robot 2 can stop before entering critical section, robot 1 can't --> robot 2 waits
+						else if (!canStopRobot1 && canStopRobot2) {
+							drivingCurrentIndex = robotReport1.getPathIndex();
+							drivingRobotID = robotReport1.getRobotID();
+							waitingRobotID = robotReport2.getRobotID();
+							drivingTE = robotTracker1.getTrajectoryEnvelope();
+							waitingTE = robotTracker2.getTrajectoryEnvelope();
+							drivingTracker = robotTracker1;
+							waitingTracker = robotTracker2;
+							metaCSPLogger.finest("One-can-one-can't-stop (2) and Robot" + drivingTE.getRobotID() + " (can't) ahead of Robot" + waitingTE.getRobotID() + " (can) and CS is: " + cs);
+						}
+						
+						else {	//Otherwise re-impose previously decided dependency if possible			
 							
 							//Handle the particular case of starting from a critical section at the FIRST communication.
 							wakeUpinCSRobot1 = !communicatedCPs.containsKey(robotTracker1) && Math.max(robotReport1.getPathIndex(), 0) >= cs.getTe1Start();
@@ -1399,7 +1424,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 								drivingRobotID = wakeUpinCSRobot1 ? robotReport1.getRobotID() : robotReport2.getRobotID();
 								waitingRobotID = wakeUpinCSRobot1 ? robotReport2.getRobotID() : robotReport1.getRobotID();	
 								metaCSPLogger.finest("Robot" + robotReport1.getRobotID() + " wake up: " +wakeUpinCSRobot1 + ", Robot"+ robotReport2.getRobotID() + " wake up: " + wakeUpinCSRobot2 +" in CS " + cs);
-
+	
 							}
 							else {
 								if (this.CSToDepsOrder.containsKey(cs) && this.CSToDepsOrder.get(cs) != null) {
@@ -1416,7 +1441,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 										throw new Error("FIXME! Lost dependency! " );							
 								}			
 							}
-
+	
 							drivingCurrentIndex = drivingRobotID == robotReport1.getRobotID() ? robotReport1.getPathIndex() : robotReport2.getPathIndex();
 							drivingTE = drivingRobotID == robotReport1.getRobotID() ? robotTracker1.getTrajectoryEnvelope() : robotTracker2.getTrajectoryEnvelope();
 							waitingTE = waitingRobotID == robotReport1.getRobotID() ? robotTracker1.getTrajectoryEnvelope() : robotTracker2.getTrajectoryEnvelope();	
@@ -1454,8 +1479,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 								metaCSPLogger.info("Robot" + drivingRobotID + " cannot escape from CS: " + cs + ". Let's create a deadlock. Add artificial dependency for Robot" + drivingRobotID + " at " + dep.getWaitingPoint() + ".");
 							}	
 							metaCSPLogger.finest("Both can't. Driving Robot" + drivingRobotID + " at " + drivingCurrentIndex + " makes " + waitingRobotID + " waiting at CS " + cs + ".");
-						}	
-						
+						}
 						//Compute waiting path index point for waiting robot
 						waitingPoint = getCriticalPoint(waitingRobotID, cs, drivingCurrentIndex);
 						
