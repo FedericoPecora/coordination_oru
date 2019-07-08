@@ -789,19 +789,23 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		final HashSet<Integer> deadlockedRobots = new HashSet<Integer>();
 		final boolean useStaticReplan = staticReplan;
 		
+		//collect the set of robots for which the re-plan will eventually tried
 		for (Dependency dep : deadlockedDeps) {
 			deadlockedRobots.add(dep.getWaitingRobotID());
 			deadlockedRobots.add(dep.getDrivingRobotID());
 			RobotReport rrWaiting = getRobotReport(dep.getWaitingRobotID());
 			
-			if (inParkingPose(dep.getDrivingRobotID()) || inParkingPose(dep.getWaitingRobotID()) //if one deadlocked robot is parked
-					//static re-plan: wait for a deadlock to happen before starting the re-plan
+			//avoid to re-plan if one of the robots is parked.
+			//In case of static re-plan, wait for a deadlock to happen before starting it
+			if (inParkingPose(dep.getDrivingRobotID()) || inParkingPose(dep.getWaitingRobotID())
 					|| useStaticReplan && ((dep.getWaitingPoint() == 0 ? (rrWaiting.getPathIndex() < 0) : (rrWaiting.getPathIndex() < dep.getWaitingPoint()-1)))) {
 				tryReplanning = false;
 				break;
 			}
 		}
 		
+		//You should lock the robots if you want to start replaning. 
+		//In this way, the last critical point communicated when the re-plan is started is forced not to be updated
 		synchronized (lockedRobots) {
 			boolean tryLocking = true;
 			for (int robotID : deadlockedRobots) {
