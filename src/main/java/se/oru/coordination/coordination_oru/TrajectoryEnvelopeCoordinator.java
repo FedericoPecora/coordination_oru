@@ -1314,17 +1314,18 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					}
 				}
 			}
-			
-			//Update the coordinator view
-			HashMap<Integer,RobotReport> currentReports = new HashMap<Integer,RobotReport>();
-			for (int robotID : robotIDs) {
-				currentReports.put(robotID,this.getRobotReport(robotID));
-			}
 	
+			HashMap<Integer,RobotReport> currentReports = new HashMap<Integer,RobotReport>();
+			
 			//Make deps from critical sections, and remove obsolete critical sections
 			synchronized(allCriticalSections) {
 				
 				depsToCS.clear();
+				
+				//Update the coordinator view
+				for (int robotID : robotIDs) {
+					currentReports.put(robotID,this.getRobotReport(robotID));
+				}
 	
 				HashSet<CriticalSection> toRemove = new HashSet<CriticalSection>();
 				
