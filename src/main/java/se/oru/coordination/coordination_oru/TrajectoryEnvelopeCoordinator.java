@@ -494,10 +494,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				
 				HashSet<CriticalSection> toRemove = new HashSet<CriticalSection>();
 				for (CriticalSection cs : this.allCriticalSections) {
-					
-					//Store the current set of order of traveling through this critical section (waiting robot ID and the related waiting point).
-					Pair<Integer,Integer> waintingRobotIDandCP = null;
-					
+										
 					//Will be assigned depending on current situation of robot reports...
 					int waitingRobotID = -1;
 					int drivingRobotID = -1;
@@ -562,10 +559,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						if (createAParkingDep) {
 							int drivingCSEnd = drivingRobotID == cs.getTe1().getRobotID() ? cs.getTe1End() : cs.getTe2End();
 							metaCSPLogger.finest("Robot" + drivingRobotID + " is parked, so Robot" + waitingRobotID + " will have to wait");
-							waintingRobotIDandCP = new Pair<Integer,Integer>(waitingTE.getRobotID(),waitingPoint);
 							if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
 							Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd);
 							currentDeps.get(waitingRobotID).add(dep);
+							CSToDepsOrder.put(cs, new Pair<Integer,Integer>(dep.getWaitingRobotID(),dep.getWaitingPoint()));
 							depsToCS.put(dep, cs);
 						}
 					}
@@ -746,10 +743,12 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						if (waitingPoint >= 0) {		
 							//Make new dependency
 							int drivingCSEnd =  drivingRobotID == cs.getTe1().getRobotID() ? cs.getTe1End() : cs.getTe2End();
-							waintingRobotIDandCP = new Pair<Integer,Integer>(waitingTE.getRobotID(),waitingPoint);
 							if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
 							Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd);
 							currentDeps.get(waitingRobotID).add(dep);
+							
+							//Update the history of decisions for each critical section that has been updated
+							CSToDepsOrder.put(cs, new Pair<Integer,Integer>(dep.getWaitingRobotID(),dep.getWaitingPoint()));
 							depsToCS.put(dep, cs);
 							if (canStopRobot1 && canStopRobot2) currentReversibleDependencies.add(dep);
 						}
@@ -758,11 +757,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							metaCSPLogger.severe("Waiting point < 0 for critical section " + cs);
 							throw new Error("Waiting point < 0 for critical section " + cs);
 						}
-					}
-					
-					//Update the history of decisions for each critical section that has been updated
-					if (waintingRobotIDandCP != null)
-						this.CSToDepsOrder.put(cs, waintingRobotIDandCP);
+					}						
 				}
 	
 				//Remove obsolete critical sections
@@ -1334,10 +1329,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				HashSet<CriticalSection> toRemove = new HashSet<CriticalSection>();
 				
 				for (CriticalSection cs : this.allCriticalSections) {
-					
-					//Store the current set of order of traveling through this critical section (waiting robot ID and the related waiting point).
-					Pair<Integer,Integer> waintingRobotIDandCP = null;
-					
+										
 					//Will be assigned depending on current situation of robot reports...
 					int waitingPoint = -1;
 					int waitingRobotID = -1;
@@ -1402,7 +1394,6 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
 							Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd);
 							currentDeps.get(waitingRobotID).add(dep);
-							CSToDepsOrder.put(cs, new Pair<Integer,Integer>(dep.getWaitingRobotID(),dep.getWaitingPoint()));
 
 							//If cs is new, update the of edges to add (otherwise, it is already in the graph)
 							if (!CSToDepsOrder.containsKey(cs))
@@ -1414,7 +1405,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 								if (!depsGraph.containsVertex(dep.getDrivingRobotID())) depsGraph.addVertex(dep.getDrivingRobotID());
 								depsGraph.addEdge(dep.getWaitingRobotID(), dep.getDrivingRobotID(), dep);
 							}
-							
+							CSToDepsOrder.put(cs, new Pair<Integer,Integer>(dep.getWaitingRobotID(),dep.getWaitingPoint()));
 							depsToCS.put(dep, cs);
 						}
 					}
@@ -1580,7 +1571,6 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						if (waitingPoint >= 0) {		
 							//Make new dependency
 							int drivingCSEnd =  drivingRobotID == cs.getTe1().getRobotID() ? cs.getTe1End() : cs.getTe2End();
-							waintingRobotIDandCP = new Pair<Integer,Integer>(waitingTE.getRobotID(),waitingPoint);
 							if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
 							Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd);
 							currentDeps.get(waitingRobotID).add(dep);
@@ -1595,6 +1585,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 								if (!depsGraph.containsVertex(dep.getDrivingRobotID())) depsGraph.addVertex(dep.getDrivingRobotID());
 								depsGraph.addEdge(dep.getWaitingRobotID(), dep.getDrivingRobotID(), dep);
 							}
+							CSToDepsOrder.put(cs, new Pair<Integer,Integer>(dep.getWaitingRobotID(),dep.getWaitingPoint()));
 							depsToCS.put(dep, cs);
 						}
 						else {
@@ -1604,10 +1595,6 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						}
 					
 					}
-					
-					//Update the history of decisions for each critical section that has been updated
-					if (waintingRobotIDandCP != null)
-						this.CSToDepsOrder.put(cs, waintingRobotIDandCP);
 				}
 	
 				//Remove obsolete critical sections
@@ -1616,8 +1603,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					if (CSToDepsOrder.containsKey(cs)) {
 						int waitingRobID = CSToDepsOrder.get(cs).getFirst();
 						int drivingRobID = cs.getTe1().getRobotID() == waitingRobID ? cs.getTe2().getRobotID() : cs.getTe1().getRobotID(); 
-						edgesToDelete.add(new Pair<Integer,Integer>(waitingRobID,drivingRobID));
-						updateGraph(edgesToDelete, null);
+						deleteEdge(new Pair<Integer,Integer>(waitingRobID,drivingRobID));
 						this.CSToDepsOrder.remove(cs);
 					}
 					else metaCSPLogger.info("WARNING: Obsolete critical section was not assigned to a dependence.");
