@@ -1335,6 +1335,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd);
 							currentDeps.get(waitingRobotID).add(dep);
 							
+							//add the dependency to the reduced graph if necessary
+							if (!currentOrdersGraph.containsEdge(waitingRobotID, drivingRobotID)) edgesToAdd.add(new Pair<Integer,Integer>(waitingRobotID,drivingRobotID));
+							
 							//update the global graph
 							if (!depsGraph.containsEdge(dep)) {
 								if (!depsGraph.containsVertex(dep.getWaitingRobotID())) depsGraph.addVertex(dep.getWaitingRobotID());
