@@ -1213,7 +1213,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							//get cycles in this strongly connected components
 							JohnsonSimpleCycles<Integer,String> cycleFinder = new JohnsonSimpleCycles<Integer,String>(ssc);
 							List<List<Integer>> cycles = cycleFinder.findSimpleCycles();
-							metaCSPLogger.finest("Cycles: " + cycles);
+							metaCSPLogger.finest("Revesed cycles: " + cycles);
 							if (cycles != null && !cycles.isEmpty()) {
 								for(List<Integer> cycle : cycles) {
 									Collections.reverse(cycle);
@@ -1223,7 +1223,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 										Pair<Integer,Integer> edge = new Pair<Integer,Integer>(cycle.get(i), cycle.get(j));
 										if (!currentCyclesList.containsKey(edge)) currentCyclesList.put(edge, new HashSet<ArrayList<Integer>>());
 										currentCyclesList.get(edge).add((ArrayList<Integer>)cycle);
-										metaCSPLogger.info("edge: " + edge.toString() + "currentCyclesList:" + currentCyclesList.get(edge));
+										//metaCSPLogger.info("edge: " + edge.toString() + "currentCyclesList:" + currentCyclesList.get(edge));
 									}
 								}
 							}
@@ -1240,13 +1240,13 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			HashSet<Pair<Integer,Integer>> toDelete = null;
 			if (edgesToDelete != null) {
 				toDelete = new HashSet<Pair<Integer,Integer>>(edgesToDelete);
-				toDelete.removeAll(edgesToAdd);
+				if (edgesToAdd != null) toDelete.removeAll(edgesToAdd);
 			}
 	
 			HashSet<Pair<Integer,Integer>> toAdd = null;
 			if (edgesToAdd != null) {
 				toAdd = new HashSet<Pair<Integer,Integer>>(edgesToAdd);
-				toAdd.removeAll(toDelete);
+				if (edgesToDelete != null)toAdd.removeAll(toDelete);
 			}
 			
 			deleteEdges(toDelete);			
@@ -1328,11 +1328,6 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					//One or both robots past end of the critical section --> critical section is obsolete
 					if (robotReport1.getPathIndex() > cs.getTe1End() || robotReport2.getPathIndex() > cs.getTe2End()) {
 						toRemove.add(cs);
-						if (CSToDepsOrder.containsKey(cs)) {
-							int waitingRobID = CSToDepsOrder.get(cs).getFirst();
-							int drivingRobID = cs.getTe1().getRobotID() == waitingRobID ? cs.getTe2().getRobotID() : cs.getTe1().getRobotID(); 
-							edgesToDelete.add(new Pair<Integer,Integer>(waitingRobID,drivingRobID));
-						}
 						metaCSPLogger.finest("Obsolete critical section\n\t" + cs);
 						continue;
 					}
@@ -1590,10 +1585,11 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				//Remove obsolete critical sections
 				for (CriticalSection cs : toRemove) {
 					this.allCriticalSections.remove(cs);
-					if (this.CSToDepsOrder.containsKey(cs)) {
-						int waitingRobotID = this.CSToDepsOrder.get(cs).getFirst();
-						int drivingRobotID = waitingRobotID == cs.getTe1().getRobotID() ? cs.getTe2().getRobotID() : cs.getTe1().getRobotID();
-						edgesToDelete.add(new Pair<Integer,Integer>(waitingRobotID, drivingRobotID));
+					if (CSToDepsOrder.containsKey(cs)) {
+						int waitingRobID = CSToDepsOrder.get(cs).getFirst();
+						int drivingRobID = cs.getTe1().getRobotID() == waitingRobID ? cs.getTe2().getRobotID() : cs.getTe1().getRobotID(); 
+						edgesToDelete.add(new Pair<Integer,Integer>(waitingRobID,drivingRobID));
+						updateGraph(edgesToDelete, null);
 						this.CSToDepsOrder.remove(cs);
 					}
 					else metaCSPLogger.info("WARNING: Obsolete critical section was not assigned to a dependence.");
