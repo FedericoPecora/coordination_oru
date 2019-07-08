@@ -1521,10 +1521,13 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				//Remove obsolete critical sections
 				for (CriticalSection cs : toRemove) {
 					this.allCriticalSections.remove(cs);
-					int waitingRobotID = this.CSToDepsOrder.get(cs).getFirst();
-					int drivingRobotID = waitingRobotID == cs.getTe1().getRobotID() ? cs.getTe2().getRobotID() : cs.getTe1().getRobotID();
-					edgesToDelete.add(new Pair<Integer,Integer>(waitingRobotID, drivingRobotID));
-					this.CSToDepsOrder.remove(cs);
+					if (this.CSToDepsOrder.containsKey(cs)) {
+						int waitingRobotID = this.CSToDepsOrder.get(cs).getFirst();
+						int drivingRobotID = waitingRobotID == cs.getTe1().getRobotID() ? cs.getTe2().getRobotID() : cs.getTe1().getRobotID();
+						edgesToDelete.add(new Pair<Integer,Integer>(waitingRobotID, drivingRobotID));
+						this.CSToDepsOrder.remove(cs);
+					}
+					else metaCSPLogger.info("WARNING: Obsolete critical section was not assigned to a dependence.");
 					this.escapingCSToWaitingRobotIDandCP.remove(cs);
 				}
 				
@@ -1555,7 +1558,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					//Otherwise, preload the previous precedence order
 					boolean robot2Yields = true;	
 					if (!CSToDepsOrder.containsKey(cs)) 
-						robot2Yields = robotTracker2.getStartingTimeInMillis() < robotTracker1.getStartingTimeInMillis();
+						robot2Yields = robotTracker1.getStartingTimeInMillis() < robotTracker2.getStartingTimeInMillis();
 					else robot2Yields = CSToDepsOrder.get(cs).getFirst() == robotReport2.getRobotID();
 					
 					int drivingRobotID = robot2Yields ? robotReport1.getRobotID() : robotReport2.getRobotID();
@@ -1585,7 +1588,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							if (!depsGraph.containsVertex(dep.getDrivingRobotID())) depsGraph.addVertex(dep.getDrivingRobotID());
 							depsGraph.addEdge(dep.getWaitingRobotID(), dep.getDrivingRobotID(), dep);
 						}
-						if (!CSToDepsOrder.containsKey(cs)) CSToDepsOrder.put(cs,new Pair<Integer,Integer>(waitingRobotID, waitingPoint));
+						CSToDepsOrder.put(cs, new Pair<Integer,Integer>(dep.getWaitingRobotID(), dep.getWaitingPoint()));
 						depsToCS.put(dep, cs);
 					}
 					else {
@@ -1705,7 +1708,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 								if (currentDeps.get(drivingRobotID).isEmpty()) currentDeps.remove(drivingRobotID);
 								if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
 								currentDeps.get(waitingRobotID).add(dep);
-								CSToDepsOrder.put(cs, new Pair<Integer,Integer>(waitingRobotID, waitingPoint));
+								CSToDepsOrder.put(cs, new Pair<Integer,Integer>(dep.getWaitingRobotID(), dep.getWaitingPoint()));
 								depsToCS.put(dep, cs);
 								metaCSPLogger.info("Update precedences " + dep + " according to heuristic.");
 							}
