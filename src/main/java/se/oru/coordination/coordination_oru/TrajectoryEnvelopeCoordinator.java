@@ -254,7 +254,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	private void findCurrentCycles(HashMap<Integer,TreeSet<Dependency>> currentDeps, HashMap<Integer,TreeSet<Dependency>> artificialDeps, HashSet<Dependency> reversibleDeps, HashMap<Integer,RobotReport> currentReports, Set<Integer> robotIDs) {
 		
 		@SuppressWarnings("unchecked")
-		HashMap<Integer,TreeSet<Dependency>> allDeps = (HashMap<Integer, TreeSet<Dependency>>)currentDeps.clone();
+		HashMap<Integer,TreeSet<Dependency>> allDeps = new HashMap<Integer, TreeSet<Dependency>>();
+		allDeps.putAll(currentDeps);
 		
 		//Dep graph G = (V,E)
 		//  V = robots involved in current deps
@@ -315,12 +316,14 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 											
 						//update a temporary map between critical sections and orders
 						@SuppressWarnings("unchecked")
-						HashMap<CriticalSection, Pair<Integer,Integer>> CSToDepsOrderTmp = (HashMap<CriticalSection, Pair<Integer,Integer>>) CSToDepsOrder.clone();
+						HashMap<CriticalSection, Pair<Integer,Integer>> CSToDepsOrderTmp = new HashMap<CriticalSection, Pair<Integer,Integer>>();
+						CSToDepsOrderTmp.putAll(CSToDepsOrder);
 						CSToDepsOrderTmp.put(cs, new Pair<Integer,Integer>(waitingRobotID,revDep.getWaitingPoint()));
 						
 						//create a temporary map between dependencies and critical sections
 						@SuppressWarnings("unchecked")
-						HashMap<Dependency,CriticalSection> depsToCSTmp = (HashMap<Dependency, CriticalSection>) depsToCS.clone();
+						HashMap<Dependency,CriticalSection> depsToCSTmp = new HashMap<Dependency, CriticalSection>();
+						depsToCSTmp.putAll(depsToCS);
 						depsToCSTmp.remove(dep);
 						depsToCSTmp.put(revDep,cs);
 
@@ -1709,10 +1712,17 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						if (waitingPoint >= 0) {		
 												
 							//Store previous graph
-							DirectedMultigraph<Integer,Dependency> backupDepsGraph = (DirectedMultigraph<Integer, Dependency>) depsGraph.clone();
-							SimpleDirectedGraph<Integer,String> backupGraph = (SimpleDirectedGraph<Integer, String>) currentOrdersGraph.clone();
-							HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>> backupcurrentCyclesList = (HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>>) currentCyclesList.clone();
+							DirectedMultigraph<Integer,Dependency> backupDepsGraph = new DirectedMultigraph<Integer, Dependency>(Dependency.class);
+							for (int v : depsGraph.vertexSet()) backupDepsGraph.addVertex(v);
+							for (Dependency dep : depsGraph.edgeSet()) backupDepsGraph.addEdge(dep.getWaitingRobotID(), dep.getDrivingRobotID(), dep);
 							
+							SimpleDirectedGraph<Integer,String> backupGraph = new SimpleDirectedGraph<Integer, String>(String.class);
+							for (int v : currentOrdersGraph.vertexSet()) backupGraph.addVertex(v);
+							for (String edge : currentOrdersGraph.edgeSet()) backupGraph.addEdge(currentOrdersGraph.getEdgeSource(edge), currentOrdersGraph.getEdgeTarget(edge), edge);
+							
+							HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>> backupcurrentCyclesList = new HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>>();
+							backupcurrentCyclesList.putAll(currentCyclesList);
+														
 							edgesToDelete.add(new Pair<Integer,Integer>(drivingRobotID, waitingRobotID));
 							Pair<Integer,Integer> newEdge = new Pair<Integer,Integer>(waitingRobotID, drivingRobotID);
 							edgesToAdd.add(newEdge);
