@@ -1234,7 +1234,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							//get cycles in this strongly connected components
 							JohnsonSimpleCycles<Integer,String> cycleFinder = new JohnsonSimpleCycles<Integer,String>(ssc);
 							List<List<Integer>> cycles = cycleFinder.findSimpleCycles();
-							metaCSPLogger.finest("Revesed cycles: " + cycles);
+							metaCSPLogger.finest("Reversed cycles: " + cycles);
 							if (cycles != null && !cycles.isEmpty()) {
 								for(List<Integer> cycle : cycles) {
 									Collections.reverse(cycle);
@@ -1351,7 +1351,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						continue;
 					}
 				
-					//If the precedence IS CONSTRAINED ...
+					//If the precedence IS CONSTRAINED BY PARKED ROBOTS ...
 					if (robotTracker1 instanceof TrajectoryEnvelopeTrackerDummy || robotTracker2 instanceof TrajectoryEnvelopeTrackerDummy) {
 						
 						boolean createAParkingDep = false;
@@ -1410,6 +1410,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					}
 					else { //both the robots are driving. Check if the precedence is reversible.
 						
+						//Avoid to update precedences on critical sections that are locked
+						//e.g. due to a re-plan
 						boolean update = true;
 						synchronized(lockedRobots) {
 							if (lockedRobots.containsValue(cs)) {
@@ -1442,11 +1444,15 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							else canStopRobot2 = fm2.canStop(robotTracker2.getTrajectoryEnvelope(), robotReport2, cs.getTe2Start(), false);
 						}
 						
-						//If the precedence IS REVERSIBLE ...
+						//If the precedence IS REVERSIBLE, continue ...
+						//we will check if the heuristic order will preserve the liveness
 						if (canStopRobot1 && canStopRobot2) {
 							reversibleCS.add(cs);
 							continue;
 						}
+						
+						//otherwise, 
+						//the precedence is CONSTRAINED BY DYNAMICS
 						
 						//Robot 1 can stop before entering the critical section, robot 2 can't --> robot 1 waits
 						if (canStopRobot1 && !canStopRobot2) {
@@ -1616,7 +1622,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				updateGraph(edgesToDelete, edgesToAdd);
 				metaCSPLogger.finest("Constrained precedences leads to graph: " + currentOrdersGraph.toString() + ".");		
 			
-				//checkAndAdd() ...				
+				//For each reversible constraint, first preload the precedence according to the ESTF heuristic.
+				//Then, try to reverse the constraint and decide for the heuristic order if it will preserve liveness.
+				//( checkAndAdd() ... )				
 				
 				/*/////////////////////////////
 							PRE-LOAD
@@ -1643,7 +1651,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					int waitingRobotID = robot2Yields ? robotReport2.getRobotID() : robotReport1.getRobotID();
 					TrajectoryEnvelope drivingTE = robot2Yields ? robotTracker1.getTrajectoryEnvelope() : robotTracker2.getTrajectoryEnvelope();
 					TrajectoryEnvelope waitingTE = robot2Yields ? robotTracker2.getTrajectoryEnvelope() : robotTracker1.getTrajectoryEnvelope();
-					int waitingPoint = getCriticalPoint(waitingRobotID, cs, robot2Yields? robotReport1.getPathIndex() : robotReport2.getPathIndex());
+					int waitingPoint = getCriticalPoint(waitingRobotID, cs, robot2Yields ? robotReport1.getPathIndex() : robotReport2.getPathIndex());
 					
 					//If cs is new, update the of edges to add (otherwise, it is already in the graph)
 					if (!CSToDepsOrder.containsKey(cs))
@@ -1785,7 +1793,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 								depsGraph = backupDepsGraph;
 								currentOrdersGraph = backupGraph;
 								currentCyclesList = backupcurrentCyclesList;
-								metaCSPLogger.info("Restore previous precedence " + depOld + "."); //FIXME here there is a bug.
+								metaCSPLogger.info("Restore previous precedence " + depOld + ".");
 							}
 							else {
 								//update the maps
@@ -1808,6 +1816,19 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			//get current dependencies
 			synchronized(currentDependencies) {
 				currentDependencies = updateCurrentDependencies(currentDeps, artificialDependencies, robotIDs);
+				
+				//The global strategy builds upon the assumption that robots do not start from critical section. 
+				//If this is not the case, them pre-loading may bring to unsafe cycles. 
+				//To handle this case, switch to a local strategy whenever a robot is starting from a critical section and cannot
+				//exit from it.
+				if (!artificialDependencies.isEmpty()) {
+					this.breakDeadlocksByReplanning = true;
+					
+					//find cycles and revise dependencies if necessary
+					findCurrentCycles(currentDeps, artificialDependencies, new HashSet<Dependency>(), currentReports, robotIDs);
+
+					this.breakDeadlocksByReplanning = false;
+				}
 						
 				//send revised dependencies
 				HashMap<Integer,Dependency> constrainedRobotIDs = new HashMap<Integer,Dependency>();
@@ -1836,7 +1857,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				}
 				
 				//re-plan for the set of robots that are currently in a critical section
-				SimpleDirectedGraph<Integer,Dependency> g = new SimpleDirectedGraph<Integer,Dependency>(Dependency.class);
+				/*SimpleDirectedGraph<Integer,Dependency> g = new SimpleDirectedGraph<Integer,Dependency>(Dependency.class);
 				HashMap<Integer,Dependency> depsReplanningRobots = new HashMap<Integer,Dependency>();
 				for (Dependency dep : currentDependencies) {
 					if (!g.containsVertex(dep.getWaitingRobotID())) g.addVertex(dep.getWaitingRobotID());
@@ -1851,7 +1872,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					ArrayList<Dependency> toArray = new ArrayList<Dependency>();
 					toArray.add(depsReplanningRobots.get(robotID));
 					spawnReplanning(toArray, allRobots);
-				}
+				}*/
+				
 			}
 			
 		}//end synchronized(solver)
