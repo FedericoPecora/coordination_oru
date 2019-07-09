@@ -766,7 +766,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				//Remove obsolete critical sections
 				for (CriticalSection cs : toRemove) {
 					this.allCriticalSections.remove(cs);
-					this.CSToDepsOrder.remove(cs);
+					//this.CSToDepsOrder.remove(cs);
 					this.escapingCSToWaitingRobotIDandCP.remove(cs);
 				}
 				
@@ -902,7 +902,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						if (i < currentWaitingIndex) newCompletePath[i] = oldPath[i];
 						else newCompletePath[i] = newPath[i-currentWaitingIndex];
 					}
-					replacePath(robotID, newCompletePath, robotsToReplan, useStaticReplan);
+					replacePath(robotID, newCompletePath, currentWaitingIndex, robotsToReplan, useStaticReplan);
 					metaCSPLogger.info("Successfully re-planned path of Robot" + robotID);
 					break;
 				}
@@ -930,6 +930,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			for (CriticalSection cs : allCriticalSections) {
 				if ((cs.getTe1().getRobotID() == robotID || cs.getTe2().getRobotID() == robotID) && !toRemove.contains(cs)) {
 					toRemove.add(cs);
+					metaCSPLogger.info("WARNING: removing critical section which was not associated to a dependency.");
 					//increment the counter
 					if (cs.getTe1().getRobotID() == robotID && (cs.getTe1Start() <= lastWaitingPoint || lastWaitingPoint == -1) || 
 							cs.getTe2().getRobotID() == robotID && (cs.getTe2Start() <= lastWaitingPoint || lastWaitingPoint == -1))
@@ -957,7 +958,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 * @param newPath The path based on which the new {@link TrajectoryEnvelope} should be computed.
 	 * @param lockedRobotIDs The set of robots which have been locked when the re-plan started.
 	 */
-	public void replacePath(int robotID, PoseSteering[] newPath, HashSet<Integer> lockedRobotIDs, boolean useStaticReplan) {
+	public void replacePath(int robotID, PoseSteering[] newPath, int breakingPathIndex, HashSet<Integer> lockedRobotIDs, boolean useStaticReplan) {
 		
 		synchronized (solver) {
 			
@@ -968,28 +969,22 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				if (viz != null) {
 					viz.removeEnvelope(te);
 				}
-				
-				//get last communicated waypoint;
-				int lastCriticalPoint = -1;
-				synchronized (trackers) {
-					lastCriticalPoint = communicatedCPs.get(trackers.get(robotID)).getFirst();
-				}
-				
+								
 				//------------------ (dynamic re-plan) --------------------
 				//store the order of precedence (and waiting points) for every 
 				//critical section involving the robot which is replanning
 				HashMap<CriticalSection,Pair<Integer,Integer>> holdingCS = new HashMap<CriticalSection,Pair<Integer,Integer>>();
 				if (!useStaticReplan) {
 					for (CriticalSection cs : CSToDepsOrder.keySet()) {
-						if (cs.getTe1().getRobotID() == robotID && cs.getTe1Start() <= lastCriticalPoint || 
-								cs.getTe2().getRobotID() == robotID && cs.getTe2Start() <= lastCriticalPoint) 
+						if (cs.getTe1().getRobotID() == robotID && cs.getTe1Start() <= breakingPathIndex || 
+								cs.getTe2().getRobotID() == robotID && cs.getTe2Start() <= breakingPathIndex) 
 							holdingCS.put(cs, CSToDepsOrder.get(cs));
 					}
 				}
 				//---------------------------------------------------------
 				
 				//Remove CSs involving this robot, clearing the history.
-				cleanUpRobotCS(te.getRobotID(),lastCriticalPoint);
+				cleanUpRobotCS(te.getRobotID(), breakingPathIndex);
 				//---------------------------------------------------------
 				
 				//Make new envelope
@@ -1033,8 +1028,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				//Recompute CSs involving this robot
 				computeCriticalSections();
 				
-				//------------------ (static re-plan) ----------------------
-				if (useStaticReplan) {
+				//------------------ (static re-plan or starting from critical section) ----------------------
+				if (useStaticReplan || breakingPathIndex == 0) {
 					//The robot is waiting at its current critical point. Hence, it can stop by definition.
 					//To keep it simple, restart the communication.
 					synchronized (trackers) {
@@ -1045,8 +1040,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					
 					//------------------ (dynamic re-plan) --------------------
 					for (CriticalSection cs1 : allCriticalSections) {
-						if (cs1.getTe1().getRobotID() == robotID && cs1.getTe1Start() <= lastCriticalPoint || 
-							cs1.getTe2().getRobotID() == robotID && cs1.getTe2Start() <= lastCriticalPoint) {
+						if (cs1.getTe1().getRobotID() == robotID && cs1.getTe1Start() <= breakingPathIndex || 
+							cs1.getTe2().getRobotID() == robotID && cs1.getTe2Start() <= breakingPathIndex) {
 							for (CriticalSection cs2 : holdingCS.keySet()) {
 								if (cs1.getTe1().getRobotID() == cs2.getTe1().getRobotID() && cs1.getTe2().getRobotID() == cs2.getTe2().getRobotID() ||
 									cs1.getTe1().getRobotID() == cs2.getTe2().getRobotID() && cs1.getTe2().getRobotID() == cs2.getTe1().getRobotID()) {
@@ -1106,7 +1101,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					PoseSteering[] truncatedPath = Arrays.copyOf(te.getTrajectory().getPoseSteering(), earliestStoppingPathIndex+1);
 					
 					//replace the path of this robot (will compute new envelope)
-					replacePath(robotID, truncatedPath, new HashSet<Integer>(robotID),false);
+					replacePath(robotID, truncatedPath, truncatedPath.length, new HashSet<Integer>(robotID),false);
 					
 				}
 			}
@@ -1133,7 +1128,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					for (int i = 1; i < truncatedPath.length; i++) overallPath[truncatedPath.length-1+i] = truncatedPath[truncatedPath.length-i];
 										
 					//replace the path of this robot (will compute new envelope)
-					replacePath(robotID, overallPath, new HashSet<Integer>(robotID),false);
+					replacePath(robotID, overallPath, earliestStoppingPathIndex, new HashSet<Integer>(robotID),false);
 					
 				}
 			}
@@ -1608,7 +1603,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						int waitingRobID = CSToDepsOrder.get(cs).getFirst();
 						int drivingRobID = cs.getTe1().getRobotID() == waitingRobID ? cs.getTe2().getRobotID() : cs.getTe1().getRobotID(); 
 						deleteEdge(new Pair<Integer,Integer>(waitingRobID,drivingRobID));
-						this.CSToDepsOrder.remove(cs);
+						//this.CSToDepsOrder.remove(cs);
 					}
 					else metaCSPLogger.info("WARNING: Obsolete critical section was not assigned to a dependence.");
 					this.escapingCSToWaitingRobotIDandCP.remove(cs);
