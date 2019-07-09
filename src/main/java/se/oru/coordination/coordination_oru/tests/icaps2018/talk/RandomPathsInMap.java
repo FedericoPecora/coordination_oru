@@ -5,9 +5,15 @@ import java.io.FileOutputStream;
 import java.io.PrintWriter;
 import java.util.Calendar;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Random;
+import java.util.logging.Level;
 
+import org.jgrapht.alg.util.Pair;
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
+import org.metacsp.utility.logging.MetaCSPLogging;
 
 import com.vividsolutions.jts.geom.Coordinate;
 
@@ -17,6 +23,7 @@ import se.oru.coordination.coordination_oru.Mission;
 import se.oru.coordination.coordination_oru.NetworkConfiguration;
 import se.oru.coordination.coordination_oru.RobotAtCriticalSection;
 import se.oru.coordination.coordination_oru.RobotReport;
+import se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
@@ -64,9 +71,30 @@ public class RandomPathsInMap {
 
 		double MAX_ACCEL = 3.0;
 		double MAX_VEL = 4.0;
+		boolean useValidInfrastructure = true;
+		boolean randomObstacles = true;
 
 		//Instantiate a trajectory envelope coordinator.
 		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(MAX_VEL,MAX_ACCEL);
+		if (useValidInfrastructure) {
+			tec.addComparator(new Comparator<RobotAtCriticalSection> () {
+				@Override
+				public int compare(RobotAtCriticalSection o1, RobotAtCriticalSection o2) {
+					Random rand = new Random(Calendar.getInstance().getTimeInMillis());
+					return rand.nextInt(2)-1;
+				}
+			});
+			tec.addComparator(new Comparator<RobotAtCriticalSection> () {
+				@Override
+				public int compare(RobotAtCriticalSection o1, RobotAtCriticalSection o2) {
+					CriticalSection cs = o1.getCriticalSection();
+					RobotReport robotReport1 = o1.getRobotReport();
+					RobotReport robotReport2 = o2.getRobotReport();
+					return ((cs.getTe1Start()-robotReport1.getPathIndex())-(cs.getTe2Start()-robotReport2.getPathIndex()));
+				}
+			});
+		}
+		
 		tec.setUseInternalCriticalPoints(false);
 		tec.setYieldIfParking(false);
 		tec.setBreakDeadlocksByReordering(false);
@@ -89,8 +117,10 @@ public class RandomPathsInMap {
 		tec.setupSolver(0, 100000000);
 
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
-		//String yamlFile = "maps/map-partial-2.yaml";
-		String yamlFile = "maps/map-corridors.yaml";
+		String yamlFile = null;
+		if (randomObstacles) yamlFile = useValidInfrastructure ? "maps/map-partial-vi.yaml" : "maps/map-partial-2.yaml";
+		else yamlFile = useValidInfrastructure ? "maps/map-corridors-vi.yaml" : "maps/map-corridors.yaml"; 
+			
 		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
 		//viz.setMap(yamlFile);
 		//RVizVisualization viz = new RVizVisualization();
@@ -127,15 +157,39 @@ public class RandomPathsInMap {
 				
 		int[] robotIDs = new int[] {1,2,3,4,5,6,7,8,9,10};
 		int locationCounter = 0;
+		HashSet<Pose> obstacles = new HashSet<Pose>();
+		
+		//Preload goals and starts. Make them as obstacles for all the other robots
+		//in case of testing a valid infrastructure. 
+		HashMap<Integer, Pose> startsPoses = new HashMap<Integer, Pose>();
+		HashMap<Integer, String> startsNames = new HashMap<Integer, String>();
+		HashMap<Integer, Pose> endsPoses = new HashMap<Integer, Pose>();
+		HashMap<Integer, String> endsNames = new HashMap<Integer, String>();
+		
+		for (int robotID : robotIDs) {
+			
+			String startLocName = "L_"+locationCounter;
+			Pose startLoc = Missions.getLocation(startLocName);
+			startsPoses.put(robotID, startLoc);
+			startsNames.put(robotID, startLocName);
+			
+			String endLocName = "R_"+locationCounter;
+			Pose endLoc = Missions.getLocation(endLocName);
+			endsPoses.put(robotID, endLoc);
+			endsNames.put(robotID, endLocName);		
+			//obstacles.add(startLoc);
+			//obstacles.add(endLoc);
+			
+			locationCounter += 2;
+		}
+		
 		//int[] robotIDs = new int[] {1,2};
 		for (int robotID : robotIDs) {
 			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
-			String startLocName = "L_"+locationCounter;
-			Pose startLoc = Missions.getLocation(startLocName);
-			String endLocName = "R_"+locationCounter;
-			Pose endLoc = Missions.getLocation(endLocName);
-			locationCounter += 2;
-			
+			String startLocName = startsNames.get(robotID);
+			Pose startLoc = startsPoses.get(robotID);
+			String endLocName = endsNames.get(robotID);
+			Pose endLoc = endsPoses.get(robotID);
 			tec.placeRobot(robotID, startLoc);
 			System.out.println("Placed Robot" + robotID + " in " + startLocName);
 
@@ -147,7 +201,18 @@ public class RandomPathsInMap {
 			File f = new File(pathFilename);
 			if(!cachePaths || (cachePaths && !f.exists())) { 
 				rsp.setStart(startLoc);
-				rsp.setGoals(endLoc);
+				if (useValidInfrastructure) {
+					Pose startEntrance = new Pose(startLoc.getX()+2.0,startLoc.getY(),startLoc.getTheta());
+					Pose endEntrance = new Pose(endLoc.getX()-2.0,endLoc.getY(),endLoc.getTheta());
+					if (!obstacles.isEmpty()) {
+						for (Pose obsPose : obstacles) {
+							if (!obsPose.equals(endLoc)) rsp.addObstacles(tec.getDefaultFootprintPolygon(), obsPose);
+						}
+					}
+					obstacles.add(endLoc);
+					rsp.setGoals(startEntrance, endLoc);
+				}
+				else rsp.setGoals(endLoc);
 				rsp.plan();
 				path = rsp.getPath();
 				pathInv = rsp.getPathInv();
@@ -226,6 +291,9 @@ public class RandomPathsInMap {
 			//Start the thread!
 			t.start();
 		}
+		//Sleep for a little (2 sec)
+		try { Thread.sleep(1000); }
+		catch (InterruptedException e) { e.printStackTrace(); }
 
 	}
 
