@@ -1087,9 +1087,15 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	/**
 	 * Truncate the {@link TrajectoryEnvelope} of a given robot at the closest dynamically-feasible path point. This path point is computed via the robot's {@link ForwardModel}.
 	 * @param robotID The ID of the robot whose {@link TrajectoryEnvelope} should be truncated.
+	 * 	 * @return true if the envelope is successfully truncated.
 	 */
-	public void truncateEnvelope(int robotID) {
+	public boolean truncateEnvelope(int robotID) {
 		synchronized (solver) {
+			
+			synchronized (lockedRobots) {
+				if (lockedRobots.containsKey(robotID)) return false;
+			}
+			
 			TrajectoryEnvelope te = this.getCurrentTrajectoryEnvelope(robotID);
 			AbstractTrajectoryEnvelopeTracker tet = this.trackers.get(robotID); 
 			if (!(tet instanceof TrajectoryEnvelopeTrackerDummy)) {
@@ -1105,15 +1111,23 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					
 				}
 			}
+			
+			return true;
 		}
 	}
 	
 	/**
 	 * Reverse the {@link TrajectoryEnvelope} of a given robot at the closest dynamically-feasible path point. This path point is computed via the robot's {@link ForwardModel}.
 	 * @param robotID The ID of the robot whose {@link TrajectoryEnvelope} should be reversed.
+	 * @return true if the envelope is successfully reversed.
 	 */
-	public void reverseEnvelope(int robotID) {
+	public boolean reverseEnvelope(int robotID) {
 		synchronized (solver) {
+			
+			synchronized (lockedRobots) {
+				if (lockedRobots.containsKey(robotID)) return false;
+			}
+			
 			TrajectoryEnvelope te = this.getCurrentTrajectoryEnvelope(robotID);
 			AbstractTrajectoryEnvelopeTracker tet = this.trackers.get(robotID); 
 			if (!(tet instanceof TrajectoryEnvelopeTrackerDummy)) {
@@ -1132,6 +1146,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					
 				}
 			}
+			
+			return true;
 		}
 	}
 	
