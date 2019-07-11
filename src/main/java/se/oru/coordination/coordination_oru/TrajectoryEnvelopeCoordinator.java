@@ -847,7 +847,6 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					lockedRobots.put(dep.getWaitingRobotID(), depsToCS.get(dep));
 				}
 				metaCSPLogger.info("Lock robots: " + deadlockedRobots.toString());
-
 				metaCSPLogger.info("Will re-plan for one of the following deadlocked robots: " + deadlockedRobots + " (" + allRobots + ")...");
 				new Thread() {
 					public void run() {
@@ -1177,19 +1176,21 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					for (ArrayList<Integer> cycle : currentCyclesList.get(edge)) {
 						for (int i = 0; i < cycle.size(); i++) {
 							Pair<Integer,Integer> otherEdge = new Pair<Integer,Integer>(cycle.get(i),cycle.get(i < cycle.size()-1 ? i+1 : 0));
-							if (otherEdge != edge) {
+							if (!otherEdge.equals(edge)) {
 								if (!toRemove.containsKey(otherEdge)) toRemove.put(otherEdge, new HashSet<ArrayList<Integer>>());
 								toRemove.get(otherEdge).add(cycle);
 							}
 						}
 					}
-					currentCyclesList.remove(edge);
+					
 					for (Pair<Integer, Integer> key : toRemove.keySet()) {
 						if (currentCyclesList.containsKey(key)) {
 							currentCyclesList.get(key).removeAll(toRemove.get(key));
 							if (currentCyclesList.get(key).isEmpty()) currentCyclesList.remove(key);
 						}
 					}
+					
+					currentCyclesList.remove(edge);
 				}
 				//hashcode: "s" + startVertex + "t" + targetVertex + "c" + number of edges from startVertex to targetVertex
 				String hashCode = currentOrdersGraph.getEdge(edge.getFirst(), edge.getSecond());
@@ -1252,7 +1253,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							JohnsonSimpleCycles<Integer,String> cycleFinder = new JohnsonSimpleCycles<Integer,String>(ssc);
 							List<List<Integer>> cycles = cycleFinder.findSimpleCycles();
 							metaCSPLogger.finest("Reversed cycles: " + cycles);
-							if (cycles != null && !cycles.isEmpty()) {
+							if (!cycles.isEmpty()) {
 								for(List<Integer> cycle : cycles) {
 									Collections.reverse(cycle);
 									//update the list of cycles for each edge
@@ -1625,7 +1626,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					if (CSToDepsOrder.containsKey(cs)) {
 						int waitingRobID = CSToDepsOrder.get(cs).getFirst();
 						int drivingRobID = cs.getTe1().getRobotID() == waitingRobID ? cs.getTe2().getRobotID() : cs.getTe1().getRobotID(); 
-						deleteEdge(new Pair<Integer,Integer>(waitingRobID,drivingRobID));
+						deleteEdge(new Pair<Integer,Integer>(waitingRobID, drivingRobID));
 						//this.CSToDepsOrder.remove(cs);
 					}
 					else metaCSPLogger.info("WARNING: Obsolete critical section was not assigned to a dependence.");
@@ -1668,15 +1669,17 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					int waitingRobotID = robot2Yields ? robotReport2.getRobotID() : robotReport1.getRobotID();
 					TrajectoryEnvelope drivingTE = robot2Yields ? robotTracker1.getTrajectoryEnvelope() : robotTracker2.getTrajectoryEnvelope();
 					TrajectoryEnvelope waitingTE = robot2Yields ? robotTracker2.getTrajectoryEnvelope() : robotTracker1.getTrajectoryEnvelope();
-					int waitingPoint = getCriticalPoint(waitingRobotID, cs, robot2Yields ? robotReport1.getPathIndex() : robotReport2.getPathIndex());
-					
-					//If cs is new, update the of edges to add (otherwise, it is already in the graph)
-					if (!CSToDepsOrder.containsKey(cs))
-						edgesToAdd.add(new Pair<Integer,Integer>(waitingRobotID, drivingRobotID));
+					int waitingPoint = getCriticalPoint(waitingRobotID, cs, robot2Yields ? robotReport1.getPathIndex() : robotReport2.getPathIndex());								
 					
 					//Update graphs
-					if (waitingPoint >= 0) {		
-						updateGraph(edgesToDelete, edgesToAdd);
+					if (waitingPoint >= 0) {
+						
+						//If cs is new, update the of edges to add (otherwise, it is already in the graph)
+						if (!CSToDepsOrder.containsKey(cs)) {
+							edgesToAdd.add(new Pair<Integer,Integer>(waitingRobotID, drivingRobotID));
+							addEdges(edgesToAdd);
+						}
+						
 						metaCSPLogger.finest("Graph after pre-loading precedences: " + currentOrdersGraph.toString() + ".");		
 						
 						//Make new dependency
