@@ -1034,6 +1034,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					//To keep it simple, restart the communication.
 					synchronized (trackers) {
 						communicatedCPs.remove(trackers.get(robotID));
+						trackers.get(robotID).resetStartingTimeInMillis();
 					}
 				}
 				else {

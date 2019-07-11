@@ -85,6 +85,13 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 	}
 	
 	/**
+	 * Return the coordination time (in milli-seconds) at which the tracker has started its mission.
+	 */
+	public void resetStartingTimeInMillis() {
+		this.startingTimeInMillis= tec.getCurrentTimeInMillis();
+	}
+	
+	/**
 	 * Operations that should be performed when the {@link TrajectoryEnvelope} of this tracker
 	 * is updated online.
 	 * @param te The updated {@link TrajectoryEnvelope}.
