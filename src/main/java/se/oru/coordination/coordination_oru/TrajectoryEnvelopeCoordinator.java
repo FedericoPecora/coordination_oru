@@ -1626,7 +1626,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					if (CSToDepsOrder.containsKey(cs)) {
 						int waitingRobID = CSToDepsOrder.get(cs).getFirst();
 						int drivingRobID = cs.getTe1().getRobotID() == waitingRobID ? cs.getTe2().getRobotID() : cs.getTe1().getRobotID(); 
-						deleteEdge(new Pair<Integer,Integer>(waitingRobID, drivingRobID));
+						edgesToDelete.add(new Pair<Integer,Integer>(waitingRobID, drivingRobID));
 						//this.CSToDepsOrder.remove(cs);
 					}
 					else metaCSPLogger.info("WARNING: Obsolete critical section was not assigned to a dependence.");
