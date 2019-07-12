@@ -1770,6 +1770,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							boolean safe = true;
 							//metaCSPLogger.info("currentCyclesList: " + currentCyclesList.toString());
 							if (currentCyclesList.get(newEdge) != null) {
+								//for each cycle incolving the new edge
 								for (List<Integer> cycle : currentCyclesList.get(newEdge)) {
 									
 									//Get edges along the cycle...
@@ -1793,18 +1794,16 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 										safe = true;
 										for (Dependency dep1 : edgesAlongCycle.get(i)) {
 											for (Dependency dep2 : edgesAlongCycle.get(i+1)) {
-												if (unsafePair(dep1, dep2)) {
-													safe = false;
-												}
-												if (safe) {
-													metaCSPLogger.info("Cycle: " + edgesAlongCycle + " is deadlock-free");
-													break;
-												}
-												if (i == edgesAlongCycle.size()-2) {
-													metaCSPLogger.info("Cycle: " + edgesAlongCycle + " is NOT deadlock-free");
-													break;
-												}
+												if (unsafePair(dep1, dep2)) safe = false;
 											}
+										}
+										if (safe) {
+											metaCSPLogger.finest("Cycle: " + edgesAlongCycle + " is deadlock-free");
+											break;
+										}
+										if (i == edgesAlongCycle.size()-2) {
+											metaCSPLogger.info("Cycle: " + edgesAlongCycle + " is NOT deadlock-free");
+											break;
 										}
 									}
 								}
