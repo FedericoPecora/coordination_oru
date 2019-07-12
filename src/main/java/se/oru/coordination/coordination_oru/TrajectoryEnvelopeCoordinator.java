@@ -253,7 +253,6 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	
 	private void findCurrentCycles(HashMap<Integer,TreeSet<Dependency>> currentDeps, HashMap<Integer,TreeSet<Dependency>> artificialDeps, HashSet<Dependency> reversibleDeps, HashMap<Integer,RobotReport> currentReports, Set<Integer> robotIDs) {
 		
-		@SuppressWarnings("unchecked")
 		HashMap<Integer,TreeSet<Dependency>> allDeps = new HashMap<Integer, TreeSet<Dependency>>();
 		allDeps.putAll(currentDeps);
 		
@@ -317,13 +316,11 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						if (allOldWaitingRobotDeps.isEmpty()) allDeps.remove(dep.getWaitingRobotID());
 											
 						//update a temporary map between critical sections and orders
-						@SuppressWarnings("unchecked")
 						HashMap<CriticalSection, Pair<Integer,Integer>> CSToDepsOrderTmp = new HashMap<CriticalSection, Pair<Integer,Integer>>();
 						CSToDepsOrderTmp.putAll(CSToDepsOrder);
 						CSToDepsOrderTmp.put(cs, new Pair<Integer,Integer>(waitingRobotID,revDep.getWaitingPoint()));
 						
 						//create a temporary map between dependencies and critical sections
-						@SuppressWarnings("unchecked")
 						HashMap<Dependency,CriticalSection> depsToCSTmp = new HashMap<Dependency, CriticalSection>();
 						depsToCSTmp.putAll(depsToCS);
 						depsToCSTmp.remove(dep);
@@ -1782,7 +1779,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 									ArrayList<ArrayList<Dependency>> edgesAlongCycle = new ArrayList<ArrayList<Dependency>>();
 									for (int i = 0; i < cycle.size(); i++) {
 										int j = i < cycle.size()-1 ? i+1 : 0;
-										if (i == dep.getWaitingRobotID() && j == dep.getDrivingRobotID()) {
+										if (cycle.get(i) == dep.getWaitingRobotID() && cycle.get(j) == dep.getDrivingRobotID()) {
 											ArrayList<Dependency> array = new ArrayList<Dependency>();
 											array.add(dep);
 											edgesAlongCycle.add(array);
@@ -1810,6 +1807,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 											break;
 										}
 									}
+									
+									if(!safe) break;
 								}
 							}
 							if (!safe) {
