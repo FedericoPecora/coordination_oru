@@ -257,6 +257,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		HashMap<Integer,TreeSet<Dependency>> allDeps = new HashMap<Integer, TreeSet<Dependency>>();
 		allDeps.putAll(currentDeps);
 		
+		//1. COMPUTE UNSAFE CYCLES
+		
 		//Dep graph G = (V,E)
 		//  V = robots involved in current deps
 		//  E = {(u,v,dep) | exists dep stating that robot u should wait for robot v}
@@ -268,9 +270,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		
 		SimpleDirectedGraph<Integer,Dependency> g = new SimpleDirectedGraph<Integer, Dependency>(Dependency.class);
 		g = depsToGraph(g, currentDependencies);
-		
 		List<List<Integer>> unsafeCycles = findSimpleUnsafeCycles(g);	
 		
+		//2. IF THERE ARE UNSAFE CYCLES AND RE-ORDERING IS ENABLED, TRY RE-ORDER
 		if (breakDeadlocksByReordering) {
 			for (List<Integer> cycle : unsafeCycles) {
 				//Get edges along the cycle...
@@ -328,7 +330,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						depsToCSTmp.put(revDep,cs);
 
 						//update currentDeps
-						HashSet<Dependency> currentDepsTmp = updateCurrentDependencies(allDeps,artificialDeps,robotIDs);
+						HashSet<Dependency> currentDepsTmp = updateCurrentDependencies(allDeps, artificialDeps, robotIDs);
 						SimpleDirectedGraph<Integer,Dependency> gTmp = new SimpleDirectedGraph<Integer, Dependency>(Dependency.class);
 						gTmp = depsToGraph(gTmp,currentDepsTmp);
 						
@@ -348,6 +350,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				}
 			}
 		}
+		
+		//2. OTHERWISE, IF RE-PLAN IS ENABLED, TRY REPLANNING
+		
 		if (breakDeadlocksByReplanning) {
 			HashSet<Integer> spawnedThreadRobotSet = new HashSet<Integer>();
 			for (List<Integer> cycle : unsafeCycles) {
@@ -426,7 +431,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				metaCSPLogger.info("Robot" + cs.getTe2().getRobotID() + " will park in " + cs + ", letting Robot" + cs.getTe1().getRobotID() + " go first");
 				return true;
 			}
-			else
+			else if (robot1ParksInCS && robot2ParksInCS) 
 				metaCSPLogger.info("Both Robot" + cs.getTe1().getRobotID() + " and Robot" + cs.getTe2().getRobotID() + " will park in " + cs + ". Decide according to the heuristic.");
 		}
 			
@@ -1189,7 +1194,6 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							if (currentCyclesList.get(key).isEmpty()) currentCyclesList.remove(key);
 						}
 					}
-					
 					currentCyclesList.remove(edge);
 				}
 				//hashcode: "s" + startVertex + "t" + targetVertex + "c" + number of edges from startVertex to targetVertex
@@ -1285,7 +1289,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			HashSet<Pair<Integer,Integer>> toAdd = null;
 			if (edgesToAdd != null) {
 				toAdd = new HashSet<Pair<Integer,Integer>>(edgesToAdd);
-				if (edgesToDelete != null)toAdd.removeAll(toDelete);
+				if (edgesToDelete != null) toAdd.removeAll(toDelete);
 			}
 			
 			deleteEdges(toDelete);			
@@ -1840,13 +1844,47 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				//If this is not the case, them pre-loading may bring to unsafe cycles. 
 				//To handle this case, switch to a local strategy whenever a robot is starting from a critical section and cannot
 				//exit from it.
-				if (!artificialDependencies.isEmpty()) {
+				/*if (!artificialDependencies.isEmpty()) {
 					this.breakDeadlocksByReplanning = true;
 					
 					//find cycles and revise dependencies if necessary
 					findCurrentCycles(currentDeps, artificialDependencies, new HashSet<Dependency>(), currentReports, robotIDs);
 
 					this.breakDeadlocksByReplanning = false;
+				}*/
+				
+				//re-plan for the set of robots that are currently in a critical section
+				SimpleDirectedGraph<Integer,Dependency> g = new SimpleDirectedGraph<Integer,Dependency>(Dependency.class);
+				g = depsToGraph(g, currentDependencies);
+				List<List<Integer>> unsafeCycles = findSimpleUnsafeCycles(g);	
+				
+				HashSet<Integer> spawnedThreadRobotSet = new HashSet<Integer>();
+				for (List<Integer> cycle : unsafeCycles) {
+					int robotID = -1;
+					for (int ID : askForReplan) {
+						if (cycle.contains(ID)) {
+							robotID = ID;
+							break;
+						}
+					}
+					if (robotID == -1) continue;
+					
+					//the cycle contains a robot that is asking for re-plan.
+					//Find all the deps along the cycle
+					boolean spawnThread = true;
+					metaCSPLogger.info("Try re-plan for Robot" + robotID+ ".");
+					ArrayList<Dependency> depsAlongCycle = new ArrayList<Dependency>();
+					for (int i = 0; i < cycle.size(); i++) {
+						Dependency dep = g.getEdge(cycle.get(i), cycle.get(i < cycle.size()-1 ? i+1 : 0));
+						if (dep != null) depsAlongCycle.add(dep);
+						if (spawnedThreadRobotSet.contains(dep.getWaitingRobotID()) || spawnedThreadRobotSet.contains(dep.getDrivingRobotID())) spawnThread = false;
+					}
+					if (spawnThread) {
+						ConnectivityInspector<Integer,Dependency> connInsp = new ConnectivityInspector<Integer,Dependency>(g);
+						HashSet<Integer> allRobots = (HashSet<Integer>) connInsp.connectedSetOf(robotID);
+						spawnReplanning(depsAlongCycle, allRobots);
+						spawnedThreadRobotSet.addAll(cycle);
+					}
 				}
 						
 				//send revised dependencies
@@ -1873,26 +1911,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 								&& ((int)(Calendar.getInstance().getTimeInMillis()-communicatedCPs.get(tracker).getSecond()) > maxDelay);
 						setCriticalPoint(robotID, -1, retransmitt);
 					}
-				}
-				
-				//re-plan for the set of robots that are currently in a critical section
-				/*SimpleDirectedGraph<Integer,Dependency> g = new SimpleDirectedGraph<Integer,Dependency>(Dependency.class);
-				HashMap<Integer,Dependency> depsReplanningRobots = new HashMap<Integer,Dependency>();
-				for (Dependency dep : currentDependencies) {
-					if (!g.containsVertex(dep.getWaitingRobotID())) g.addVertex(dep.getWaitingRobotID());
-					if (!g.containsVertex(dep.getDrivingRobotID())) g.addVertex(dep.getDrivingRobotID());
-					g.addEdge(dep.getWaitingRobotID(), dep.getDrivingRobotID(), dep);
-					if (askForReplan.contains(dep.getWaitingRobotID())) depsReplanningRobots.put(dep.getWaitingRobotID(), dep);
-				}
-				for (Integer robotID : askForReplan) {
-					metaCSPLogger.info("Try re-plan for Robot" + robotID+".");
-					ConnectivityInspector<Integer,Dependency> connInsp = new ConnectivityInspector<Integer,Dependency>(g);
-					HashSet<Integer> allRobots = (HashSet<Integer>) connInsp.connectedSetOf(robotID);
-					ArrayList<Dependency> toArray = new ArrayList<Dependency>();
-					toArray.add(depsReplanningRobots.get(robotID));
-					spawnReplanning(toArray, allRobots);
-				}*/
-				
+				}				
 			}
 			
 		}//end synchronized(solver)
