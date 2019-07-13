@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -1771,7 +1772,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							boolean safe = true;
 							//metaCSPLogger.info("currentCyclesList: " + currentCyclesList.toString());
 							if (currentCyclesList.get(newEdge) != null) {
-								//for each cycle incolving the new edge
+								//for each cycle involving the new edge
 								for (List<Integer> cycle : currentCyclesList.get(newEdge)) {
 									
 									//Get edges along the cycle...
@@ -1784,31 +1785,54 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 											array.add(dep);
 											edgesAlongCycle.add(array);
 										}
-										else edgesAlongCycle.add(new ArrayList<Dependency>(depsGraph.getAllEdges(cycle.get(i), cycle.get(j))));
+										else {
+											Set<Dependency> allEdges = depsGraph.getAllEdges(cycle.get(i), cycle.get(j));
+											if (allEdges == null) metaCSPLogger.info("<<<<<<<<< something wrong.");
+											else edgesAlongCycle.add(new ArrayList<Dependency>());
+										}
+									}
+									
+									//Get all the possible permutation of edges
+									int maxSize = 0;
+									for (ArrayList<Dependency> oneDepList : edgesAlongCycle) if (oneDepList.size() > maxSize) maxSize = oneDepList.size();
+									PermutationsWithRepetition gen = new PermutationsWithRepetition(maxSize, edgesAlongCycle.size());
+									int[][] v = gen.getVariations();
+									ArrayList<ArrayList<Dependency>> newDeps = new ArrayList<ArrayList<Dependency>>();
+									for (int k = 0; k < v.length; k++) {
+										int[] oneComb = v[k];
+										ArrayList<Dependency> oneSelection = new ArrayList<Dependency>();
+										for (int i = 0; i < oneComb.length; i++) {
+											if (oneComb[i] < edgesAlongCycle.get(i).size()) oneSelection.add(edgesAlongCycle.get(i).get(oneComb[i]));
+											else {
+												oneSelection = null;
+												break;
+											}
+										}
+										if (oneSelection != null) newDeps.add(oneSelection);
 									}
 									
 									//Check for unsafe cycles, that is:
 									//  All along the cycle, check if there are (u,v,dep1) and (v,w,dep2) such that
 									//    v.dep2.waitingpoint <= v.dep1.releasingpoint
-									//  And if so mark cycle as deadlock
-									for (int i = 0; i < edgesAlongCycle.size()-1; i++) {
+									//  If there exists almost one unsafe cycle, then the precedence cannot be reversed.								
+									for (ArrayList<Dependency> depList : newDeps) {
 										safe = true;
-										for (Dependency dep1 : edgesAlongCycle.get(i)) {
-											for (Dependency dep2 : edgesAlongCycle.get(i+1)) {
-												if (unsafePair(dep1, dep2)) safe = false;
-											}
+										for (int i = 0; i < depList.size(); i++) {
+											Dependency dep1 = depList.get(i);
+											Dependency dep2 = depList.get(i<depList.size()-1 ? i+1 : 0);
+											if (unsafePair(dep1,dep2)) safe = false;
+											if (safe) break;
 										}
-										if (safe) {
-											metaCSPLogger.finest("Cycle: " + edgesAlongCycle + " is deadlock-free");
-											break;
-										}
-										if (i == edgesAlongCycle.size()-2) {
-											metaCSPLogger.info("Cycle: " + edgesAlongCycle + " is NOT deadlock-free");
+										if(!safe) {
+											metaCSPLogger.info("An unsafe cycle: " + depList + ".");
 											break;
 										}
 									}
 									
-									if(!safe) break;
+									if(!safe) {
+										metaCSPLogger.info("Cycle: " + edgesAlongCycle + " is NOT deadlock-free");
+										break;
+									}
 								}
 							}
 							if (!safe) {
