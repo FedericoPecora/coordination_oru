@@ -1788,7 +1788,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 										else {
 											Set<Dependency> allEdges = depsGraph.getAllEdges(cycle.get(i), cycle.get(j));
 											if (allEdges == null) metaCSPLogger.info("<<<<<<<<< something wrong.");
-											else edgesAlongCycle.add(new ArrayList<Dependency>());
+											else edgesAlongCycle.add(new ArrayList<Dependency>(allEdges));
 										}
 									}
 									
