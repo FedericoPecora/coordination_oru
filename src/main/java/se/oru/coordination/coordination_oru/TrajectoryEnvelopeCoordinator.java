@@ -1035,8 +1035,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					//The robot is waiting at its current critical point. Hence, it can stop by definition.
 					//To keep it simple, restart the communication.
 					synchronized (trackers) {
+						if (breakingPathIndex == 0) trackers.get(robotID).resetStartingTimeInMillis();
 						communicatedCPs.remove(trackers.get(robotID));
-						trackers.get(robotID).resetStartingTimeInMillis();
 					}
 				}
 				else {
@@ -1235,7 +1235,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					if (!currentOrdersGraph.containsVertex(edge.getFirst())) currentOrdersGraph.addVertex(edge.getFirst());
 					if (!currentOrdersGraph.containsVertex(edge.getSecond())) currentOrdersGraph.addVertex(edge.getSecond());
 					String newHashCode = new String(hashCode.substring(0,cmark+1).concat(String.valueOf(numEdge+1)));
-					currentOrdersGraph.addEdge(edge.getFirst(), edge.getSecond(),newHashCode);
+					currentOrdersGraph.addEdge(edge.getFirst(), edge.getSecond(), newHashCode);
 				}
 			}
 			if (toAdd.isEmpty()) return;
@@ -1287,7 +1287,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			HashSet<Pair<Integer,Integer>> toAdd = null;
 			if (edgesToAdd != null) {
 				toAdd = new HashSet<Pair<Integer,Integer>>(edgesToAdd);
-				if (edgesToDelete != null) toAdd.removeAll(toDelete);
+				if (edgesToDelete != null) toAdd.removeAll(edgesToDelete);
 			}
 			
 			deleteEdges(toDelete);			
@@ -1855,7 +1855,6 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						}
 					}
 				}//end for reversibleCS
-				
 			}//end synchronized(allCriticalSections)
 			
 			//update and communicate critical points
@@ -1920,7 +1919,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					synchronized (trackers) {
 							tracker = trackers.get(robotID);
 						}
-					int maxDelay = 2*(MAX_TX_DELAY+CONTROL_PERIOD+tracker.getTrackingPeriodInMillis());
+					int maxDelay = 2*(MAX_TX_DELAY+CONTROL_PERIOD+tracker.getTrackingPeriodInMillis()) + CONTROL_PERIOD; //add an extra control period to the theoretical upperbound to handle the case o equality
 					if (constrainedRobotIDs.containsKey(robotID)) {
 						Dependency dep = constrainedRobotIDs.get(robotID);
 						metaCSPLogger.finest("Set critical point " + dep.getWaitingPoint() + " to Robot" + dep.getWaitingRobotID() +".");

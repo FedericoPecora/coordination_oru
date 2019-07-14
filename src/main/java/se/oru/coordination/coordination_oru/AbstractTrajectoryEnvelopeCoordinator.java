@@ -369,10 +369,9 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		
 			//If the robot is not muted
 			if (tracker != null && !muted.contains(robotID) && !(tracker instanceof TrajectoryEnvelopeTrackerDummy)) {
-				long timeNow = Calendar.getInstance().getTimeInMillis();
 					
 				if (!communicatedCPs.containsKey(tracker) || communicatedCPs.containsKey(tracker) && communicatedCPs.get(tracker).getFirst() != criticalPoint || retransmitt ) {
-					communicatedCPs.put(tracker, new Pair<Integer,Long>(criticalPoint, timeNow));
+					communicatedCPs.put(tracker, new Pair<Integer,Long>(criticalPoint, Calendar.getInstance().getTimeInMillis()));
 					externalCPCounters.replace(tracker,externalCPCounters.get(tracker)+1);
 					tracker.setCriticalPoint(criticalPoint, externalCPCounters.get(tracker)%Integer.MAX_VALUE);
 					
