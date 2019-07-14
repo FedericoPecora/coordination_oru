@@ -1722,8 +1722,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					RobotReport robotReport2 = currentReports.get(cs.getTe2().getRobotID());
 					
 					boolean robot2Yields = getOrder(robotTracker1, robotReport1, robotTracker2, robotReport2, cs); //true if robot1 should go before robot2, false vice versa
-				
-					if (CSToDepsOrder.get(cs).getFirst() != robotReport2.getRobotID() && robot2Yields) {
+					boolean robot2YieldsOld = CSToDepsOrder.get(cs).getFirst() == robotReport2.getRobotID();
+					
+					if (robot2YieldsOld != robot2Yields) {
 						metaCSPLogger.info("Trying reversing a precedence at critical section " + cs + ".");
 					
 						//try reversing the order
