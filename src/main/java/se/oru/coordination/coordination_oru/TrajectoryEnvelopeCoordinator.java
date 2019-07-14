@@ -173,6 +173,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				//Find all the unsafe cycles
 				
 				//For each cycle...
+				//example [1,2]
 				for (List<Integer> cycle : cycles) {
 					
 					//Get edges along the cycle...
@@ -180,30 +181,30 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					Collections.reverse(cycle);
 					for (int i = 0; i < cycle.size(); i++) {
 						Dependency dep = null;
-						if (i < cycle.size()-1) {
-							dep = g.getEdge(cycle.get(i), cycle.get(i+1));
-						}
-						else {
-							dep = g.getEdge(cycle.get(i), cycle.get(0));
-						}
+						if (i < cycle.size()-1) dep = g.getEdge(cycle.get(i), cycle.get(i+1));
+						else dep = g.getEdge(cycle.get(i), cycle.get(0));
 						edgesAlongCycle.add(dep);
 					}
+					//[1,2], [2,1]
 
 					//Check for unsafety condition, that is:
 					//  All along the cycle, check if there are (u,v,dep1) and (v,w,dep2) such that
 					//    v.dep2.waitingpoint <= v.dep1.releasingpoint
 					//  And if so mark cycle as deadlock
-					for (int i = 0; i < edgesAlongCycle.size()-1; i++) {
+					//[1,2] ,[2,1]			[1,2], [2,3], [3,1]
+					//i = 0: [1,2], [2,1]   [1,2], [2,3]
+					//i = 1: [2,1], [1,2]	[2,3], [3,1]
+					//i = 2:  -             [3,1], [1,2]
+					for (int i = 0; i < edgesAlongCycle.size(); i++) {
 						boolean safe = true;
-						if (unsafePair(edgesAlongCycle.get(i), edgesAlongCycle.get(i+1))) {
+						if (unsafePair(edgesAlongCycle.get(i), edgesAlongCycle.get(i < edgesAlongCycle.size()-1 ? i+1 : 0))) {
 							safe = false;
 						}
-						
 						if (safe) {
 							metaCSPLogger.finest("Cycle: " + edgesAlongCycle + " is deadlock-free");
 							break;
 						}
-						if (i == edgesAlongCycle.size()-2) {
+						if (i == edgesAlongCycle.size()-1) {
 							metaCSPLogger.info("Cycle: " + edgesAlongCycle + " is NOT deadlock-free");
 							unsafeCycles.add(cycle);
 						}
@@ -1035,7 +1036,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					//The robot is waiting at its current critical point. Hence, it can stop by definition.
 					//To keep it simple, restart the communication.
 					synchronized (trackers) {
-						if (breakingPathIndex == 0) trackers.get(robotID).resetStartingTimeInMillis();
+						//if (breakingPathIndex == 0) trackers.get(robotID).resetStartingTimeInMillis();
 						communicatedCPs.remove(trackers.get(robotID));
 					}
 				}
@@ -1814,15 +1815,16 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 									//Check for unsafe cycles, that is:
 									//  All along the cycle, check if there are (u,v,dep1) and (v,w,dep2) such that
 									//    v.dep2.waitingpoint <= v.dep1.releasingpoint
-									//  If there exists almost one unsafe cycle, then the precedence cannot be reversed.								
+																
 									for (ArrayList<Dependency> depList : newDeps) {
-										safe = true;
 										for (int i = 0; i < depList.size(); i++) {
+											safe = true;
 											Dependency dep1 = depList.get(i);
 											Dependency dep2 = depList.get(i<depList.size()-1 ? i+1 : 0);
 											if (unsafePair(dep1,dep2)) safe = false;
-											if (safe) break;
+											if (safe) break; //if one pair in the cycle is safe, then the cycle is safe
 										}
+									//  If there exists almost one unsafe cycle, then the precedence cannot be reversed.	
 										if(!safe) {
 											metaCSPLogger.info("An unsafe cycle: " + depList + ".");
 											break;
