@@ -1418,6 +1418,14 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							//If cs is new, update the of edges to add (otherwise, it is already in the graph)
 							if (!CSToDepsOrder.containsKey(cs))
 								edgesToAdd.add(new Pair<Integer,Integer>(dep.getWaitingRobotID(), dep.getDrivingRobotID()));
+							else {
+								if (CSToDepsOrder.get(cs).getFirst() != dep.getWaitingRobotID()) {
+									metaCSPLogger.info("<<<<<<<<<<<<< strange situation!!");
+									if (CSToDepsOrder.get(cs).getFirst() == dep.getDrivingRobotID()) edgesToDelete.add(new Pair<Integer,Integer>(dep.getDrivingRobotID(), dep.getWaitingRobotID()));
+									edgesToAdd.add(new Pair<Integer,Integer>(dep.getWaitingRobotID(), dep.getDrivingRobotID()));
+								}
+									
+							}
 							
 							//update the global graph
 							if (!depsGraph.containsEdge(dep)) {
@@ -1604,7 +1612,14 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							//If cs is new, update the of edges to add (otherwise, it is already in the graph)
 							if (!CSToDepsOrder.containsKey(cs))
 								edgesToAdd.add(new Pair<Integer,Integer>(dep.getWaitingRobotID(), dep.getDrivingRobotID()));
-							
+							else {
+								if (CSToDepsOrder.get(cs).getFirst() != dep.getWaitingRobotID()) {
+									metaCSPLogger.info("<<<<<<<<<<<<< strange situation 2!!");
+									if (CSToDepsOrder.get(cs).getFirst() == dep.getDrivingRobotID()) edgesToDelete.add(new Pair<Integer,Integer>(dep.getDrivingRobotID(), dep.getWaitingRobotID()));
+									edgesToAdd.add(new Pair<Integer,Integer>(dep.getWaitingRobotID(), dep.getDrivingRobotID()));
+								}
+									
+							}
 							//update the global graph
 							if (!depsGraph.containsEdge(dep)) {
 								if (!depsGraph.containsVertex(dep.getWaitingRobotID())) depsGraph.addVertex(dep.getWaitingRobotID());
@@ -1632,7 +1647,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						edgesToDelete.add(new Pair<Integer,Integer>(waitingRobID, drivingRobID));
 						//this.CSToDepsOrder.remove(cs);
 					}
-					else metaCSPLogger.info("WARNING: Obsolete critical section was not assigned to a dependence.");
+					else metaCSPLogger.info("WARNING: Obsolete critical section " + cs + " was not assigned to a dependence.");
 					this.escapingCSToWaitingRobotIDandCP.remove(cs);
 				}
 				
