@@ -95,12 +95,14 @@ public class nRobotsDeadlock {
 			rsp.setStart(startPoses.get(i));
 			rsp.setGoals(goalPoses.get(i));
 			if (!rsp.plan()) throw new Error ("No path between " + startPoses.get(i) + " and " + goalPoses.get(i));
-			paths.add(rsp.getPath());
-			paths.add(rsp.getPathInv());
+			Mission m = new Mission(i, rsp.getPath());
+			Missions.enqueueMission(m);
+			Mission m1 = new Mission(i, rsp.getPathInv());
+			Missions.enqueueMission(m1);
 		}
 		
 		//Start a mission dispatching thread for each robot, which will run forever
-		int iteration = 0;
+		/*int iteration = 0;
 		while(true) {
 			for (int i = 0; i < NUMBER_ROBOTS; i++) {
 				Mission m = null;
@@ -115,7 +117,46 @@ public class nRobotsDeadlock {
 			tec.computeCriticalSections();
 			tec.startTrackingAddedMissions();
 			iteration++;
-		}				
+			try { Thread.sleep(tec.getControlPeriod()); }
+			catch (InterruptedException e) { e.printStackTrace(); }
+		}*/
+		
+
+		//Start a mission dispatching thread for each robot, which will run forever
+		for (int i = 0; i < NUMBER_ROBOTS; i++) {
+			final int robotID = i+1;
+			//For each robot, create a thread that dispatches the "next" mission when the robot is free
+			
+			Thread t = new Thread() {
+				@Override
+				public void run() {
+					int sequenceNumber = 0;
+					int totalIterations = 20;
+					if (robotID%2 == 0) totalIterations = 19;
+					while (true && totalIterations > 0) {
+						synchronized(tec.getSolver()) {
+							if (tec.isFree(robotID)) {
+								Mission m = Missions.getMission(robotID, sequenceNumber);
+								tec.addMissions(m);
+								tec.computeCriticalSections();
+								tec.startTrackingAddedMissions();
+								sequenceNumber = (sequenceNumber+1)%Missions.getMissions(robotID).size();
+								totalIterations--;
+							}
+						}
+						//Sleep for a little (2 sec)
+						try { Thread.sleep(tec.getControlPeriod()); }
+						catch (InterruptedException e) { e.printStackTrace(); }
+					}
+					System.out.println("Robot" + robotID + " is done!");
+				}
+			};
+			//Start the thread!
+			t.start();
+		}
+		//Sleep for a little (2 sec)
+		try { Thread.sleep(tec.getControlPeriod()); }
+		catch (InterruptedException e) { e.printStackTrace(); }
 	}
 	
 }

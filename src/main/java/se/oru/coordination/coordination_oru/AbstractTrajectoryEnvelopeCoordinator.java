@@ -890,69 +890,75 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				
 		synchronized(allCriticalSections) {
 			
-			//Update the coordinator view
-			HashMap<Integer,RobotReport> currentReports = new HashMap<Integer,RobotReport>();
-			for (int robotID : trackers.keySet()) {
-				currentReports.put(robotID,this.getRobotReport(robotID));
-			}
-
-			//Collect all driving envelopes and current pose indices
-			ArrayList<TrajectoryEnvelope> drivingEnvelopes = new ArrayList<TrajectoryEnvelope>();
-			for (AbstractTrajectoryEnvelopeTracker atet : trackers.values()) {
-				if (!(atet instanceof TrajectoryEnvelopeTrackerDummy)) {
-					drivingEnvelopes.add(atet.getTrajectoryEnvelope());
+			synchronized (trackers) {
+			
+				//Update the coordinator view
+				HashMap<Integer,RobotReport> currentReports = new HashMap<Integer,RobotReport>();
+				for (int robotID : trackers.keySet()) {
+					currentReports.put(robotID,this.getRobotReport(robotID));
 				}
-			}
-
-			//Compute critical sections between driving and new envelopes
-			for (int i = 0; i < drivingEnvelopes.size(); i++) {
-				for (int j = 0; j < envelopesToTrack.size(); j++) {	
-					if (!envelopesToTrack.get(j).equals(drivingEnvelopes.get(i))) {
-						for (CriticalSection cs : getCriticalSections(drivingEnvelopes.get(i), envelopesToTrack.get(j))) {
+	
+				//Collect all driving envelopes and current pose indices
+				ArrayList<TrajectoryEnvelope> drivingEnvelopes = new ArrayList<TrajectoryEnvelope>();
+				for (AbstractTrajectoryEnvelopeTracker atet : trackers.values()) {
+					if (!(atet instanceof TrajectoryEnvelopeTrackerDummy)) {
+						drivingEnvelopes.add(atet.getTrajectoryEnvelope());
+						//metaCSPLogger.info(atet.getRobotReport().getRobotID() + " is driving.");
+					}
+				}
+	
+				//Compute critical sections between driving and new envelopes
+				for (int i = 0; i < drivingEnvelopes.size(); i++) {
+					for (int j = 0; j < envelopesToTrack.size(); j++) {	
+						if (!envelopesToTrack.get(j).equals(drivingEnvelopes.get(i))) {
+							for (CriticalSection cs : getCriticalSections(drivingEnvelopes.get(i), envelopesToTrack.get(j))) {
+								if (currentReports.get(cs.getTe1().getRobotID()).getPathIndex() <= cs.getTe1End() && currentReports.get(cs.getTe2().getRobotID()).getPathIndex() <= cs.getTe2End())
+									this.allCriticalSections.add(cs);
+								//metaCSPLogger.info("computeCriticalSections(): add (1) " + cs);
+							}
+						}
+					}
+				}	
+	
+				//Compute critical sections between new envelopes
+				for (int i = 0; i < envelopesToTrack.size(); i++) {
+					for (int j = i+1; j < envelopesToTrack.size(); j++) {
+						for (CriticalSection cs : getCriticalSections(envelopesToTrack.get(i), envelopesToTrack.get(j))) {
 							if (currentReports.get(cs.getTe1().getRobotID()).getPathIndex() <= cs.getTe1End() && currentReports.get(cs.getTe2().getRobotID()).getPathIndex() <= cs.getTe2End())
 								this.allCriticalSections.add(cs);
-							//metaCSPLogger.info("computeCriticalSections(): add (1) " + cs);
+							//metaCSPLogger.info("computeCriticalSections(): add (2) " + cs);
 						}
 					}
 				}
-			}	
-
-			//Compute critical sections between new envelopes
-			for (int i = 0; i < envelopesToTrack.size(); i++) {
-				for (int j = i+1; j < envelopesToTrack.size(); j++) {
-					for (CriticalSection cs : getCriticalSections(envelopesToTrack.get(i), envelopesToTrack.get(j))) {
-						if (currentReports.get(cs.getTe1().getRobotID()).getPathIndex() <= cs.getTe1End() && currentReports.get(cs.getTe2().getRobotID()).getPathIndex() <= cs.getTe2End())
-							this.allCriticalSections.add(cs);
-						//metaCSPLogger.info("computeCriticalSections(): add (2) " + cs);
-					}
-				}
-			}
-
-			//Compute critical sections between driving envelopes and current parking envelopes	
-			for (int i = 0; i < drivingEnvelopes.size(); i++) {
-				for (int j = 0; j < currentParkingEnvelopes.size(); j++) {
-					if (drivingEnvelopes.get(i).getRobotID() != currentParkingEnvelopes.get(j).getRobotID()) {
-						for (CriticalSection cs : getCriticalSections(drivingEnvelopes.get(i), currentParkingEnvelopes.get(j))) {
-							if (currentReports.get(cs.getTe1().getRobotID()).getPathIndex() <= cs.getTe1End() && currentReports.get(cs.getTe2().getRobotID()).getPathIndex() <= cs.getTe2End())
-								this.allCriticalSections.add(cs);
-							//metaCSPLogger.info("computeCriticalSections(): add (3) " + cs);
+	
+				//Compute critical sections between driving envelopes and current parking envelopes	
+				for (int i = 0; i < drivingEnvelopes.size(); i++) {
+					for (int j = 0; j < currentParkingEnvelopes.size(); j++) {
+						if (drivingEnvelopes.get(i).getRobotID() != currentParkingEnvelopes.get(j).getRobotID()) {
+							for (CriticalSection cs : getCriticalSections(drivingEnvelopes.get(i), currentParkingEnvelopes.get(j))) {
+								if (cs.getTe1().getRobotID() == drivingEnvelopes.get(i).getRobotID() && currentReports.get(cs.getTe1().getRobotID()).getPathIndex() <= cs.getTe1End() || 
+										cs.getTe2().getRobotID() == drivingEnvelopes.get(i).getRobotID() && currentReports.get(cs.getTe2().getRobotID()).getPathIndex() <= cs.getTe2End())
+									this.allCriticalSections.add(cs);	
+								//metaCSPLogger.info("computeCriticalSections(): add (3) " + cs);
+							}
 						}
 					}
 				}
-			}
-
-			//Compute critical sections between NEW driving envelopes and current parking envelopes	
-			for (int i = 0; i < envelopesToTrack.size(); i++) {
-				for (int j = 0; j < currentParkingEnvelopes.size(); j++) {
-					if (envelopesToTrack.get(i).getRobotID() != currentParkingEnvelopes.get(j).getRobotID()) {
-						for (CriticalSection cs : getCriticalSections(envelopesToTrack.get(i), currentParkingEnvelopes.get(j))) {
-							if (currentReports.get(cs.getTe1().getRobotID()).getPathIndex() <= cs.getTe1End() && currentReports.get(cs.getTe2().getRobotID()).getPathIndex() <= cs.getTe2End())
-								this.allCriticalSections.add(cs);
+	
+				//Compute critical sections between NEW driving envelopes and current parking envelopes	
+				for (int i = 0; i < envelopesToTrack.size(); i++) {
+					for (int j = 0; j < currentParkingEnvelopes.size(); j++) {
+						if (envelopesToTrack.get(i).getRobotID() != currentParkingEnvelopes.get(j).getRobotID()) {
+							for (CriticalSection cs : getCriticalSections(envelopesToTrack.get(i), currentParkingEnvelopes.get(j))) {
+								if (cs.getTe1().getRobotID() == envelopesToTrack.get(i).getRobotID() && currentReports.get(cs.getTe1().getRobotID()).getPathIndex() <= cs.getTe1End() || 
+										cs.getTe2().getRobotID() == envelopesToTrack.get(i).getRobotID() && currentReports.get(cs.getTe2().getRobotID()).getPathIndex() <= cs.getTe2End())
+									this.allCriticalSections.add(cs);
 							//metaCSPLogger.info("computeCriticalSections(): add (4) " + cs);
+							}
 						}
 					}
-				}
-			}			
+				}			
+			}
 			filterCriticalSections();
 			
 			numberOfCriticalSections = this.allCriticalSections.size();
