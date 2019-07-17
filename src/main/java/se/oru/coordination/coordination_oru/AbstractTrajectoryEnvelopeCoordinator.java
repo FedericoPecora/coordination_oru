@@ -1630,7 +1630,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 
 					//Sleep a little...
 					if (CONTROL_PERIOD > 0) {
-						try { Thread.sleep(Math.max(0, CONTROL_PERIOD-Calendar.getInstance().getTimeInMillis()+threadLastUpdate)); }
+						try { Thread.sleep(CONTROL_PERIOD);} //Thread.sleep(Math.max(0, CONTROL_PERIOD-Calendar.getInstance().getTimeInMillis()+threadLastUpdate)); }
 						catch (InterruptedException e) { e.printStackTrace(); }
 					}
 
