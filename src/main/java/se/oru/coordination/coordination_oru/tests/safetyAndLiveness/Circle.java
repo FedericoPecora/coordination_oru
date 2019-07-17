@@ -1,4 +1,4 @@
-package se.oru.coordination.coordination_oru.tests.collisionChecking;
+package se.oru.coordination.coordination_oru.tests.safetyAndLiveness;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -157,7 +157,6 @@ public class Circle {
 						if (tec.isFree(robotID)) {
 							Mission m = Missions.dequeueMission(robotID);
 							tec.addMissions(m);
-							tec.computeCriticalSectionsAndStartTrackingAddedMission();
 							Missions.enqueueMission(m);
 						}
 						try { Thread.sleep(2000); }

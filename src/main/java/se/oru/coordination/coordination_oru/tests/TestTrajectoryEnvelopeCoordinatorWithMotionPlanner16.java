@@ -110,8 +110,6 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner16 {
 
 		tec.addMissions(Missions.getMission(1, 0));
 		tec.addMissions(Missions.getMission(2, 0));
-		tec.computeCriticalSections();
-		tec.startTrackingAddedMissions();
 		
 	}
 

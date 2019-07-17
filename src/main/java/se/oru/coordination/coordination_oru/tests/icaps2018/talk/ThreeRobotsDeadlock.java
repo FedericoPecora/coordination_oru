@@ -153,8 +153,6 @@ public class ThreeRobotsDeadlock {
 					catch (InterruptedException e) { e.printStackTrace(); }
 				}
 			}			
-			tec.computeCriticalSections();
-			tec.startTrackingAddedMissions();
 			iteration++;
 		}				
 	}

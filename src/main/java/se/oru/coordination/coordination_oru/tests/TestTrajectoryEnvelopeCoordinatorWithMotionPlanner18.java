@@ -84,21 +84,15 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner18 {
 		Mission m2 = new Mission(2,path2);
 		Mission m3 = new Mission(3,path3);
 		
-		tec.addMissions(m1);
-		tec.computeCriticalSections();
-		tec.startTrackingAddedMissions();
+		Missions.startMissionDispatchers(tec, false, 1);
 		
 		Thread.sleep(2000);
 		
-		tec.addMissions(m2);
-		tec.computeCriticalSections();
-		tec.startTrackingAddedMissions();
+		Missions.startMissionDispatchers(tec, false, 2);
 		
 		Thread.sleep(2000);
 		
-		tec.addMissions(m3);
-		tec.computeCriticalSections();
-		tec.startTrackingAddedMissions();
+		Missions.startMissionDispatchers(tec, false, 3);
 		
 	}
 	

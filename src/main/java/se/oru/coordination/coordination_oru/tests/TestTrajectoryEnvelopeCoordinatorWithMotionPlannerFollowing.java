@@ -91,15 +91,11 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlannerFollowing {
 		Mission leaderMission = new Mission(1,pathLeader);
 		
 		tec.addMissions(leaderMission);
-		tec.computeCriticalSections();
-		tec.startTrackingAddedMissions();
 		
 		Thread.sleep(1000);
 		
 		Mission followerMission = Missions.followMission(leaderMission, 2, startR2, rsp, false);
 		tec.addMissions(followerMission);
-		tec.computeCriticalSections();
-		tec.startTrackingAddedMissions();
 		
 		Thread.sleep(12000);
 
@@ -109,8 +105,6 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlannerFollowing {
 		PoseSteering[] nextLeaderPath = rsp.getPath();
 		Mission nextLeaderMission = new Mission(1,nextLeaderPath);
 		tec.addMissions(nextLeaderMission);
-		tec.computeCriticalSections();
-		tec.startTrackingAddedMissions();
 		
 	}
 	

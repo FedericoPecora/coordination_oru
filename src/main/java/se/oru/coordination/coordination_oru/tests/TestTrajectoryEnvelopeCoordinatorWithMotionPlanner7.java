@@ -161,8 +161,6 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner7 {
 					catch (InterruptedException e) { e.printStackTrace(); }
 				}
 			}			
-			tec.computeCriticalSections();
-			tec.startTrackingAddedMissions();
 			iteration++;
 		}				
 	}

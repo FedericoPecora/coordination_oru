@@ -134,8 +134,6 @@ public class FourRobotsCircle {
 					catch (InterruptedException e) { e.printStackTrace(); }
 				}
 			}			
-			tec.computeCriticalSections();
-			tec.startTrackingAddedMissions();
 			iteration++;
 		}				
 	}

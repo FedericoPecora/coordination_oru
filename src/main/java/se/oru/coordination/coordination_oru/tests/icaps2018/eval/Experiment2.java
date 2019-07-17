@@ -222,8 +222,6 @@ public class Experiment2 {
 								firstTime = false;
 								Mission m = Missions.getMission(robotID,sequenceNumber);
 								tec.addMissions(m);
-								tec.computeCriticalSections();
-								tec.startTrackingAddedMissions();
 								sequenceNumber = (sequenceNumber+1)%Missions.getMissions(robotID).size();
 								lastDestination = m.getToLocation();
 								totalIterations--;

@@ -241,13 +241,12 @@ public class ParkingArrayNew {
 										String stat = "";
 										for (int i = 1; i < robotID; i++) stat += "\t";
 										stat += elapsed;
-										writeStat(statFilename, stat);
+										//writeStat(statFilename, stat);
 									}
 									startTime = Calendar.getInstance().getTimeInMillis();
 									firstTime = false;
 									Mission m = Missions.dequeueMission(robotID);
 									tec.addMissions(m);
-									tec.computeCriticalSectionsAndStartTrackingAddedMission();
 									Missions.enqueueMission(m);
 									totalIterations--;
 								}
@@ -261,6 +260,8 @@ public class ParkingArrayNew {
 					}
 				};
 				t.start();
+				try { Thread.sleep(1000); }
+				catch (InterruptedException e) { e.printStackTrace(); }
 			}
 		}
 		

@@ -114,8 +114,6 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner9 {
 		PoseSteering[] pathRobot2 = rsp.getPath();
 		
 		tec.addMissions(new Mission(1, pathRobot1), new Mission(2, pathRobot2));
-		tec.computeCriticalSections();
-		tec.startTrackingAddedMissions();
 
 	}
 

@@ -99,10 +99,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner21 {
 		Missions.enqueueMission(new Mission(2,rsp.getPath()));
 		
 		System.out.println("Added missions " + Missions.getMissions());
-
-		tec.addMissions(Missions.getMission(1, 0),Missions.getMission(2, 0));
-		tec.computeCriticalSections();
-		tec.startTrackingAddedMissions();
+		Missions.startMissionDispatchers(tec, false, 1, 2);
 
 		
 	}

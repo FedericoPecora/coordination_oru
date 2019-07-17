@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Comparator;
+import java.util.Random;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
@@ -94,13 +95,13 @@ public class Waves {
 
 		double MAX_ACCEL = 3.0;
 		double MAX_VEL = 2.5;
-		final int numRobots = (args != null && args.length > 0) ? Integer.parseInt(args[0]) : 10;
+		final int numRobots = (args != null && args.length > 0) ? Integer.parseInt(args[0]) : 1;
 		//Instantiate a trajectory envelope coordinator.
 		//The TrajectoryEnvelopeCoordinatorSimulation implementation provides
 		// -- the factory method getNewTracker() which returns a trajectory envelope tracker
 		// -- the getCurrentTimeInMillis() method, which is used by the coordinator to keep time
 		//You still need to add one or more comparators to determine robot orderings thru critical sections (comparators are evaluated in the order in which they are added)
-		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(MAX_VEL,MAX_ACCEL);
+		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(2000, 1000, MAX_VEL,MAX_ACCEL);
 		tec.addComparator(new Comparator<RobotAtCriticalSection> () {
 			@Override
 			public int compare(RobotAtCriticalSection o1, RobotAtCriticalSection o2) {
@@ -113,12 +114,12 @@ public class Waves {
 		tec.addComparator(new Comparator<RobotAtCriticalSection> () {
 			@Override
 			public int compare(RobotAtCriticalSection o1, RobotAtCriticalSection o2) {
-				return (o2.getRobotReport().getRobotID()-o1.getRobotReport().getRobotID());
+				return(o2.getRobotReport().getRobotID()-o1.getRobotReport().getRobotID());
 			}
 		});
 		tec.setCheckCollisions(true);
 		
-		NetworkConfiguration.setDelays(100, 100);
+		NetworkConfiguration.setDelays(500, 500);
 		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0;
 		tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, NetworkConfiguration.getMaximumTxDelay(), 0.02);
 		//tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, 0, 0);
@@ -134,15 +135,14 @@ public class Waves {
 		
 		tec.setUseInternalCriticalPoints(false);
 		tec.setYieldIfParking(false);
-		tec.setBreakDeadlocksByReordering(false);
-		tec.setBreakDeadlocksByReplanning(true);
-		
+		tec.setBreakDeadlocks(false);
+
 		//Set up motion planner
-		String yamlFile = "maps/map-empty.yaml";
+		//String yamlFile = "maps/map-empty.yaml";
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-		rsp.setMapFilename("maps"+File.separator+Missions.getProperty("image", yamlFile));
-		double res = Double.parseDouble(Missions.getProperty("resolution", yamlFile));
-		rsp.setMapResolution(res);
+		//rsp.setMapFilename("maps"+File.separator+Missions.getProperty("image", yamlFile));
+		//double res = Double.parseDouble(Missions.getProperty("resolution", yamlFile));
+		//rsp.setMapResolution(res);
 		rsp.setRadius(0.1);
 		rsp.setFootprint(tec.getDefaultFootprint());
 		rsp.setTurningRadius(4.0);
@@ -150,28 +150,28 @@ public class Waves {
 
 		//MetaCSPLogging.setLevel(tec.getClass().getSuperclass(), Level.FINEST);
 
-		double deltaY = 1.7;
+		double deltaY = 1.7; //1.7
 		
 		final int[] robotIDs = new int[numRobots];
 		for (int i = 0; i < numRobots; i++) robotIDs[i] = i+1;
 		
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
-		//RVizVisualization viz = new RVizVisualization();
+		RVizVisualization viz = new RVizVisualization();
 		//RVizVisualization.writeRVizConfigFile(robotIDs);
-		BrowserVisualization viz = new BrowserVisualization();
-		viz.setInitialTransform(20.0, 45, 20);
-		viz.setMap(yamlFile);
+		//BrowserVisualization viz = new BrowserVisualization();
+		//viz.setInitialTransform(19.64, 3.18, 16.49); //viz.setInitialTransform(20.0, 45, 20);
+		//viz.setMap(yamlFile);
 		tec.setVisualization(viz);
 		
 		for (int index = 0; index < robotIDs.length; index++) {
 			int robotID = robotIDs[index];
-			double period = 10;
-			double mag = 2*deltaY;
+			double period = 18; //10
+			double mag = deltaY; //2*deltaY
 
 			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
 			Pose from = new Pose(0.0,index*deltaY,0.0);
-			Pose to = new Pose(3*period,index*deltaY,0.0);
+			Pose to = new Pose(3*period,index*deltaY,0.0); //new Pose(5*period,index*deltaY,0.0);
 
 			if (index%2 != 0) mag*=(-1);
 			PoseSteering[] robotPath = getSinePath(period, mag, from, to);
@@ -243,14 +243,12 @@ public class Waves {
 								firstTime = false;
 								Mission m = Missions.getMission(robotID,sequenceNumber);
 								tec.addMissions(m);
-								tec.computeCriticalSections();
-								tec.startTrackingAddedMissions();
 								sequenceNumber = (sequenceNumber+1)%Missions.getMissions(robotID).size();
 								totalIterations--;
 							}
 						}
 						//Sleep for a little (2 sec)
-						try { Thread.sleep(100); }
+						try { Thread.sleep(1000); }
 						catch (InterruptedException e) { e.printStackTrace(); }
 					}
 					System.out.println("Robot" + robotID + " is done!");

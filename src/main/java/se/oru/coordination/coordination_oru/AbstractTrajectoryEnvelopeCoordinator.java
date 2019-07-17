@@ -87,6 +87,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 
 	//protected JTSDrawingPanel panel = null;
 	protected FleetVisualization viz = null;
+	protected HashMap<Integer,Pair<TrajectoryEnvelope,Long>> missionsPool = new HashMap<Integer,Pair<TrajectoryEnvelope,Long>>();
 	protected ArrayList<TrajectoryEnvelope> envelopesToTrack = new ArrayList<TrajectoryEnvelope>();
 	protected ArrayList<TrajectoryEnvelope> currentParkingEnvelopes = new ArrayList<TrajectoryEnvelope>();
 	protected HashSet<CriticalSection> allCriticalSections = new HashSet<CriticalSection>();
@@ -884,7 +885,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 * Update the set of current critical sections. This should be called every time
 	 * a new set of {@link Mission}s has been successfully added.
 	 */
-	public void computeCriticalSections() {
+	protected void computeCriticalSections() {
 
 		int numberOfCriticalSections = 0;
 				
@@ -1269,7 +1270,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	/**
 	 * Start the trackers associated to the last batch of {@link Mission}s that has been added.
 	 */
-	public void startTrackingAddedMissions() {
+	protected void startTrackingAddedMissions() {
 		
 		//FIXME: if this is not placed into the control loop (), then a robot can pass from (P) to (D) without 
 		//affecting the set of dependencies.
@@ -1524,7 +1525,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 					throw new Error("Could not add constraints " + consToAdd);						
 				}
 
-				envelopesToTrack.add(te);
+				missionsPool.put(robotID, new Pair<TrajectoryEnvelope,Long>(te, Calendar.getInstance().getTimeInMillis()));
 			}
 		}
 		
@@ -1622,7 +1623,22 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			@Override
 			public void run() {
 				while (true) {
-					synchronized (solver) {						
+					synchronized (solver) {	
+						if (!missionsPool.isEmpty()) {
+							//get the oldest posted mission
+							int oldestMissionRobotID = -1;
+							long oldestMissionTime = Long.MAX_VALUE;
+							for (int robotID : missionsPool.keySet()) {
+								if (missionsPool.get(robotID).getSecond().compareTo(oldestMissionTime) < 0) {
+									oldestMissionTime = missionsPool.get(robotID).getSecond().longValue();
+									oldestMissionRobotID = robotID;
+								}
+							}
+							envelopesToTrack.add(missionsPool.get(oldestMissionRobotID).getFirst());
+							missionsPool.remove(oldestMissionRobotID);
+							computeCriticalSections();
+							startTrackingAddedMissions();
+						}
 						if (!quiet) printStatistics();
 						if (overlay) overlayStatistics();
 						updateDependencies();
@@ -1630,7 +1646,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 
 					//Sleep a little...
 					if (CONTROL_PERIOD > 0) {
-						try { Thread.sleep(CONTROL_PERIOD);} //Thread.sleep(Math.max(0, CONTROL_PERIOD-Calendar.getInstance().getTimeInMillis()+threadLastUpdate)); }
+						try { Thread.sleep(CONTROL_PERIOD); } //Thread.sleep(Math.max(0, CONTROL_PERIOD-Calendar.getInstance().getTimeInMillis()+threadLastUpdate)); }
 						catch (InterruptedException e) { e.printStackTrace(); }
 					}
 
@@ -1664,7 +1680,8 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	public boolean isFree(int robotID) {
 		synchronized (solver) {
 			if (muted.contains(robotID)) return false;
-			for (TrajectoryEnvelope te : envelopesToTrack) if (te.getRobotID() == robotID) return false;
+			//for (TrajectoryEnvelope te : envelopesToTrack) if (te.getRobotID() == robotID) return false;
+			if (missionsPool.containsKey(robotID)) return false;
 			synchronized (trackers) {
 				AbstractTrajectoryEnvelopeTracker tracker = trackers.get(robotID);
 				if (!(tracker instanceof TrajectoryEnvelopeTrackerDummy)) return false;
@@ -1688,12 +1705,5 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		System.out.println();
 	}
 	
-	public void computeCriticalSectionsAndStartTrackingAddedMission() {
-		synchronized (solver) {
-			computeCriticalSections();
-			updateDependencies();
-			startTrackingAddedMissions();
-		}
-	}
 }
 

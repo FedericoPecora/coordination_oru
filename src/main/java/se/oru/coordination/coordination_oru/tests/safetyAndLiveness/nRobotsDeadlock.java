@@ -1,6 +1,7 @@
 package se.oru.coordination.coordination_oru.tests.safetyAndLiveness;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Comparator;
 import java.util.HashMap;
 
@@ -17,6 +18,8 @@ import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPla
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
 import se.oru.coordination.coordination_oru.util.BrowserVisualization;
 import se.oru.coordination.coordination_oru.util.JTSDrawingPanelVisualization;
+import se.oru.coordination.coordination_oru.util.Missions;
+import se.oru.coordination.coordination_oru.util.RVizVisualization;
 
 @DemoDescription(desc = "Coordination with deadlock-inducing ordering heuristic (paths obtained with the ReedsSheppCarPlanner).")
 public class nRobotsDeadlock {
@@ -27,14 +30,14 @@ public class nRobotsDeadlock {
 		
 		double MAX_ACCEL = 1.0;
 		double MAX_VEL = 4.0;
-		double radius = 7;
+		double radius = 14;
 		
 		//Instantiate a trajectory envelope coordinator.
 		//The TrajectoryEnvelopeCoordinatorSimulation implementation provides
 		// -- the factory method getNewTracker() which returns a trajectory envelope tracker
 		// -- the getCurrentTimeInMillis() method, which is used by the coordinator to keep time
 		//You still need to add one or more comparators to determine robot orderings thru critical sections (comparators are evaluated in the order in which they are added)
-		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(MAX_VEL,MAX_ACCEL);
+		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(1000,1000,MAX_VEL,MAX_ACCEL);
 		tec.addComparator(new Comparator<RobotAtCriticalSection> () {
 			@Override
 			public int compare(RobotAtCriticalSection o1, RobotAtCriticalSection o2) {
@@ -50,7 +53,9 @@ public class nRobotsDeadlock {
 		for (int i = 1; i <= nRobotsDeadlock.NUMBER_ROBOTS; i++) 
 			tec.setForwardModel(i, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
 		//comment out following (or set to true) to make the coordinator attempt to break the deadlock
-		tec.setBreakDeadlocks(false);
+		//tec.setBreakDeadlocks(false);
+		tec.setBreakDeadlocksByReordering(true);
+		tec.setAvoidDeadlocksGlobally(true);
 
 		Coordinate footprint1 = new Coordinate(-0.25,0.25);
 		Coordinate footprint2 = new Coordinate(0.25,0.25);
@@ -62,9 +67,10 @@ public class nRobotsDeadlock {
 		tec.setupSolver(0, 100000000);
 		
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
+		RVizVisualization viz = new RVizVisualization();
 		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
-		BrowserVisualization viz = new BrowserVisualization();
-		viz.setInitialTransform(73, 22, 16);
+		//BrowserVisualization viz = new BrowserVisualization();
+		//viz.setInitialTransform(73, 22, 16);
 		tec.setVisualization(viz);
 		
 		//tec.setUseInternalCriticalPoints(false);
@@ -138,8 +144,6 @@ public class nRobotsDeadlock {
 							if (tec.isFree(robotID)) {
 								Mission m = Missions.getMission(robotID, sequenceNumber);
 								tec.addMissions(m);
-								tec.computeCriticalSections();
-								tec.startTrackingAddedMissions();
 								sequenceNumber = (sequenceNumber+1)%Missions.getMissions(robotID).size();
 								totalIterations--;
 							}

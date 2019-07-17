@@ -87,20 +87,14 @@ public class ThreeRobotsGoalPosting {
 		Mission m3 = new Mission(3,path3);
 		
 		tec.addMissions(m1);
-		tec.computeCriticalSections();
-		tec.startTrackingAddedMissions();
 		
 		Thread.sleep(2000);
 		
 		tec.addMissions(m2);
-		tec.computeCriticalSections();
-		tec.startTrackingAddedMissions();
 		
 		Thread.sleep(2000);
 		
 		tec.addMissions(m3);
-		tec.computeCriticalSections();
-		tec.startTrackingAddedMissions();
 		
 	}
 	

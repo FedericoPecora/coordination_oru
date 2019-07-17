@@ -760,7 +760,7 @@ public class Missions {
 		
 									//addMission returns true iff the robot was free to accept a new mission
 									if (tec.addMissions(m)) {
-										tec.computeCriticalSectionsAndStartTrackingAddedMission();
+										//tec.computeCriticalSectionsAndStartTrackingAddedMission();
 										if (mdcs.containsKey(robotID)) mdcs.get(robotID).afterMissionDispatch(m);
 										if (!loop) {
 											Missions.removeMissions(m);

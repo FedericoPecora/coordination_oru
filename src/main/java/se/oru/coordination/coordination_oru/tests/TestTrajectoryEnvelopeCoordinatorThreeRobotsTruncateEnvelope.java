@@ -130,11 +130,7 @@ public class TestTrajectoryEnvelopeCoordinatorThreeRobotsTruncateEnvelope {
 						Mission m = Missions.getMission(robotID, iteration%2);
 						synchronized(tec) {
 							//addMission returns true iff the robot was free to accept a new mission
-							if (!isPaused.get(robotID) && tec.addMissions(m)) {
-								tec.computeCriticalSections();
-								tec.startTrackingAddedMissions();
-								iteration++;
-							}
+							if (!isPaused.get(robotID) && tec.addMissions(m)) iteration++;
 						}
 						//Sleep for a little (2 sec)
 						try { Thread.sleep(2000); }

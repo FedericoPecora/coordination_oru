@@ -79,12 +79,11 @@ public class Experiment1Test1 {
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 //		String yamlFile = "../maps/map-empty.yaml";
 		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
-		RVizVisualization viz = new RVizVisualization();
-		//BrowserVisualization viz = new BrowserVisualization();
-		//viz.setInitialTransform(25, -25, 15);
+		//RVizVisualization viz = new RVizVisualization();
+		BrowserVisualization viz = new BrowserVisualization();
+		viz.setInitialTransform(25, -25, 15);
 		tec.setVisualization(viz);
 		
-		tec.setBreakDeadlocks(false);
 		tec.setUseInternalCriticalPoints(false);
 		tec.setYieldIfParking(false);
 
@@ -166,8 +165,6 @@ public class Experiment1Test1 {
 							synchronized(tec) {
 								//addMission returns true iff the robot was free to accept a new mission
 								if (tec.addMissions(m)) {
-									tec.computeCriticalSections();
-									tec.startTrackingAddedMissions();
 									//tec.writeSetupLog("progress", "Robot "+robotID+" has completed " +iteration+" missions.");
 									iteration++;
 								}

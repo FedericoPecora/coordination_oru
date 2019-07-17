@@ -106,9 +106,6 @@ public class TwoRobotsOpposing {
 
 		tec.addMissions(Missions.dequeueMission(1), Missions.dequeueMission(2));
 		
-		tec.computeCriticalSections();
-		tec.startTrackingAddedMissions();
-		
 	}
 
 }

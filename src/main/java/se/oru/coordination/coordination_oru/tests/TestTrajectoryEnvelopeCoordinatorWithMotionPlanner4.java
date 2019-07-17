@@ -153,14 +153,12 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner4 {
 						synchronized(tec) {
 							//addMission returns true iff the robot was free to accept a new mission
 							if (tec.addMissions(m)) {
-								tec.computeCriticalSections();
 								if (MAX_DELAY-MIN_DELAY > 0) {
 									long delay = MIN_DELAY+rand.nextInt(MAX_DELAY-MIN_DELAY);
 									//Sleep for a random delay in [minDelay,maxDelay]
 									try { Thread.sleep(delay); }
 									catch (InterruptedException e) { e.printStackTrace(); }
 								}
-								tec.startTrackingAddedMissions();
 								iteration++;
 							}
 						}

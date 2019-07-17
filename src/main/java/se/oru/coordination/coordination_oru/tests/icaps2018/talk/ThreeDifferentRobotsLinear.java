@@ -140,8 +140,6 @@ public class ThreeDifferentRobotsLinear {
 		Mission m2 = new Mission(2,pss2);
 		Mission m3 = new Mission(3,pss3);
 		tec.addMissions(m1,m2,m3);
-		tec.computeCriticalSections();
-		tec.startTrackingAddedMissions();
 
 	}
 

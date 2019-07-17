@@ -1,4 +1,4 @@
-package se.oru.coordination.coordination_oru.tests.collisionChecking;
+package se.oru.coordination.coordination_oru.tests.safetyAndLiveness;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -221,7 +221,6 @@ public class ParkingArray {
 								firstTime = false;
 								Mission m = Missions.dequeueMission(robotID);
 								tec.addMissions(m);
-								tec.computeCriticalSectionsAndStartTrackingAddedMission();
 								Missions.enqueueMission(m);
 								totalIterations--;
 							}

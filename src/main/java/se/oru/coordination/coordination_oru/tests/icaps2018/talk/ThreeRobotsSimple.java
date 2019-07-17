@@ -155,8 +155,6 @@ public class ThreeRobotsSimple {
 					catch (InterruptedException e) { e.printStackTrace(); }
 				}
 			}			
-			tec.computeCriticalSections();
-			tec.startTrackingAddedMissions();
 			iteration++;
 		}				
 	}

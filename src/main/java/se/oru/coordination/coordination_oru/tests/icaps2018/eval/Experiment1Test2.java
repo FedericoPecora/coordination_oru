@@ -160,9 +160,6 @@ public class Experiment1Test2 {
 				}
 			}
 			tec.addMissions(missionsToAdd.toArray(new Mission[missionsToAdd.size()]));
-			tec.computeCriticalSections();
-			//tec.updateDependencies();
-			tec.startTrackingAddedMissions();
 			Thread.sleep(1000);
 		}
 	}

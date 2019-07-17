@@ -106,10 +106,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner17 {
 		System.out.println("Added missions " + Missions.getMissions());
 
 		tec.addMissions(Missions.dequeueMission(1), Missions.dequeueMission(2));
-		
-		tec.computeCriticalSections();
-		tec.startTrackingAddedMissions();
-		
+
 	}
 
 }

@@ -71,46 +71,59 @@ public class RandomPathsInMap {
 
 		double MAX_ACCEL = 3.0;
 		double MAX_VEL = 4.0;
+		
+		/*double MAX_ACCEL = 1.0;
+		double MAX_VEL = 2.5;*/
 		boolean useValidInfrastructure = true;
 		boolean randomObstacles = true;
 
 		//Instantiate a trajectory envelope coordinator.
-		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(MAX_VEL,MAX_ACCEL);
+		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(2000, 1000, MAX_VEL,MAX_ACCEL);
 		if (useValidInfrastructure) {
-			tec.addComparator(new Comparator<RobotAtCriticalSection> () {
+			/*tec.addComparator(new Comparator<RobotAtCriticalSection> () {
 				@Override
 				public int compare(RobotAtCriticalSection o1, RobotAtCriticalSection o2) {
 					Random rand = new Random(Calendar.getInstance().getTimeInMillis());
 					return rand.nextInt(2)-1;
 				}
+			});*/
+			tec.addComparator(new Comparator<RobotAtCriticalSection> () {
+			@Override
+			public int compare(RobotAtCriticalSection o1, RobotAtCriticalSection o2) {
+				CriticalSection cs = o1.getCriticalSection();
+				RobotReport robotReport1 = o1.getRobotReport();
+				RobotReport robotReport2 = o2.getRobotReport();
+				return ((cs.getTe1Start()-robotReport1.getPathIndex())-(cs.getTe2Start()-robotReport2.getPathIndex()));
+			}
 			});
 			tec.addComparator(new Comparator<RobotAtCriticalSection> () {
 				@Override
 				public int compare(RobotAtCriticalSection o1, RobotAtCriticalSection o2) {
-					CriticalSection cs = o1.getCriticalSection();
-					RobotReport robotReport1 = o1.getRobotReport();
-					RobotReport robotReport2 = o2.getRobotReport();
-					return ((cs.getTe1Start()-robotReport1.getPathIndex())-(cs.getTe2Start()-robotReport2.getPathIndex()));
+					return(o2.getRobotReport().getRobotID()-o1.getRobotReport().getRobotID());
 				}
 			});
 		}
 		
 		tec.setUseInternalCriticalPoints(false);
-		tec.setYieldIfParking(false);
-		tec.setBreakDeadlocksByReordering(false);
-		tec.setBreakDeadlocksByReplanning(true);
+		tec.setYieldIfParking(true);
+		//tec.setBreakDeadlocksByReordering(true);
+		//tec.setBreakDeadlocksByReplanning(true);
+		//tec.setBreakDeadlocks(false);
+		tec.setAvoidDeadlocksGlobally(true);
 		tec.setCheckCollisions(true);
 		//MetaCSPLogging.setLevel(TrajectoryEnvelopeCoordinator.class, Level.FINEST);
 		
 		//Setup the network parameters
-		NetworkConfiguration.setDelays(10, 2000);
-		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0.2;
+		NetworkConfiguration.setDelays(10, 500);
+		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0;
 		tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, NetworkConfiguration.getMaximumTxDelay(), 1e-2);
 
-		Coordinate footprint1 = new Coordinate(-1.0,0.5);
-		Coordinate footprint2 = new Coordinate(1.0,0.5);
-		Coordinate footprint3 = new Coordinate(1.0,-0.5);
-		Coordinate footprint4 = new Coordinate(-1.0,-0.5);
+		double xl = .5; //1.0
+		double yl = .5; //.5
+		Coordinate footprint1 = new Coordinate(-xl,yl);
+		Coordinate footprint2 = new Coordinate(xl,yl);
+		Coordinate footprint3 = new Coordinate(xl,-yl);
+		Coordinate footprint4 = new Coordinate(-xl,-yl);
 		tec.setDefaultFootprint(footprint1, footprint2, footprint3, footprint4);
 
 		//Need to setup infrastructure that maintains the representation
@@ -123,11 +136,11 @@ public class RandomPathsInMap {
 			
 		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
 		//viz.setMap(yamlFile);
-		//RVizVisualization viz = new RVizVisualization();
-		//viz.setMap(yamlFile);
-		BrowserVisualization viz = new BrowserVisualization();
+		RVizVisualization viz = new RVizVisualization();
 		viz.setMap(yamlFile);
-		viz.setInitialTransform(20.0, 9.0, 2.0);
+		//BrowserVisualization viz = new BrowserVisualization();
+		//viz.setMap(yamlFile);
+		//viz.setInitialTransform(20.0, 9.0, 2.0);
 		tec.setVisualization(viz);
 		
 		Missions.loadLocationAndPathData("missions/icaps_locations_and_paths_4.txt");
@@ -241,7 +254,7 @@ public class RandomPathsInMap {
 
 		//Sleep a little so we can start Rviz and perhaps screencapture ;)
 		//Create rviz config file by uncommenting the following line
-		RVizVisualization.writeRVizConfigFile(robotIDs);
+		//RVizVisualization.writeRVizConfigFile(robotIDs);
 		//To visualize, run "rosrun rviz rviz -d ~/config.rviz"
 		Thread.sleep(5000);
 		
@@ -256,7 +269,7 @@ public class RandomPathsInMap {
 					boolean firstTime = true;
 					int sequenceNumber = 0;
 					int totalIterations = 20;
-					if (robotID%2 == 0) totalIterations = 19;
+					//if (robotID%2 == 0) totalIterations = 19;
 					String lastDestination = "R_"+(robotID-1);
 					long startTime = Calendar.getInstance().getTimeInMillis();
 					while (true && totalIterations > 0) {
@@ -274,15 +287,13 @@ public class RandomPathsInMap {
 								firstTime = false;
 								Mission m = Missions.getMission(robotID,sequenceNumber);
 								tec.addMissions(m);
-								tec.computeCriticalSections();
-								tec.startTrackingAddedMissions();
 								sequenceNumber = (sequenceNumber+1)%Missions.getMissions(robotID).size();
 								lastDestination = m.getToLocation();
 								totalIterations--;
 							}
 						}
 						//Sleep for a little (2 sec)
-						try { Thread.sleep(2000); }
+						try { Thread.sleep(tec.getControlPeriod()); }
 						catch (InterruptedException e) { e.printStackTrace(); }
 					}
 					System.out.println("Robot" + robotID + " is done!");
@@ -292,7 +303,7 @@ public class RandomPathsInMap {
 			t.start();
 		}
 		//Sleep for a little (2 sec)
-		try { Thread.sleep(1000); }
+		try { Thread.sleep(tec.getControlPeriod()); }
 		catch (InterruptedException e) { e.printStackTrace(); }
 
 	}

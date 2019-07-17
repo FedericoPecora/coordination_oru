@@ -110,11 +110,7 @@ public class ThreeRobotsFast {
 						Mission m = Missions.getMission(robotID, iteration%Missions.getMissions(robotID).size());
 						synchronized(tec) {
 							//addMission returns true iff the robot was free to accept a new mission
-							if (tec.addMissions(m)) {
-								tec.computeCriticalSections();
-								tec.startTrackingAddedMissions();
-								iteration++;
-							}
+							if (tec.addMissions(m)) iteration++;
 						}
 						//Sleep for a little (2 sec)
 						try { Thread.sleep(2000); }

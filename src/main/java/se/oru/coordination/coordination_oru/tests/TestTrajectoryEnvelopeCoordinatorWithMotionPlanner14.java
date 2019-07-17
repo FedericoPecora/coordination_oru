@@ -107,22 +107,15 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner14 {
 		System.out.println("Added missions " + Missions.getMissions());
 
 		tec.addMissions(Missions.getMission(1, 0), Missions.getMission(2, 0));
-		tec.computeCriticalSections();
-		tec.startTrackingAddedMissions();
 		
 		Thread.sleep(20000);
 
 		tec.addMissions(Missions.getMission(2, 1));
-		tec.computeCriticalSections();
-		tec.startTrackingAddedMissions();
 
 		Thread.sleep(10000);
 
 		tec.addMissions(Missions.getMission(2, 2));
-		tec.computeCriticalSections();
-		tec.startTrackingAddedMissions();
 
-		
 
 	}
 

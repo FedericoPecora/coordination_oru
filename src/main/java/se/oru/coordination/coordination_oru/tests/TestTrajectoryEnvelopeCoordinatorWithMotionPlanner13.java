@@ -111,8 +111,6 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner13 {
 		System.out.println("Added missions " + Missions.getMissions());
 
 		tec.addMissions(Missions.getMission(1, 0), Missions.getMission(2, 0));
-		tec.computeCriticalSections();
-		tec.startTrackingAddedMissions();
 		
 		while (!tec.isFree(2)) {
 			Thread.sleep(100);
@@ -121,8 +119,6 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner13 {
 		Thread.sleep(5000);
 		
 		tec.addMissions(Missions.getMission(2, 1));
-		tec.computeCriticalSections();
-		tec.startTrackingAddedMissions();
 
 	}
 

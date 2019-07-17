@@ -129,8 +129,6 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner10 {
 						synchronized(tec) {
 							//addMission returns true iff the robot was free to accept a new mission
 							if (tec.addMissions(m)) {
-								tec.computeCriticalSections();
-								tec.startTrackingAddedMissions();
 								iteration++;
 							}
 						}
