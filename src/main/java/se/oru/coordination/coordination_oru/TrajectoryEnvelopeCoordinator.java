@@ -422,7 +422,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					}
 					depsAlongCycle.add(dep);
 					deadlockedRobots.add(dep.getWaitingRobotID());
-					if (spawnedThreadRobotSet.contains(dep.getWaitingRobotID())) {
+					if (spawnedThreadRobotSet.contains(dep.getWaitingRobotID()) || spawnedThreadRobotSet.contains(dep.getDrivingRobotID())) {
 						spawnThread = false;
 						break;
 					}
@@ -629,7 +629,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						
 						boolean update = true;
 						synchronized(lockedRobots) {
-							if (lockedRobots.containsValue(cs)) {
+							if (lockedRobots.containsValue(cs) && communicatedCPs.containsKey(robotTracker1) && communicatedCPs.containsKey(robotTracker2)) {
 								update = false;
 							}
 						}
@@ -943,8 +943,25 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			for (int otherRobotID : allRobots) if (otherRobotID != robotID) otherRobotIDs[counter++] = otherRobotID;
 			
 			//FIXME not synchronized on current dependencies
-			Geometry[] obstacles = getObstaclesInCriticalPoints(otherRobotIDs);
+			Geometry[] ostacles = getObstaclesInCriticalPoints(otherRobotIDs);
+			Geometry[] otherOstacles = getObstaclesInCriticalPoints(otherRobotIDs);
 			
+			//to get a different path, add an obstacle along this robot path
+			Geometry placementWaiting = makeObstacles(robotID, currentWaitingPose)[0]; 
+			Geometry obstacleAlongOwnPath = null;
+			for (int i = currentWaitingIndex+1; i < oldPath.length; i++) {
+				Geometry obstacleAlongOwnPathTmp = makeObstacles(robotID, oldPath[i].getPose())[0];
+				if (!placementWaiting.intersects(obstacleAlongOwnPathTmp) && i < oldPath.length-1) {
+					obstacleAlongOwnPath = makeObstacles(robotID, oldPath[i+1].getPose())[0];;
+					break;
+				}
+			}
+			if (obstacleAlongOwnPath == null) continue;
+			
+			Geometry[] obstacles = new Geometry[otherOstacles.length+1];
+			for (int i = 0; i < obstacles.length-1; i++) obstacles[i] = otherOstacles[i];
+			obstacles[obstacles.length-1] = obstacleAlongOwnPath;
+					
 			metaCSPLogger.info("Attempting to re-plan path of Robot" + robotID + " (with obstacles for robots " + Arrays.toString(otherRobotIDs) + ")...");
 			AbstractMotionPlanner mp = null;
 			if (this.motionPlanners.containsKey(robotID)) mp = this.motionPlanners.get(robotID);
@@ -1519,7 +1536,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						//e.g. due to a re-plan
 						boolean update = true;
 						synchronized(lockedRobots) {
-							if (lockedRobots.containsValue(cs)) {
+							if (lockedRobots.containsValue(cs) && communicatedCPs.containsKey(robotTracker1) && communicatedCPs.containsKey(robotTracker2)) {
 								update = false;
 								metaCSPLogger.info("lockedRobots contains cs " + cs + ", skip update.");
 							}
