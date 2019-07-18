@@ -82,7 +82,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	protected boolean avoidDeadlockGlobally = false;
 	protected AtomicInteger unaliveStatesDetected = new AtomicInteger(0);
 	protected AtomicInteger unaliveStatesAvoided = new AtomicInteger(0);
-	protected List<List<Integer>> unsafeCyclesOld = new List<List<Integer>>();
+	protected List<List<Integer>> unsafeCyclesOld = new ArrayList<List<Integer>>();
 	protected AtomicInteger replanningTrialsCounter = new AtomicInteger(0);
 	protected AtomicInteger successfulReplanningTrialsCounter = new AtomicInteger(0);
 		
