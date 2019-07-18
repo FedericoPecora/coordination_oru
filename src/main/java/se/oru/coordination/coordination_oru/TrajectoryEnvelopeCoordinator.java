@@ -943,7 +943,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			for (int otherRobotID : allRobots) if (otherRobotID != robotID) otherRobotIDs[counter++] = otherRobotID;
 			
 			//FIXME not synchronized on current dependencies
-			Geometry[] ostacles = getObstaclesInCriticalPoints(otherRobotIDs);
+			//Geometry[] obstacles = getObstaclesInCriticalPoints(otherRobotIDs);
 			Geometry[] otherOstacles = getObstaclesInCriticalPoints(otherRobotIDs);
 			
 			//to get a different path, add an obstacle along this robot path
