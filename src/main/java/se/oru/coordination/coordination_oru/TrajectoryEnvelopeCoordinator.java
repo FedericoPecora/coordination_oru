@@ -896,7 +896,13 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			metaCSPLogger.info("Attempting to re-plan path of Robot" + robotID + " (with obstacles for robots " + Arrays.toString(otherRobotIDs) + ")...");
 			AbstractMotionPlanner mp = null;
 			if (this.motionPlanners.containsKey(robotID)) mp = this.motionPlanners.get(robotID);
-			else mp = this.defaultMotionPlanner;
+			else {
+				mp = this.defaultMotionPlanner;
+				if (mp == null) {
+					metaCSPLogger.severe("Default motion planner is not initialized.");
+					continue;
+				}
+			}
 			synchronized (mp) {
 				PoseSteering[] newPath = doReplanning(mp, currentWaitingPose, currentWaitingGoal, obstacles);
 				if (newPath != null && newPath.length > 0) {
@@ -1094,6 +1100,12 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 * 	 * @return true if the envelope is successfully truncated.
 	 */
 	public boolean truncateEnvelope(int robotID) {
+		
+		if(!this.motionPlanners.containsKey(robotID) && this.getDefaultMotionPlanner() == null) {
+			metaCSPLogger.severe("Motion planner not initialized (neither specific for Robot" + robotID + ", nor a default one).");
+			return false;
+		}
+		
 		synchronized (solver) {
 			
 			synchronized (lockedRobots) {
@@ -1126,6 +1138,12 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 * @return true if the envelope is successfully reversed.
 	 */
 	public boolean reverseEnvelope(int robotID) {
+		
+		if(!this.motionPlanners.containsKey(robotID) && this.getDefaultMotionPlanner() == null) {
+			metaCSPLogger.severe("Motion planner not initialized (neither specific for Robot" + robotID + ", nor a default one).");
+			return false;
+		}
+		
 		synchronized (solver) {
 			
 			synchronized (lockedRobots) {

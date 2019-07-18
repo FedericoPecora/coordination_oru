@@ -107,6 +107,7 @@ public class nRobotsDeadlock {
 		rsp.setFootprint(tec.getDefaultFootprint());
 		rsp.setTurningRadius(4.0);
 		rsp.setDistanceBetweenPathPoints(0.5);
+		tec.setDefaultMotionPlanner(rsp);
 			
 		//Place robots in their initial locations (looked up in the data file that was loaded above)
 		// -- creates a trajectory envelope for each location, representing the fact that the robot is parked
