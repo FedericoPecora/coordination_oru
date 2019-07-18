@@ -1103,8 +1103,11 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				if (!useStaticReplan) {
 					for (CriticalSection cs : CSToDepsOrder.keySet()) {
 						if (cs.getTe1().getRobotID() == robotID && cs.getTe1Start() <= breakingPathIndex || 
-								cs.getTe2().getRobotID() == robotID && cs.getTe2Start() <= breakingPathIndex) 
-							holdingCS.put(cs, CSToDepsOrder.get(cs));
+								cs.getTe2().getRobotID() == robotID && cs.getTe2Start() <= breakingPathIndex) {
+							Pair<Integer,Integer> order = new Pair<Integer,Integer>(CSToDepsOrder.get(cs).getFirst(), CSToDepsOrder.get(cs).getSecond());
+							holdingCS.put(cs, order);
+							metaCSPLogger.info("Saving " + order.toString());
+						}
 					}
 				}
 				//---------------------------------------------------------
