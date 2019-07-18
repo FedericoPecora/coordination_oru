@@ -377,8 +377,8 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 					tracker.setCriticalPoint(criticalPoint, externalCPCounters.get(tracker)%Integer.MAX_VALUE);
 					
 					//for statistics
-					totalMsgsSent.set(totalMsgsSent.get()+1); 
-					if (retransmitt) totalMsgsReTx.set(totalMsgsReTx.get()+1);
+					totalMsgsSent.incrementAndGet(); 
+					if (retransmitt) totalMsgsReTx.incrementAndGet();
 					
 					//metaCSPLogger.info("Sent critical point " + criticalPoint + " to Robot" + robotID +".");
 				}
@@ -586,9 +586,9 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 * @return A list of {@link Dependency} objects.
 	 */
 	public HashSet<Dependency> getCurrentDependencies() {
-		//synchronized(currentDependencies) {
+		synchronized(currentDependencies) {
 			return this.currentDependencies;
-		//}
+		}
 	}
 
 	/**
