@@ -871,6 +871,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			
 			//get current dependencies
 			synchronized(currentDependencies) {
+				
+				//FIXME: already synchronized (so maybe is ok currentDependencies = computeClosestDependencies(currentDeps, artificialDependencies);)
 				HashSet<Dependency> closestDeps  = computeClosestDependencies(currentDeps, artificialDependencies);
 				currentDependencies.clear();
 				currentDependencies.addAll(closestDeps);
@@ -1986,7 +1988,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							if (!safe) {
 								depsGraph = backupDepsGraph;
 								
-								//fill without changing the container
+								//fill without changing the container (not sure they are synchronized)
 								HashSet<String> edgesToRemove = new HashSet<String>();
 								edgesToRemove.addAll(currentOrdersGraph.edgeSet());
 								currentOrdersGraph.removeAllEdges(edgesToRemove);
@@ -1997,7 +1999,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 								for (int v : backupGraph.vertexSet()) currentOrdersGraph.addVertex(v);
 								for (String e : backupGraph.edgeSet()) currentOrdersGraph.addEdge(backupGraph.getEdgeSource(e), backupGraph.getEdgeTarget(e), e);
 								
-								//fill without changing the container
+								//FIXME HashMAps are synchronized so probably it is ok to do 
+								//currentCyclesList = backupcurrentCyclesList;
 								currentCyclesList.clear();
 								currentCyclesList.putAll(backupcurrentCyclesList);
 								
@@ -2023,6 +2026,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			//update and communicate critical points
 			//get current dependencies
 			synchronized(currentDependencies) {
+				
+				//FIXME: already synchronized (so maybe is ok currentDependencies = computeClosestDependencies(currentDeps, artificialDependencies);)
 				HashSet<Dependency> closestDeps  = computeClosestDependencies(currentDeps, artificialDependencies);
 				currentDependencies.clear();
 				currentDependencies.addAll(closestDeps);
