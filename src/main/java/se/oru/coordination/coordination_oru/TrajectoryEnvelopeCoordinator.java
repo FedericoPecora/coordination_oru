@@ -270,7 +270,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		return g;
 	}
 	
-	private HashSet<Dependency> updateCurrentDependencies(HashMap<Integer,TreeSet<Dependency>> allDeps, HashMap<Integer, TreeSet<Dependency>> artificialDeps) {
+	private HashSet<Dependency> computeClosestDependencies(HashMap<Integer,TreeSet<Dependency>> allDeps, HashMap<Integer, TreeSet<Dependency>> artificialDeps) {
 		
 		HashSet<Dependency> closestDeps = new HashSet<Dependency>();
 		
@@ -404,7 +404,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						depsToCSTmp.put(revDep, cs);
 
 						//update currentDeps
-						HashSet<Dependency> currentDepsTmp = updateCurrentDependencies(allDepsTmp, artificialDeps);
+						HashSet<Dependency> currentDepsTmp = computeClosestDependencies(allDepsTmp, artificialDeps);
 						SimpleDirectedGraph<Integer,Dependency> gTmp = new SimpleDirectedGraph<Integer, Dependency>(Dependency.class);
 						gTmp = depsToGraph(gTmp, currentDepsTmp);
 						
@@ -421,10 +421,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							g = gTmp;
 							currentDependencies.clear();
 							currentDependencies.addAll(currentDepsTmp);				
-							allDeps.clear();
-							allDeps.putAll(allDepsTmp);
-							unsafeCycles.clear();
-							unsafeCycles.addAll(unsafeCyclesTmp);					
+							allDeps = allDepsTmp;
+							unsafeCycles = unsafeCyclesTmp;					
 							CSToDepsOrder.clear();
 							CSToDepsOrder.putAll(CSToDepsOrderTmp);							
 							depsToCS.clear();
@@ -869,10 +867,13 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				//increment the counter
 				this.criticalSectionCounter.addAndGet(toRemove.size());
 			}
+
 			
 			//get current dependencies
 			synchronized(currentDependencies) {
-				currentDependencies = updateCurrentDependencies(currentDeps, artificialDependencies);
+				HashSet<Dependency> closestDeps  = computeClosestDependencies(currentDeps, artificialDependencies);
+				currentDependencies.clear();
+				currentDependencies.addAll(closestDeps);
 				
 				//find cycles and revise dependencies if necessary
 				currentDeps = findCurrentCycles(currentDeps, artificialDependencies, currentReversibleDependencies, currentReports, robotIDs);
@@ -1984,8 +1985,22 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							}
 							if (!safe) {
 								depsGraph = backupDepsGraph;
-								currentOrdersGraph = backupGraph;
-								currentCyclesList = backupcurrentCyclesList;
+								
+								//fill without changing the container
+								HashSet<String> edgesToRemove = new HashSet<String>();
+								edgesToRemove.addAll(currentOrdersGraph.edgeSet());
+								currentOrdersGraph.removeAllEdges(edgesToRemove);
+								HashSet<Integer> verticesToRemove = new HashSet<Integer>();
+								verticesToRemove.addAll(currentOrdersGraph.vertexSet());
+								currentOrdersGraph.removeAllEdges(edgesToRemove);
+								currentOrdersGraph.removeAllVertices(verticesToRemove);
+								for (int v : backupGraph.vertexSet()) currentOrdersGraph.addVertex(v);
+								for (String e : backupGraph.edgeSet()) currentOrdersGraph.addEdge(backupGraph.getEdgeSource(e), backupGraph.getEdgeTarget(e), e);
+								
+								//fill without changing the container
+								currentCyclesList.clear();
+								currentCyclesList.putAll(backupcurrentCyclesList);
+								
 								metaCSPLogger.finest("Restore previous precedence " + depOld + ".");
 								unaliveStatesAvoided.incrementAndGet();
 							}
@@ -2008,7 +2023,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			//update and communicate critical points
 			//get current dependencies
 			synchronized(currentDependencies) {
-				currentDependencies = updateCurrentDependencies(currentDeps, artificialDependencies);
+				HashSet<Dependency> closestDeps  = computeClosestDependencies(currentDeps, artificialDependencies);
+				currentDependencies.clear();
+				currentDependencies.addAll(closestDeps);
 				
 				//The global strategy builds upon the assumption that robots do not start from critical section. 
 				//If this is not the case, them pre-loading may bring to unsafe cycles. 
