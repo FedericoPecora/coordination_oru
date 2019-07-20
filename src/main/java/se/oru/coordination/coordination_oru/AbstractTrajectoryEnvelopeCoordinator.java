@@ -956,8 +956,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 						if (envelopesToTrack.get(i).getRobotID() != currentParkingEnvelopes.get(j).getRobotID()) {
 							int minStart1 = currentReports.containsKey(envelopesToTrack.get(i).getRobotID()) ? currentReports.get(envelopesToTrack.get(i).getRobotID()).getPathIndex() : -1;
 							int minStart2 = currentReports.containsKey(currentParkingEnvelopes.get(j).getRobotID()) ? currentReports.get(currentParkingEnvelopes.get(j).getRobotID()).getPathIndex() : -1;
-							for (CriticalSection cs : getCriticalSections(envelopesToTrack.get(i), minStart1,
-									currentParkingEnvelopes.get(j), minStart2)) {
+							for (CriticalSection cs : getCriticalSections(envelopesToTrack.get(i), minStart1, currentParkingEnvelopes.get(j), minStart2)) {
 									this.allCriticalSections.add(cs);
 									//metaCSPLogger.info("computeCriticalSections(): add (4) " + cs);
 							}
@@ -991,15 +990,16 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			for (CriticalSection cs1 : this.allCriticalSections) {
 				for (CriticalSection cs2 : this.allCriticalSections) {
 					//If CS1 and CS2 are about the same pair of robots
-					if (!cs1.equals(cs2) && cs1.getTe1().equals(cs2.getTe1()) && cs1.getTe2().equals(cs2.getTe2())) {
+					if (!cs1.equals(cs2) && ((cs1.getTe1().equals(cs2.getTe1()) && cs1.getTe2().equals(cs2.getTe2())
+							|| (cs1.getTe1().equals(cs2.getTe2()) && cs1.getTe2().equals(cs2.getTe2()))))) {
 						int start11 = cs1.getTe1Start();
 						int start12 = cs1.getTe2Start();
-						int start21 = cs2.getTe1Start();
-						int start22 = cs2.getTe2Start();
+						int start21 = cs1.getTe1().equals(cs2.getTe1()) ? cs2.getTe1Start() : cs2.getTe2Start();
+						int start22 = cs1.getTe1().equals(cs2.getTe1()) ? cs2.getTe2Start() : cs2.getTe1Start();
 						int end11 = cs1.getTe1End();
 						int end12 = cs1.getTe2End();
-						int end21 = cs2.getTe1End();
-						int end22 = cs2.getTe2End();
+						int end21 = cs1.getTe1().equals(cs2.getTe1()) ? cs2.getTe1End() : cs2.getTe2End();
+						int end22 = cs1.getTe1().equals(cs2.getTe1()) ? cs2.getTe2End() : cs2.getTe1End();
 						//CS1 before CS2
 						if (start11 < start21) {
 							//CS1 ends after CS2 starts
@@ -1051,14 +1051,15 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				CriticalSection cs2 = allCriticalSectionsList.get(j);
 				int start11 = cs1.getTe1Start();
 				int start12 = cs1.getTe2Start();
-				int start21 = cs2.getTe1Start();
-				int start22 = cs2.getTe2Start();
+				int start21 = cs1.getTe1().equals(cs2.getTe1()) ? cs2.getTe1Start() : cs2.getTe2Start();
+				int start22 = cs1.getTe1().equals(cs2.getTe1()) ? cs2.getTe2Start() : cs2.getTe1Start();
 				int end11 = cs1.getTe1End();
 				int end12 = cs1.getTe2End();
-				int end21 = cs2.getTe1End();
-				int end22 = cs2.getTe2End();
+				int end21 = cs1.getTe1().equals(cs2.getTe1()) ? cs2.getTe1End() : cs2.getTe2End();
+				int end22 = cs1.getTe1().equals(cs2.getTe1()) ? cs2.getTe2End() : cs2.getTe1End();
 				//If CS1 and CS2 are about the same pair of robots
-				if (!cs1.equals(cs2) && cs1.getTe1().equals(cs2.getTe1()) && cs1.getTe2().equals(cs2.getTe2())) {
+				if (!cs1.equals(cs2) && ((cs1.getTe1().equals(cs2.getTe1()) && cs1.getTe2().equals(cs2.getTe2())
+						|| (cs1.getTe1().equals(cs2.getTe2()) && cs1.getTe2().equals(cs2.getTe2()))))) {
 					//CS1 and CS2 are identical
 					if (start11 == start21 && end11 == end21 && start12 == start22 && end12 == end22) {
 						toRemove.add(cs1);
