@@ -93,8 +93,6 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 			this.overallDistance = totalDistance;
 			this.internalCriticalPoints.clear();
 			this.computeInternalCriticalPoints();
-			this.slowDownProfile = this.getSlowdownProfile();
-			this.positionToSlowDown = this.computePositionToSlowDown();
 			reportsList.clear();
 			reportTimeLists.clear(); //semplify to avoid discontinuities ... to be fixed.
 		}
@@ -170,8 +168,8 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 				for (Long time : reportTimeToRemove) reportTimeLists.remove(time);
 				for (RobotReport report : reportToRemove) reportsList.remove(report);
 				
-				reportsList.add(0, getRobotReport()); //new are added in front of the queue.
-				reportTimeLists.add(0, timeOfArrival);
+				reportsList.add(0, getRobotReport()); //The new one is the one that will arrive later and is added in front of the queue.
+				reportTimeLists.add(0, timeOfArrival); //The oldest is in the end.
 			}
 			
 			//Keep alive just the most recent message before now.
@@ -184,7 +182,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 				ArrayList<RobotReport> reportToRemove = new ArrayList<RobotReport>();
 				
 				for (int index = reportTimeLists.size()-1; index > 0; index--) {
-					if (reportTimeLists.get(index) > timeNow) break;
+					if (reportTimeLists.get(index) > timeNow) break; //the first in the future
 					if (reportTimeLists.get(index) < timeNow && reportTimeLists.get(index-1) <= timeNow) {
 						reportToRemove.add(reportsList.get(index));
 						reportTimeToRemove.add(reportTimeLists.get(index));
