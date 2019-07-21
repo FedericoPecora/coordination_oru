@@ -1195,7 +1195,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 										int end12 = cs1.getTe1().getRobotID() == robotID ? cs1.getTe2End() : cs1.getTe1End();
 										int end21 = cs2.getTe1().getRobotID() == robotID ? cs2.getTe1End() : cs2.getTe2End();
 										int end22 = cs2.getTe1().getRobotID() == robotID ? cs2.getTe2End() : cs2.getTe1End();
-										if (start21 <= start11 && start11 <= end21 && (start22 <= start12 && start12 <= end22) || (start22 <= end12 && end12 <= end22)) {
+										if (start21 <= start11 && start11 <= end21 && (start22 <= start12 && start12 <= end22 || start22 <= end12 && end12 <= end22)) {
 										found = true;
 										metaCSPLogger.info("Restoring  " + holdingCS.get(cs2).toString());
 										CSToDepsOrder.put(cs1, holdingCS.get(cs2));
