@@ -1003,30 +1003,55 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 						int end21 = cs1.getTe1().equals(cs2.getTe1()) ? cs2.getTe1End() : cs2.getTe2End();
 						int end22 = cs1.getTe1().equals(cs2.getTe1()) ? cs2.getTe2End() : cs2.getTe1End();
 						//CS1 before CS2
-						if (start11 < start21) {
+						if (start11 < start21 && end11 >= start21) {
 							//CS1 ends after CS2 starts
-							if (end11 >= start21) {
-								toRemove.add(cs1);
-								toRemove.add(cs2);
-								int newStart1 = start11;
-								int newEnd1 = end21;
-								int newStart2 = -1;
-								int newEnd2 = -1;
-								if (start12 < start22) {
-									newStart2 = start12;
-									newEnd2 = end22;
-								}
-								else {
-									newStart2 = start22;
-									newEnd2 = end12;
-								}
-								CriticalSection newCS = new CriticalSection(cs1.getTe1(), cs1.getTe2(), newStart1, newStart2, newEnd1, newEnd2); 
-								toAdd.add(newCS);
-								metaCSPLogger.finest("(Pass " + passNum + ") MERGED (ends-after-start): " + cs1 + " + " + cs2 + " = " + newCS);
-							}
+							toRemove.add(cs1);
+							toRemove.add(cs2);
+							int newStart1 = start11;
+							int newEnd1 = Math.max(end11, end21);
+							int newStart2 = Math.min(start12, start22);
+							int newEnd2 = Math.max(end12, end22);
+							CriticalSection newCS = new CriticalSection(cs1.getTe1(), cs1.getTe2(), newStart1, newStart2, newEnd1, newEnd2); 
+							toAdd.add(newCS);
+							metaCSPLogger.finest("(Pass " + passNum + ") MERGED (ends-after-start): " + cs1 + " + " + cs2 + " = " + newCS);
+						}
+						else if (start21 < start11 && end21 >= start11) {
+							toRemove.add(cs1);
+							toRemove.add(cs2);
+							int newStart1 = start21;
+							int newEnd1 = Math.max(end11, end21);
+							int newStart2 = Math.min(start12, start22);
+							int newEnd2 = Math.max(end12, end22);
+							CriticalSection newCS = new CriticalSection(cs1.getTe1(), cs1.getTe2(), newStart1, newStart2, newEnd1, newEnd2); 
+							toAdd.add(newCS);
+							metaCSPLogger.finest("(Pass " + passNum + ") MERGED (ends-after-start): " + cs1 + " + " + cs2 + " = " + newCS);
+						}
+						else if (start12 < start22 && end12 >= start22) {
+							toRemove.add(cs1);
+							toRemove.add(cs2);
+							int newStart2 = start12;
+							int newEnd2 = Math.max(end12, end22);
+							int newStart1 = Math.min(start11, start21);
+							int newEnd1 = Math.max(end11, end21);
+							CriticalSection newCS = new CriticalSection(cs1.getTe1(), cs1.getTe2(), newStart1, newStart2, newEnd1, newEnd2); 
+							toAdd.add(newCS);
+							metaCSPLogger.finest("(Pass " + passNum + ") MERGED (ends-after-start): " + cs1 + " + " + cs2 + " = " + newCS);
+
+						}
+						else if (start22 < start12 && end22 >= start12) {
+							toRemove.add(cs1);
+							toRemove.add(cs2);
+							int newStart2 = start22;
+							int newEnd2 = Math.max(end22, end12);
+							int newStart1 = Math.min(start11, start21);
+							int newEnd1 = Math.max(end11, end21);
+							CriticalSection newCS = new CriticalSection(cs1.getTe1(), cs1.getTe2(), newStart1, newStart2, newEnd1, newEnd2); 
+							toAdd.add(newCS);
+							metaCSPLogger.finest("(Pass " + passNum + ") MERGED (ends-after-start): " + cs1 + " + " + cs2 + " = " + newCS);
+
 						}
 					}
-				}	
+				}
 			}
 			for (CriticalSection cs : toRemove) {
 				this.allCriticalSections.remove(cs);
