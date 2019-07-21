@@ -261,7 +261,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	}
 	
 
-	private SimpleDirectedGraph<Integer,Dependency> depsToGraph(SimpleDirectedGraph<Integer,Dependency> g, HashSet<Dependency> deps) {
+	private SimpleDirectedGraph<Integer,Dependency> depsToGraph(HashSet<Dependency> deps) {
+		SimpleDirectedGraph<Integer,Dependency> g = new SimpleDirectedGraph<Integer,Dependency>(Dependency.class);
 		for (Dependency dep : deps) {
 			if (!g.containsVertex(dep.getWaitingRobotID())) g.addVertex(dep.getWaitingRobotID());
 			if (!g.containsVertex(dep.getDrivingRobotID())) g.addVertex(dep.getDrivingRobotID());
@@ -324,8 +325,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		//    Exists (u,v,dep1) and (v,w,dep2) such that
 		//      v.dep2.waitingpoint <= v.dep1.releasingpoint
 
-		SimpleDirectedGraph<Integer,Dependency> g = new SimpleDirectedGraph<Integer, Dependency>(Dependency.class);
-		g = depsToGraph(g, currentDependencies);
+		SimpleDirectedGraph<Integer,Dependency> g = depsToGraph(currentDependencies);
 		List<List<Integer>> unsafeCycles = findSimpleUnsafeCycles(g);
 		
 		// ... keep tracks of size and old cycles for statistics
@@ -405,8 +405,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 						//update currentDeps
 						HashSet<Dependency> currentDepsTmp = computeClosestDependencies(allDepsTmp, artificialDeps);
-						SimpleDirectedGraph<Integer,Dependency> gTmp = new SimpleDirectedGraph<Integer, Dependency>(Dependency.class);
-						gTmp = depsToGraph(gTmp, currentDepsTmp);
+						SimpleDirectedGraph<Integer,Dependency> gTmp = depsToGraph(currentDepsTmp);
 						
 						//compute cycles again. If the number of cycles is lower, keep this solution
 						List<List<Integer>> unsafeCyclesTmp = findSimpleUnsafeCycles(gTmp);
@@ -2058,8 +2057,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				}*/
 				
 				//re-plan for the set of robots that are currently in a critical section
-				SimpleDirectedGraph<Integer,Dependency> g = new SimpleDirectedGraph<Integer,Dependency>(Dependency.class);
-				g = depsToGraph(g, currentDependencies);
+				SimpleDirectedGraph<Integer,Dependency> g = depsToGraph(currentDependencies);
 				List<List<Integer>> unsafeCycles = findSimpleUnsafeCycles(g);
 				unaliveStatesDetected.addAndGet(unsafeCycles.size());
 				

@@ -1696,9 +1696,10 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 							computeCriticalSections();
 							startTrackingAddedMissions();
 						}
+						updateDependencies();
+						
 						if (!quiet) printStatistics();
 						if (overlay) overlayStatistics();
-						updateDependencies();
 					}
 
 					//Sleep a little...
@@ -1718,6 +1719,30 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		};
 		inference.setPriority(Thread.MAX_PRIORITY);
 		inference.start();
+	}
+	
+	/**
+	 * Assuming messages delays to be symmetric, try to restore the order of traversing ech critical section.
+	 * Note that if the previous assumption does not hold, then the result may not be right.
+	 * @param cs The critical section for which we are trying to restore the order.
+	 * @param rr1 Last report of the first robot.
+	 * @param rr2 Last report of the second robot.
+	 * @return which robot is probably ahead (surely right in case of symmetric delays)
+	 */
+	private boolean isProbablyAhead(CriticalSection cs, RobotReport rr1, RobotReport rr2) {
+		//Robot 1 is ahead --> return true
+		PoseSteering[] pathRobot1 = cs.getTe1().getTrajectory().getPoseSteering();
+		PoseSteering[] pathRobot2 = cs.getTe2().getTrajectory().getPoseSteering();
+		double dist1 = 0.0;
+		double dist2 = 0.0;
+		for (int i = cs.getTe1Start(); i < rr1.getPathIndex()-1; i++) {
+			dist1 += pathRobot1[i].getPose().getPosition().distance(pathRobot1[i+1].getPose().getPosition());
+		}
+		for (int i = cs.getTe2Start(); i < rr2.getPathIndex()-1; i++) {
+			dist2 += pathRobot2[i].getPose().getPosition().distance(pathRobot2[i+1].getPose().getPosition());
+		}
+		//metaCSPLogger.finest("Dist R" + rr1.getRobotID() + " = " + dist1 + "; Dist R" + rr2.getRobotID() + " = " + dist2);
+		return (dist1 > dist2);
 	}
 
 	/**
