@@ -1329,26 +1329,6 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			if (edge == null) return;
 			
 			if (currentOrdersGraph.getEdge(edge.getFirst(), edge.getSecond()) != null) {
-				if (currentCyclesList.containsKey(edge)) {
-					HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>> toRemove = new HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>>();
-					for (ArrayList<Integer> cycle : currentCyclesList.get(edge)) {
-						for (int i = 0; i < cycle.size(); i++) {
-							Pair<Integer,Integer> otherEdge = new Pair<Integer,Integer>(cycle.get(i),cycle.get(i < cycle.size()-1 ? i+1 : 0));
-							if (!otherEdge.equals(edge)) {
-								if (!toRemove.containsKey(otherEdge)) toRemove.put(otherEdge, new HashSet<ArrayList<Integer>>());
-								toRemove.get(otherEdge).add(cycle);
-							}
-						}
-					}
-					
-					for (Pair<Integer, Integer> key : toRemove.keySet()) {
-						if (currentCyclesList.containsKey(key)) {
-							currentCyclesList.get(key).removeAll(toRemove.get(key));
-							if (currentCyclesList.get(key).isEmpty()) currentCyclesList.remove(key);
-						}
-					}
-					currentCyclesList.remove(edge);
-				}
 				//hashcode: "s" + startVertex + "t" + targetVertex + "c" + number of edges from startVertex to targetVertex
 				String hashCode = currentOrdersGraph.getEdge(edge.getFirst(), edge.getSecond());
 				int cmark = hashCode.indexOf("c");
@@ -1360,6 +1340,28 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					if (!currentOrdersGraph.containsVertex(edge.getSecond())) currentOrdersGraph.addVertex(edge.getSecond());
 					String newHashCode = new String(hashCode.substring(0,cmark+1).concat(String.valueOf(numEdge-1)));
 					currentOrdersGraph.addEdge(edge.getFirst(), edge.getSecond(), newHashCode);
+				}
+				else
+				{
+					if (currentCyclesList.containsKey(edge)) {
+						HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>> toRemove = new HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>>();
+						for (ArrayList<Integer> cycle : currentCyclesList.get(edge)) {
+							for (int i = 0; i < cycle.size(); i++) {
+								Pair<Integer,Integer> otherEdge = new Pair<Integer,Integer>(cycle.get(i), cycle.get(i < cycle.size()-1 ? i+1 : 0));
+								if (!otherEdge.equals(edge)) {
+									if (!toRemove.containsKey(otherEdge)) toRemove.put(otherEdge, new HashSet<ArrayList<Integer>>());
+									toRemove.get(otherEdge).add(cycle);
+								}
+							}
+						}
+						for (Pair<Integer, Integer> key : toRemove.keySet()) {
+							if (currentCyclesList.containsKey(key)) {
+								currentCyclesList.get(key).removeAll(toRemove.get(key));
+								if (currentCyclesList.get(key).isEmpty()) currentCyclesList.remove(key);
+							}
+						}
+						currentCyclesList.remove(edge);
+					}
 				}
 			}
 		}
