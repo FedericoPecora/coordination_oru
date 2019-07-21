@@ -507,7 +507,6 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		//If both can stop before entering, use ordering function (or closest if no ordering function)
 		metaCSPLogger.finest("Both robots can stop at " + cs);
 		
-		//NO MORE USED
 		if (yieldIfParking) {
 			boolean robot1ParksInCS = cs.getTe1End() == cs.getTe1().getPathLength()-1;
 			boolean robot2ParksInCS = cs.getTe2End() == cs.getTe2().getPathLength()-1;
@@ -1193,18 +1192,19 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 										int start21 = cs2.getTe1().getRobotID() == robotID ? cs2.getTe1Start() : cs2.getTe2Start();
 										int start22 = cs2.getTe1().getRobotID() == robotID ? cs2.getTe2Start() : cs2.getTe1Start();
 										int end11 = cs1.getTe1().getRobotID() == robotID ? cs1.getTe1End() : cs1.getTe2End();
-										int end12 = cs1.getTe1().getRobotID() == robotID ? cs1.getTe2End() : cs2.getTe1End();
+										int end12 = cs1.getTe1().getRobotID() == robotID ? cs1.getTe2End() : cs1.getTe1End();
 										int end21 = cs2.getTe1().getRobotID() == robotID ? cs2.getTe1End() : cs2.getTe2End();
 										int end22 = cs2.getTe1().getRobotID() == robotID ? cs2.getTe2End() : cs2.getTe1End();
 										if (start21 <= start11 && start11 <= end21 && (start22 <= start12 && start12 <= end22) || (start22 <= end12 && end12 <= end22)) {
 										found = true;
+										metaCSPLogger.info("Restoring  " + holdingCS.get(cs2).toString());
 										CSToDepsOrder.put(cs1, holdingCS.get(cs2));
 										
 										if (this.avoidDeadlockGlobally) {
 											//re-add dependency to cyclesList and currentOrdersGraph
 											HashSet<Pair<Integer,Integer>> edgesToAdd = new HashSet<Pair<Integer,Integer>>();
 											int waitingRobotID = holdingCS.get(cs2).getFirst();
-											int drivingRobotID = holdingCS.get(cs2).getFirst() == cs2.getTe1().getRobotID() ? cs2.getTe2().getRobotID() : cs2.getTe1().getRobotID();
+											int drivingRobotID = waitingRobotID == cs2.getTe1().getRobotID() ? cs2.getTe2().getRobotID() : cs2.getTe1().getRobotID();
 											edgesToAdd.add(new Pair<Integer,Integer>(waitingRobotID, drivingRobotID));
 											addEdges(edgesToAdd);
 										}

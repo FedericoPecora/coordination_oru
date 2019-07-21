@@ -913,7 +913,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				//Compute critical sections between driving and new envelopes
 				for (int i = 0; i < drivingEnvelopes.size(); i++) {
 					for (int j = 0; j < envelopesToTrack.size(); j++) {	
-						if (!envelopesToTrack.get(j).equals(drivingEnvelopes.get(i))) {
+						if (drivingEnvelopes.get(i).getRobotID() != envelopesToTrack.get(j).getRobotID()) {
 							int minStart1 = currentReports.containsKey(drivingEnvelopes.get(i).getRobotID()) ? currentReports.get(drivingEnvelopes.get(i).getRobotID()).getPathIndex() : -1;
 							int minStart2 = currentReports.containsKey(envelopesToTrack.get(j).getRobotID()) ? currentReports.get(envelopesToTrack.get(j).getRobotID()).getPathIndex() : -1;
 							for (CriticalSection cs : getCriticalSections(drivingEnvelopes.get(i), minStart1, envelopesToTrack.get(j), minStart2)) {
@@ -927,11 +927,13 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				//Compute critical sections between new envelopes
 				for (int i = 0; i < envelopesToTrack.size(); i++) {
 					for (int j = i+1; j < envelopesToTrack.size(); j++) {
-						int minStart1 = currentReports.containsKey(envelopesToTrack.get(i).getRobotID()) ? currentReports.get(envelopesToTrack.get(i).getRobotID()).getPathIndex() : -1;
-						int minStart2 = currentReports.containsKey(envelopesToTrack.get(j).getRobotID()) ? currentReports.get(envelopesToTrack.get(j).getRobotID()).getPathIndex() : -1;
-						for (CriticalSection cs : getCriticalSections(envelopesToTrack.get(i), minStart1, envelopesToTrack.get(j), minStart2)) {
-								this.allCriticalSections.add(cs);
-								//metaCSPLogger.info("computeCriticalSections(): add (2) " + cs);
+						if (envelopesToTrack.get(i).getRobotID() != envelopesToTrack.get(j).getRobotID()) {
+							int minStart1 = currentReports.containsKey(envelopesToTrack.get(i).getRobotID()) ? currentReports.get(envelopesToTrack.get(i).getRobotID()).getPathIndex() : -1;
+							int minStart2 = currentReports.containsKey(envelopesToTrack.get(j).getRobotID()) ? currentReports.get(envelopesToTrack.get(j).getRobotID()).getPathIndex() : -1;
+							for (CriticalSection cs : getCriticalSections(envelopesToTrack.get(i), minStart1, envelopesToTrack.get(j), minStart2)) {
+									this.allCriticalSections.add(cs);
+									//metaCSPLogger.info("computeCriticalSections(): add (2) " + cs);
+							}
 						}
 					}
 				}
@@ -991,7 +993,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				for (CriticalSection cs2 : this.allCriticalSections) {
 					//If CS1 and CS2 are about the same pair of robots
 					if (!cs1.equals(cs2) && ((cs1.getTe1().equals(cs2.getTe1()) && cs1.getTe2().equals(cs2.getTe2())
-							|| (cs1.getTe1().equals(cs2.getTe2()) && cs1.getTe2().equals(cs2.getTe2()))))) {
+							|| (cs1.getTe1().equals(cs2.getTe2()) && cs1.getTe2().equals(cs2.getTe1()))))) {
 						int start11 = cs1.getTe1Start();
 						int start12 = cs1.getTe2Start();
 						int start21 = cs1.getTe1().equals(cs2.getTe1()) ? cs2.getTe1Start() : cs2.getTe2Start();
@@ -1059,7 +1061,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				int end22 = cs1.getTe1().equals(cs2.getTe1()) ? cs2.getTe2End() : cs2.getTe1End();
 				//If CS1 and CS2 are about the same pair of robots
 				if (!cs1.equals(cs2) && ((cs1.getTe1().equals(cs2.getTe1()) && cs1.getTe2().equals(cs2.getTe2())
-						|| (cs1.getTe1().equals(cs2.getTe2()) && cs1.getTe2().equals(cs2.getTe2()))))) {
+						|| (cs1.getTe1().equals(cs2.getTe2()) && cs1.getTe2().equals(cs2.getTe1()))))) {
 					//CS1 and CS2 are identical
 					if (start11 == start21 && end11 == end21 && start12 == start22 && end12 == end22) {
 						toRemove.add(cs1);
