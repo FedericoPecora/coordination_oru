@@ -1722,27 +1722,35 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	}
 	
 	/**
-	 * Assuming messages delays to be symmetric, try to restore the order of traversing ech critical section.
-	 * Note that if the previous assumption does not hold, then the result may not be right.
-	 * @param cs The critical section for which we are trying to restore the order.
+	 * Try to restore the order of traversing each active critical section.
+	 * In case of network delays, if both the robots are outside the critical section, then the order cannot be reconstructed.
+	 * @param cs The active critical section for which we are trying to restore the order.
 	 * @param rr1 Last report of the first robot.
 	 * @param rr2 Last report of the second robot.
-	 * @return which robot is probably ahead (surely right in case of symmetric delays)
+	 * @return which robot is ahead (1 if Robot 1 is ahead, -1 if Robot 2 is ahead, 0 if nothing can be stated.
+	 * Returning -2 if the critical section is no more active.
 	 */
-	private boolean isProbablyAhead(CriticalSection cs, RobotReport rr1, RobotReport rr2) {
-		//Robot 1 is ahead --> return true
-		PoseSteering[] pathRobot1 = cs.getTe1().getTrajectory().getPoseSteering();
-		PoseSteering[] pathRobot2 = cs.getTe2().getTrajectory().getPoseSteering();
-		double dist1 = 0.0;
-		double dist2 = 0.0;
-		for (int i = cs.getTe1Start(); i < rr1.getPathIndex()-1; i++) {
-			dist1 += pathRobot1[i].getPose().getPosition().distance(pathRobot1[i+1].getPose().getPosition());
+	protected int isAhead(CriticalSection cs, RobotReport rr1, RobotReport rr2) {
+		if (!allCriticalSections.contains(cs) || rr1.getPathIndex() > cs.getTe1End() || rr2.getPathIndex() > cs.getTe2End()) {
+			metaCSPLogger.info("isAhead: the critical sections is no more active.");
+			return -2;
 		}
-		for (int i = cs.getTe2Start(); i < rr2.getPathIndex()-1; i++) {
-			dist2 += pathRobot2[i].getPose().getPosition().distance(pathRobot2[i+1].getPose().getPosition());
+		if (rr1.getPathIndex() >= cs.getTe1Start() && rr2.getPathIndex() >= cs.getTe2Start()) {
+			//Robot 1 is ahead --> return true
+			PoseSteering[] pathRobot1 = cs.getTe1().getTrajectory().getPoseSteering();
+			PoseSteering[] pathRobot2 = cs.getTe2().getTrajectory().getPoseSteering();
+			double dist1 = 0.0;
+			double dist2 = 0.0;
+			for (int i = cs.getTe1Start(); i < rr1.getPathIndex()-1; i++) {
+				dist1 += pathRobot1[i].getPose().getPosition().distance(pathRobot1[i+1].getPose().getPosition());
+			}
+			for (int i = cs.getTe2Start(); i < rr2.getPathIndex()-1; i++) {
+				dist2 += pathRobot2[i].getPose().getPosition().distance(pathRobot2[i+1].getPose().getPosition());
+			}
+			//metaCSPLogger.finest("Dist R" + rr1.getRobotID() + " = " + dist1 + "; Dist R" + rr2.getRobotID() + " = " + dist2);
+			return dist1 > dist2 ? 1 : -1;
 		}
-		//metaCSPLogger.finest("Dist R" + rr1.getRobotID() + " = " + dist1 + "; Dist R" + rr2.getRobotID() + " = " + dist2);
-		return (dist1 > dist2);
+		return 0;
 	}
 
 	/**

@@ -771,8 +771,16 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 								}
 								else {
 										metaCSPLogger.severe("Both cannot stop but lost critical section to dep. CS: " + cs + ", TE: " + cs.getTe1().getID() + ", " + cs.getTe2().getID() + ".");
-										if (!this.CSToDepsOrder.containsKey(cs)) throw new Error("FIXME! Lost dependency! Key value not found" );
-										else if (this.CSToDepsOrder.get(cs) == null) throw new Error("FIXME! Lost dependency! Empty value." );						
+										int ahead = isAhead(cs,robotReport1,robotReport2);
+										if (ahead == 0) {
+											if (!this.CSToDepsOrder.containsKey(cs)) throw new Error("FIXME! Lost dependency and order cannot be restored! Key value not found" );
+											else if (this.CSToDepsOrder.get(cs) == null) throw new Error("FIXME! Lost dependency and order cannot be restored! Empty value." );	
+										}
+										else {
+											drivingRobotID = ahead == 1 ? robotReport1.getRobotID() : robotReport2.getRobotID();
+											waitingRobotID = drivingRobotID == robotReport1.getRobotID() ? robotReport2.getRobotID() : robotReport1.getRobotID();
+											metaCSPLogger.info("<<<<<<<<< Restoring the previous order with the isAhead function: Robot" + drivingRobotID);
+										}					
 								}			
 							}
 
@@ -858,7 +866,6 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				//Remove obsolete critical sections
 				for (CriticalSection cs : toRemove) {
 					this.allCriticalSections.remove(cs);
-					//this.CSToDepsOrder.remove(cs);
 					this.escapingCSToWaitingRobotIDandCP.remove(cs);
 				}
 				
@@ -1919,15 +1926,15 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							//Make new dependency
 							int drivingCSEnd =  drivingRobotID == cs.getTe1().getRobotID() ? cs.getTe1End() : cs.getTe2End();
 							int drivingCSEndOld =  drivingRobotID == cs.getTe1().getRobotID() ? cs.getTe2End() : cs.getTe1End();
-							Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd);
+							Dependency depNew = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd);
 							Dependency depOld = new Dependency(drivingTE, waitingTE, CSToDepsOrder.get(cs).getSecond(), drivingCSEndOld);
 							
 							//update the global graph and treeset
 							depsGraph.removeEdge(depOld);
-							if (!depsGraph.containsEdge(dep)) {
-								if (!depsGraph.containsVertex(dep.getWaitingRobotID())) depsGraph.addVertex(dep.getWaitingRobotID());
-								if (!depsGraph.containsVertex(dep.getDrivingRobotID())) depsGraph.addVertex(dep.getDrivingRobotID());
-								depsGraph.addEdge(dep.getWaitingRobotID(), dep.getDrivingRobotID(), dep);
+							if (!depsGraph.containsEdge(depNew)) {
+								if (!depsGraph.containsVertex(depNew.getWaitingRobotID())) depsGraph.addVertex(depNew.getWaitingRobotID());
+								if (!depsGraph.containsVertex(depNew.getDrivingRobotID())) depsGraph.addVertex(depNew.getDrivingRobotID());
+								depsGraph.addEdge(depNew.getWaitingRobotID(), depNew.getDrivingRobotID(), depNew);
 							}
 							
 							//check if safe (continue here) 
@@ -1942,14 +1949,18 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 									ArrayList<ArrayList<Dependency>> edgesAlongCycle = new ArrayList<ArrayList<Dependency>>();
 									for (int i = 0; i < cycle.size(); i++) {
 										int j = i < cycle.size()-1 ? i+1 : 0;
-										if (cycle.get(i) == dep.getWaitingRobotID() && cycle.get(j) == dep.getDrivingRobotID()) {
+										if (cycle.get(i) == depNew.getWaitingRobotID() && cycle.get(j) == depNew.getDrivingRobotID()) {
 											ArrayList<Dependency> array = new ArrayList<Dependency>();
-											array.add(dep);
+											array.add(depNew);
 											edgesAlongCycle.add(array);
 										}
 										else {
 											Set<Dependency> allEdges = depsGraph.getAllEdges(cycle.get(i), cycle.get(j));
-											if (allEdges == null) metaCSPLogger.info("<<<<<<<<< something wrong.");
+											if (allEdges == null) {
+												metaCSPLogger.info("<<<<<<<<< something wrong. Unfound deps from: " + cycle.get(i) + "to: "+ cycle.get(j));
+												metaCSPLogger.info(depsGraph.toString());
+												metaCSPLogger.info(currentCyclesList.toString());
+											}
 											else edgesAlongCycle.add(new ArrayList<Dependency>(allEdges));
 										}
 									}
@@ -2022,13 +2033,13 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							}
 							else {
 								//update the maps
-								currentDeps.get(drivingRobotID).remove(depOld);
-								if (currentDeps.get(drivingRobotID).isEmpty()) currentDeps.remove(drivingRobotID);
+								currentDeps.get(depOld.getWaitingRobotID()).remove(depOld);
+								if (currentDeps.get(depOld.getWaitingRobotID()).isEmpty()) currentDeps.remove(depOld.getWaitingRobotID());
 								if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
-								currentDeps.get(waitingRobotID).add(dep);
-								CSToDepsOrder.put(cs, new Pair<Integer,Integer>(dep.getWaitingRobotID(), dep.getWaitingPoint()));
-								depsToCS.put(dep, cs);
-								metaCSPLogger.finest("Update precedences " + dep + " according to heuristic.");
+								currentDeps.get(depNew.getWaitingRobotID()).add(depNew);
+								CSToDepsOrder.put(cs, new Pair<Integer,Integer>(depNew.getWaitingRobotID(), depNew.getWaitingPoint()));
+								depsToCS.put(depNew, cs);
+								metaCSPLogger.finest("Update precedences " + depNew + " according to heuristic.");
 							}
 							metaCSPLogger.finest("Final graph: " + currentOrdersGraph.toString() + ".");		
 						}
