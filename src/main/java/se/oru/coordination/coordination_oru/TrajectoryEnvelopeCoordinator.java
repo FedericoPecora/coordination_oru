@@ -312,7 +312,11 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	private HashMap<Integer,TreeSet<Dependency>> findCurrentCycles(HashMap<Integer,TreeSet<Dependency>> currentDeps, HashMap<Integer,TreeSet<Dependency>> artificialDeps, HashSet<Dependency> reversibleDeps, HashMap<Integer,RobotReport> currentReports, Set<Integer> robotIDs) {
 		
 		HashMap<Integer,TreeSet<Dependency>> allDeps = new HashMap<Integer, TreeSet<Dependency>>();
-		allDeps.putAll(currentDeps);
+		for (int robotID : currentDeps.keySet()) {
+			TreeSet<Dependency> set = new TreeSet<Dependency>();
+			set.addAll(currentDeps.get(robotID));
+			allDeps.put(robotID, set);
+		}
 		
 		//1. COMPUTE UNSAFE CYCLES
 		
@@ -380,12 +384,14 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						Dependency revDep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd);
 						
 						HashMap<Integer,TreeSet<Dependency>> allDepsTmp = new HashMap<Integer,TreeSet<Dependency>>();
-						allDepsTmp.putAll(allDeps);
+						for (int robotID : allDeps.keySet()) {
+							TreeSet<Dependency> set = new TreeSet<Dependency>();
+							set.addAll(allDeps.get(robotID));
+							allDepsTmp.put(robotID, set);
+						} //map of TreeSets --> cannot use putAll. We want to create a copy of each TreeSet 
 						
 						//and add the reversed dependency to the new waiting one
-						if (!allDepsTmp.containsKey(waitingRobotID)) {
-							allDepsTmp.put(waitingRobotID, new TreeSet<Dependency>());
-						}
+						if (!allDepsTmp.containsKey(waitingRobotID)) allDepsTmp.put(waitingRobotID, new TreeSet<Dependency>());
 						allDepsTmp.get(revDep.getWaitingRobotID()).add(revDep);
 						
 						//remove the dependency to the old waiting robot
@@ -399,7 +405,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						
 						//create a temporary map between dependencies and critical sections
 						HashMap<Dependency,CriticalSection> depsToCSTmp = new HashMap<Dependency, CriticalSection>();
-						depsToCSTmp.putAll(depsToCS);
+						depsToCSTmp.putAll(depsToCS); //simple map --> ok
 						depsToCSTmp.remove(dep);
 						depsToCSTmp.put(revDep, cs);
 
