@@ -1085,8 +1085,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				int end21 = cs1.getTe1().equals(cs2.getTe1()) ? cs2.getTe1End() : cs2.getTe2End();
 				int end22 = cs1.getTe1().equals(cs2.getTe1()) ? cs2.getTe2End() : cs2.getTe1End();
 				//If CS1 and CS2 are about the same pair of robots
-				if (!cs1.equals(cs2) && ((cs1.getTe1().equals(cs2.getTe1()) && cs1.getTe2().equals(cs2.getTe2())
-						|| (cs1.getTe1().equals(cs2.getTe2()) && cs1.getTe2().equals(cs2.getTe1()))))) {
+				if (cs1.equals(cs2)) {
 					//CS1 and CS2 are identical
 					if (start11 == start21 && end11 == end21 && start12 == start22 && end12 == end22) {
 						toRemove.add(cs1);

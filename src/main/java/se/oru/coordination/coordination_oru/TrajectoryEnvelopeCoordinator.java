@@ -1894,7 +1894,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					AbstractTrajectoryEnvelopeTracker robotTracker2 = trackers.get(cs.getTe2().getRobotID());
 					RobotReport robotReport2 = currentReports.get(cs.getTe2().getRobotID());
 					
-					boolean robot2Yields = getOrder(robotTracker1, robotReport1, robotTracker2, robotReport2, cs); //true if robot1 should go before robot2, false vice versa
+					boolean robot2Yields = getOrder(robotTracker1, robotReport1, robotTracker2, robotReport2, cs);
+					//true if robot1 should go before robot2, false vice versa
 					boolean robot2YieldsOld = CSToDepsOrder.get(cs).getFirst() == robotReport2.getRobotID();
 					
 					if (robot2YieldsOld != robot2Yields) {
@@ -1921,7 +1922,11 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							for (String edge : currentOrdersGraph.edgeSet()) backupGraph.addEdge(currentOrdersGraph.getEdgeSource(edge), currentOrdersGraph.getEdgeTarget(edge), edge);
 							
 							HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>> backupcurrentCyclesList = new HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>>();
-							backupcurrentCyclesList.putAll(currentCyclesList);
+							//backupcurrentCyclesList.putAll(currentCyclesList);
+							for (Pair<Integer,Integer> edge : currentCyclesList.keySet()) {
+								backupcurrentCyclesList.put(edge, new HashSet<ArrayList<Integer>>());
+								backupcurrentCyclesList.get(edge).addAll(currentCyclesList.get(edge));
+							}
 														
 							edgesToDelete.add(new Pair<Integer,Integer>(drivingRobotID, waitingRobotID));
 							Pair<Integer,Integer> newEdge = new Pair<Integer,Integer>(waitingRobotID, drivingRobotID);

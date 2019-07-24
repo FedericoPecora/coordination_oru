@@ -44,13 +44,21 @@ public class CriticalSection {
 			if (other.te1 != null && other.te2 != null)
 				return false;
 			else if (te1 == null) 
-				return te2 == ((other.te1 == null) ? other.te2 : other.te1);
-		} else if (!(te1.equals(other.te1) || te1.equals(other.te2)))
-			return false; 
-		if (te1End != (te1.equals(other.te1) ? other.te1End : other.te2End))
-			return false;
-		if (te1Start != (te1.equals(other.te1) ? other.te1Start : other.te2Start))
-			return false;
+				return te2.equals((other.te1 == null) ? other.te2 : other.te1);
+		} else {
+			if (!(te1.equals(other.te1) || te1.equals(other.te2)))
+				return false; 
+			if (!(te2.equals(other.te1) || te2.equals(other.te2)))
+				return false; 
+			if (te1.equals(other.te1)) {
+				if (te1End != other.te1End || te2End != other.te2End || te1Start != other.te1Start || te2Start != other.te2Start)
+					return false;
+			}
+			if (te1.equals(other.te2)) {
+				if (te1End != other.te2End || te2End != other.te1End || te1Start != other.te2Start || te2Start != other.te1Start)
+					return false;
+			}
+		}
 		return true;
 	}
 

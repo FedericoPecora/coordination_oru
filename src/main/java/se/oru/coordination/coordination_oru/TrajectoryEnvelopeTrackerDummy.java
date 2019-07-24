@@ -69,12 +69,12 @@ public abstract class TrajectoryEnvelopeTrackerDummy extends AbstractTrajectoryE
 	}
 	
 	private boolean canInterrupt() {
-		for (AllenIntervalConstraint meets : getConstriants(AllenIntervalConstraint.Type.Meets, te, solver)) {
+		for (AllenIntervalConstraint meets : getConstriants(AllenIntervalConstraint.Type.Meets, te, tec.getSolver())) {
 			TrajectoryEnvelope driving = (TrajectoryEnvelope)meets.getTo();
-			AllenIntervalConstraint[] startsCons = getConstriants(AllenIntervalConstraint.Type.Starts, driving, solver);
+			AllenIntervalConstraint[] startsCons = getConstriants(AllenIntervalConstraint.Type.Starts, driving, tec.getSolver());
 			TrajectoryEnvelope drivingFirstSubEnv = driving;
 			if (startsCons != null && startsCons.length > 0) drivingFirstSubEnv = (TrajectoryEnvelope)startsCons[0].getFrom();
-			for (AllenIntervalConstraint before : getConstriants(AllenIntervalConstraint.Type.BeforeOrMeets, drivingFirstSubEnv, solver)) {
+			for (AllenIntervalConstraint before : getConstriants(AllenIntervalConstraint.Type.BeforeOrMeets, drivingFirstSubEnv, tec.getSolver())) {
 				//All the befores that involve the next driving
 				if (before.getTo().equals(drivingFirstSubEnv)) {
 					//Someone depends on when this parking finishes, so cannot interrupt!
