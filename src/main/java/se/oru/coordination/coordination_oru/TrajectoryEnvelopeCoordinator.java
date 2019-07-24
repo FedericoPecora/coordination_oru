@@ -981,14 +981,16 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			PoseSteering[] oldPath = null;
 			
 			//FIXME not synchronized on current dependencies
-			for (Dependency dep : getCurrentDependencies()) {
-				if (dep.getWaitingRobotID() == robotID) {
-					currentWaitingIndex = dep.getWaitingPoint();
-					currentWaitingPose = dep.getWaitingPose();
-					Trajectory traj = dep.getWaitingTrajectoryEnvelope().getTrajectory();
-					oldPath = traj.getPoseSteering();
-					currentWaitingGoal = oldPath[oldPath.length-1].getPose();
-					break;
+			synchronized (getCurrentDependencies()) {
+				for (Dependency dep : getCurrentDependencies()) {
+					if (dep.getWaitingRobotID() == robotID) {
+						currentWaitingIndex = dep.getWaitingPoint();
+						currentWaitingPose = dep.getWaitingPose();
+						Trajectory traj = dep.getWaitingTrajectoryEnvelope().getTrajectory();
+						oldPath = traj.getPoseSteering();
+						currentWaitingGoal = oldPath[oldPath.length-1].getPose();
+						break;
+					}
 				}
 			}
 			
@@ -1493,7 +1495,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							if (robotReport.getPathIndex() <= stoppingPoint) {
 								Dependency dep = new Dependency(robotTracker.getTrajectoryEnvelope(), null, stoppingPoint, 0);
 								if (!currentDeps.containsKey(robotID)) currentDeps.put(robotID, new TreeSet<Dependency>());
-								currentDeps.get(robotID).add(dep);
+								if (!currentDeps.get(robotID).add(dep)) {
+									metaCSPLogger.info("<<<<<<<<< Add dependency fails (1). Dep: " + dep);
+								}
 							}
 							//Start waiting thread if the stopping point has been reached
 							//if (Math.abs(robotReport.getPathIndex()-stoppingPoint) <= 1 && robotReport.getCriticalPoint() == stoppingPoint && !stoppingPointTimers.containsKey(robotID)) {
@@ -1584,7 +1588,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							metaCSPLogger.finest("Robot" + drivingRobotID + " is parked, so Robot" + waitingRobotID + " will have to wait");
 							if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
 							Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd);
-							currentDeps.get(waitingRobotID).add(dep);
+							if (!currentDeps.get(waitingRobotID).add(dep)) {
+								metaCSPLogger.info("<<<<<<<<< Add dependency fails (2). Dep: " + dep);
+							}
 
 							//If cs is new, update the of edges to add (otherwise, it is already in the graph)
 							if (!CSToDepsOrder.containsKey(cs))
@@ -1770,7 +1776,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							int drivingCSEnd =  drivingRobotID == cs.getTe1().getRobotID() ? cs.getTe1End() : cs.getTe2End();
 							if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
 							Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd);
-							currentDeps.get(waitingRobotID).add(dep);
+							if (!currentDeps.get(waitingRobotID).add(dep)) {
+								metaCSPLogger.info("<<<<<<<<< Add dependency fails (3). Dep: " + dep);
+							}
 							
 							//If cs is new, update the of edges to add (otherwise, it is already in the graph)
 							if (!CSToDepsOrder.containsKey(cs))
@@ -1860,7 +1868,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						int drivingCSEnd =  drivingRobotID == cs.getTe1().getRobotID() ? cs.getTe1End() : cs.getTe2End();
 						if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
 						Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd);
-						currentDeps.get(waitingRobotID).add(dep);
+						if (!currentDeps.get(waitingRobotID).add(dep)) {
+							metaCSPLogger.info("<<<<<<<<< Add dependency fails (3). Dep: " + dep);
+						}
 						
 						//update the global graph
 						if (!depsGraph.containsEdge(dep)) {
@@ -2042,10 +2052,12 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							}
 							else {
 								//update the maps
-								currentDeps.get(depOld.getWaitingRobotID()).remove(depOld);
+								if (!currentDeps.get(depOld.getWaitingRobotID()).remove(depOld)) metaCSPLogger.info("<<<<<<<< Error in removing dep: " + depOld);
 								if (currentDeps.get(depOld.getWaitingRobotID()).isEmpty()) currentDeps.remove(depOld.getWaitingRobotID());
 								if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
-								currentDeps.get(depNew.getWaitingRobotID()).add(depNew);
+								if (!currentDeps.get(waitingRobotID).add(depNew)) {
+									metaCSPLogger.info("<<<<<<<<< Add dependency fails (2). Dep: " + depNew);
+								}
 								CSToDepsOrder.put(cs, new Pair<Integer,Integer>(depNew.getWaitingRobotID(), depNew.getWaitingPoint()));
 								depsToCS.put(depNew, cs);
 								metaCSPLogger.finest("Update precedences " + depNew + " according to heuristic.");

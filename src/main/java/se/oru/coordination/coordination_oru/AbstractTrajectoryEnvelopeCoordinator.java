@@ -352,9 +352,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 * @return The {@link TrajectoryEnvelopeSolver} underlying this coordinator.
 	 */
 	public TrajectoryEnvelopeSolver getSolver() {
-		synchronized(solver) {
-			return this.solver;
-		}
+		return this.solver;
 	}
 	
 	/**
@@ -587,9 +585,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 * @return A list of {@link Dependency} objects.
 	 */
 	public HashSet<Dependency> getCurrentDependencies() {
-		synchronized(currentDependencies) {
-			return this.currentDependencies;
-		}
+		return this.currentDependencies;
 	}
 
 	/**
@@ -967,7 +963,9 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				}			
 			}
 			filterCriticalSections();
-						
+			
+			metaCSPLogger.info("Critical sections: " + allCriticalSections.toString());
+			
 			numberOfCriticalSections = this.allCriticalSections.size();
 			metaCSPLogger.info("There are now " + numberOfCriticalSections + " critical sections");
 			
