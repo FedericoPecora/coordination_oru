@@ -1189,7 +1189,6 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							for (CriticalSection cs2 : holdingCS.keySet()) {
 								if (cs1.getTe1().getRobotID() == cs2.getTe1().getRobotID() && cs1.getTe2().getRobotID() == cs2.getTe2().getRobotID() ||
 									cs1.getTe1().getRobotID() == cs2.getTe2().getRobotID() && cs1.getTe2().getRobotID() == cs2.getTe1().getRobotID()) {
-									same = true;
 									//the same set of robots, same antry point for the robot that is re-planning and same entry point, or same ending point or the oldest contained in the newest for the other robot.
 									/*if ((cs1.getTe1().getRobotID() == robotID && cs2.getTe1().getRobotID() == robotID && cs1.getTe1Start() == cs2.getTe1Start() &&
 											(cs1.getTe2Start() == cs2.getTe2Start() || cs1.getTe2End() == cs2.getTe2End() || cs1.getTe2Start() <= cs2.getTe2Start() && cs1.getTe2End() >= cs2.getTe2End())) ||
@@ -1208,7 +1207,6 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 										int end21 = cs2.getTe1().getRobotID() == robotID ? cs2.getTe1End() : cs2.getTe2End();
 										int end22 = cs2.getTe1().getRobotID() == robotID ? cs2.getTe2End() : cs2.getTe1End();
 										if (start21 <= start11 && start11 <= end21 && (start22 <= start12 && start12 <= end22 || start22 <= end12 && end12 <= end22)) {
-										found = true;
 										metaCSPLogger.info("Restoring  " + holdingCS.get(cs2).toString());
 										CSToDepsOrder.put(cs1, holdingCS.get(cs2));
 										

@@ -50,7 +50,7 @@ import com.vividsolutions.jts.geom.Polygon;
 //import org.ros.visualization_msgs.MarkerArray;
 import visualization_msgs.MarkerArray;
 
-public class RVizVisualizzationLight implements FleetVisualization, NodeMain {
+public class RVizVisualizationLight implements FleetVisualization, NodeMain {
 
 	//private final String mapFrameID = "/map_laser2d";
 	private String mapFrameID = "/map";
@@ -125,29 +125,29 @@ public class RVizVisualizzationLight implements FleetVisualization, NodeMain {
 
 	}
 	
-	public RVizVisualizzationLight() {
+	public RVizVisualizationLight() {
 		this("/map");
 	}
 	
-	public RVizVisualizzationLight(String mapFrameID) {
+	public RVizVisualizationLight(String mapFrameID) {
 		this(true,mapFrameID);
 	}
 
-	public RVizVisualizzationLight(ConnectedNode node) {
+	public RVizVisualizationLight(ConnectedNode node) {
 		this(node,"/map");
 	}
 	
-	public RVizVisualizzationLight(ConnectedNode node, String mapFrameID) {
+	public RVizVisualizationLight(ConnectedNode node, String mapFrameID) {
 		this(false, mapFrameID);
 		this.node = node;
 		this.ready = true;
 	}
 
-	public RVizVisualizzationLight(boolean startROSCore) {
+	public RVizVisualizationLight(boolean startROSCore) {
 		this(startROSCore,"/map");
 	}
 	
-	public RVizVisualizzationLight(boolean startROSCore, String mapFrameID) {
+	public RVizVisualizationLight(boolean startROSCore, String mapFrameID) {
 		this.mapFrameID = mapFrameID;
 		this.robotStatusPublishers = new HashMap<Integer,Publisher<visualization_msgs.MarkerArray>>();
 		this.dependencyPublishers = new HashMap<Integer,Publisher<visualization_msgs.MarkerArray>>();

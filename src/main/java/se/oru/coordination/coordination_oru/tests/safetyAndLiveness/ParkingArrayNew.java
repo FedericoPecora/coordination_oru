@@ -1,4 +1,4 @@
-package se.oru.coordination.coordination_oru.tests.collisionChecking;
+package se.oru.coordination.coordination_oru.tests.safetyAndLiveness;
 
 import java.io.File;
 import java.io.FileOutputStream;
