@@ -964,7 +964,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			}
 			filterCriticalSections();
 			
-			metaCSPLogger.info("Critical sections: " + allCriticalSections.toString());
+			//metaCSPLogger.info("Critical sections: " + allCriticalSections.toString());
 			
 			numberOfCriticalSections = this.allCriticalSections.size();
 			metaCSPLogger.info("There are now " + numberOfCriticalSections + " critical sections");
@@ -1001,7 +1001,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 						int end21 = cs1.getTe1().equals(cs2.getTe1()) ? cs2.getTe1End() : cs2.getTe2End();
 						int end22 = cs1.getTe1().equals(cs2.getTe1()) ? cs2.getTe2End() : cs2.getTe1End();
 						//CS1 before CS2
-						if (start11 < start21 && end11 >= start21) {
+						if (start11 <= start21 && end11 >= start21) {
 							//CS1 ends after CS2 starts
 							toRemove.add(cs1);
 							toRemove.add(cs2);
@@ -1013,7 +1013,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 							toAdd.add(newCS);
 							metaCSPLogger.finest("(Pass " + passNum + ") MERGED (ends-after-start): " + cs1 + " + " + cs2 + " = " + newCS);
 						}
-						else if (start21 < start11 && end21 >= start11) {
+						else if (start21 <= start11 && end21 >= start11) {
 							toRemove.add(cs1);
 							toRemove.add(cs2);
 							int newStart1 = start21;
@@ -1024,7 +1024,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 							toAdd.add(newCS);
 							metaCSPLogger.finest("(Pass " + passNum + ") MERGED (ends-after-start): " + cs1 + " + " + cs2 + " = " + newCS);
 						}
-						else if (start12 < start22 && end12 >= start22) {
+						else if (start12 <= start22 && end12 >= start22) {
 							toRemove.add(cs1);
 							toRemove.add(cs2);
 							int newStart2 = start12;
@@ -1036,7 +1036,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 							metaCSPLogger.finest("(Pass " + passNum + ") MERGED (ends-after-start): " + cs1 + " + " + cs2 + " = " + newCS);
 
 						}
-						else if (start22 < start12 && end22 >= start12) {
+						else if (start22 <= start12 && end22 >= start12) {
 							toRemove.add(cs1);
 							toRemove.add(cs2);
 							int newStart2 = start22;
