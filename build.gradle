@@ -30,8 +30,8 @@ apply plugin: 'application'
 // The main class that will be executed when you do 'gradle run'
 mainClassName = 'se.oru.coordination.coordination_oru.demo.DemoLauncher'
 
-sourceCompatibility = 1.6
-targetCompatibility = 1.6
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
 
 repositories {
   mavenLocal()
