@@ -591,7 +591,8 @@ public class Missions {
 	 */
 	public static String getPathFile(String fromLocation, String toLocation) {
 		//String ret = paths.get(fromLocation+"->"+toLocation);
-		String ret = pathPrefix+fromLocation+"->"+toLocation;
+		String ret = pathPrefix+fromLocation+"-"+toLocation+".path";
+		System.out.println("Looking for " + ret);
 		if (!locations.containsKey(fromLocation)) throw new Error("Unknown location " + fromLocation);
 		if (!locations.containsKey(toLocation)) throw new Error("Unknown location " + toLocation);
 		File f = new File(ret);
