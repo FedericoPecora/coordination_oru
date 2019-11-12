@@ -119,6 +119,37 @@ for a list of all provided examples and instructions on how to run them (and/or 
 
 ![Coordination with the ReedsSheppCarPlanner](images/coord-rsp.png "Coordination with the ReedsSheppCarPlanner")
 
+## Citing this work
+
+Please cite the original article describing this work when referring to the approach in general:
+```
+@inproceedings{pecora2018loosely,
+  title={A Loosely-Coupled Approach for Multi-Robot Coordination, Motion Planning and Control},
+  author={Pecora, Federico and Andreasson, Henrik and Mansouri, Masoumeh and Petkov, Vilian},
+  booktitle={Twenty-Eighth International Conference on Automated Planning and Scheduling},
+  year={2018}
+}
+```
+
+When referring to the enhancement to make the algorithm robust to communication uncertainty, please cite:
+```
+@article{mannucci2019provably,
+  title={Provably safe multi-robot coordination with unreliable communication},
+  author={Mannucci, Anna and Pallottino, Lucia and Pecora, Federico},
+  journal={IEEE Robotics and Automation Letters},
+  volume={4},
+  number={4},
+  pages={3232--3239},
+  year={2019},
+  publisher={IEEE}
+}
+```
+
+When referring to the software implementation of the approach specifically, please cite the DOI associated with the latest relase:
+
+[![DOI](https://zenodo.org/badge/94546589.svg)](https://zenodo.org/badge/latestdoi/94546589)
+
+
 ## Sponsors
 This project is supported by
 
