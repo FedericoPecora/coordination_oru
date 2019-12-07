@@ -271,7 +271,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		return g;
 	}
 	
-	private HashSet<Dependency> computeClosestDependencies(HashMap<Integer,TreeSet<Dependency>> allDeps, HashMap<Integer, TreeSet<Dependency>> artificialDeps) {
+	private HashSet<Dependency> computeClosestDependencies(HashMap<Integer,HashSet<Dependency>> allDeps, HashMap<Integer, HashSet<Dependency>> artificialDeps) {
 		
 		HashSet<Dependency> closestDeps = new HashSet<Dependency>();
 		
@@ -281,6 +281,12 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		
 		metaCSPLogger.finest("currentDeps: " + allDeps.toString() + ".");	
 		metaCSPLogger.finest("artificialDeps: " + artificialDeps.toString() + ".");	
+		
+		//Fill the TreeSet
+		HashMap<Integer, TreeSet<Dependency>> allDepsTree = new HashMap<Integer, TreeSet<Dependency>>();
+		for (Integer key : allDeps.keySet()) allDepsTree.put(key, new TreeSet<Dependency>(allDeps.get(key)));
+		HashMap<Integer, TreeSet<Dependency>> artificialDepsTree = new HashMap<Integer, TreeSet<Dependency>>();
+		for (Integer key : artificialDeps.keySet()) artificialDepsTree.put(key, new TreeSet<Dependency>(artificialDeps.get(key)));
 				
 		HashSet<Integer> robotIDs = new HashSet<Integer>();
 		robotIDs.addAll(allDeps.keySet());
@@ -291,10 +297,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				Dependency firstDep = null;
 				Dependency firstArtificialDep = null;
 				if (allDeps.containsKey(robotID)){
-					firstDep = allDeps.get(robotID).first();
+					firstDep = allDepsTree.get(robotID).first();
 				}
 				if (artificialDeps.containsKey(robotID)) {
-					firstArtificialDep = artificialDeps.get(robotID).first();
+					firstArtificialDep = artificialDepsTree.get(robotID).first();
 					metaCSPLogger.info("Artificial critical point " + firstArtificialDep.getWaitingPoint() + " for Robot" + firstArtificialDep.getWaitingRobotID() +".");
 				}
 				
@@ -309,11 +315,11 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		return closestDeps;
 	}
 	
-	private HashMap<Integer,TreeSet<Dependency>> findCurrentCycles(HashMap<Integer,TreeSet<Dependency>> currentDeps, HashMap<Integer,TreeSet<Dependency>> artificialDeps, HashSet<Dependency> reversibleDeps, HashMap<Integer,RobotReport> currentReports, Set<Integer> robotIDs) {
+	private HashMap<Integer,HashSet<Dependency>> findCurrentCycles(HashMap<Integer,HashSet<Dependency>> currentDeps, HashMap<Integer,HashSet<Dependency>> artificialDeps, HashSet<Dependency> reversibleDeps, HashMap<Integer,RobotReport> currentReports, Set<Integer> robotIDs) {
 		
-		HashMap<Integer,TreeSet<Dependency>> allDeps = new HashMap<Integer, TreeSet<Dependency>>();
+		HashMap<Integer,HashSet<Dependency>> allDeps = new HashMap<Integer, HashSet<Dependency>>();
 		for (int robotID : currentDeps.keySet()) {
-			TreeSet<Dependency> set = new TreeSet<Dependency>();
+			HashSet<Dependency> set = new HashSet<Dependency>();
 			set.addAll(currentDeps.get(robotID));
 			allDeps.put(robotID, set);
 		}
@@ -383,15 +389,15 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						
 						Dependency revDep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd);
 						
-						HashMap<Integer,TreeSet<Dependency>> allDepsTmp = new HashMap<Integer,TreeSet<Dependency>>();
+						HashMap<Integer,HashSet<Dependency>> allDepsTmp = new HashMap<Integer,HashSet<Dependency>>();
 						for (int robotID : allDeps.keySet()) {
-							TreeSet<Dependency> set = new TreeSet<Dependency>();
+							HashSet<Dependency> set = new HashSet<Dependency>();
 							set.addAll(allDeps.get(robotID));
 							allDepsTmp.put(robotID, set);
 						} //map of TreeSets --> cannot use putAll. We want to create a copy of each TreeSet 
 						
 						//and add the reversed dependency to the new waiting one
-						if (!allDepsTmp.containsKey(waitingRobotID)) allDepsTmp.put(waitingRobotID, new TreeSet<Dependency>());
+						if (!allDepsTmp.containsKey(waitingRobotID)) allDepsTmp.put(waitingRobotID, new HashSet<Dependency>());
 						allDepsTmp.get(revDep.getWaitingRobotID()).add(revDep);
 						
 						//remove the dependency to the old waiting robot
@@ -550,8 +556,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 		//System.out.println("Caller of updateDependencies(): " + Thread.currentThread().getStackTrace()[2]);
 		synchronized(solver) {
-			HashMap<Integer,TreeSet<Dependency>> currentDeps = new HashMap<Integer,TreeSet<Dependency>>();
-			HashMap<Integer,TreeSet<Dependency>> artificialDependencies = new HashMap<Integer,TreeSet<Dependency>>(); 
+			HashMap<Integer,HashSet<Dependency>> currentDeps = new HashMap<Integer,HashSet<Dependency>>();
+			HashMap<Integer,HashSet<Dependency>> artificialDependencies = new HashMap<Integer,HashSet<Dependency>>(); 
 			HashSet<Dependency> currentReversibleDependencies = new HashSet<Dependency>();
 			
 			//Make deps from un-reached stopping points
@@ -567,7 +573,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							int duration = stoppingTimes.get(robotID).get(i);
 							if (robotReport.getPathIndex() <= stoppingPoint) {
 								Dependency dep = new Dependency(robotTracker.getTrajectoryEnvelope(), null, stoppingPoint, 0);
-								if (!currentDeps.containsKey(robotID)) currentDeps.put(robotID, new TreeSet<Dependency>());
+								if (!currentDeps.containsKey(robotID)) currentDeps.put(robotID, new HashSet<Dependency>());
 								currentDeps.get(robotID).add(dep);
 							}
 							//Start waiting thread if the stopping point has been reached
@@ -659,7 +665,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						if (createAParkingDep) {
 							int drivingCSEnd = drivingRobotID == cs.getTe1().getRobotID() ? cs.getTe1End() : cs.getTe2End();
 							metaCSPLogger.finest("Robot" + drivingRobotID + " is parked, so Robot" + waitingRobotID + " will have to wait");
-							if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
+							if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new HashSet<Dependency>());
 							Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd);
 							currentDeps.get(waitingRobotID).add(dep);
 							CSToDepsOrder.put(cs, new Pair<Integer,Integer>(dep.getWaitingRobotID(),dep.getWaitingPoint()));
@@ -813,7 +819,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 										(drivingRobotID == robotReport1.getRobotID() ? robotReport1.getPathIndex() : robotReport2.getPathIndex());
 								int artDrivingCSEnd = waitingRobotID == cs.getTe1().getRobotID() ? cs.getTe1End() : cs.getTe2End();
 								Dependency dep = new Dependency(drivingTE,waitingTE,Math.max(0, artWaitingPoint),artDrivingCSEnd);
-								if (!artificialDependencies.containsKey(drivingRobotID)) artificialDependencies.put(drivingRobotID, new TreeSet<Dependency>());
+								if (!artificialDependencies.containsKey(drivingRobotID)) artificialDependencies.put(drivingRobotID, new HashSet<Dependency>());
 								artificialDependencies.get(drivingRobotID).add(dep);
 								metaCSPLogger.info("Robot" + drivingRobotID + " cannot escape from CS: " + cs + ". Let's create a deadlock. Add artificial dependency for Robot" + drivingRobotID + " at " + dep.getWaitingPoint() + ".");
 							}	
@@ -852,7 +858,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						if (waitingPoint >= 0) {		
 							//Make new dependency
 							int drivingCSEnd =  drivingRobotID == cs.getTe1().getRobotID() ? cs.getTe1End() : cs.getTe2End();
-							if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
+							if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new HashSet<Dependency>());
 							Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd);
 							currentDeps.get(waitingRobotID).add(dep);
 							
@@ -1472,8 +1478,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		
 		synchronized(solver) {
 			
-			HashMap<Integer,TreeSet<Dependency>> currentDeps = new HashMap<Integer,TreeSet<Dependency>>();
-			HashMap<Integer,TreeSet<Dependency>> artificialDependencies = new HashMap<Integer,TreeSet<Dependency>>(); 
+			HashMap<Integer,HashSet<Dependency>> currentDeps = new HashMap<Integer,HashSet<Dependency>>();
+			HashMap<Integer,HashSet<Dependency>> artificialDependencies = new HashMap<Integer,HashSet<Dependency>>(); 
 			DirectedMultigraph<Integer,Dependency> depsGraph = new DirectedMultigraph<Integer, Dependency>(Dependency.class);
 			HashSet<Integer> askForReplan = new HashSet<Integer>();			
 			
@@ -1494,7 +1500,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							int duration = stoppingTimes.get(robotID).get(i);
 							if (robotReport.getPathIndex() <= stoppingPoint) {
 								Dependency dep = new Dependency(robotTracker.getTrajectoryEnvelope(), null, stoppingPoint, 0);
-								if (!currentDeps.containsKey(robotID)) currentDeps.put(robotID, new TreeSet<Dependency>());
+								if (!currentDeps.containsKey(robotID)) currentDeps.put(robotID, new HashSet<Dependency>());
 								if (!currentDeps.get(robotID).add(dep)) {
 									metaCSPLogger.severe("<<<<<<<<< Add dependency fails (1). Dep: " + dep);
 								}
@@ -1586,7 +1592,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						if (createAParkingDep) {
 							int drivingCSEnd = drivingRobotID == cs.getTe1().getRobotID() ? cs.getTe1End() : cs.getTe2End();
 							metaCSPLogger.finest("Robot" + drivingRobotID + " is parked, so Robot" + waitingRobotID + " will have to wait");
-							if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
+							if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new HashSet<Dependency>());
 							Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd);
 							if (!currentDeps.get(waitingRobotID).add(dep)) {
 								metaCSPLogger.severe("<<<<<<<<< Add dependency fails (2). Dep: " + dep);
@@ -1727,7 +1733,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 										(drivingRobotID == robotReport1.getRobotID() ? robotReport1.getPathIndex() : robotReport2.getPathIndex());
 								int artDrivingCSEnd = waitingRobotID == cs.getTe1().getRobotID() ? cs.getTe1End() : cs.getTe2End();
 								Dependency dep = new Dependency(drivingTE,waitingTE,Math.max(0, artWaitingPoint),artDrivingCSEnd);
-								if (!artificialDependencies.containsKey(drivingRobotID)) artificialDependencies.put(drivingRobotID, new TreeSet<Dependency>());
+								if (!artificialDependencies.containsKey(drivingRobotID)) artificialDependencies.put(drivingRobotID, new HashSet<Dependency>());
 								artificialDependencies.get(drivingRobotID).add(dep);
 								askForReplan.add(drivingRobotID);
 								
@@ -1774,7 +1780,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						if (waitingPoint >= 0) {		
 							//Make new dependency
 							int drivingCSEnd =  drivingRobotID == cs.getTe1().getRobotID() ? cs.getTe1End() : cs.getTe2End();
-							if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
+							if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new HashSet<Dependency>());
 							Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd);
 							if (!currentDeps.get(waitingRobotID).add(dep)) {
 								metaCSPLogger.severe("<<<<<<<<< Add dependency fails (3). Dep: " + dep);
@@ -1866,7 +1872,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						
 						//Make new dependency
 						int drivingCSEnd =  drivingRobotID == cs.getTe1().getRobotID() ? cs.getTe1End() : cs.getTe2End();
-						if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
+						if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new HashSet<Dependency>());
 						Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd);
 						if (!currentDeps.get(waitingRobotID).add(dep)) {
 							metaCSPLogger.severe("<<<<<<<<< Add dependency fails (3). Dep: " + dep);
@@ -2054,7 +2060,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 								//update the maps
 								if (!currentDeps.get(depOld.getWaitingRobotID()).remove(depOld)) metaCSPLogger.info("<<<<<<<< Error in removing dep: " + depOld);
 								if (currentDeps.get(depOld.getWaitingRobotID()).isEmpty()) currentDeps.remove(depOld.getWaitingRobotID());
-								if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
+								if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new HashSet<Dependency>());
 								if (!currentDeps.get(waitingRobotID).add(depNew)) {
 									metaCSPLogger.severe("<<<<<<<<< Add dependency fails (2). Dep: " + depNew);
 								}
