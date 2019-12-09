@@ -65,6 +65,7 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 	private HashMap<Integer,visualization_msgs.Marker> envelopeMarkers = null;
 	private boolean ready = false;
 	private String mapFileName = null;
+	private boolean darkColors = true;
 	
 	private static String rvizEntry = ""+
 			"    - Class: rviz/MarkerArray\n" + 
@@ -170,6 +171,10 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 			catch (InterruptedException e) { e.printStackTrace(); }
 			System.out.println("ROS-core started");
 		}
+	}
+	
+	public void setDarkColors(boolean dark) {
+		this.darkColors = dark;
 	}
 
 	private BufferedImage toGrayScale(BufferedImage imgIn) {
@@ -310,10 +315,20 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 			markerName.getScale().setX(1.0f);
 			markerName.getScale().setY(1.0f);
 			markerName.getScale().setZ(1.0f);
-			markerName.getColor().setR(1.0f);
-			markerName.getColor().setG(1.0f);
-			markerName.getColor().setB(1.0f);
-			markerName.getColor().setA(0.8f);
+			float R = 0.0f;
+			float G = 0.0f;
+			float B = 0.0f;
+			float A = 1.0f;
+			if (darkColors) {
+				R = 1.0f;
+				G = 1.0f;
+				B = 1.0f;
+				A = 0.8f;
+			}
+			markerName.getColor().setR(R);
+            markerName.getColor().setG(G);
+            markerName.getColor().setB(B);
+            markerName.getColor().setA(A);
 			markerName.setAction(visualization_msgs.Marker.ADD);                                
 			markerName.setNs("robot_state");
 			markerName.setType(visualization_msgs.Marker.TEXT_VIEW_FACING);
@@ -384,10 +399,20 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 			markerName.getScale().setX(1.0f);
 			markerName.getScale().setY(1.0f);
 			markerName.getScale().setZ(1.0f);
-			markerName.getColor().setR(1.0f);
-			markerName.getColor().setG(1.0f);
-			markerName.getColor().setB(1.0f);
-			markerName.getColor().setA(0.8f);
+			float R = 0.0f;
+			float G = 0.0f;
+			float B = 0.0f;
+			float A = 1.0f;
+			if (darkColors) {
+				R = 1.0f;
+				G = 1.0f;
+				B = 1.0f;
+				A = 0.8f;
+			}
+			markerName.getColor().setR(R);
+            markerName.getColor().setG(G);
+            markerName.getColor().setB(B);
+            markerName.getColor().setA(A);
 			markerName.setAction(visualization_msgs.Marker.ADD);                                
 			markerName.setNs("robot_state");
 			markerName.setType(visualization_msgs.Marker.TEXT_VIEW_FACING);
@@ -502,10 +527,20 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 			mArrow.getScale().setX(0.4);
 			mArrow.getScale().setY(1.0);
 			mArrow.getScale().setZ(1.2);
-			mArrow.getColor().setR(15.0f);
-			mArrow.getColor().setG(100.0f);
-			mArrow.getColor().setB(200.0f);
-			mArrow.getColor().setA(0.2f);
+			float R = 0.0f;
+			float G = 0.0f;
+			float B = 0.0f;
+			float A = 0.3f;
+			if (darkColors) {
+				R = 15.0f;
+				G = 100.0f;
+				B = 200.0f;
+				A = 0.2f;
+			}
+			mArrow.getColor().setR(R);
+			mArrow.getColor().setG(G);
+			mArrow.getColor().setB(B);
+			mArrow.getColor().setA(A);
 			mArrow.setLifetime(new Duration(1.0));
 			if (!this.dependencyPublishers.containsKey(rrWaiting.getRobotID())) {
 				Publisher<visualization_msgs.MarkerArray> markerArrayPublisher = node.newPublisher("robot"+rrWaiting.getRobotID()+"/deps", visualization_msgs.MarkerArray._TYPE);
@@ -621,6 +656,19 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 		marker.getColor().setG(50.0f);
 		marker.getColor().setB(0.0f);
 		marker.getColor().setA(0.8f);
+		float R = 0.0f;
+		float G = 0.0f;
+		float B = 0.0f;
+		float A = 0.7f;
+		if (darkColors) {
+			R = 50.0f;
+			G = 50.0f;
+			A = 0.8f;
+		}
+		marker.getColor().setR(R);
+		marker.getColor().setG(G);
+		marker.getColor().setB(B);
+		marker.getColor().setA(A);
 		marker.setAction(visualization_msgs.Marker.ADD);
 		marker.setNs("current_envelope");
 		marker.setType(visualization_msgs.Marker.LINE_STRIP);
