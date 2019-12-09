@@ -1828,7 +1828,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				updateGraph(edgesToDelete, edgesToAdd);
 				metaCSPLogger.finest("Constrained precedences leads to graph: " + currentOrdersGraph.toString() + ".");		
 			
-				//For each reversible constraint, first preload the precedence according to the ESTF heuristic.
+				//For each reversible constraint, first preload the precedence according to the FCFS heuristic.
 				//Then, try to reverse the constraint and decide for the heuristic order if it will preserve liveness.
 				//( checkAndAdd() ... )				
 				
@@ -1846,7 +1846,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					AbstractTrajectoryEnvelopeTracker robotTracker2 = trackers.get(cs.getTe2().getRobotID());
 					RobotReport robotReport2 = currentReports.get(cs.getTe2().getRobotID());
 									
-					//If the dependency is new, the starting robot should yield (ESTF heuristic).
+					//If the dependency is new, the starting robot should yield (FCFS heuristic).
 					//Otherwise, preload the previous precedence order
 					boolean robot2Yields = true;	
 					if (!CSToDepsOrder.containsKey(cs)) 
