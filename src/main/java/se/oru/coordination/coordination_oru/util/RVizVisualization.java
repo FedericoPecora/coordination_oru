@@ -107,7 +107,7 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
             }
 			
 			//Read post
-			is = loader.getResourceAsStream("coordinator_default_config_pre.rviz");
+			is = loader.getResourceAsStream("coordinator_default_config_post.rviz");
 			br = new BufferedReader(new InputStreamReader(is));
 			oneLine = null;
 			while ((oneLine = br.readLine()) != null) {
