@@ -14,9 +14,13 @@ The algorithm provided by this implementation is detailed in
 
 * Federico Pecora, Henrik Andreasson, Masoumeh Mansouri, and Vilian Petkov, <a href="https://www.aaai.org/ocs/index.php/ICAPS/ICAPS18/paper/view/17746/16941">A loosely-coupled approach for multi-robot coordination, motion planning and control</a>. In Proc. of the International Conference on Automated Planning and Scheduling (ICAPS), 2018.
 
-[![Examples usages of the coordination_oru library](http://img.youtube.com/vi/jCgrCVWf8sE/0.jpg)](http://www.youtube.com/watch?v=jCgrCVWf8sE "Examples usages of the coordination_oru library")
+The corresponding talk at ICAPS 2018 is available below:
 
-The approach makes very few assumptions on robot controllers, and can be used with any motion planning method for computing kinematically-feasible paths. Coordination is seen as a high-level control scheme for the entire fleet. Heuristics are used to update precedences of robots through critical sections while the fleet is in motion, and the dynamic feasibility of precedences is guaranteed via the inclusion of user-definable models of robot dynamics. 
+[![ICAPS 2018 talk by Federico Pecora](http://img.youtube.com/vi/XVSAqH3gt_s/0.jpg)](http://www.youtube.com/watch?v=XVSAqH3gt_s "ICAPS 2018 talk by Federico Pecora")
+
+The approach makes very few assumptions on robot controllers, and can be used with any motion planning method for computing kinematically-feasible paths. Coordination is seen as a high-level control scheme for the entire fleet. Heuristics are used to update precedences of robots through critical sections while the fleet is in motion, and the dynamic feasibility of precedences is guaranteed via the inclusion of user-definable models of robot dynamics. Several examples with simulated and real robots are shown in the following video:
+
+[![Examples usages of the coordination_oru library](http://img.youtube.com/vi/jCgrCVWf8sE/0.jpg)](http://www.youtube.com/watch?v=jCgrCVWf8sE "Examples usages of the coordination_oru library")
 
 The coordination method is based on the _trajectory envelope_ representation provided by the <a href="http://metacsp.org">Meta-CSP framework</a>. This representation is detailed in
 
@@ -24,8 +28,8 @@ The coordination method is based on the _trajectory envelope_ representation pro
 
 In short, a trajectory envelope is a set of spatio-temporal constraints on a robot's trajectory. A trajectory envelope spans over a _path_, which is a sequence of _poses_ ```<p1, ... pn>```. In the current implementation, the spatial constraints defining a trajectory envelope are computed as the sweep of the robot's footprint over the path.
 
-## Tutorial
-The approach is discussed in detail in the tutorial on _Integrated Motion Planning, Coordination and Control for Fleets of Mobile Robots_, given at the <a href="http://icaps18.icaps-conference.org/tutorials/">2018 International Conference on Automated Planning and Scheduling (ICAPS)</a> by F. Pecora and M. Mansouri. Slides and source code of the tutorial are available <a href="https://gitsvn-nt.oru.se/fopa/coordination-tutorial-src-ICAPS-2018">here</a>.
+## Tutorials
+The approach is discussed in more detail in the tutorial on _Integrated Motion Planning, Coordination and Control for Fleets of Mobile Robots_, given at the <a href="http://icaps18.icaps-conference.org/tutorials/">2018 International Conference on Automated Planning and Scheduling (ICAPS)</a> by F. Pecora and M. Mansouri. Slides and source code of the tutorial are available <a href="https://gitsvn-nt.oru.se/fopa/coordination-tutorial-src-ICAPS-2018">here</a>.
 
 ## Installation
 To install, clone this repository and compile the source code with gradle (redistributable included):
@@ -114,6 +118,37 @@ Most of the coordination examples make use of the motion planner (see screenshot
 for a list of all provided examples and instructions on how to run them (and/or see package ```se.oru.coordination.coordination_oru.tests```).
 
 ![Coordination with the ReedsSheppCarPlanner](images/coord-rsp.png "Coordination with the ReedsSheppCarPlanner")
+
+## Citing this work
+
+Please cite the original article describing this work when referring to the approach in general:
+```
+@inproceedings{pecora2018loosely,
+  title={A Loosely-Coupled Approach for Multi-Robot Coordination, Motion Planning and Control},
+  author={Pecora, Federico and Andreasson, Henrik and Mansouri, Masoumeh and Petkov, Vilian},
+  booktitle={Twenty-Eighth International Conference on Automated Planning and Scheduling},
+  year={2018}
+}
+```
+
+When referring to the enhancement to make the algorithm robust to communication uncertainty, please cite:
+```
+@article{mannucci2019provably,
+  title={Provably safe multi-robot coordination with unreliable communication},
+  author={Mannucci, Anna and Pallottino, Lucia and Pecora, Federico},
+  journal={IEEE Robotics and Automation Letters},
+  volume={4},
+  number={4},
+  pages={3232--3239},
+  year={2019},
+  publisher={IEEE}
+}
+```
+
+When referring to the software implementation of the approach specifically, please cite the DOI associated with the latest relase:
+
+[![DOI](https://zenodo.org/badge/94546589.svg)](https://zenodo.org/badge/latestdoi/94546589)
+
 
 ## Sponsors
 This project is supported by

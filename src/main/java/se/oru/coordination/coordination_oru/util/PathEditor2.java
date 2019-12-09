@@ -170,7 +170,8 @@ public class PathEditor2 implements MouseMotionListener {
 
 		if (posesAndPaths != null) {
 			this.locationsAndPathsFilename = posesAndPaths;
-			String pathURI = this.locationsAndPathsFilename.substring(0, this.locationsAndPathsFilename.lastIndexOf(File.separator)+1);
+			//String pathURI = this.locationsAndPathsFilename.substring(0, this.locationsAndPathsFilename.lastIndexOf(File.separator)+1);
+			String pathURI = "";
 			Missions.loadLocationAndPathData(this.locationsAndPathsFilename);
 			addAllKnownLocations();
 			HashMap<String,Pose> locations = Missions.getLocations();
@@ -187,7 +188,8 @@ public class PathEditor2 implements MouseMotionListener {
 							isInversePath.put(entry.getKey()+"->"+entry1.getKey(), false);
 						}
 						catch(Error e) {
-							//System.out.println("No path for " + entry.getKey()+"->"+entry1.getKey());
+//							System.out.println("No path for " + entry.getKey()+"->"+entry1.getKey());
+//							e.printStackTrace();
 						}
 						try {
 							String pathFile = Missions.getPathFile(entry1.getKey(), entry.getKey());
@@ -198,7 +200,8 @@ public class PathEditor2 implements MouseMotionListener {
 							isInversePath.put(entry1.getKey()+"->"+entry.getKey(), false);
 						}
 						catch(Error e) {
-							//System.out.println("No path for " + entry1.getKey()+"->"+entry.getKey());
+//							System.out.println("No path for " + entry1.getKey()+"->"+entry.getKey());
+//							e.printStackTrace();
 						}
 					}
 				}
