@@ -947,7 +947,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			}
 		}
 		
-		//You should lock the robots if you want to start replaning. 
+		//You should lock the robots if you want to start re-planning. 
 		//In this way, the last critical point communicated when the re-plan is started is forced not to be updated
 		synchronized (lockedRobots) {
 			boolean tryLocking = true;
