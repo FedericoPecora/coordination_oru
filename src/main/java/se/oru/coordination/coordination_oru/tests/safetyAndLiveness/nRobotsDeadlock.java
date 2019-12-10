@@ -71,10 +71,15 @@ public class nRobotsDeadlock {
 				return robot1ID > robot2ID ? 1 : -1; 
 				}
 		});
+		
 		//You probably also want to provide a non-trivial forward model
 		//(the default assumes that robots can always stop)
-		for (int i = 1; i <= nRobotsDeadlock.NUMBER_ROBOTS; i++) 
+		int[] robotIDs =  new int[NUMBER_ROBOTS];
+		for (int i = 1; i <= nRobotsDeadlock.NUMBER_ROBOTS; i++) {
+			robotIDs[i-1] = i;
 			tec.setForwardModel(i, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
+		}
+		
 		//comment out following (or set to true) to make the coordinator attempt to break the deadlock
 		//tec.setBreakDeadlocks(false);
 		//tec.setBreakDeadlocksByReordering(true);
@@ -92,6 +97,7 @@ public class nRobotsDeadlock {
 		
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		RVizVisualization viz = new RVizVisualization();
+		//RVizVisualization.writeRVizConfigFile(robotIDs);
 		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
 		//BrowserVisualization viz = new BrowserVisualization();
 		//viz.setInitialTransform(73, 22, 16);
@@ -116,22 +122,19 @@ public class nRobotsDeadlock {
 		HashMap<Integer,Pose> startPoses = new HashMap<Integer,Pose>();
 		HashMap<Integer,Pose> goalPoses = new HashMap<Integer,Pose>();
 		ArrayList<PoseSteering[]> paths = new ArrayList<PoseSteering[]>();
-		int[] robotIDs =  new int[NUMBER_ROBOTS];
 		
 		double theta = 0.0;
 		for (int i = 0; i < NUMBER_ROBOTS; i++) {
-			robotIDs[i] = i+1;
-			int robotID = robotIDs[i];
 			double alpha = theta + i*Math.PI/NUMBER_ROBOTS;
-			startPoses.put(robotID, new Pose(radius*Math.cos(alpha), radius*Math.sin(alpha), alpha));
-			goalPoses.put(robotID, new Pose(radius*Math.cos(alpha+Math.PI), radius*Math.sin(alpha+Math.PI), alpha));
-			tec.placeRobot(robotID, startPoses.get(robotID));
-			rsp.setStart(startPoses.get(robotID));
-			rsp.setGoals(goalPoses.get(robotID));
-			if (!rsp.plan()) throw new Error ("No path between " + startPoses.get(robotID) + " and " + goalPoses.get(robotID));
-			Mission m = new Mission(robotID, rsp.getPath());
+			startPoses.put(robotIDs[i], new Pose(radius*Math.cos(alpha), radius*Math.sin(alpha), alpha));
+			goalPoses.put(robotIDs[i], new Pose(radius*Math.cos(alpha+Math.PI), radius*Math.sin(alpha+Math.PI), alpha));
+			tec.placeRobot(robotIDs[i], startPoses.get(robotIDs[i]));
+			rsp.setStart(startPoses.get(robotIDs[i]));
+			rsp.setGoals(goalPoses.get(robotIDs[i]));
+			if (!rsp.plan()) throw new Error ("No path between " + startPoses.get(robotIDs[i]) + " and " + goalPoses.get(robotIDs[i]));
+			Mission m = new Mission(robotIDs[i], rsp.getPath());
 			Missions.enqueueMission(m);
-			Mission m1 = new Mission(robotID, rsp.getPathInv());
+			Mission m1 = new Mission(robotIDs[i], rsp.getPathInv());
 			Missions.enqueueMission(m1);
 		}
 		
