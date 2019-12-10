@@ -89,8 +89,8 @@ public class RandomPathsInMap {
 		tec.setupSolver(0, 100000000);
 
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
-		//String yamlFile = "maps/map-partial-2.yaml";
-		String yamlFile = "maps/map-corridors.yaml";
+		String yamlFile = "maps/map-partial-2.yaml";
+		//String yamlFile = "maps/map-corridors.yaml";
 		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
 		//viz.setMap(yamlFile);
 		//RVizVisualization viz = new RVizVisualization();
