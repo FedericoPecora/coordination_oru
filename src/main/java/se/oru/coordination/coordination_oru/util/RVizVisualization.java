@@ -65,6 +65,7 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 	private HashMap<Integer,visualization_msgs.Marker> envelopeMarkers = null;
 	private boolean ready = false;
 	private String mapFileName = null;
+	private boolean darkColors = true;
 	
 	private static String rvizEntry = ""+
 			"    - Class: rviz/MarkerArray\n" + 
@@ -107,7 +108,7 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
             }
 			
 			//Read post
-			is = loader.getResourceAsStream("coordinator_default_config_pre.rviz");
+			is = loader.getResourceAsStream("coordinator_default_config_post.rviz");
 			br = new BufferedReader(new InputStreamReader(is));
 			oneLine = null;
 			while ((oneLine = br.readLine()) != null) {
@@ -170,6 +171,10 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 			catch (InterruptedException e) { e.printStackTrace(); }
 			System.out.println("ROS-core started");
 		}
+	}
+	
+	public void setDarkColors(boolean dark) {
+		this.darkColors = dark;
 	}
 
 	private BufferedImage toGrayScale(BufferedImage imgIn) {
@@ -272,7 +277,7 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 			visualization_msgs.Marker marker = node.getTopicMessageFactory().newFromType(visualization_msgs.Marker._TYPE);
 			marker.getHeader().setFrameId(mapFrameID);
 			marker.getScale().setX(0.2f);
-			marker.getColor().setR(100.0f);
+			marker.getColor().setR(100f);
 			marker.getColor().setG(0.0f);
 			marker.getColor().setB(0.0f);
 			marker.getColor().setA(0.8f);
@@ -310,10 +315,20 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 			markerName.getScale().setX(1.0f);
 			markerName.getScale().setY(1.0f);
 			markerName.getScale().setZ(1.0f);
-			markerName.getColor().setR(0.0f);
-			markerName.getColor().setG(0.0f);
-			markerName.getColor().setB(0.0f);
-			markerName.getColor().setA(1.0f);
+			float R = 0.0f;
+			float G = 0.0f;
+			float B = 0.0f;
+			float A = 1.0f;
+			if (darkColors) {
+				R = 1.0f;
+				G = 1.0f;
+				B = 1.0f;
+				A = 0.8f;
+			}
+			markerName.getColor().setR(R);
+            markerName.getColor().setG(G);
+            markerName.getColor().setB(B);
+            markerName.getColor().setA(A);
 			markerName.setAction(visualization_msgs.Marker.ADD);                                
 			markerName.setNs("robot_state");
 			markerName.setType(visualization_msgs.Marker.TEXT_VIEW_FACING);
@@ -384,10 +399,20 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 			markerName.getScale().setX(1.0f);
 			markerName.getScale().setY(1.0f);
 			markerName.getScale().setZ(1.0f);
-			markerName.getColor().setR(0.0f);
-			markerName.getColor().setG(0.0f);
-			markerName.getColor().setB(0.0f);
-			markerName.getColor().setA(1.0f);
+			float R = 0.0f;
+			float G = 0.0f;
+			float B = 0.0f;
+			float A = 1.0f;
+			if (darkColors) {
+				R = 1.0f;
+				G = 1.0f;
+				B = 1.0f;
+				A = 0.8f;
+			}
+			markerName.getColor().setR(R);
+            markerName.getColor().setG(G);
+            markerName.getColor().setB(B);
+            markerName.getColor().setA(A);
 			markerName.setAction(visualization_msgs.Marker.ADD);                                
 			markerName.setNs("robot_state");
 			markerName.setType(visualization_msgs.Marker.TEXT_VIEW_FACING);
@@ -409,6 +434,72 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 
 		}
 	}
+	
+	public void displayBox(String markerLabel, Coordinate[] shape, int markerID, double x, double y, double durationInSeconds) {
+		if (ready) {
+			visualization_msgs.Marker marker = node.getTopicMessageFactory().newFromType(visualization_msgs.Marker._TYPE);
+			marker.getHeader().setFrameId(mapFrameID);
+			marker.getScale().setX(0.2f);
+			marker.getColor().setR(0.0f);
+			marker.getColor().setG(100.0f);
+			marker.getColor().setB(0.0f);
+			marker.getColor().setA(0.8f);
+			marker.setAction(visualization_msgs.Marker.ADD);                                
+			marker.setNs("box_marker");
+			marker.setType(visualization_msgs.Marker.LINE_STRIP);
+			marker.setId(markerID);
+			marker.setLifetime(new Duration(durationInSeconds));
+
+			ArrayList<geometry_msgs.Point> points = new ArrayList<geometry_msgs.Point>();
+			for (Coordinate coord : shape) {
+				geometry_msgs.Point point = node.getTopicMessageFactory().newFromType(geometry_msgs.Point._TYPE);
+				point.setX(coord.x);
+				point.setY(coord.y);
+				point.setZ(0.0);
+				points.add(point);
+			}
+			points.add(points.get(0));
+			marker.setPoints(points);
+			if (!this.boxMarkerPublishers.containsKey(markerLabel)) {
+				Publisher<visualization_msgs.MarkerArray> markerArrayPublisher = node.newPublisher(markerLabel, visualization_msgs.MarkerArray._TYPE);
+				this.boxMarkerPublishers.put(markerLabel, markerArrayPublisher);
+				synchronized(boxMarkerMarkers) {
+					this.boxMarkerMarkers.put(markerLabel, new ArrayList<visualization_msgs.Marker>());
+				}
+			}
+			synchronized(boxMarkerMarkers) {
+				this.boxMarkerMarkers.get(markerLabel).add(marker);
+			}
+
+			//////////////
+			visualization_msgs.Marker markerName = node.getTopicMessageFactory().newFromType(visualization_msgs.Marker._TYPE);
+			markerName.getHeader().setFrameId(mapFrameID);
+			markerName.getScale().setX(1.0f);
+			markerName.getScale().setY(1.0f);
+			markerName.getScale().setZ(1.0f);
+			markerName.getColor().setR(1.0f);
+			markerName.getColor().setG(1.0f);
+			markerName.getColor().setB(1.0f);
+			markerName.getColor().setA(0.8f);
+			markerName.setAction(visualization_msgs.Marker.ADD);                                
+			markerName.setNs("label");
+			markerName.setType(visualization_msgs.Marker.TEXT_VIEW_FACING);
+			//markerName.setId(te.getRobotID());
+			markerName.setLifetime(new Duration(durationInSeconds));
+			markerName.setText(markerLabel);
+			geometry_msgs.Pose pose = node.getTopicMessageFactory().newFromType(geometry_msgs.Pose._TYPE);
+			geometry_msgs.Point pos = node.getTopicMessageFactory().newFromType(geometry_msgs.Point._TYPE);
+			pos.setX(x);
+			pos.setY(y);
+			pos.setZ(0);
+			pose.setPosition(pos);
+			markerName.setPose(pose);
+			synchronized(boxMarkerMarkers) {
+				this.boxMarkerMarkers.get(markerLabel).add(markerName);
+			}
+		}
+	}
+
 
 	@Override
 	public void displayDependency(RobotReport rrWaiting, RobotReport rrDriving, String dependencyDescriptor) {
@@ -436,10 +527,20 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 			mArrow.getScale().setX(0.4);
 			mArrow.getScale().setY(1.0);
 			mArrow.getScale().setZ(1.2);
-			mArrow.getColor().setR(0.0f);
-			mArrow.getColor().setG(0.0f);
-			mArrow.getColor().setB(0.0f);
-			mArrow.getColor().setA(0.3f);
+			float R = 0.0f;
+			float G = 0.0f;
+			float B = 0.0f;
+			float A = 0.3f;
+			if (darkColors) {
+				R = 15.0f;
+				G = 100.0f;
+				B = 200.0f;
+				A = 0.2f;
+			}
+			mArrow.getColor().setR(R);
+			mArrow.getColor().setG(G);
+			mArrow.getColor().setB(B);
+			mArrow.getColor().setA(A);
 			mArrow.setLifetime(new Duration(1.0));
 			if (!this.dependencyPublishers.containsKey(rrWaiting.getRobotID())) {
 				Publisher<visualization_msgs.MarkerArray> markerArrayPublisher = node.newPublisher("robot"+rrWaiting.getRobotID()+"/deps", visualization_msgs.MarkerArray._TYPE);
@@ -551,10 +652,23 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 		visualization_msgs.Marker marker = node.getTopicMessageFactory().newFromType(visualization_msgs.Marker._TYPE);
 		marker.getHeader().setFrameId(mapFrameID);
 		marker.getScale().setX(0.1f);
-		marker.getColor().setR(0f);
-		marker.getColor().setG(0.0f);
+		marker.getColor().setR(50f);
+		marker.getColor().setG(50.0f);
 		marker.getColor().setB(0.0f);
-		marker.getColor().setA(0.7f);
+		marker.getColor().setA(0.8f);
+		float R = 0.0f;
+		float G = 0.0f;
+		float B = 0.0f;
+		float A = 0.7f;
+		if (darkColors) {
+			R = 50.0f;
+			G = 50.0f;
+			A = 0.8f;
+		}
+		marker.getColor().setR(R);
+		marker.getColor().setG(G);
+		marker.getColor().setB(B);
+		marker.getColor().setA(A);
 		marker.setAction(visualization_msgs.Marker.ADD);
 		marker.setNs("current_envelope");
 		marker.setType(visualization_msgs.Marker.LINE_STRIP);

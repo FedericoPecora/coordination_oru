@@ -48,9 +48,9 @@ public class ThreeRobotsGoalPosting {
 
 		//You probably also want to provide a non-trivial forward model
 		//(the default assumes that robots can always stop)
-		tec.setForwardModel(1, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getTrackingPeriod()));
-		tec.setForwardModel(2, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getTrackingPeriod()));
-		tec.setForwardModel(3, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getTrackingPeriod()));
+		tec.setForwardModel(1, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
+		tec.setForwardModel(2, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
+		tec.setForwardModel(3, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
 		
 		Coordinate footprint1 = new Coordinate(-1.0,0.5);
 		Coordinate footprint2 = new Coordinate(1.0,0.5);
@@ -87,20 +87,14 @@ public class ThreeRobotsGoalPosting {
 		Mission m3 = new Mission(3,path3);
 		
 		tec.addMissions(m1);
-		tec.computeCriticalSections();
-		tec.startTrackingAddedMissions();
 		
 		Thread.sleep(2000);
 		
 		tec.addMissions(m2);
-		tec.computeCriticalSections();
-		tec.startTrackingAddedMissions();
 		
 		Thread.sleep(2000);
 		
 		tec.addMissions(m3);
-		tec.computeCriticalSections();
-		tec.startTrackingAddedMissions();
 		
 	}
 	

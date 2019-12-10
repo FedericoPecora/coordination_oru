@@ -79,12 +79,11 @@ public class Experiment1Test1 {
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 //		String yamlFile = "../maps/map-empty.yaml";
 		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
-		RVizVisualization viz = new RVizVisualization();
-		//BrowserVisualization viz = new BrowserVisualization();
-		//viz.setInitialTransform(25, -25, 15);
+		//RVizVisualization viz = new RVizVisualization();
+		BrowserVisualization viz = new BrowserVisualization();
+		viz.setInitialTransform(25, -25, 15);
 		tec.setVisualization(viz);
 		
-		tec.setBreakDeadlocks(false);
 		tec.setUseInternalCriticalPoints(false);
 		tec.setYieldIfParking(false);
 
@@ -114,7 +113,7 @@ public class Experiment1Test1 {
 			int robotID = robotIDs[index];
 			//You probably also want to provide a non-trivial forward model
 			//(the default assumes that robots can always stop)
-			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getTrackingPeriod()));
+			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
 			ArrayList<Pose> posesRobot = new ArrayList<Pose>();
 			//if (index%2==0) {
 			posesRobot.add(new Pose(Math.floor(mapWidht*0.3),mapHeight-(2*robotID),0.0));
@@ -166,8 +165,6 @@ public class Experiment1Test1 {
 							synchronized(tec) {
 								//addMission returns true iff the robot was free to accept a new mission
 								if (tec.addMissions(m)) {
-									tec.computeCriticalSections();
-									tec.startTrackingAddedMissions();
 									//tec.writeSetupLog("progress", "Robot "+robotID+" has completed " +iteration+" missions.");
 									iteration++;
 								}

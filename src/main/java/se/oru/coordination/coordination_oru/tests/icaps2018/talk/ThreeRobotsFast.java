@@ -46,9 +46,9 @@ public class ThreeRobotsFast {
 		
 		//You probably also want to provide a non-trivial forward model
 		//(the default assumes that robots can always stop)
-		tec.setForwardModel(1, new ConstantAccelerationForwardModel(MAX_ACCEL*0.9, MAX_VEL, tec.getTemporalResolution(), tec.getTrackingPeriod()));
-		tec.setForwardModel(2, new ConstantAccelerationForwardModel(MAX_ACCEL*0.9, MAX_VEL, tec.getTemporalResolution(), tec.getTrackingPeriod()));
-		tec.setForwardModel(3, new ConstantAccelerationForwardModel(MAX_ACCEL*0.9, MAX_VEL, tec.getTemporalResolution(), tec.getTrackingPeriod()));
+		tec.setForwardModel(1, new ConstantAccelerationForwardModel(MAX_ACCEL*0.9, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
+		tec.setForwardModel(2, new ConstantAccelerationForwardModel(MAX_ACCEL*0.9, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
+		tec.setForwardModel(3, new ConstantAccelerationForwardModel(MAX_ACCEL*0.9, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
 
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
@@ -110,11 +110,7 @@ public class ThreeRobotsFast {
 						Mission m = Missions.getMission(robotID, iteration%Missions.getMissions(robotID).size());
 						synchronized(tec) {
 							//addMission returns true iff the robot was free to accept a new mission
-							if (tec.addMissions(m)) {
-								tec.computeCriticalSections();
-								tec.startTrackingAddedMissions();
-								iteration++;
-							}
+							if (tec.addMissions(m)) iteration++;
 						}
 						//Sleep for a little (2 sec)
 						try { Thread.sleep(2000); }

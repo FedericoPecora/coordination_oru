@@ -1,4 +1,4 @@
-package se.oru.coordination.coordination_oru.tests.collisionChecking;
+package se.oru.coordination.coordination_oru.tests.safetyAndLiveness;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -67,7 +67,7 @@ public class Circle {
 		final int[] robotIDs = new int[numRobots];
 		for (int i = 0; i < numRobots; i++) {
 			robotIDs[i] = i+1;
-			tec.setForwardModel(i+1, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getTrackingPeriod()));
+			tec.setForwardModel(i+1, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
 		}
 		
 		//Set a map
@@ -157,7 +157,6 @@ public class Circle {
 						if (tec.isFree(robotID)) {
 							Mission m = Missions.dequeueMission(robotID);
 							tec.addMissions(m);
-							tec.computeCriticalSectionsAndStartTrackingAddedMission();
 							Missions.enqueueMission(m);
 						}
 						try { Thread.sleep(2000); }

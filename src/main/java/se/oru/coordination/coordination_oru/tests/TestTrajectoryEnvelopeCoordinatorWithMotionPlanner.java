@@ -52,8 +52,8 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner {
 
 		//You probably also want to provide a non-trivial forward model
 		//(the default assumes that robots can always stop)
-		tec.setForwardModel(1, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getTrackingPeriod()));
-		tec.setForwardModel(2, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getTrackingPeriod()));
+		tec.setForwardModel(1, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
+		tec.setForwardModel(2, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
 
 		Coordinate footprint1 = new Coordinate(-1.0,0.5);
 		Coordinate footprint2 = new Coordinate(1.0,0.5);
@@ -142,11 +142,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner {
 						Mission m = Missions.getMission(robotID, iteration%2);
 						synchronized(tec) {
 							//addMission returns true iff the robot was free to accept a new mission
-							if (tec.addMissions(m)) {
-								tec.computeCriticalSections();
-								tec.startTrackingAddedMissions();
-								iteration++;
-							}
+							if (tec.addMissions(m)) iteration++;
 						}
 						//Sleep for a little (2 sec)
 						try { Thread.sleep(2000); }

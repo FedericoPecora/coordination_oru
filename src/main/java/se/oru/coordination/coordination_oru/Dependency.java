@@ -17,15 +17,12 @@ public class Dependency implements Comparable<Dependency> {
 	private int robotIDWaiting, robotIDDriving;
 	private TrajectoryEnvelope teWaiting, teDriving;
 	private int waitingPoint, thresholdPoint;
-	private AbstractTrajectoryEnvelopeTracker waitingTracker, drivingTracker;
 	
-	public Dependency(TrajectoryEnvelope teWaiting, TrajectoryEnvelope teDriving, int waitingPoint, int thresholdPoint, AbstractTrajectoryEnvelopeTracker waitingTracker, AbstractTrajectoryEnvelopeTracker drivingTracker) {
+	public Dependency(TrajectoryEnvelope teWaiting, TrajectoryEnvelope teDriving, int waitingPoint, int thresholdPoint) {
 		this.teWaiting = teWaiting;
 		this.teDriving = teDriving;
 		this.waitingPoint = waitingPoint;
 		this.thresholdPoint = thresholdPoint;
-		this.waitingTracker = waitingTracker;
-		this.drivingTracker = drivingTracker;
 		this.robotIDWaiting = teWaiting.getRobotID();
 		if (teDriving != null) this.robotIDDriving = teDriving.getRobotID();
 		else this.robotIDDriving = 0;
@@ -39,6 +36,16 @@ public class Dependency implements Comparable<Dependency> {
 	}
 	
 	@Override
+	/**Function to compare two dependencies.
+	 * @param obj The dependency to be compared.
+	 * @return true if the two dependencies are related to the same trajectory envelopes and have the same
+	 * waiting and threshold points.
+	 * @ATTENTION: the compareTo() and the equals() functions give different results in case of
+	 * dependencies involving different pairs of robots, but with the same critical point. 
+	 * While the compareTo() orders Dependencies according to critical points, the equals also consider
+	 * the pair of the robots involved. 
+	 * @PLEASE, BE SURE THE RIGHT FUNCTION WILL BE USED TO ADD OR REMOVE DEPENDENCIES FROM A SPECIFIC DATA STRUCTURE.
+	 */
 	public boolean equals(Object obj) {
 		if (!(obj instanceof Dependency)) return false;
 		Dependency other = (Dependency)obj;
@@ -46,6 +53,14 @@ public class Dependency implements Comparable<Dependency> {
 	}
 	
 	@Override
+	/**Function for ordering dependencies according to the closest waiting point.
+	 * @param other The dependency to be compared.
+	 * @ATTENTION: the compareTo() and the equals() functions give different results in case of
+	 * dependencies involving different pairs of robots, but with the same critical point. 
+	 * While the compareTo() orders Dependencies according to critical points, the equals also consider
+	 * the pair of the robots involved. 
+	 * @PLEASE, BE SURE THE RIGHT FUNCTION WILL BE USED TO ADD OR REMOVE DEPENDENCIES FROM A SPECIFIC DATA STRUCTURE.
+	 */
 	public int compareTo(Dependency other) {
 		if (this.waitingPoint != other.waitingPoint) return this.waitingPoint-other.waitingPoint;
 		return this.thresholdPoint-other.thresholdPoint;
@@ -80,14 +95,6 @@ public class Dependency implements Comparable<Dependency> {
 	
 	public int getReleasingPoint() {
 		return this.thresholdPoint;
-	}
-	
-	public AbstractTrajectoryEnvelopeTracker getWaitingTracker() {
-		return this.waitingTracker;
-	}
-	
-	public AbstractTrajectoryEnvelopeTracker getDrivingTracker() {
-		return this.drivingTracker;
 	}
 	
 	public int getWaitingRobotID() {

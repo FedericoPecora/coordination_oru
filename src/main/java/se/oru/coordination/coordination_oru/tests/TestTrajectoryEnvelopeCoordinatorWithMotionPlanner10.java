@@ -77,7 +77,7 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner10 {
 		
 		Integer[] robotIDs = new Integer[] {1,2,3,4};
 		for (Integer robotID : robotIDs) {
-			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getTrackingPeriod()));	
+			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));	
 			tec.placeRobot(robotID, Missions.getLocation("a"+robotID));
 			
 			rsp.setStart(Missions.getLocation("a"+robotID));
@@ -129,8 +129,6 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner10 {
 						synchronized(tec) {
 							//addMission returns true iff the robot was free to accept a new mission
 							if (tec.addMissions(m)) {
-								tec.computeCriticalSections();
-								tec.startTrackingAddedMissions();
 								iteration++;
 							}
 						}

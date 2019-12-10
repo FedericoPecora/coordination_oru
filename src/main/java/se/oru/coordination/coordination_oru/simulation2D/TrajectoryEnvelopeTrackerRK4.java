@@ -45,7 +45,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 		this.useInternalCPs = value;
 	}
 	
-	public TrajectoryEnvelopeTrackerRK4(TrajectoryEnvelope te, int timeStep, double temporalResolution, TrajectoryEnvelopeCoordinator tec, TrackingCallback cb) {
+	public TrajectoryEnvelopeTrackerRK4(TrajectoryEnvelope te, int timeStep, double temporalResolution, TrajectoryEnvelopeCoordinatorSimulation tec, TrackingCallback cb) {
 		this(te, timeStep, temporalResolution, 1.0, 0.1, tec, cb);
 	}
 	
@@ -93,6 +93,8 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 			this.overallDistance = totalDistance;
 			this.internalCriticalPoints.clear();
 			this.computeInternalCriticalPoints();
+			reportsList.clear();
+			reportTimeLists.clear(); //semplify to avoid discontinuities ... to be fixed.
 		}
 	}
 	
@@ -152,17 +154,22 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 			}
 			if (received) {		
 				//Delete old messages that, due to the communication delay, will arrive after this one.			
-				ArrayList<Long> reportTimeListsTmp = reportTimeLists; 
-				for (int index = 0; index < reportTimeLists.size(); index++)
-				{
-					if (reportTimeListsTmp.get(index) < timeOfArrival) break;
-					if (reportTimeListsTmp.get(index) >= timeOfArrival) {
-						reportsList.remove(index);
-						reportTimeLists.remove(index);
+				ArrayList<Long> reportTimeToRemove = new ArrayList<Long>();
+				ArrayList<RobotReport> reportToRemove = new ArrayList<RobotReport>();
+				
+				for (int index = 0; index < reportTimeLists.size(); index++) {
+					if (reportTimeLists.get(index) < timeOfArrival) break;
+					if (reportTimeLists.get(index) >= timeOfArrival) {
+						reportToRemove.add(reportsList.get(index));
+						reportTimeToRemove.add(reportTimeLists.get(index));
 					}	
 				}
-				reportsList.add(0, getRobotReport());
-				reportTimeLists.add(0, timeOfArrival);
+				
+				for (Long time : reportTimeToRemove) reportTimeLists.remove(time);
+				for (RobotReport report : reportToRemove) reportsList.remove(report);
+				
+				reportsList.add(0, getRobotReport()); //The new one is the one that will arrive later and is added in front of the queue.
+				reportTimeLists.add(0, timeOfArrival); //The oldest is in the end.
 			}
 			
 			//Keep alive just the most recent message before now.
@@ -171,15 +178,19 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 				//FIXME add a function for stopping pausing the fleet and eventually restart
 			}
 			else {
-				ArrayList<Long> reportTimeListsTmp = reportTimeLists; 
-				for (int index = reportTimeListsTmp.size()-1; index > 0; index--)
-				{
-					if (reportTimeListsTmp.get(index) > timeNow) break;
-					if (reportTimeListsTmp.get(index) < timeNow && reportTimeListsTmp.get(index-1) <= timeNow) {
-						reportsList.remove(index);
-						reportTimeLists.remove(index);
+				ArrayList<Long> reportTimeToRemove = new ArrayList<Long>();
+				ArrayList<RobotReport> reportToRemove = new ArrayList<RobotReport>();
+				
+				for (int index = reportTimeLists.size()-1; index > 0; index--) {
+					if (reportTimeLists.get(index) > timeNow) break; //the first in the future
+					if (reportTimeLists.get(index) < timeNow && reportTimeLists.get(index-1) <= timeNow) {
+						reportToRemove.add(reportsList.get(index));
+						reportTimeToRemove.add(reportTimeLists.get(index));
 					}
 				}
+	
+				for (Long time : reportTimeToRemove) reportTimeLists.remove(time);
+				for (RobotReport report : reportToRemove) reportsList.remove(report);
 			}
 			
 			//Check if the current status message is too old.
@@ -334,8 +345,10 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 					while(trial < numberOfReplicas) {
 						if (rand.nextDouble() < (1-NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS)) //the real one
 							send = true;
-						else
-							tec.incrementLostPacketsCounter();
+						else {
+							TrajectoryEnvelopeCoordinatorSimulation tc = (TrajectoryEnvelopeCoordinatorSimulation)tec;
+							tc.incrementLostPacketsCounter();
+						}
 						trial++;
 					}
 					if (send) {
@@ -355,7 +368,8 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 						}
 					}
 					else {
-						tec.incrementLostMsgsCounter();
+						TrajectoryEnvelopeCoordinatorSimulation tc = (TrajectoryEnvelopeCoordinatorSimulation)tec;
+						tc.incrementLostMsgsCounter();
 						metaCSPLogger.info("PACKET to Robot" + te.getRobotID() + " LOST, criticalPoint: " + criticalPoint + ", externalCPCounter: " + externalCPCount);
 					}
 				}

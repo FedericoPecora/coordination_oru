@@ -1,4 +1,4 @@
-package se.oru.coordination.coordination_oru.tests.collisionChecking;
+package se.oru.coordination.coordination_oru.tests.safetyAndLiveness;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -122,7 +122,7 @@ public class ParkingArrayNew {
 		String yamlFile = "maps/map-empty-circle.yaml";
 		
 		for (int i : robotIDs) {
-			tec.setForwardModel(i, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getTrackingPeriod()));
+			tec.setForwardModel(i, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
 			//In case deadlocks occur, we make the coordinator capable of re-planning on the fly (experimental, not working properly yet)
 			AbstractMotionPlanner rsp_i = createMotionPlanner(footprint, yamlFile);
 			tec.setMotionPlanner(i, rsp_i);
@@ -241,13 +241,12 @@ public class ParkingArrayNew {
 										String stat = "";
 										for (int i = 1; i < robotID; i++) stat += "\t";
 										stat += elapsed;
-										writeStat(statFilename, stat);
+										//writeStat(statFilename, stat);
 									}
 									startTime = Calendar.getInstance().getTimeInMillis();
 									firstTime = false;
 									Mission m = Missions.dequeueMission(robotID);
 									tec.addMissions(m);
-									tec.computeCriticalSectionsAndStartTrackingAddedMission();
 									Missions.enqueueMission(m);
 									totalIterations--;
 								}
@@ -261,6 +260,8 @@ public class ParkingArrayNew {
 					}
 				};
 				t.start();
+				try { Thread.sleep(1000); }
+				catch (InterruptedException e) { e.printStackTrace(); }
 			}
 		}
 		
