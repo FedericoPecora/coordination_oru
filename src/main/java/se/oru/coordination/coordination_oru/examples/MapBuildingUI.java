@@ -8,7 +8,7 @@ public class MapBuildingUI {
 
 	public static void main(String[] args) {
 
-		//ST-18 Footprint
+		//Robot Footprint
 		Coordinate[] footprint = new Coordinate[] {
 				new Coordinate(-1.0,0.5),
 				new Coordinate(1.0,0.5),
