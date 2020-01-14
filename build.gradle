@@ -1,0 +1,68 @@
+/*
+ * coordination_oru_template - Online coordination for multiple robots
+ * Template project
+ *
+ * Copyright (C) 2020 Federico Pecora
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or (at
+ * your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see http://www.gnu.org/licenses/.
+ *
+ */
+
+apply plugin: 'java'
+apply plugin: 'eclipse'
+
+// The Maven plugin is only required if your package is used as a library.
+apply plugin: 'maven'
+
+// The Application plugin and mainClassName attribute are only required if
+// your package is used as a binary.
+apply plugin: 'application'
+// The main class that will be executed when you do 'gradle run'
+mainClassName = 'se.oru.coordination.coordination_oru.demo.DemoLauncher'
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+repositories {
+  mavenLocal()
+  jcenter()
+  maven { url 'https://jitpack.io' }
+  maven { url 'https://github.com/rosjava/rosjava_mvn_repo/raw/master/' }
+}
+
+configurations.all {
+    resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+}
+
+version = '0.0.0-SNAPSHOT'
+// Call your group something meaninful, e.g., '<inverse-url>.<project-name>'
+group = 'se.oru.coordination'
+
+dependencies {
+
+  //implementation 'se.oru.coordination:coordination_oru:0.0.0-SNAPSHOT'
+  //implementation 'com.github.FedericoPecora:coordination_oru:master-SNAPSHOT'
+  //implementation 'com.github.FedericoPecora:coordination_oru:udp-live-SNAPSHOT'
+  //implementation 'com.github.FedericoPecora:coordination_oru:0.3.9'
+  //implementation 'com.github.FedericoPecora:coordination_oru_ros:master-SNAPSHOT'
+  implementation 'com.github.FedericoPecora:coordination_oru:0.5.0'	
+
+  implementation 'com.github.FedericoPecora:meta-csp-framework:master-SNAPSHOT'
+
+  // Add the following if you need to include jars that are not
+  // in Maven Central and that you have places in the directory "lib"
+  // (NOTE: you have to create this directory if you need it)
+  //implementation fileTree(dir: 'lib', include: '**/*.jar')
+
+}
