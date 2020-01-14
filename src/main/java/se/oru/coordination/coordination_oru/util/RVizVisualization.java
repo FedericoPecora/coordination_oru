@@ -64,6 +64,7 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 	private HashMap<Integer,visualization_msgs.Marker> envelopeMarkers = null;
 	private boolean ready = false;
 	private String mapFileName = null;
+	private boolean darkColors = true;
 	
 	private static String rvizEntry = ""+
 			"    - Class: rviz/MarkerArray\n" + 
@@ -106,7 +107,7 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
             }
 			
 			//Read post
-			is = loader.getResourceAsStream("coordinator_default_config_pre.rviz");
+			is = loader.getResourceAsStream("coordinator_default_config_post.rviz");
 			br = new BufferedReader(new InputStreamReader(is));
 			oneLine = null;
 			while ((oneLine = br.readLine()) != null) {

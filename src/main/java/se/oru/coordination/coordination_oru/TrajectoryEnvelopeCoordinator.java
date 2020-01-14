@@ -1127,8 +1127,8 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 		//System.out.println("Caller of updateDependencies(): " + Thread.currentThread().getStackTrace()[2]);
 
-		HashMap<Integer,TreeSet<Dependency>> currentDeps = new HashMap<Integer,TreeSet<Dependency>>();
-		HashMap<Integer,TreeSet<Dependency>> artificialDependencies = new HashMap<Integer,TreeSet<Dependency>>(); 
+		HashMap<Integer,HashSet<Dependency>> currentDeps = new HashMap<Integer,HashSet<Dependency>>();
+		HashMap<Integer,HashSet<Dependency>> artificialDependencies = new HashMap<Integer,HashSet<Dependency>>(); 
 
 		//Make deps from un-reached stopping points
 		Set<Integer> robotIDs = trackers.keySet();
@@ -1142,7 +1142,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						int duration = stoppingTimes.get(robotID).get(i);
 						if (robotReport.getPathIndex() <= stoppingPoint) {
 							Dependency dep = new Dependency(robotTracker.getTrajectoryEnvelope(), null, stoppingPoint, 0, robotTracker, null);
-							if (!currentDeps.containsKey(robotID)) currentDeps.put(robotID, new TreeSet<Dependency>());
+							if (!currentDeps.containsKey(robotID)) currentDeps.put(robotID, new HashSet<Dependency>());
 							currentDeps.get(robotID).add(dep);
 						}
 						//Start waiting thread if the stopping point has been reached
@@ -1220,7 +1220,7 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						if (waitingRobotID == cs.getTe1().getRobotID()) drivingCSEnd = cs.getTe2End();
 						else drivingCSEnd = cs.getTe1End();
 						Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd, waitingTracker, drivingTracker);
-						if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
+						if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new HashSet<Dependency>());
 						currentDeps.get(waitingRobotID).add(dep);
 						criticalSectionsToDeps.put(cs, dep);
 					}
@@ -1323,14 +1323,14 @@ public abstract class TrajectoryEnvelopeCoordinator {
 						if (waitingRobotID == cs.getTe1().getRobotID()) drivingCSEnd = cs.getTe2End();
 						else drivingCSEnd = cs.getTe1End();
 						Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd, waitingTracker, drivingTracker);
-						if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new TreeSet<Dependency>());
+						if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new HashSet<Dependency>());
 						currentDeps.get(waitingRobotID).add(dep);
 						criticalSectionsToDeps.put(cs, dep);
 						if (createArtificialDeadlock) {
 							Dependency oppositeDep = new Dependency(drivingTE,waitingTE,drivingCurrentIndex,lastIndexOfCSWaiting,drivingTracker,waitingTracker);
-							//if (!currentDeps.containsKey(drivingRobotID)) currentDeps.put(drivingRobotID, new TreeSet<Dependency>());
+							//if (!currentDeps.containsKey(drivingRobotID)) currentDeps.put(drivingRobotID, new HashSet<Dependency>());
 							//currentDeps.get(drivingRobotID).add(oppositeDep);
-							if (!artificialDependencies.containsKey(drivingRobotID)) artificialDependencies.put(drivingRobotID, new TreeSet<Dependency>());
+							if (!artificialDependencies.containsKey(drivingRobotID)) artificialDependencies.put(drivingRobotID, new HashSet<Dependency>());
 							artificialDependencies.get(drivingRobotID).add(oppositeDep);
 							metaCSPLogger.info("Added deadlock-inducing dependency: " + oppositeDep);
 						}
@@ -1352,6 +1352,12 @@ public abstract class TrajectoryEnvelopeCoordinator {
 
 		synchronized(currentDependencies) {
 			currentDependencies.clear();
+			
+			//Order constraints by critical points (the closest before) using TreeSets
+			HashMap<Integer, TreeSet<Dependency>> currentDepsOrdered = new HashMap<Integer, TreeSet<Dependency>>();
+			for (Integer key : currentDeps.keySet()) currentDepsOrdered.put(key, new TreeSet<Dependency>(currentDeps.get(key)));
+			HashMap<Integer, TreeSet<Dependency>> artificialDepsOrdered = new HashMap<Integer, TreeSet<Dependency>>();
+			for (Integer key : artificialDependencies.keySet()) currentDepsOrdered.put(key, new TreeSet<Dependency>(artificialDependencies.get(key)));
 					
 			for (Integer robotID : robotIDs) {				
 				
@@ -1364,10 +1370,10 @@ public abstract class TrajectoryEnvelopeCoordinator {
 					Dependency firstDep = null;
 					Dependency firstArtificialDep = null;
 					if (currentDeps.containsKey(robotID)){
-							firstDep = currentDeps.get(robotID).first();
+							firstDep = currentDepsOrdered.get(robotID).first();
 					}
 					if (artificialDependencies.containsKey(robotID)) {
-						firstArtificialDep = artificialDependencies.get(robotID).first();
+						firstArtificialDep = artificialDepsOrdered.get(robotID).first();
 					}
 					
 					Dependency depToSend = null; 
