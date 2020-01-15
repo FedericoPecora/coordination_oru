@@ -89,6 +89,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	//True if waiting for deadlocks to happen.
 	protected boolean staticReplan = false;
 	
+	protected boolean isDeadlocked = false;
+	
 	/**
 	 * Set whether the coordinator should try to break deadlocks by attempting to re-plan
 	 * the path of one of the robots involved in an unsafe cycle.
@@ -315,6 +317,15 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		return closestDeps;
 	}
 	
+	/**
+	 * Check whether there is or will be a deadlock.
+	 * @return <code>true</code> iff there is currently a deadlock, or the situation is
+	 * such that a deadlock will occur (non-live state).
+	 */
+	public boolean isDeadlocked() {
+		return this.isDeadlocked;
+	}
+	
 	private HashMap<Integer,HashSet<Dependency>> findCurrentCycles(HashMap<Integer,HashSet<Dependency>> currentDeps, HashMap<Integer,HashSet<Dependency>> artificialDeps, HashSet<Dependency> reversibleDeps, HashMap<Integer,RobotReport> currentReports, Set<Integer> robotIDs) {
 		
 		HashMap<Integer,HashSet<Dependency>> allDeps = new HashMap<Integer, HashSet<Dependency>>();
@@ -337,6 +348,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 		SimpleDirectedGraph<Integer,Dependency> g = depsToGraph(currentDependencies);
 		List<List<Integer>> unsafeCycles = findSimpleUnsafeCycles(g);
+		
+		if (unsafeCycles.size() > 0) this.isDeadlocked = true;
 		
 		// ... keep tracks of size and old cycles for statistics
 		List<List<Integer>> unsafeCyclesNew = new ArrayList<List<Integer>>();
