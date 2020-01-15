@@ -56,7 +56,7 @@ dependencies {
   //implementation 'com.github.FedericoPecora:coordination_oru:udp-live-SNAPSHOT'
   //implementation 'com.github.FedericoPecora:coordination_oru:0.3.9'
   //implementation 'com.github.FedericoPecora:coordination_oru_ros:master-SNAPSHOT'
-  implementation 'com.github.FedericoPecora:coordination_oru:0.5.0'	
+  implementation 'com.github.FedericoPecora:coordination_oru:0.5.1'	
 
   implementation 'com.github.FedericoPecora:meta-csp-framework:master-SNAPSHOT'
 
