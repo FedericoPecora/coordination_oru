@@ -3,6 +3,7 @@ package se.oru.coordination.coordination_oru.examples;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Comparator;
+import java.util.HashMap;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
@@ -18,8 +19,9 @@ import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPla
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
 import se.oru.coordination.coordination_oru.util.BrowserVisualization;
 import se.oru.coordination.coordination_oru.util.JTSDrawingPanelVisualization;
+import se.oru.coordination.coordination_oru.util.Missions;
 
-public class FourIdleRobots {
+public class FourRobotsPathPlanning {
 
 		public static void main(String[] args) throws InterruptedException {
 
@@ -64,28 +66,61 @@ public class FourIdleRobots {
 		tec.setupSolver(0, 100000000);
 
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
-		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
-		final BrowserVisualization viz = new BrowserVisualization();
-		viz.setInitialTransform(43, 11, 1.6);
+		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
+		//final BrowserVisualization viz = new BrowserVisualization();
+		//viz.setInitialTransform(43, 11, 1.6);
 		tec.setVisualization(viz);
 
 		tec.setUseInternalCriticalPoints(false);
 
 		//MetaCSPLogging.setLevel(tec.getClass().getSuperclass(), Level.FINEST);
 
-		Pose startPoseRobot1 = new Pose(10.0,3.0,Math.PI);
-		Pose startPoseRobot2 = new Pose(3.0,10.0,Math.PI/2);
-		Pose startPoseRobot3 = new Pose(10.0,17.0,0.0);
-		Pose startPoseRobot4 = new Pose(17.0,10.0,-Math.PI/2);
+		HashMap<Integer,Pose> posesFrom = new HashMap<Integer, Pose>();
+		HashMap<Integer,Pose> posesTo = new HashMap<Integer, Pose>();
+		
+		posesFrom.put(1,new Pose(10.0,3.0,Math.PI));
+		posesFrom.put(2,new Pose(3.0,10.0,Math.PI/2));
+		posesFrom.put(3,new Pose(10.0,17.0,0.0));
+		posesFrom.put(4,new Pose(17.0,10.0,-Math.PI/2));
 
+		posesTo.put(1,new Pose(7.0,17.0,-Math.PI));
+		posesTo.put(2,new Pose(15.0,3.0,-Math.PI/2));
+		posesTo.put(3,new Pose(6.0,12.0,0.0));
+		posesTo.put(4,new Pose(7.0,10.0,Math.PI/2));
+
+
+		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
+		rsp.setRadius(0.2);
+		rsp.setFootprint(footprint1, footprint2, footprint3, footprint4);
+		rsp.setTurningRadius(3.0);
+		rsp.setDistanceBetweenPathPoints(0.1);
+		
+		for (int robotID = 1; robotID <= 4; robotID++) {
+			rsp.setStart(posesFrom.get(robotID));
+			rsp.setGoals(posesTo.get(robotID));
+			if (!rsp.plan()) throw new Error("Cannot plan for Robot" + robotID);
+			Mission m = new Mission(robotID, rsp.getPath());
+			Missions.enqueueMission(m);
+			Mission mInv = new Mission(robotID, rsp.getPathInv());
+			Missions.enqueueMission(mInv);
+		}
+		
+		//Missions.saveScenario("FourRobotsExampleScenario");
+		
 		//Place robots in their initial locations (looked up in the data file that was loaded above)
 		// -- creates a trajectory envelope for each location, representing the fact that the robot is parked
 		// -- each trajectory envelope has a path of one pose (the pose of the location)
 		// -- each trajectory envelope is the footprint of the corresponding robot in that pose
-		tec.placeRobot(1, startPoseRobot1);
-		tec.placeRobot(2, startPoseRobot2);
-		tec.placeRobot(3, startPoseRobot3);
-		tec.placeRobot(4, startPoseRobot4);
+		tec.placeRobot(1, posesFrom.get(1));
+		tec.placeRobot(2, posesFrom.get(2));
+		tec.placeRobot(3, posesFrom.get(3));
+		tec.placeRobot(4, posesFrom.get(4));
+		
+		tec.setBreakDeadlocksByReordering(true);
+		tec.setBreakDeadlocksByReplanning(true);
+		tec.setDefaultMotionPlanner(rsp);
+		
+		Missions.startMissionDispatchers(tec, 1,2,3,4);
 		
 	}
 
