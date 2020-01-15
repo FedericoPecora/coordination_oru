@@ -58,26 +58,26 @@ dependencies {
   // This pulls in the meta-csp-framework jar
   //compile 'org.metacsp:meta-csp-framework:1.3.4'
   //compile 'org.metacsp:meta-csp-framework:0.0.0-SNAPSHOT'
-  api 'com.github.FedericoPecora:meta-csp-framework:master-SNAPSHOT'
+  implementation 'com.github.FedericoPecora:meta-csp-framework:master-SNAPSHOT'
 
   //For interface with OMPL
-  api 'net.java.dev.jna:jna:4.4.0'
-  api 'org.jgrapht:jgrapht-core:1.0.1'
+  implementation 'net.java.dev.jna:jna:4.4.0'
+  implementation 'org.jgrapht:jgrapht-core:1.0.1'
 
   //For demo infrastructure
-  api 'org.reflections:reflections:0.9.11'
+  implementation 'org.reflections:reflections:0.9.11'
 
   //For RVizVisualization
-  api 'org.ros.rosjava_core:rosjava:[0.3,0.4)'
-  api 'org.ros.rosjava_messages:visualization_msgs:[1.12,1.13)'
+  implementation 'org.ros.rosjava_core:rosjava:[0.3,0.4)'
+  implementation 'org.ros.rosjava_messages:visualization_msgs:[1.12,1.13)'
   
   //For BrowserVisualization
-  api 'org.eclipse.jetty.websocket:websocket-api:9.4.12.v20180830'
-  api 'org.eclipse.jetty.websocket:websocket-server:9.4.12.v20180830'
-  api 'org.eclipse.jetty.websocket:websocket-client:9.4.12.v20180830'
+  implementation 'org.eclipse.jetty.websocket:websocket-api:9.4.12.v20180830'
+  implementation 'org.eclipse.jetty.websocket:websocket-server:9.4.12.v20180830'
+  implementation 'org.eclipse.jetty.websocket:websocket-client:9.4.12.v20180830'
 
   //For JSON file handling
-  api 'com.google.code.gson:gson:2.8.5'
+  implementation 'com.google.code.gson:gson:2.8.5'
   
   // Add the following if you need to include jars that are not
   // in Maven Central and that you have places in the directory "lib"
