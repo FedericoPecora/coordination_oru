@@ -21,8 +21,8 @@
 apply plugin: 'java'
 apply plugin: 'eclipse'
 
-// The Maven plugin is only required if your package is used as a library.
-apply plugin: 'maven'
+// The Maven publish plugin is only required if your package is used as a library.
+apply plugin: 'maven-publish'
 
 // The Application plugin and mainClassName attribute are only required if
 // your package is used as a binary.
