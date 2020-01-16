@@ -22,14 +22,14 @@
 apply plugin: 'java'
 apply plugin: 'eclipse'
 
-// The Maven plugin is only required if your package is used as a library.
-apply plugin: 'maven'
+// The Maven publish plugin is only required if your package is used as a library.
+//apply plugin: 'maven-publish'
 
 // The Application plugin and mainClassName attribute are only required if
 // your package is used as a binary.
 apply plugin: 'application'
 // The main class that will be executed when you do 'gradle run'
-mainClassName = 'se.oru.coordination.coordination_oru.demo.DemoLauncher'
+mainClassName = 'se.oru.coordination.coordination_oru.examples.FourRobotsSavedScenario'
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
@@ -51,12 +51,8 @@ group = 'se.oru.coordination'
 
 dependencies {
 
-  //implementation 'se.oru.coordination:coordination_oru:0.0.0-SNAPSHOT'
-  //implementation 'com.github.FedericoPecora:coordination_oru:master-SNAPSHOT'
-  //implementation 'com.github.FedericoPecora:coordination_oru:udp-live-SNAPSHOT'
-  //implementation 'com.github.FedericoPecora:coordination_oru:0.3.9'
-  //implementation 'com.github.FedericoPecora:coordination_oru_ros:master-SNAPSHOT'
-  implementation 'com.github.FedericoPecora:coordination_oru:0.5.1'	
+  implementation 'com.github.FedericoPecora:coordination_oru:master-SNAPSHOT'
+  //implementation 'com.github.FedericoPecora:coordination_oru:0.5.1'	
 
   implementation 'com.github.FedericoPecora:meta-csp-framework:master-SNAPSHOT'
 
