@@ -154,7 +154,7 @@ public abstract class AbstractMotionPlanner {
 		goalFoot = at.transform(goalFoot);
 		for (Geometry obs : this.obstacles) {
 			if (obs.intersects(goalFoot)) {
-				metaCSPLogger.info("Goal intersects with an obstacle - no path can exist!");
+				metaCSPLogger.info("Goal intersects with an obstacle, no path can exist");
 				return false;
 			}
 		}
@@ -163,6 +163,11 @@ public abstract class AbstractMotionPlanner {
 		if (!verifyPlanning) return ret;
 		
 		PoseSteering[] path = getPath();
+		if (path == null) {
+			metaCSPLogger.info("Path planner could not find a plan");
+			return false;
+		}
+		
 		for (int i = 0; i < path.length; i++) {
 			Pose p = path[i].getPose();
 			Geometry checkFoot = gf.createPolygon(newFoot);
@@ -172,7 +177,7 @@ public abstract class AbstractMotionPlanner {
 			checkFoot = at.transform(checkFoot);
 			for (Geometry obs : this.obstacles) {
 				if (obs.intersects(checkFoot)) {
-					metaCSPLogger.info("Path verification failed, returning false!");
+					metaCSPLogger.info("Path verification failed");
 					return false;
 				}
 			}
