@@ -63,8 +63,12 @@ dependencies {
   implementation 'org.reflections:reflections:0.9.11'
 
   //For RVizVisualization
+  implementation 'org.ros.rosjava_bootstrap:message_generation:[0.3, 0.4)'
   implementation 'org.ros.rosjava_core:rosjava:[0.3,0.4)'
   implementation 'org.ros.rosjava_messages:visualization_msgs:[1.12,1.13)'
+  implementation 'org.ros.rosjava_messages:nav_msgs:[1.12,1.13)'
+  implementation 'org.ros.rosjava_messages:geometry_msgs:[1.12,1.13)'
+  implementation 'org.ros.rosjava_messages:std_msgs:[0.5.0,0.6.0)'
   
   //For BrowserVisualization
   implementation 'org.eclipse.jetty.websocket:websocket-api:9.4.12.v20180830'
