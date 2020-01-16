@@ -91,10 +91,6 @@ public class PathEditor2 implements MouseMotionListener {
 		this.panel.setZoomIntensity(intens);
 	}
 	
-	public PathEditor2() {
-		this(null, null, null, 0.1, 0.1, 0.01, null);
-	}
-	
 	public void setDeltaX(double dx) {
 		this.deltaX = dx;
 	}
@@ -119,6 +115,11 @@ public class PathEditor2 implements MouseMotionListener {
 		MAX_TURNING_RADIUS = val;
 	}
 
+	@Deprecated
+	public PathEditor2() {
+		this(null, null, null, 0.1, 0.1, 0.01, (Coordinate[])null);
+	}
+	
 	@Deprecated
 	public PathEditor2(String posesAndPaths) {
 		this(posesAndPaths, null, null, 0.1, 0.1, 0.01, (Coordinate[])null);
