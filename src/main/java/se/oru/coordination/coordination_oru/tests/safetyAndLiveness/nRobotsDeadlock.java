@@ -105,6 +105,7 @@ public class nRobotsDeadlock {
 		
 		//tec.setUseInternalCriticalPoints(false);
 		
+		//For debugging purposes.
 		//MetaCSPLogging.setLevel(tec.getClass().getSuperclass(), Level.FINEST);
 
 		//Instantiate a simple motion planner
