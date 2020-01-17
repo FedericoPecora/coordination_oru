@@ -611,7 +611,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					if (!robotsToCS.get(cs.getTe1().getRobotID()).isEmpty() && cs.equals(robotsToCS.get(cs.getTe1().getRobotID()).first())){
 						metaCSPLogger.info("Closest critical section for robot " + cs.getTe1().getRobotID() + " is " + cs.toString());
 					}
-					if (!robotsToCS.get(cs.getTe1().getRobotID()).isEmpty() && cs.equals(robotsToCS.get(cs.getTe2().getRobotID()).first())){
+					if (!robotsToCS.get(cs.getTe2().getRobotID()).isEmpty() && cs.equals(robotsToCS.get(cs.getTe2().getRobotID()).first())){
 						metaCSPLogger.info("Closest critical section for robot " + cs.getTe2().getRobotID() + " is " + cs.toString());
 					}
 	
@@ -1553,7 +1553,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					if (!robotsToCS.get(cs.getTe1().getRobotID()).isEmpty() && cs.equals(robotsToCS.get(cs.getTe1().getRobotID()).first())){
 						metaCSPLogger.info("Closest critical section for robot " + cs.getTe1().getRobotID() + " is " + cs.toString());
 					}
-					if (!robotsToCS.get(cs.getTe1().getRobotID()).isEmpty() && cs.equals(robotsToCS.get(cs.getTe2().getRobotID()).first())){
+					if (!robotsToCS.get(cs.getTe2().getRobotID()).isEmpty() && cs.equals(robotsToCS.get(cs.getTe2().getRobotID()).first())){
 						metaCSPLogger.info("Closest critical section for robot " + cs.getTe2().getRobotID() + " is " + cs.toString());
 					}
 				
