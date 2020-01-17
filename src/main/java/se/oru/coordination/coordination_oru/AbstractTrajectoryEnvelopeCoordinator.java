@@ -1696,7 +1696,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 							}
 							envelopesToTrack.add(missionsPool.get(oldestMissionRobotID).getFirst());
 							missionsPool.remove(oldestMissionRobotID);
-							computeCriticalSections();
+							computeCriticalSections(); //FIXME
 							startTrackingAddedMissions();
 						}
 						updateDependencies();
