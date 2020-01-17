@@ -91,10 +91,6 @@ public class PathEditor2 implements MouseMotionListener {
 		this.panel.setZoomIntensity(intens);
 	}
 	
-	public PathEditor2() {
-		this(null, null, null, 0.1, 0.1, 0.01, null);
-	}
-	
 	public void setDeltaX(double dx) {
 		this.deltaX = dx;
 	}
@@ -119,33 +115,54 @@ public class PathEditor2 implements MouseMotionListener {
 		MAX_TURNING_RADIUS = val;
 	}
 
-	public PathEditor2(String posesAndPaths, String mapFilename) {
-		this(posesAndPaths, mapFilename, null, 0.1, 0.1, 0.01, null);
+	@Deprecated
+	public PathEditor2() {
+		this(null, null, null, 0.1, 0.1, 0.01, (Coordinate[])null);
 	}
 	
-	public PathEditor2(String posesAndPaths, String mapFilename, Coordinate[] footprint) {
+	@Deprecated
+	public PathEditor2(String posesAndPaths) {
+		this(posesAndPaths, null, null, 0.1, 0.1, 0.01, (Coordinate[])null);
+	}
+
+	@Deprecated
+	public PathEditor2(String posesAndPaths, String mapFilename) {
+		this(posesAndPaths, mapFilename, null, 0.1, 0.1, 0.01, (Coordinate[])null);
+	}
+	
+	@Deprecated
+	public PathEditor2(String posesAndPaths, String mapFilename, String selectionsFile) {
+		this(posesAndPaths, mapFilename, selectionsFile, 0.1, 0.1, 0.01, (Coordinate[])null);
+	}
+
+	@Deprecated
+	public PathEditor2(String posesAndPaths, String mapFN, String selectionsF, double deltaX, double deltaY, double deltaTheta) {
+		this(posesAndPaths, mapFN, selectionsF, deltaX, deltaY, deltaTheta, (Coordinate[])null);
+	}
+
+	public PathEditor2(Coordinate ... footprint) {
+		this(null, null, null, 0.1, 0.1, 0.01, footprint);
+	}
+
+	public PathEditor2(String posesAndPaths, Coordinate ... footprint) {
+		this(posesAndPaths, null, null, 0.1, 0.1, 0.01, footprint);
+	}
+
+	public PathEditor2(String posesAndPaths, String mapFilename, Coordinate ... footprint) {
 		this(posesAndPaths, mapFilename, null, 0.1, 0.1, 0.01, footprint);
 	}
 
-	public PathEditor2(String posesAndPaths, String mapFilename, String selectionsFile) {
-		this(posesAndPaths, mapFilename, selectionsFile, 0.1, 0.1, 0.01, null);
-	}
-
-	public PathEditor2(String posesAndPaths, String mapFilename, String selectionsFile, Coordinate[] footprint) {
+	public PathEditor2(String posesAndPaths, String mapFilename, String selectionsFile, Coordinate ... footprint) {
 		this(posesAndPaths, mapFilename, selectionsFile, 0.1, 0.1, 0.01, footprint);
 	}
 
-	public PathEditor2(String posesAndPaths, String mapFN, String selectionsF, double deltaX, double deltaY, double deltaTheta) {
-		this(posesAndPaths, mapFN, selectionsF, deltaX, deltaY, deltaTheta, null);
-	}
-	
-	public PathEditor2(String posesAndPaths, String mapFN, String selectionsF, double deltaX, double deltaY, double deltaTheta, Coordinate[] footprint) {
+	public PathEditor2(String posesAndPaths, String mapFilename, String selectionsFilename, double deltaX, double deltaY, double deltaTheta, Coordinate ... footprint) {
 		this.deltaX = deltaX;
 		this.deltaY = deltaY;
 		this.deltaT = deltaTheta;
-		this.mapFilename = mapFN;
+		this.mapFilename = mapFilename;
 		this.footprint = footprint;
-		if (this.footprint != null) this.footprintGeom = TrajectoryEnvelope.createFootprintPolygon(footprint);
+		this.setPathPlanningFootprint(footprint);
 		if (this.mapFilename != null) {
 			String path = this.mapFilename.substring(0, this.mapFilename.lastIndexOf(File.separator)+1);
 			this.mapImgFilename = path+Missions.getProperty("image", this.mapFilename);
@@ -206,8 +223,8 @@ public class PathEditor2 implements MouseMotionListener {
 			updatePaths2();
 		}
 		
-		if (selectionsF != null) {
-			this.selectionsFile = selectionsF;
+		if (selectionsFilename != null) {
+			this.selectionsFile = selectionsFilename;
 			loadSelectionsFile();
 		}
 		
@@ -217,8 +234,19 @@ public class PathEditor2 implements MouseMotionListener {
 	}
 	
 	public void setPathPlanningFootprint(Coordinate ... footprint) {
-		this.footprint = footprint;
-		this.footprintGeom = TrajectoryEnvelope.createFootprintPolygon(footprint);
+		//for (int i = 0; i < footprint.length; i++) System.out.println(i + ": " + footprint[i]);
+		if (!footprint[0].equals(footprint[footprint.length-1])) {
+			Coordinate[] fn = new Coordinate[footprint.length+1];
+			for (int i = 0; i < footprint.length; i++) fn[i] = footprint[i];
+			fn[fn.length-1] = fn[0];
+			//for (int j = 0; j < fn.length; j++) System.out.println(j + "*: " + fn[j]);
+			this.footprint = fn;
+			this.footprintGeom = TrajectoryEnvelope.createFootprintPolygon(fn);
+		}
+		else {
+			this.footprint = footprint;
+			this.footprintGeom = TrajectoryEnvelope.createFootprintPolygon(footprint);
+		}
 	}
 	
 	public void setPathPlanningRadius(double rad) {
@@ -2340,6 +2368,21 @@ public class PathEditor2 implements MouseMotionListener {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
+	}
+	
+	public static void main(String[] args) {
+		//Robot Footprint
+		Coordinate[] footprint = new Coordinate[] {
+			new Coordinate(-1.0,0.5),
+			new Coordinate(1.0,0.5),
+			new Coordinate(1.0,-0.5),
+			new Coordinate(-1.0,-0.5),
+		};
+
+		PathEditor2 pe = new PathEditor2(footprint);
+		pe.setZoomIntensity(0.1);
+		pe.setPanAcceleration(10);
+		pe.setSplineDistance(7);
 	}
 
 }
