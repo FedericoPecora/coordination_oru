@@ -601,6 +601,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					//This condition is still valid in case of delays (new mission phases <--> new trackers)
 					if (robotReport1.getPathIndex() > cs.getTe1End() || robotReport2.getPathIndex() > cs.getTe2End()) {
 						toRemove.add(cs);
+						this.robotsToCS.get(cs.getTe1().getRobotID()).remove(cs);
+						this.robotsToCS.get(cs.getTe2().getRobotID()).remove(cs);
 						metaCSPLogger.finest("Obsolete critical section\n\t" + cs);
 						continue;
 					}
@@ -1077,6 +1079,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				}
 				CSToDepsOrder.remove(cs);
 				allCriticalSections.remove(cs);
+				this.robotsToCS.get(cs.getTe1().getRobotID()).remove(cs);
+				this.robotsToCS.get(cs.getTe2().getRobotID()).remove(cs);
 				escapingCSToWaitingRobotIDandCP.remove(cs);
 			}
 		}
@@ -1531,9 +1535,12 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					//One or both robots past end of the critical section --> critical section is obsolete
 					if (robotReport1.getPathIndex() > cs.getTe1End() || robotReport2.getPathIndex() > cs.getTe2End()) {
 						toRemove.add(cs);
+						this.robotsToCS.get(cs.getTe1().getRobotID()).remove(cs);
+						this.robotsToCS.get(cs.getTe2().getRobotID()).remove(cs);
 						metaCSPLogger.finest("Obsolete critical section\n\t" + cs);
 						continue;
 					}
+					
 				
 					//If the precedence IS CONSTRAINED BY PARKED ROBOTS ...
 					if (robotTracker1 instanceof TrajectoryEnvelopeTrackerDummy || robotTracker2 instanceof TrajectoryEnvelopeTrackerDummy) {

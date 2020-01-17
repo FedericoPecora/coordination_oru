@@ -86,7 +86,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	protected FleetVisualization viz = null;
 	protected HashMap<Integer,Pair<TrajectoryEnvelope,Long>> missionsPool = new HashMap<Integer,Pair<TrajectoryEnvelope,Long>>();
 	protected ArrayList<TrajectoryEnvelope> envelopesToTrack = new ArrayList<TrajectoryEnvelope>();
-	protected ArrayList<TrajectoryEnvelope> currentParkingEnvelopes = new ArrayList<TrajectoryEnvelope>();
+	protected HashMap<Integer,TrajectoryEnvelope> currentParkingEnvelopes = new HashMap<Integer,TrajectoryEnvelope>();
 	protected HashSet<CriticalSection> allCriticalSections = new HashSet<CriticalSection>();
 	protected HashMap<CriticalSection,Pair<Integer,Integer>> CSToDepsOrder = new HashMap<CriticalSection,Pair<Integer,Integer>>(); 
 	HashMap<Dependency,CriticalSection> depsToCS = new HashMap<Dependency, CriticalSection>();
@@ -94,6 +94,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	protected HashMap<Integer,ArrayList<Integer>> stoppingPoints = new HashMap<Integer,ArrayList<Integer>>();
 	protected HashMap<Integer,ArrayList<Integer>> stoppingTimes = new HashMap<Integer,ArrayList<Integer>>();
 	protected HashMap<Integer,Thread> stoppingPointTimers = new HashMap<Integer,Thread>();
+	protected HashMap<Integer,TreeSet<CriticalSection>> robotsToCS = new HashMap<Integer,TreeSet<CriticalSection>>();
 
 	protected HashMap<Integer,AbstractTrajectoryEnvelopeTracker> trackers = new HashMap<Integer, AbstractTrajectoryEnvelopeTracker>();
 	protected HashSet<Dependency> currentDependencies = new HashSet<Dependency>();
@@ -555,7 +556,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				}
 			};
 
-			currentParkingEnvelopes.add(tracker.getTrajectoryEnvelope());				
+			currentParkingEnvelopes.put(robotID,tracker.getTrajectoryEnvelope());				
 
 			synchronized (trackers) {
 				externalCPCounters.remove(trackers.get(robotID));
@@ -890,6 +891,8 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				HashMap<Integer,RobotReport> currentReports = new HashMap<Integer,RobotReport>();
 				for (int robotID : trackers.keySet()) {
 					currentReports.put(robotID, this.getRobotReport(robotID));
+					RobotCSComparator comparator = new RobotCSComparator(robotID, trackers.get(robotID).getTrajectoryEnvelope().getID(), currentParkingEnvelopes.get(robotID).getID());
+					robotsToCS.put(robotID, new TreeSet<CriticalSection>(comparator));
 				}
 				//metaCSPLogger.info("Current reports: " + currentReports.toString());
 	
@@ -910,6 +913,8 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 							int minStart2 = currentReports.containsKey(envelopesToTrack.get(j).getRobotID()) ? currentReports.get(envelopesToTrack.get(j).getRobotID()).getPathIndex() : -1;
 							for (CriticalSection cs : getCriticalSections(drivingEnvelopes.get(i), minStart1, envelopesToTrack.get(j), minStart2)) {
 									this.allCriticalSections.add(cs);
+									this.robotsToCS.get(cs.getTe1().getRobotID()).add(cs);
+									this.robotsToCS.get(cs.getTe2().getRobotID()).add(cs);
 									//metaCSPLogger.info("computeCriticalSections(): add (1) " + cs); 								
 							}
 						}
@@ -924,6 +929,8 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 							int minStart2 = currentReports.containsKey(envelopesToTrack.get(j).getRobotID()) ? currentReports.get(envelopesToTrack.get(j).getRobotID()).getPathIndex() : -1;
 							for (CriticalSection cs : getCriticalSections(envelopesToTrack.get(i), minStart1, envelopesToTrack.get(j), minStart2)) {
 									this.allCriticalSections.add(cs);
+									this.robotsToCS.get(cs.getTe1().getRobotID()).add(cs);
+									this.robotsToCS.get(cs.getTe2().getRobotID()).add(cs);
 									//metaCSPLogger.info("computeCriticalSections(): add (2) " + cs);
 							}
 						}
@@ -932,12 +939,14 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	
 				//Compute critical sections between driving envelopes and current parking envelopes	
 				for (int i = 0; i < drivingEnvelopes.size(); i++) {
-					for (int j = 0; j < currentParkingEnvelopes.size(); j++) {
-						if (drivingEnvelopes.get(i).getRobotID() != currentParkingEnvelopes.get(j).getRobotID()) {
+					for (Integer robotID : currentParkingEnvelopes.keySet()) {
+						if (drivingEnvelopes.get(i).getRobotID() != robotID) {
 							int minStart1 = currentReports.containsKey(drivingEnvelopes.get(i).getRobotID()) ? currentReports.get(drivingEnvelopes.get(i).getRobotID()).getPathIndex() : -1;
-							int minStart2 = currentReports.containsKey(currentParkingEnvelopes.get(j).getRobotID()) ? currentReports.get(currentParkingEnvelopes.get(j).getRobotID()).getPathIndex() : -1;
-							for (CriticalSection cs : getCriticalSections(drivingEnvelopes.get(i), minStart1, currentParkingEnvelopes.get(j), minStart2)) {
-									this.allCriticalSections.add(cs);	
+							int minStart2 = currentReports.containsKey(robotID) ? currentReports.get(robotID).getPathIndex() : -1;
+							for (CriticalSection cs : getCriticalSections(drivingEnvelopes.get(i), minStart1, currentParkingEnvelopes.get(robotID), minStart2)) {
+									this.allCriticalSections.add(cs);
+									this.robotsToCS.get(cs.getTe1().getRobotID()).add(cs);
+									this.robotsToCS.get(cs.getTe2().getRobotID()).add(cs);
 									//metaCSPLogger.info("computeCriticalSections(): add (3) " + cs);
 							}
 						}
@@ -946,12 +955,14 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	
 				//Compute critical sections between NEW driving envelopes and current parking envelopes	
 				for (int i = 0; i < envelopesToTrack.size(); i++) {
-					for (int j = 0; j < currentParkingEnvelopes.size(); j++) {
-						if (envelopesToTrack.get(i).getRobotID() != currentParkingEnvelopes.get(j).getRobotID()) {
+					for (Integer robotID : currentParkingEnvelopes.keySet()) {
+						if (envelopesToTrack.get(i).getRobotID() != robotID) {
 							int minStart1 = currentReports.containsKey(envelopesToTrack.get(i).getRobotID()) ? currentReports.get(envelopesToTrack.get(i).getRobotID()).getPathIndex() : -1;
-							int minStart2 = currentReports.containsKey(currentParkingEnvelopes.get(j).getRobotID()) ? currentReports.get(currentParkingEnvelopes.get(j).getRobotID()).getPathIndex() : -1;
-							for (CriticalSection cs : getCriticalSections(envelopesToTrack.get(i), minStart1, currentParkingEnvelopes.get(j), minStart2)) {
+							int minStart2 = currentReports.containsKey(robotID) ? currentReports.get(robotID).getPathIndex() : -1;
+							for (CriticalSection cs : getCriticalSections(envelopesToTrack.get(i), minStart1, currentParkingEnvelopes.get(robotID), minStart2)) {
 									this.allCriticalSections.add(cs);
+									this.robotsToCS.get(cs.getTe1().getRobotID()).add(cs);
+									this.robotsToCS.get(cs.getTe2().getRobotID()).add(cs);
 									//metaCSPLogger.info("computeCriticalSections(): add (4) " + cs);
 							}
 						}
@@ -1049,11 +1060,15 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			}
 			for (CriticalSection cs : toRemove) {
 				this.allCriticalSections.remove(cs);
+				this.robotsToCS.get(cs.getTe1().getRobotID()).remove(cs);
+				this.robotsToCS.get(cs.getTe2().getRobotID()).remove(cs);
 				//metaCSPLogger.info("filterCriticalSection(): remove (1) " + cs);
 //				this.CSToDepsOrder.remove(cs);
 			}
 			for (CriticalSection cs : toAdd) {
 				this.allCriticalSections.add(cs);
+				this.robotsToCS.get(cs.getTe1().getRobotID()).add(cs);
+				this.robotsToCS.get(cs.getTe2().getRobotID()).add(cs);
 				//metaCSPLogger.info("filterCriticalSection(): add (1) " + cs);
 				//this.CSToDepsOrder.put(cs, new HashSet<Dependency>());
 			}
@@ -1081,6 +1096,8 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		}
 		for (CriticalSection cs : toRemove) {
 			this.allCriticalSections.remove(cs);
+			this.robotsToCS.get(cs.getTe1().getRobotID()).remove(cs);
+			this.robotsToCS.get(cs.getTe2().getRobotID()).remove(cs);
 			//metaCSPLogger.info("filterCriticalSection(): remove (2) " + cs);
 //			this.CSToDepsOrder.remove(cs);
 		}
@@ -1284,6 +1301,8 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			for (CriticalSection cs : toRemove) {
 				CSToDepsOrder.remove(cs);
 				allCriticalSections.remove(cs);
+				this.robotsToCS.get(cs.getTe1().getRobotID()).remove(cs);
+				this.robotsToCS.get(cs.getTe2().getRobotID()).remove(cs);
 				escapingCSToWaitingRobotIDandCP.remove(cs);
 			}
 		}
