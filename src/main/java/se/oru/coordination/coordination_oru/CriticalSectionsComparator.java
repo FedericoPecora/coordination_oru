@@ -7,12 +7,12 @@ import java.util.List;
 /**
  * Class to order critical sections related to the same robotID and trajectory envelopes with increasing starting indices. 
  */
-public class RobotCSComparator implements Comparator<CriticalSection> { 
+public class CriticalSectionsComparator implements Comparator<CriticalSection> { 
 	protected int robotID = -1;
 	protected int teID = -1;
 	protected int parkingTeID = -1;
 	
-	public RobotCSComparator(int robotID, int teID, int parkingTeID) {
+	public CriticalSectionsComparator(int robotID, int teID, int parkingTeID) {
 		this.robotID = robotID;
 		this.teID = teID;
 		this.parkingTeID = parkingTeID;
@@ -64,15 +64,29 @@ public class RobotCSComparator implements Comparator<CriticalSection> {
     	
     	//find the starting poses 
     	int startInCS1 = (cs1Te.get(0)||cs1Te.get(1)) ? cs1.getTe1Start() : cs1.getTe2Start();
+    	int endInCS1 = (cs1Te.get(0)||cs1Te.get(1)) ? cs1.getTe1End() : cs1.getTe2End();
     	int otherIdInCS1 = (cs1Te.get(0)||cs1Te.get(1)) ? cs1.getTe2().getRobotID() : cs1.getTe1().getRobotID();
     	int startInCS2 = (cs2Te.get(0)||cs2Te.get(1)) ? cs2.getTe1Start() : cs2.getTe2Start();
+    	int endInCS2 = (cs2Te.get(0)||cs2Te.get(1)) ? cs2.getTe1End() : cs2.getTe2End();
     	int otherIdInCS2 = (cs2Te.get(0)||cs2Te.get(1)) ? cs2.getTe2().getRobotID() : cs2.getTe1().getRobotID();
     	
     	// Return a negative integer, zero, or a positive integer as the first argument is less than, 
     	//equal to, or greater than the second.
-    	if (startInCS1 + 0.1*otherIdInCS1 > startInCS2 + 0.1*otherIdInCS2) return 1;
-    	if (startInCS1 + 0.1*otherIdInCS1 < startInCS2 + 0.1*otherIdInCS2) return -1;
-    	return 0;
+    	//if (startInCS1 + 0.1*otherIdInCS1 > startInCS2 + 0.1*otherIdInCS2) return 1;
+    	//if (startInCS1 + 0.1*otherIdInCS1 < startInCS2 + 0.1*otherIdInCS2) return -1;
+    	//return 0;
+    	
+    	if (otherIdInCS1 == otherIdInCS2 && startInCS1 == startInCS2 && endInCS1 == endInCS2) return 0;
+    	if ( startInCS1 > startInCS2 ||
+    			startInCS1 == startInCS2 && ( endInCS1 > endInCS2 || endInCS1 == endInCS2 && otherIdInCS1 > otherIdInCS2 ) )
+    		return 1;
+    	return -1;
+    	
+    	/* cases:  1)          2)            3)         4)             5)         6)           7)               8)            9)          10)          11)          12)          13)
+    	 * first:  x-----x     x-----x       x-----x      x-----x      x-----x      x-----x      x-----x          x------x    x-----x     x-----x         x------x  x------x     x------x
+    	 * second: o---o       o--------o      o---o    o-------o       o--o      o---------o          o---o  o---o           o-----o         o----o   o----o       ?            ?
+    	 * result: 1           -1            1          -1             1          -1             1            -1              0
+    	 */    	
    } 
 
 }

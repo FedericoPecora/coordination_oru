@@ -891,7 +891,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				HashMap<Integer,RobotReport> currentReports = new HashMap<Integer,RobotReport>();
 				for (int robotID : trackers.keySet()) {
 					currentReports.put(robotID, this.getRobotReport(robotID));
-					RobotCSComparator comparator = new RobotCSComparator(robotID, trackers.get(robotID).getTrajectoryEnvelope().getID(), currentParkingEnvelopes.get(robotID).getID());
+					CriticalSectionsComparator comparator = new CriticalSectionsComparator(robotID, trackers.get(robotID).getTrajectoryEnvelope().getID(), currentParkingEnvelopes.get(robotID).getID());
 					robotsToCS.put(robotID, new TreeSet<CriticalSection>(comparator));
 				}
 				//metaCSPLogger.info("Current reports: " + currentReports.toString());
@@ -1309,16 +1309,6 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	}
 
 	/**
-	 * Get the {@link TrajectoryEnvelope} currently being tracked for a given robot. 
-	 * @param robotID The ID of the robot for which to retrieve the {@link TrajectoryEnvelope} currently
-	 * being tracked.
-	 * @return The {@link TrajectoryEnvelope} currently being tracked for the given robot.
-	 */
-	public TrajectoryEnvelope getCurrentSuperEnvelope(int robotID) {
-		return trackers.get(robotID).getTrajectoryEnvelope();
-	}
-
-	/**
 	 * Add a {@link TrackingCallback} that will be called by the tracker of a given robot.
 	 * @param robotID The ID of the robot to which the callback should be attached.
 	 * @param cb A callback object.
@@ -1623,6 +1613,15 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 */
 	public TrajectoryEnvelope getCurrentTrajectoryEnvelope(int robotID) {
 		return trackers.get(robotID).getTrajectoryEnvelope();
+	}
+	
+	/**
+	 * Get the current {@link ParkingEnvelope} of a robot.
+	 * @param robotID The robotID.
+	 * @return The current {@link ParkingEnvelope} of a robot.
+	 */
+	public TrajectoryEnvelope getCurrentParkingEnvelope(int robotID) {
+		return currentParkingEnvelopes.get(robotID);
 	}
 
 	protected String[] getStatistics() {
