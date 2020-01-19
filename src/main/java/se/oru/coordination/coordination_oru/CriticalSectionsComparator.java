@@ -80,13 +80,7 @@ public class CriticalSectionsComparator implements Comparator<CriticalSection> {
     	if ( startInCS1 > startInCS2 ||
     			startInCS1 == startInCS2 && ( endInCS1 > endInCS2 || endInCS1 == endInCS2 && otherIdInCS1 > otherIdInCS2 ) )
     		return 1;
-    	return -1;
-    	
-    	/* cases:  1)          2)            3)         4)             5)         6)           7)               8)            9)          10)          11)          12)          13)
-    	 * first:  x-----x     x-----x       x-----x      x-----x      x-----x      x-----x      x-----x          x------x    x-----x     x-----x         x------x  x------x     x------x
-    	 * second: o---o       o--------o      o---o    o-------o       o--o      o---------o          o---o  o---o           o-----o         o----o   o----o       ?            ?
-    	 * result: 1           -1            1          -1             1          -1             1            -1              0
-    	 */    	
+    	return -1; 	
    } 
 
 }
