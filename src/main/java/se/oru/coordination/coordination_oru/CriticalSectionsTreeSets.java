@@ -1,9 +1,11 @@
 package se.oru.coordination.coordination_oru;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.logging.Logger;
@@ -52,23 +54,44 @@ public class CriticalSectionsTreeSets {
 		this.tec = tec;
 	}
 	
+	boolean check(CriticalSection cs) {
+		int firstID = cs.getTe1().getRobotID();
+		int secondID = cs.getTe2().getRobotID();
+		if (!(cs.getTe1().getRobotID() == tec.getCurrentTrajectoryEnvelope(firstID).getID() ||
+				cs.getTe1().getRobotID() == tec.getCurrentParkingEnvelope(firstID).getID()) || 
+				//and for the second robot
+				!(cs.getTe2().getRobotID() == tec.getCurrentTrajectoryEnvelope(secondID).getID() ||
+				cs.getTe2().getRobotID() == tec.getCurrentParkingEnvelope(secondID).getID())	
+				) {
+			metaCSPLogger.severe("Critical section " + cs.toString() + " cannot be added since it is not coherent with current trajectry envelopes.");
+			return false;
+		}
+		return true;
+	}
+	
 	/**
 	 * Add a critical section to the ordered map.
 	 * @param cs The critical section to be add.
 	 */
 	public void add(CriticalSection cs) {
+		//FIXME Add more checks.
+		//Decide when cleaning up.
+		
 		int firstID = cs.getTe1().getRobotID();
 		int secondID = cs.getTe2().getRobotID();
 		
-		//Add for robot 1, ...
+		//Check trajectory envelopes 
+		if (!check(cs)) return;
+			
+		//Add the critical section to the first robot, ...
 		if (!map.containsKey(firstID)) {
 			map.put(firstID, new HashMap<Integer, TreeSet<CriticalSection>>());
 			CriticalSectionsComparator comparator = new CriticalSectionsComparator(firstID,tec.getCurrentTrajectoryEnvelope(firstID).getID(),tec.getCurrentParkingEnvelope(firstID).getID());
 			map.get(firstID).put(secondID, new TreeSet<CriticalSection>(comparator));
-		}
+		}	
 		if (!map.get(firstID).get(secondID).add(cs)) metaCSPLogger.severe("Failed adding critical section " + cs.toString() + ".");
 		
-		//and for robot 2
+		//and to the second.
 		if (!map.containsKey(secondID)) {
 			map.put(secondID, new HashMap<Integer, TreeSet<CriticalSection>>());
 			CriticalSectionsComparator comparator = new CriticalSectionsComparator(secondID,tec.getCurrentTrajectoryEnvelope(secondID).getID(),tec.getCurrentParkingEnvelope(secondID).getID());
