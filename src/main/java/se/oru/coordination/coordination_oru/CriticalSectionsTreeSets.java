@@ -141,8 +141,10 @@ public class CriticalSectionsTreeSets {
 	public void remove(CriticalSection cs, boolean firstRobot) {
 		int robotID = firstRobot ? cs.getTe1().getRobotID() : cs.getTe2().getRobotID();
 		int otherID = firstRobot ? cs.getTe2().getRobotID() : cs.getTe1().getRobotID();
-		if (map.containsKey(robotID) && map.get(robotID).containsKey(otherID)) map.get(robotID).get(otherID).remove(cs);
-		if (map.get(robotID).get(otherID).isEmpty()) map.get(robotID).remove(otherID);	
+		if (map.containsKey(robotID) && map.get(robotID).containsKey(otherID)) {
+			map.get(robotID).get(otherID).remove(cs);
+			if (map.get(robotID).get(otherID).isEmpty()) map.get(robotID).remove(otherID);	
+		}
 	}
 	
 	/**
