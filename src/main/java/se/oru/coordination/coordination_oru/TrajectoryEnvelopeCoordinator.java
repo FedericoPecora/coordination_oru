@@ -697,61 +697,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						}
 						
 						//Both the robots can stop before accessing the critical section --> follow ordering heuristic if FW model allows it
-						if (canStopRobot1 && canStopRobot2) {
-	
-							//If robot 1 has priority over robot 2
-							if (getOrder(robotTracker1, robotReport1, robotTracker2, robotReport2, cs)) {
-								drivingCurrentIndex = robotReport1.getPathIndex();
-								drivingRobotID = robotReport1.getRobotID();
-								waitingRobotID = robotReport2.getRobotID();
-								drivingTE = robotTracker1.getTrajectoryEnvelope();
-								waitingTE = robotTracker2.getTrajectoryEnvelope();
-								drivingTracker = robotTracker1;
-								waitingTracker = robotTracker2;
-								metaCSPLogger.finest("Both-can-stop (1) and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID() + " and CS is: " + cs);
-							}
-	
-							//If robot 2 has priority over robot 1
-							else {
-								drivingCurrentIndex = robotReport2.getPathIndex();
-								drivingRobotID = robotReport2.getRobotID();
-								waitingRobotID = robotReport1.getRobotID();
-								drivingTE = robotTracker2.getTrajectoryEnvelope();
-								waitingTE = robotTracker1.getTrajectoryEnvelope();
-								drivingTracker = robotTracker2;
-								waitingTracker = robotTracker1;
-								metaCSPLogger.finest("Both-can-stop (2) and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID() + " and CS is: " + cs);
-							}	
-						}
-	
-						//Robot 1 can stop before entering the critical section, robot 2 can't --> robot 1 waits
-						else if (canStopRobot1 && !canStopRobot2) {
-							drivingCurrentIndex = robotReport2.getPathIndex();
-							drivingRobotID = robotReport2.getRobotID();
-							waitingRobotID = robotReport1.getRobotID();
-							drivingTE = robotTracker2.getTrajectoryEnvelope();
-							waitingTE = robotTracker1.getTrajectoryEnvelope();
-							drivingTracker = robotTracker2;
-							waitingTracker = robotTracker1;
-							metaCSPLogger.finest("One-can-one-can't-stop (1) and Robot" + drivingTE.getRobotID() + " (can't) is ahead of Robot" + waitingTE.getRobotID() + " (can) and CS is: " + cs);						
-						}
-	
-						//Robot 2 can stop before entering critical section, robot 1 can't --> robot 2 waits
-						else if (!canStopRobot1 && canStopRobot2) {
-							drivingCurrentIndex = robotReport1.getPathIndex();
-							drivingRobotID = robotReport1.getRobotID();
-							waitingRobotID = robotReport2.getRobotID();
-							drivingTE = robotTracker1.getTrajectoryEnvelope();
-							waitingTE = robotTracker2.getTrajectoryEnvelope();
-							drivingTracker = robotTracker1;
-							waitingTracker = robotTracker2;
-							metaCSPLogger.finest("One-can-one-can't-stop (2) and Robot" + drivingTE.getRobotID() + " (can't) ahead of Robot" + waitingTE.getRobotID() + " (can) and CS is: " + cs);
-						}
-	
-						else {			
-														
+						if (!canStopRobot1 && !canStopRobot2) {
 							//Both robots in critical section --> re-impose previously decided dependency if possible
-						
+							
 							//Handle the particular case of starting from a critical section at the FIRST communication.
 							wakeUpinCSRobot1 = !communicatedCPs.containsKey(robotTracker1) && Math.max(robotReport1.getPathIndex(), 0) >= cs.getTe1Start();
 							wakeUpinCSRobot2 = !communicatedCPs.containsKey(robotTracker2) && Math.max(robotReport2.getPathIndex(), 0) >= cs.getTe2Start();
@@ -815,6 +763,58 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 								metaCSPLogger.info("Robot" + drivingRobotID + " cannot escape from CS: " + cs + ". Let's create a deadlock. Add artificial dependency for Robot" + drivingRobotID + " at " + dep.getWaitingPoint() + ".");
 							}	
 							metaCSPLogger.finest("Both can't. Driving Robot" + drivingRobotID + " at " + drivingCurrentIndex + " makes " + waitingRobotID + " waiting at CS " + cs + ".");
+						}
+						
+	
+						//Robot 1 can stop before entering the critical section, robot 2 can't --> robot 1 waits
+						else if (canStopRobot1 && !canStopRobot2) {
+							drivingCurrentIndex = robotReport2.getPathIndex();
+							drivingRobotID = robotReport2.getRobotID();
+							waitingRobotID = robotReport1.getRobotID();
+							drivingTE = robotTracker2.getTrajectoryEnvelope();
+							waitingTE = robotTracker1.getTrajectoryEnvelope();
+							drivingTracker = robotTracker2;
+							waitingTracker = robotTracker1;
+							metaCSPLogger.finest("One-can-one-can't-stop (1) and Robot" + drivingTE.getRobotID() + " (can't) is ahead of Robot" + waitingTE.getRobotID() + " (can) and CS is: " + cs);						
+						}
+	
+						//Robot 2 can stop before entering critical section, robot 1 can't --> robot 2 waits
+						else if (!canStopRobot1 && canStopRobot2) { 
+							drivingCurrentIndex = robotReport1.getPathIndex();
+							drivingRobotID = robotReport1.getRobotID();
+							waitingRobotID = robotReport2.getRobotID();
+							drivingTE = robotTracker1.getTrajectoryEnvelope();
+							waitingTE = robotTracker2.getTrajectoryEnvelope();
+							drivingTracker = robotTracker1;
+							waitingTracker = robotTracker2;
+							metaCSPLogger.finest("One-can-one-can't-stop (2) and Robot" + drivingTE.getRobotID() + " (can't) ahead of Robot" + waitingTE.getRobotID() + " (can) and CS is: " + cs);
+						}
+						
+						else { //Both the robot can stop.
+							
+							//If robot 1 has priority over robot 2
+							if (getOrder(robotTracker1, robotReport1, robotTracker2, robotReport2, cs)) {
+								drivingCurrentIndex = robotReport1.getPathIndex();
+								drivingRobotID = robotReport1.getRobotID();
+								waitingRobotID = robotReport2.getRobotID();
+								drivingTE = robotTracker1.getTrajectoryEnvelope();
+								waitingTE = robotTracker2.getTrajectoryEnvelope();
+								drivingTracker = robotTracker1;
+								waitingTracker = robotTracker2;
+								metaCSPLogger.finest("Both-can-stop (1) and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID() + " and CS is: " + cs);
+							}
+	
+							//If robot 2 has priority over robot 1
+							else {
+								drivingCurrentIndex = robotReport2.getPathIndex();
+								drivingRobotID = robotReport2.getRobotID();
+								waitingRobotID = robotReport1.getRobotID();
+								drivingTE = robotTracker2.getTrajectoryEnvelope();
+								waitingTE = robotTracker1.getTrajectoryEnvelope();
+								drivingTracker = robotTracker2;
+								waitingTracker = robotTracker1;
+								metaCSPLogger.finest("Both-can-stop (2) and Robot" + drivingTE.getRobotID() + " ahead of Robot" + waitingTE.getRobotID() + " and CS is: " + cs);
+							}	
 						}
 						
 						//Compute waiting path index point for waiting robot

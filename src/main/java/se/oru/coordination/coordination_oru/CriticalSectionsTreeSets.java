@@ -72,14 +72,15 @@ public class CriticalSectionsTreeSets {
 	 */
 	protected void updateTreeSets(int firstID, int secondID) {
 		if (map.containsKey(firstID) && map.containsKey(secondID)) {
-			assert (map.get(firstID).containsKey(secondID) && map.get(secondID).containsKey(firstID));
-			CriticalSection firstCS = map.get(firstID).get(secondID).first();
-			if (firstCS != null && !check(firstCS)) {
-				metaCSPLogger.info("Clearing the TreeSets for robots ("+ firstID +", " + secondID + ").");
-				map.get(firstID).remove(secondID);
-				if (map.get(firstID).isEmpty()) map.remove(firstID);
-				map.get(secondID).remove(firstID);
-				if (map.get(secondID).isEmpty()) map.remove(secondID);
+			if (map.get(firstID).containsKey(secondID) && map.get(secondID).containsKey(firstID)) {
+				CriticalSection firstCS = map.get(firstID).get(secondID).first();
+				if (firstCS != null && !check(firstCS)) {
+					metaCSPLogger.info("Clearing the TreeSets for robots ("+ firstID +", " + secondID + ").");
+					map.get(firstID).remove(secondID);
+					if (map.get(firstID).isEmpty()) map.remove(firstID);
+					map.get(secondID).remove(firstID);
+					if (map.get(secondID).isEmpty()) map.remove(secondID);
+				}
 			}
 		}
 	}
