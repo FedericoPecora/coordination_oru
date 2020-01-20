@@ -601,7 +601,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					//This condition is still valid in case of delays (new mission phases <--> new trackers)
 					if (robotReport1.getPathIndex() > cs.getTe1End() || robotReport2.getPathIndex() > cs.getTe2End()) {
 						toRemove.add(cs);
-						this.robotsToCS.remove(cs);
+						this.robotsToCS.remove(cs); //Just in case ... It should already be deleted when one of the robot could not stop before entering it.
 						metaCSPLogger.finest("Obsolete critical section\n\t" + cs);
 						continue;
 					}
@@ -700,6 +700,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						if (!canStopRobot1 && !canStopRobot2) {
 							//Both robots in critical section --> re-impose previously decided dependency if possible
 							
+							//Update the TreeSets for both the robots (if not already done).
+							robotsToCS.remove(cs);
+							
 							//Handle the particular case of starting from a critical section at the FIRST communication.
 							wakeUpinCSRobot1 = !communicatedCPs.containsKey(robotTracker1) && Math.max(robotReport1.getPathIndex(), 0) >= cs.getTe1Start();
 							wakeUpinCSRobot2 = !communicatedCPs.containsKey(robotTracker2) && Math.max(robotReport2.getPathIndex(), 0) >= cs.getTe2Start();
@@ -768,6 +771,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	
 						//Robot 1 can stop before entering the critical section, robot 2 can't --> robot 1 waits
 						else if (canStopRobot1 && !canStopRobot2) {
+							
+							//Update the TreeSet for robot 2 (if not already done).
+							robotsToCS.remove(cs, false);
+							
 							drivingCurrentIndex = robotReport2.getPathIndex();
 							drivingRobotID = robotReport2.getRobotID();
 							waitingRobotID = robotReport1.getRobotID();
@@ -780,6 +787,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	
 						//Robot 2 can stop before entering critical section, robot 1 can't --> robot 2 waits
 						else if (!canStopRobot1 && canStopRobot2) { 
+							
+							//Update the TreeSet for robot 1 (if not already done).
+							robotsToCS.remove(cs, true);
+							
 							drivingCurrentIndex = robotReport1.getPathIndex();
 							drivingRobotID = robotReport1.getRobotID();
 							waitingRobotID = robotReport2.getRobotID();
@@ -1541,7 +1552,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					//One or both robots past end of the critical section --> critical section is obsolete
 					if (robotReport1.getPathIndex() > cs.getTe1End() || robotReport2.getPathIndex() > cs.getTe2End()) {
 						toRemove.add(cs);
-						robotsToCS.remove(cs);
+						robotsToCS.remove(cs); //Just in case ... It should already be deleted when one of the robot could not stop before entering it.
 						metaCSPLogger.finest("Obsolete critical section\n\t" + cs);
 						continue;
 					}
@@ -1657,10 +1668,14 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						}
 						
 						//otherwise, 
-						//the precedence is CONSTRAINED BY DYNAMICS
+						//the precedence is CONSTRAINED BY KINO-DYNAMICS
 						
 						//Robot 1 can stop before entering the critical section, robot 2 can't --> robot 1 waits
 						if (canStopRobot1 && !canStopRobot2) {
+							
+							//Update the TreeSet for robot 2 (if not already done).
+							robotsToCS.remove(cs, false);
+							
 							drivingCurrentIndex = robotReport2.getPathIndex();
 							drivingRobotID = robotReport2.getRobotID();
 							waitingRobotID = robotReport1.getRobotID();
@@ -1673,6 +1688,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	
 						//Robot 2 can stop before entering critical section, robot 1 can't --> robot 2 waits
 						else if (!canStopRobot1 && canStopRobot2) {
+							
+							//Update the TreeSet for robot 1 (if not already done).
+							robotsToCS.remove(cs, true);
+							
 							drivingCurrentIndex = robotReport1.getPathIndex();
 							drivingRobotID = robotReport1.getRobotID();
 							waitingRobotID = robotReport2.getRobotID();
@@ -1683,7 +1702,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							metaCSPLogger.finest("One-can-one-can't-stop (2) and Robot" + drivingTE.getRobotID() + " (can't) ahead of Robot" + waitingTE.getRobotID() + " (can) and CS is: " + cs);
 						}
 						
-						else {	//Otherwise re-impose previously decided dependency if possible			
+						else {	//Otherwise re-impose previously decided dependency if possible		
+							
+							//Update the TreeSets for both the robots (if not already done).
+							robotsToCS.remove(cs);
 							
 							//Handle the particular case of starting from a critical section at the FIRST communication.
 							wakeUpinCSRobot1 = !communicatedCPs.containsKey(robotTracker1) && Math.max(robotReport1.getPathIndex(), 0) >= cs.getTe1Start();

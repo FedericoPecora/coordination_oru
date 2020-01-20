@@ -129,10 +129,20 @@ public class CriticalSectionsTreeSets {
 	 * @param cs The critical section to be deleted.
 	 */
 	public void remove(CriticalSection cs) {
-		int firstID = cs.getTe1().getRobotID();
-		int secondID = cs.getTe2().getRobotID();
-		if (map.containsKey(firstID) && map.get(firstID).containsKey(secondID)) map.get(firstID).get(secondID).remove(cs);
-		if (map.containsKey(secondID) && map.get(secondID).containsKey(firstID)) map.get(secondID).get(firstID).remove(cs);		
+		remove(cs, true);
+		remove(cs, false);
+	}
+	
+	/**
+	 * Remove a critical section for a robot if currently stored.
+	 * @param cs The critical section to be deleted.
+	 * @param firstRobot True if the robot for which the critical section should be deleted is the first one (related to te1), otherwise false.
+	 */
+	public void remove(CriticalSection cs, boolean firstRobot) {
+		int robotID = firstRobot ? cs.getTe1().getRobotID() : cs.getTe2().getRobotID();
+		int otherID = firstRobot ? cs.getTe2().getRobotID() : cs.getTe1().getRobotID();
+		if (map.containsKey(robotID) && map.get(robotID).containsKey(otherID)) map.get(robotID).get(otherID).remove(cs);
+		if (map.get(robotID).get(otherID).isEmpty()) map.get(robotID).remove(otherID);	
 	}
 	
 	/**
@@ -150,6 +160,7 @@ public class CriticalSectionsTreeSets {
 	/**
 	 * Return the first critical section for one robot (firstID) with respect to another one (secondID).
 	 * @NOTE If old critical sections are deleted while the robot is in motion, the critical section closest to the first robot involving the second robot is returned.
+	 * If also critical sections are deleted when the robot can't stop anymore before entering it, the returned critical section is the closest one for which the precedence can be decided according to the heuristic.
 	 * @param firstID ID of the first robot.
 	 * @param secondID ID of the second robot.
 	 * @return The first critical section according to the ordering criteria.
