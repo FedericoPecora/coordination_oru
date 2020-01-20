@@ -1,84 +1,95 @@
 package se.oru.coordination.coordination_oru;
 
-import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.List;
 
 /**
- * Class to order critical sections related to the same robotID and trajectory envelopes with increasing starting indices. 
+ * Class to order critical sections related to one robot with increasing indices for starts,
+ * The class checks the consistency of provided data throwing an error if not. 
  */
 public class CriticalSectionsComparator implements Comparator<CriticalSection> { 
 	protected int robotID = -1;
-	protected int teID = -1;
-	protected int parkingTeID = -1;
 	
-	public CriticalSectionsComparator(int robotID, int teID, int parkingTeID) {
+	public CriticalSectionsComparator(int robotID) {
 		this.robotID = robotID;
-		this.teID = teID;
-		this.parkingTeID = parkingTeID;
 	};
-	
-	public void setRobotID(int robotID) {
-		this.robotID = robotID;
-	}
-	
-	public void setTrajectoryEnvelopeID(int teID) {
-		this.teID = teID;
-	}
-	
-	public void setParkingTrajectoryEnvelopeID(int parkingTeID) {
-		this.parkingTeID = parkingTeID;
-	}
 	
 	public int getRobotID() {
 		return this.robotID;
 	}
 	
-	public int getTrajectoryEnvelopeID() {
-		return this.teID;
-	}
-	
-	public int getParkingTrajectoryEnvelopeID() {
-		return this.parkingTeID;
-	}
-	
-    @Override
-	public int compare(CriticalSection cs1, CriticalSection cs2) {
-    	List<Boolean> cs1Te = new ArrayList<Boolean>();
-    	cs1Te.add(cs1.getTe1().getRobotID() == this.robotID && cs1.getTe1().getID() == this.parkingTeID);
-    	cs1Te.add(cs1.getTe1().getRobotID() == this.robotID && cs1.getTe1().getID() == this.teID);
-    	cs1Te.add(cs1.getTe2().getRobotID() == this.robotID && cs1.getTe2().getID() == this.parkingTeID);
-    	cs1Te.add(cs1.getTe2().getRobotID() == this.robotID && cs1.getTe2().getID() == this.teID);
-    	    	
-    	List<Boolean> cs2Te = new ArrayList<Boolean>();
-    	cs2Te.add(cs2.getTe1().getRobotID() == this.robotID && cs2.getTe1().getID() == this.parkingTeID);
-    	cs2Te.add(cs2.getTe1().getRobotID() == this.robotID && cs2.getTe1().getID() == this.teID);
-    	cs2Te.add(cs2.getTe2().getRobotID() == this.robotID && cs2.getTe2().getID() == this.parkingTeID);
-    	cs2Te.add(cs2.getTe2().getRobotID() == this.robotID && cs2.getTe2().getID() == this.teID);
+	/** Assess if two critical sections are comparable with respect to one robot (the one with ID equal to robotID).
+	 *  Two critical sections are not comparable
+	 *  - if they do not involve the one common robot.
+	 *  - if the trajectory envelopes of the common robot are not consistent, that is, they are related to a consistent pair of 
+	 *    driving and parking envelope. 
+	 *  @param cs1 One critical section to be compared.
+	 *  @param cs2 The other critical section to be compared.
+	 *  @return If the critical sections are comparable.
+	 */
+	public boolean comparable(CriticalSection cs1, CriticalSection cs2) {
+		boolean[] flags = new boolean[4];
+		flags[0] = cs1.getTe1().getRobotID() == this.robotID;
+		flags[1] = cs1.getTe2().getRobotID() == this.robotID;
+		flags[2] = cs2.getTe1().getRobotID() == this.robotID;
+		flags[3] = cs2.getTe2().getRobotID() == this.robotID;
+		
+		int sum = 0;
+		for (int i = 0; i < flags.length; i++) sum += (flags[i] ? 1 : 0);
     	
-    	//check if the critical sections are comparable (related to robot robotID and to its current trajectory envelopes).
-    	assert( ( cs1Te.get(0)|| cs1Te.get(1) || cs1Te.get(2) || cs1Te.get(3) ) && ( cs2Te.get(0) || cs2Te.get(1) || cs2Te.get(2) || cs2Te.get(3) ) &&
-    			((cs1Te.get(0) ? 1 : 0) + (cs1Te.get(1) ? 1 : 0) + (cs1Te.get(2) ? 1 : 0) + (cs1Te.get(3) ? 1 : 0) + 
-    					(cs2Te.get(0) ? 1 : 0) + (cs2Te.get(1) ? 1 : 0) + (cs2Te.get(2) ? 1 : 0) + (cs2Te.get(3) ? 1 : 0) == 2));
+    	//Check if the critical sections are comparable:
+    	// - check if cs1 and cs2 are related to the same robot.
+    	if (!((flags[0] || flags[1]) && (flags[2] || flags[3]) && sum == 2)) {
+    		return false;
+    	};
+    	// - if the same pair of robots is involved, check correctness of trajectory envelopes.
+    	if (flags[0] && flags[2] && (
+    			((cs1.getTe1Start() != cs1.getTe1End() && cs2.getTe1Start() != cs2.getTe1End()) || //Either both are driving envelopes
+    					(cs1.getTe1Start() == cs1.getTe1End() && cs2.getTe1Start() == cs2.getTe1End()))    //or both are parking envelopes,
+    			&& !cs1.getTe1().equals(cs2.getTe1())                                              //but they are different.
+    			)) return false;
+    	if (flags[0] && flags[3] && (
+    			((cs1.getTe1Start() != cs1.getTe1End() && cs2.getTe2Start() != cs2.getTe2End()) ||
+    					(cs1.getTe1Start() == cs1.getTe1End() && cs2.getTe2Start() == cs2.getTe2End()))
+    			&& !cs1.getTe1().equals(cs2.getTe2())
+    			)) return false;
+    	if (flags[1] && flags[2] && (
+    			((cs1.getTe2Start() != cs1.getTe2End() && cs2.getTe1Start() != cs2.getTe1End()) ||
+    					(cs1.getTe2Start() == cs1.getTe2End() && cs2.getTe1Start() == cs2.getTe1End()))
+    			&& !cs1.getTe2().equals(cs2.getTe1())
+    			)) return false;
+    	if (flags[1] && flags[3] && (
+    			((cs1.getTe2Start() != cs1.getTe2End() && cs2.getTe2Start() != cs2.getTe2End()) ||
+    			(cs1.getTe2Start() == cs1.getTe2End() && cs2.getTe2Start() == cs2.getTe2End()))
+    			&& !cs1.getTe2().equals(cs2.getTe2())
+    			)) return false;
+		return true;
+	}
+	
+	@Override
+	public int compare(CriticalSection cs1, CriticalSection cs2) {   	
+    	//Check if the critical sections are comparable.
+    	assert(comparable(cs1,cs2));
 
-    	
+		boolean[] flags = new boolean[4];
+		flags[0] = cs1.getTe1().getRobotID() == this.robotID;
+		flags[1] = cs1.getTe2().getRobotID() == this.robotID;
+		flags[2] = cs2.getTe1().getRobotID() == this.robotID;
+		flags[3] = cs2.getTe2().getRobotID() == this.robotID;
+		
     	//find the starting poses 
-    	int startInCS1 = (cs1Te.get(0)||cs1Te.get(1)) ? cs1.getTe1Start() : cs1.getTe2Start();
-    	int endInCS1 = (cs1Te.get(0)||cs1Te.get(1)) ? cs1.getTe1End() : cs1.getTe2End();
-    	int otherIdInCS1 = (cs1Te.get(0)||cs1Te.get(1)) ? cs1.getTe2().getRobotID() : cs1.getTe1().getRobotID();
-    	int startInCS2 = (cs2Te.get(0)||cs2Te.get(1)) ? cs2.getTe1Start() : cs2.getTe2Start();
-    	int endInCS2 = (cs2Te.get(0)||cs2Te.get(1)) ? cs2.getTe1End() : cs2.getTe2End();
-    	int otherIdInCS2 = (cs2Te.get(0)||cs2Te.get(1)) ? cs2.getTe2().getRobotID() : cs2.getTe1().getRobotID();
+    	int startInCS1 = flags[0] ? cs1.getTe1Start() : cs1.getTe2Start();
+    	int endInCS1 = flags[0] ? cs1.getTe1End() : cs1.getTe2End();
+    	int otherIdInCS1 = flags[0] ? cs1.getTe2().getRobotID() : cs1.getTe1().getRobotID();
+    	int startInCS2 = flags[2] ? cs2.getTe1Start() : cs2.getTe2Start();
+    	int endInCS2 = flags[2] ? cs2.getTe1End() : cs2.getTe2End();
+    	int otherIdInCS2 = flags[2] ? cs2.getTe2().getRobotID() : cs2.getTe1().getRobotID();
     	
     	// Return a negative integer, zero, or a positive integer as the first argument is less than, 
     	//equal to, or greater than the second.
-    	//if (startInCS1 + 0.1*otherIdInCS1 > startInCS2 + 0.1*otherIdInCS2) return 1;
-    	//if (startInCS1 + 0.1*otherIdInCS1 < startInCS2 + 0.1*otherIdInCS2) return -1;
-    	//return 0;
     	
-    	if (otherIdInCS1 == otherIdInCS2 && startInCS1 == startInCS2 && endInCS1 == endInCS2) return 0;
-    	if ( startInCS1 > startInCS2 ||
-    			startInCS1 == startInCS2 && ( endInCS1 > endInCS2 || endInCS1 == endInCS2 && otherIdInCS1 > otherIdInCS2 ) )
+    	if (cs1.equals(cs2)) return 0;
+    	if (startInCS1 > startInCS2 ||
+    			startInCS1 == startInCS2 && (endInCS1 > endInCS2 || endInCS1 == endInCS2 && otherIdInCS1 > otherIdInCS2))
     		return 1;
     	return -1; 	
    } 

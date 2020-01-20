@@ -601,18 +601,17 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					//This condition is still valid in case of delays (new mission phases <--> new trackers)
 					if (robotReport1.getPathIndex() > cs.getTe1End() || robotReport2.getPathIndex() > cs.getTe2End()) {
 						toRemove.add(cs);
-						this.robotsToCS.get(cs.getTe1().getRobotID()).remove(cs);
-						this.robotsToCS.get(cs.getTe2().getRobotID()).remove(cs);
+						this.robotsToCS.remove(cs);
 						metaCSPLogger.finest("Obsolete critical section\n\t" + cs);
 						continue;
 					}
 					
 					//DEBUG For debugging purposes
-					if (!robotsToCS.get(cs.getTe1().getRobotID()).isEmpty() && cs.equals(robotsToCS.get(cs.getTe1().getRobotID()).first())){
-						metaCSPLogger.info("Closest critical section for robot " + cs.getTe1().getRobotID() + " is " + cs.toString());
+					if (robotsToCS.next(cs.getTe1().getRobotID(),cs.getTe2().getRobotID()) != null && cs.equals(robotsToCS.next(cs.getTe1().getRobotID(),cs.getTe2().getRobotID()))){
+						metaCSPLogger.info("Closest critical section for Robot" + cs.getTe1().getRobotID() + " is " + cs.toString());
 					}
-					if (!robotsToCS.get(cs.getTe2().getRobotID()).isEmpty() && cs.equals(robotsToCS.get(cs.getTe2().getRobotID()).first())){
-						metaCSPLogger.info("Closest critical section for robot " + cs.getTe2().getRobotID() + " is " + cs.toString());
+					if (robotsToCS.next(cs.getTe2().getRobotID(),cs.getTe1().getRobotID()) != null && cs.equals(robotsToCS.next(cs.getTe2().getRobotID(),cs.getTe1().getRobotID()))){
+						metaCSPLogger.info("Closest critical section for Robot" + cs.getTe2().getRobotID() + " is " + cs.toString());
 					}
 	
 					//The critical section could be still active. One of the two robots could already have exited the critical section,
@@ -1087,8 +1086,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				}
 				CSToDepsOrder.remove(cs);
 				allCriticalSections.remove(cs);
-				this.robotsToCS.get(cs.getTe1().getRobotID()).remove(cs);
-				this.robotsToCS.get(cs.getTe2().getRobotID()).remove(cs);
+				robotsToCS.remove(cs);
 				escapingCSToWaitingRobotIDandCP.remove(cs);
 			}
 		}
@@ -1543,18 +1541,17 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					//One or both robots past end of the critical section --> critical section is obsolete
 					if (robotReport1.getPathIndex() > cs.getTe1End() || robotReport2.getPathIndex() > cs.getTe2End()) {
 						toRemove.add(cs);
-						this.robotsToCS.get(cs.getTe1().getRobotID()).remove(cs);
-						this.robotsToCS.get(cs.getTe2().getRobotID()).remove(cs);
+						robotsToCS.remove(cs);
 						metaCSPLogger.finest("Obsolete critical section\n\t" + cs);
 						continue;
 					}
 					
 					//DEBUG For debugging purposes
-					if (!robotsToCS.get(cs.getTe1().getRobotID()).isEmpty() && cs.equals(robotsToCS.get(cs.getTe1().getRobotID()).first())){
-						metaCSPLogger.info("Closest critical section for robot " + cs.getTe1().getRobotID() + " is " + cs.toString());
+					if (robotsToCS.next(cs.getTe1().getRobotID(),cs.getTe2().getRobotID()) != null && cs.equals(robotsToCS.next(cs.getTe1().getRobotID(),cs.getTe2().getRobotID()))){
+						metaCSPLogger.info("Closest critical section for Robot" + cs.getTe1().getRobotID() + " is " + cs.toString());
 					}
-					if (!robotsToCS.get(cs.getTe2().getRobotID()).isEmpty() && cs.equals(robotsToCS.get(cs.getTe2().getRobotID()).first())){
-						metaCSPLogger.info("Closest critical section for robot " + cs.getTe2().getRobotID() + " is " + cs.toString());
+					if (robotsToCS.next(cs.getTe2().getRobotID(),cs.getTe1().getRobotID()) != null && cs.equals(robotsToCS.next(cs.getTe2().getRobotID(),cs.getTe1().getRobotID()))){
+						metaCSPLogger.info("Closest critical section for Robot" + cs.getTe2().getRobotID() + " is " + cs.toString());
 					}
 				
 					//If the precedence IS CONSTRAINED BY PARKED ROBOTS ...
