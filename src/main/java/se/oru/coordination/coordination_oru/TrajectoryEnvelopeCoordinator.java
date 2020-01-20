@@ -606,13 +606,13 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						continue;
 					}
 					
-					//DEBUG For debugging purposes
+					/*DEBUG For debugging purposes
 					if (robotsToCS.next(cs.getTe1().getRobotID(),cs.getTe2().getRobotID()) != null && cs.equals(robotsToCS.next(cs.getTe1().getRobotID(),cs.getTe2().getRobotID()))){
 						metaCSPLogger.info("Closest critical section for Robot" + cs.getTe1().getRobotID() + " is " + cs.toString());
 					}
 					if (robotsToCS.next(cs.getTe2().getRobotID(),cs.getTe1().getRobotID()) != null && cs.equals(robotsToCS.next(cs.getTe2().getRobotID(),cs.getTe1().getRobotID()))){
 						metaCSPLogger.info("Closest critical section for Robot" + cs.getTe2().getRobotID() + " is " + cs.toString());
-					}
+					}*/
 	
 					//The critical section could be still active. One of the two robots could already have exited the critical section,
 					//but the information has not been received.
@@ -1557,13 +1557,13 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						continue;
 					}
 					
-					//DEBUG For debugging purposes
+					/*DEBUG For debugging purposes
 					if (robotsToCS.next(cs.getTe1().getRobotID(),cs.getTe2().getRobotID()) != null && cs.equals(robotsToCS.next(cs.getTe1().getRobotID(),cs.getTe2().getRobotID()))){
 						metaCSPLogger.info("Closest critical section for Robot" + cs.getTe1().getRobotID() + " is " + cs.toString());
 					}
 					if (robotsToCS.next(cs.getTe2().getRobotID(),cs.getTe1().getRobotID()) != null && cs.equals(robotsToCS.next(cs.getTe2().getRobotID(),cs.getTe1().getRobotID()))){
 						metaCSPLogger.info("Closest critical section for Robot" + cs.getTe2().getRobotID() + " is " + cs.toString());
-					}
+					}*/
 				
 					//If the precedence IS CONSTRAINED BY PARKED ROBOTS ...
 					if (robotTracker1 instanceof TrajectoryEnvelopeTrackerDummy || robotTracker2 instanceof TrajectoryEnvelopeTrackerDummy) {
