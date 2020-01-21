@@ -1,13 +1,8 @@
 package se.oru.coordination.coordination_oru;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import java.util.TreeSet;
 import java.util.logging.Logger;
 
@@ -15,7 +10,8 @@ import org.metacsp.utility.logging.MetaCSPLogging;
 
 /**
  * This class provides an ordered collection of all the current active critical sections computed by the {@link TrajectoryEnvelopeCoordinator}. 
- * TODO An instantiatable {@link CriticalSectionsTreeSets} must provide a criteria with which robots are to be prioritized (FIXME the closest is used for now.).
+ * An instantiatable {@link CriticalSectionsTreeSets} may provide a criteria with which critical sections are ordered for each robot.
+ * Otherwise, for each pair of robots, critical sections are ordered with increasing starts with respect to the specified robot.
  * @author anna
  */
 public class CriticalSectionsTreeSets {
@@ -23,6 +19,7 @@ public class CriticalSectionsTreeSets {
 	protected HashMap<Integer, HashMap<Integer,TreeSet<CriticalSection>>> map = new HashMap<Integer, HashMap<Integer,TreeSet<CriticalSection>>>();
 	protected Logger metaCSPLogger = MetaCSPLogging.getLogger(CriticalSectionsTreeSets.class);
 	protected String logDirName = null;
+	protected HashMap<Integer,CriticalSectionsComparator> comparators = new HashMap<Integer,CriticalSectionsComparator>();
 		
 	public CriticalSectionsTreeSets(AbstractTrajectoryEnvelopeCoordinator tec) {
 		this.tec = tec;
@@ -36,6 +33,14 @@ public class CriticalSectionsTreeSets {
 		File dir = new File(logDirName);
 		dir.mkdir();
 		MetaCSPLogging.setLogDir(logDirName);
+	}
+	
+	/**
+	 * Set the criterion for determining how to order critical sections for a robot.
+	 * @param c A new comparator for determining how ordering critical sections of the corresponding robot.
+	 */
+	public void setComparator(CriticalSectionsComparator c) {
+		this.comparators.put(c.getRobotID(), c);
 	}
 	
 	/** Check if the critical section is related to up-to-date trajectory envelope.
@@ -102,7 +107,9 @@ public class CriticalSectionsTreeSets {
 		//Add the critical section to the first robot, ...
 		if (!map.containsKey(firstID)) map.put(firstID, new HashMap<Integer, TreeSet<CriticalSection>>());
 		if (!map.get(firstID).containsKey(secondID)) {
-			CriticalSectionsComparator comparator = new CriticalSectionsComparator(firstID);
+			CriticalSectionsComparator comparator;
+			if (comparators.containsKey(firstID)) comparator = comparators.get(firstID);
+			else comparator = new CriticalSectionsComparator(firstID);
 			map.get(firstID).put(secondID, new TreeSet<CriticalSection>(comparator));
 		}
 		if (!map.get(firstID).get(secondID).add(cs)) metaCSPLogger.severe("Failed adding critical section " + cs.toString() + ".");
@@ -110,7 +117,9 @@ public class CriticalSectionsTreeSets {
 		//and to the second.
 		if (!map.containsKey(secondID)) map.put(secondID, new HashMap<Integer, TreeSet<CriticalSection>>());
 		if (!map.get(secondID).containsKey(firstID)) {
-			CriticalSectionsComparator comparator = new CriticalSectionsComparator(secondID);
+			CriticalSectionsComparator comparator;
+			if (comparators.containsKey(secondID)) comparator = comparators.get(secondID);
+			else comparator = new CriticalSectionsComparator(secondID);
 			map.get(secondID).put(firstID, new TreeSet<CriticalSection>(comparator));
 		}
 		if (!map.get(secondID).get(firstID).add(cs)) metaCSPLogger.severe("Failed adding critical section " + cs.toString() + ".");

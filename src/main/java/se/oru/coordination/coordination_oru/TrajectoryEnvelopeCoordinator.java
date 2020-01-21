@@ -31,7 +31,8 @@ import se.oru.coordination.coordination_oru.motionplanning.AbstractMotionPlanner
 /**
  * This class provides coordination for a fleet of robots. An instantiatable {@link TrajectoryEnvelopeCoordinator}
  * must provide an implementation of a time keeping method, a {@link TrajectoryEnvelope} tracker factory, and
- * a criteria with which robots are to be prioritized.
+ * a criteria with which robots are to be prioritized. Also, a comparator for pairwise critical sections can be provided for each robot (comparator of {@link CriticalSectionsComparator}s). 
+ * Default ordering is with increasing starting indices.
  * 
  * @author fpa
  *

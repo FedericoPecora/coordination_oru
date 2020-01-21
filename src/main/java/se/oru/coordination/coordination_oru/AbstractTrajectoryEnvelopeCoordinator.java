@@ -13,7 +13,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Random;
-import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 import javax.swing.SwingUtilities;
@@ -42,7 +41,8 @@ import se.oru.coordination.coordination_oru.util.StringUtils;
 /**
  * This class provides coordination for a fleet of robots. An instantiatable {@link AbstractTrajectoryEnvelopeCoordinator}
  * must provide an implementation of the updateDependency function and of a time keeping method, a {@link TrajectoryEnvelope} tracker factory, and
- * a criteria with which robots are to be prioritized.
+ * a criteria with which robots are to be prioritized. Also, a comparator for pairwise critical sections can be provided for each robot (comparator of {@link CriticalSectionsComparator}s). 
+ * Default ordering is with increasing starting indices.
  * 
  * @author fpa
  *
@@ -873,6 +873,15 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 */
 	public void addComparator(Comparator<RobotAtCriticalSection> c) {
 		this.comparators.addComparator(c);
+	}
+	
+	/**
+	 * Set the criterion for determining how to order critical sections for a robot.
+	 * (comparator of {@link CriticalSectionsComparator}s). 
+	 * @param c A new comparator for determining how ordering critical sections of the corresponding robot.
+	 */
+	public void setCSComparator(CriticalSectionsComparator c) {
+		this.robotsToCS.setComparator(c);
 	}
 	
 	/**
