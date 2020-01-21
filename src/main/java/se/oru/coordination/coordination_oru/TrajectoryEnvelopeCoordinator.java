@@ -90,6 +90,16 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	protected boolean staticReplan = false;
 	
 	protected boolean isDeadlocked = false;
+	protected boolean blocked = false;
+	
+	
+	/**
+	 * Get whether there is a robot in a blocked situation (waiting for a parked robot).
+	 * @return <code>true</code> iff a robot is waiting for another robot that is parked.
+	 */
+	public boolean isBlocked() {
+		return this.blocked;
+	}
 	
 	/**
 	 * Set whether the coordinator should try to break deadlocks by attempting to re-plan
@@ -611,6 +621,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					currentReports.put(robotID,this.getRobotReport(robotID));
 				}
 				
+				this.blocked = false;
+				
 				HashSet<CriticalSection> toRemove = new HashSet<CriticalSection>();
 				for (CriticalSection cs : this.allCriticalSections) {
 										
@@ -643,6 +655,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					if (robotTracker1 instanceof TrajectoryEnvelopeTrackerDummy || robotTracker2 instanceof TrajectoryEnvelopeTrackerDummy) {
 						
 						boolean createAParkingDep = false;
+						this.blocked = true;
 						
 						//Robot1 is parking in critical section. If it is the driver, make robot 2 wait.
 						if (robotTracker1 instanceof TrajectoryEnvelopeTrackerDummy) {
@@ -1263,14 +1276,25 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	/**
 	 * Truncate the {@link TrajectoryEnvelope} of a given robot at the closest dynamically-feasible path point. This path point is computed via the robot's {@link ForwardModel}.
 	 * @param robotID The ID of the robot whose {@link TrajectoryEnvelope} should be truncated.
-	 * 	 * @return true if the envelope is successfully truncated.
+	 * @return <code>true</code> iff the envelope is successfully truncated.
 	 */
 	public boolean truncateEnvelope(int robotID) {
+		return this.truncateEnvelope(robotID, true);
+	}
+	
+	/**
+	 * Truncate the {@link TrajectoryEnvelope} of a given robot. 
+	 * @param robotID The ID of the robot whose {@link TrajectoryEnvelope} should be truncated.
+	 * @param ensureDynamicFeasibility If <code>true</code>, truncate at the closest dynamically-feasible path point, which is computed via the robot's {@link ForwardModel}; if <code>false</code>, truncate at the current path index.
+	 * @return <code>true</code> iff the envelope is successfully truncated.
+	 */
+	public boolean truncateEnvelope(int robotID, boolean ensureDynamicFeasibility) {
 		
-		if(!this.motionPlanners.containsKey(robotID) && this.getDefaultMotionPlanner() == null) {
-			metaCSPLogger.severe("Motion planner not initialized (neither specific for Robot" + robotID + ", nor a default one).");
-			return false;
-		}
+		//This does not seem necessary - why would you need a motion planner if you are just truncating?
+//		if(!this.motionPlanners.containsKey(robotID) && this.getDefaultMotionPlanner() == null) {
+//			metaCSPLogger.severe("Motion planner not initialized (neither specific for Robot" + robotID + ", nor a default one).");
+//			return false;
+//		}
 		
 		synchronized (solver) {
 			
@@ -1280,8 +1304,13 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			
 			TrajectoryEnvelope te = this.getCurrentTrajectoryEnvelope(robotID);
 			AbstractTrajectoryEnvelopeTracker tet = this.trackers.get(robotID); 
+			
 			if (!(tet instanceof TrajectoryEnvelopeTrackerDummy)) {
-				int earliestStoppingPathIndex = this.getForwardModel(robotID).getEarliestStoppingPathIndex(te, this.getRobotReport(robotID));
+				
+				int earliestStoppingPathIndex = -1;
+				if (ensureDynamicFeasibility) earliestStoppingPathIndex = this.getForwardModel(robotID).getEarliestStoppingPathIndex(te, this.getRobotReport(robotID));
+				else earliestStoppingPathIndex = this.getRobotReport(robotID).getPathIndex();
+				
 				if (earliestStoppingPathIndex != -1) {
 					metaCSPLogger.info("Truncating " + te + " at " + earliestStoppingPathIndex);
 					
@@ -1542,8 +1571,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	
 				HashSet<CriticalSection> toRemove = new HashSet<CriticalSection>();
 				
+				this.blocked = false;
+				
 				for (CriticalSection cs : this.allCriticalSections) {
-										
+					
 					//Will be assigned depending on current situation of robot reports...
 					int waitingPoint = -1;
 					int waitingRobotID = -1;
@@ -1570,6 +1601,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					if (robotTracker1 instanceof TrajectoryEnvelopeTrackerDummy || robotTracker2 instanceof TrajectoryEnvelopeTrackerDummy) {
 						
 						boolean createAParkingDep = false;
+						this.blocked = true;
 						
 						//Robot1 is parking in critical section. If it is the driver, make robot 2 wait.
 						if (robotTracker1 instanceof TrajectoryEnvelopeTrackerDummy) {
