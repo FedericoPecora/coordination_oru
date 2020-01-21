@@ -66,6 +66,34 @@ public class Missions {
 	protected static double mapResolution = -1;
 	protected static Coordinate mapOrigin = null;
 
+	protected static double minPathDistance = -1;
+	
+	/**
+	 * Set the minimum acceptable distance between path poses. This is used to resample paths
+	 * when they are loaded from file.
+	 * @param minPathDist The minimum acceptable distance between path poses.
+	 */
+	public static void setMinPathDistance(double minPathDist) {
+		minPathDistance = minPathDist;
+	}
+	
+	private static PoseSteering[] filterPath(PoseSteering[] path) {
+		if (minPathDistance < 0) return path;
+		ArrayList<PoseSteering> ret = new ArrayList<PoseSteering>();
+		PoseSteering lastAdded = path[0];
+		ret.add(lastAdded);
+		for (int i = 1; i < path.length; i++) {
+			Coordinate p1 = lastAdded.getPose().getPosition();
+			Coordinate p2 = path[i].getPose().getPosition();
+			if (p2.distance(p1) > minPathDistance) {
+				lastAdded = path[i];
+				ret.add(path[i]);
+			}
+		}
+		return ret.toArray(new PoseSteering[ret.size()]);
+	}
+
+	
 	public static BufferedImage getMap() {
 		return Missions.map;
 	}
@@ -505,9 +533,9 @@ public class Missions {
 						}
 						String locationName = newLineContents.get(0);
 						ps = new Pose(
-								new Double(newLineContents.get(1)).doubleValue(),
-								new Double(newLineContents.get(2)).doubleValue(),
-								new Double(newLineContents.get(3)).doubleValue());
+								Double.parseDouble(newLineContents.get(1)),
+								Double.parseDouble(newLineContents.get(2)),
+								Double.parseDouble(newLineContents.get(3)));
 						locations.put(locationName, ps);
 					}
 				}
@@ -802,33 +830,40 @@ public class Missions {
 		ArrayList<PoseSteering> ret = new ArrayList<PoseSteering>();
 		try {
 			Scanner in = new Scanner(new FileReader(fileName));
+			String prevLine = "Gibberish";
 			while (in.hasNextLine()) {
 				String line = in.nextLine().trim();
-				if (line.length() != 0) {
-					String[] oneline = line.split(" |\t");
-					PoseSteering ps = null;
-					if (oneline.length == 4) {
-					ps = new PoseSteering(
-							new Double(oneline[0]).doubleValue(),
-							new Double(oneline[1]).doubleValue(),
-							new Double(oneline[2]).doubleValue(),
-							new Double(oneline[3]).doubleValue());
-					}
-					else {
+				if (!line.equals(prevLine)) {
+					prevLine = line;
+					if (line.length() != 0) {
+						String[] oneline = line.split(" |\t");
+						PoseSteering ps = null;
+						if (oneline.length == 4) {
 						ps = new PoseSteering(
-								new Double(oneline[0]).doubleValue(),
-								new Double(oneline[1]).doubleValue(),
-								new Double(oneline[2]).doubleValue(),
-								0.0);					
+								Double.parseDouble(oneline[0]),
+								Double.parseDouble(oneline[1]),
+								Double.parseDouble(oneline[2]),
+								Double.parseDouble(oneline[3]));
+						}
+						else {
+							ps = new PoseSteering(
+									Double.parseDouble(oneline[0]),
+									Double.parseDouble(oneline[1]),
+									Double.parseDouble(oneline[2]),
+									0.0);					
+						}
+						ret.add(ps);
 					}
-					ret.add(ps);
 				}
 			}
 			in.close();
 		}
 		catch (FileNotFoundException e) { e.printStackTrace(); }
-		return ret.toArray(new PoseSteering[ret.size()]);
+		PoseSteering[] retArray = ret.toArray(new PoseSteering[ret.size()]);
+		return filterPath(retArray);
 	}
+	
+
 	
 	/**
 	 * Create a mission following a given mission. The mission will make the follower robot navigate from its

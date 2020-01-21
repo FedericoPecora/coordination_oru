@@ -6,6 +6,8 @@ import java.util.HashMap;
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 
+import com.vividsolutions.jts.geom.Coordinate;
+
 import se.oru.coordination.coordination_oru.util.Missions;
 
 /**
@@ -27,6 +29,7 @@ public class Mission implements Comparable<Mission> {
 	protected ArrayList<Pose> stoppingPoints = new ArrayList<Pose>();
 	protected ArrayList<Integer> stoppingPointDurations = new ArrayList<Integer>();
 	//protected HashMap<Pose,Integer> stoppingPoints = new HashMap<Pose, Integer>();
+	
 	
 	/**
 	 * Instantiates a {@link Mission} for a given robot to navigate between two locations, but where the path
