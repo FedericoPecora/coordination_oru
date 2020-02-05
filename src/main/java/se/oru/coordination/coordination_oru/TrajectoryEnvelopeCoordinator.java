@@ -1134,7 +1134,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				if (viz != null) {
 					viz.removeEnvelope(te);
 				}
-								
+												
 				//------------------ (dynamic re-plan) --------------------
 				//store the order of precedence (and waiting points) for every 
 				//critical section involving the robot which is replanning
@@ -1162,6 +1162,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				synchronized (trackers) {
 					this.trackers.get(robotID).updateTrajectoryEnvelope(newTE);
 				}
+				
+				//TODO fleetmaster remove the old path and add the new path
 				
 				//Stitch together with rest of constraint network (temporal constraints with parking envelopes etc.)
 				for (Constraint con : solver.getConstraintNetwork().getOutgoingEdges(te)) {

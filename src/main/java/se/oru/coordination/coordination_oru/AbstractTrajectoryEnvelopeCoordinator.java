@@ -529,7 +529,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			//Can provide null parking or null currentPose, but not both
 			if (parking == null) parking = solver.createParkingEnvelope(robotID, PARKING_DURATION, currentPose, location, getFootprint(robotID));
 			else currentPose = parking.getTrajectory().getPose()[0];
-			
+						
 			this.isDriving.put(robotID,false);
 
 			AllenIntervalConstraint release = new AllenIntervalConstraint(AllenIntervalConstraint.Type.Release, new Bounds(time, time));
@@ -580,7 +580,9 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				}
 			};
 
-			currentParkingEnvelopes.put(robotID,tracker.getTrajectoryEnvelope());				
+			currentParkingEnvelopes.put(robotID,tracker.getTrajectoryEnvelope());	
+			
+			//TODO Add parking (in start) envelope to fleetmaster
 
 			synchronized (trackers) {
 				externalCPCounters.remove(trackers.get(robotID));
@@ -1294,6 +1296,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			Constraint[] consToRemove = solver.getConstraintNetwork().getIncidentEdgesIncludingDependentVariables(te);
 			solver.removeConstraints(consToRemove);
 			solver.removeVariable(te);
+			//TODO remove trajectory envelope from the fleetmaster
 		}
 	}
 	
@@ -1351,6 +1354,8 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				//Create end parking envelope
 				final TrajectoryEnvelope endParking = solver.createParkingEnvelope(te.getRobotID(), PARKING_DURATION, te.getTrajectory().getPose()[te.getTrajectory().getPose().length-1], "whatever", getFootprint(te.getRobotID()));
 
+				//TODO Add parking envelope to fleetmaster
+				
 				//Driving meets final parking
 				AllenIntervalConstraint meets1 = new AllenIntervalConstraint(AllenIntervalConstraint.Type.Meets);
 				meets1.setFrom(te);
@@ -1480,6 +1485,8 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 					trackers.put(te.getRobotID(), tracker);
 					externalCPCounters.put(tracker, -1);
 				}
+				
+				//TODO Add driving envelope to the fleetmaster
 
 				//Now we can signal the parking that it can end (i.e., its deadline will no longer be prolonged)
 				//Note: the parking tracker will anyway wait to exit until earliest end time has been reached
@@ -1487,6 +1494,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				
 				this.isDriving.put(te.getRobotID(),true);
 			}
+					
 			computeCriticalSections();
 			envelopesToTrack.clear();
 		}
