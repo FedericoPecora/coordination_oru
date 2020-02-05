@@ -40,7 +40,7 @@ public abstract class TrajectoryEnvelopeTrackerDummy extends AbstractTrajectoryE
 	protected void onTrajectoryEnvelopeUpdate(TrajectoryEnvelope te) { }
 	
 	@Override
-	public void startTracking() {  }
+	public void startTracking() { }
 	
 	@Override
 	protected void setCriticalPoint(int criticalPointToSet) { }
@@ -50,8 +50,6 @@ public abstract class TrajectoryEnvelopeTrackerDummy extends AbstractTrajectoryE
 		return new RobotReport(te.getRobotID(), traj.getPose()[0], currentIndex, 0.0, 0.0, -1);
 	}
 
-//	@Override
-//	public abstract void onPositionUpdate();
 	
 	/**
 	 * Instructs the {@link TrajectoryEnvelopeSolver} that the robot has ceased to be parked here.
@@ -68,25 +66,25 @@ public abstract class TrajectoryEnvelopeTrackerDummy extends AbstractTrajectoryE
 		return parkingFinished;
 	}
 	
-	private boolean canInterrupt() {
-		for (AllenIntervalConstraint meets : getConstriants(AllenIntervalConstraint.Type.Meets, te, tec.getSolver())) {
-			TrajectoryEnvelope driving = (TrajectoryEnvelope)meets.getTo();
-			AllenIntervalConstraint[] startsCons = getConstriants(AllenIntervalConstraint.Type.Starts, driving, tec.getSolver());
-			TrajectoryEnvelope drivingFirstSubEnv = driving;
-			if (startsCons != null && startsCons.length > 0) drivingFirstSubEnv = (TrajectoryEnvelope)startsCons[0].getFrom();
-			for (AllenIntervalConstraint before : getConstriants(AllenIntervalConstraint.Type.BeforeOrMeets, drivingFirstSubEnv, tec.getSolver())) {
-				//All the befores that involve the next driving
-				if (before.getTo().equals(drivingFirstSubEnv)) {
-					//Someone depends on when this parking finishes, so cannot interrupt!
-					metaCSPLogger.info("Robot " + te.getRobotID() + " should wait to end parking: " + before);
-					return false;
-				}
-			}
-		}
-		//Nobody depends on when this parking finishes, so can interrupt now...
-		metaCSPLogger.info("Robot " + te.getRobotID() + " can end parking (end time bounds are [" + te.getTemporalVariable().getEET() + ", " + te.getTemporalVariable().getLET() + "])");
-		return true;
-	}
+//	private boolean canInterrupt() {
+//		for (AllenIntervalConstraint meets : getConstriants(AllenIntervalConstraint.Type.Meets, te, tec.getSolver())) {
+//			TrajectoryEnvelope driving = (TrajectoryEnvelope)meets.getTo();
+//			AllenIntervalConstraint[] startsCons = getConstriants(AllenIntervalConstraint.Type.Starts, driving, tec.getSolver());
+//			TrajectoryEnvelope drivingFirstSubEnv = driving;
+//			if (startsCons != null && startsCons.length > 0) drivingFirstSubEnv = (TrajectoryEnvelope)startsCons[0].getFrom();
+//			for (AllenIntervalConstraint before : getConstriants(AllenIntervalConstraint.Type.BeforeOrMeets, drivingFirstSubEnv, tec.getSolver())) {
+//				//All the befores that involve the next driving
+//				if (before.getTo().equals(drivingFirstSubEnv)) {
+//					//Someone depends on when this parking finishes, so cannot interrupt!
+//					metaCSPLogger.info("Robot " + te.getRobotID() + " should wait to end parking: " + before);
+//					return false;
+//				}
+//			}
+//		}
+//		//Nobody depends on when this parking finishes, so can interrupt now...
+//		metaCSPLogger.info("Robot " + te.getRobotID() + " can end parking (end time bounds are [" + te.getTemporalVariable().getEET() + ", " + te.getTemporalVariable().getLET() + "])");
+//		return true;
+//	}
 	
 	@Override
 	public void run() {
@@ -102,6 +100,7 @@ public abstract class TrajectoryEnvelopeTrackerDummy extends AbstractTrajectoryE
 		metaCSPLogger.info("Parking finishes for Robot " + te.getRobotID());
 		
 		fixDeadline(te, 0);
+		
 //		//Now wait until earliest end time (as there could be some driving envelope after this which should not start)
 //		while (this.te.getTemporalVariable().getEET() > getCurrentTimeInMillis()) {
 //			
