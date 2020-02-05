@@ -67,6 +67,18 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 		}
 	}
 	
+	public void setCurvatureDampening(int index, double dampening) {
+		curvatureDampening[index] = dampening;
+	}
+
+	public void setCurvatureDampening(int indexFrom, int indexTo, double dampening) {
+		for (int i = indexFrom; i < indexTo; i++) curvatureDampening[i] = dampening;
+	}
+
+	public void resetCurvatureDampening() {
+		for (int i  = 0; i < curvatureDampening.length; i++) curvatureDampening[i] = 1.0;
+	}
+	
 	private double getCurvatureDampening(int index, boolean backwards) {
 		if (!backwards) return curvatureDampening[index];
 		return curvatureDampening[this.traj.getPose().length-1-index];
