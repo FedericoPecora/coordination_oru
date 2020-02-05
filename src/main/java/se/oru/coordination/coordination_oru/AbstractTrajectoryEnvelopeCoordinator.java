@@ -1800,7 +1800,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			}
 		}
 	}
-
+	
 	private static void printLicense() {
 		System.out.println("\n"+TrajectoryEnvelopeCoordinator.TITLE);
 		System.out.println(TrajectoryEnvelopeCoordinator.COPYRIGHT+"\n");
@@ -1814,6 +1814,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		}
 		System.out.println();
 	}
+
 	
 }
 
