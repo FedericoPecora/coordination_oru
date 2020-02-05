@@ -130,7 +130,29 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	protected double maxFaultsProbability = NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS;
 	protected int numberOfReplicas = 1;
 	
+	//State knowledge
+	protected HashMap<Integer,Boolean> isDriving = new HashMap<Integer, Boolean>();
+	
 
+	/**
+	 * Check if a robot is known to the coordinator and parked.
+	 * @param robotID The ID of a robot.
+	 * @return <code>true</code> iff the given robot is known to the coordinator and is parked.
+	 */
+	boolean isParked(int robotID) {
+		return (isDriving.containsKey(robotID) && !isDriving.get(robotID));
+	}
+
+	/**
+	 * Check if a robot is known to the coordinator and driving.
+	 * @param robotID The ID of a robot.
+	 * @return <code>true</code> iff the given robot is known to the coordinator and is driving.
+	 */
+	boolean isDriving(int robotID) {
+		return (isDriving.containsKey(robotID) && isDriving.get(robotID));
+	}
+	
+	
 	/**
 	 * Returning the number of messages required by each send to be effective
 	 * (i.e. the probability of unsuccessful delivery will be lower than the threshold maxFaultsProbability)
@@ -507,6 +529,8 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			//Can provide null parking or null currentPose, but not both
 			if (parking == null) parking = solver.createParkingEnvelope(robotID, PARKING_DURATION, currentPose, location, getFootprint(robotID));
 			else currentPose = parking.getTrajectory().getPose()[0];
+			
+			this.isDriving.put(robotID,false);
 
 			AllenIntervalConstraint release = new AllenIntervalConstraint(AllenIntervalConstraint.Type.Release, new Bounds(time, time));
 			release.setFrom(parking);
@@ -1459,7 +1483,9 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 
 				//Now we can signal the parking that it can end (i.e., its deadline will no longer be prolonged)
 				//Note: the parking tracker will anyway wait to exit until earliest end time has been reached
-				startParkingTracker.finishParking();			
+				startParkingTracker.finishParking();	
+				
+				this.isDriving.put(te.getRobotID(),true);
 			}
 			computeCriticalSections();
 			envelopesToTrack.clear();
