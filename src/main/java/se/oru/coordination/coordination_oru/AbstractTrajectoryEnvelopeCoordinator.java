@@ -139,7 +139,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 * @param robotID The ID of a robot.
 	 * @return <code>true</code> iff the given robot is known to the coordinator and is parked.
 	 */
-	boolean isParked(int robotID) {
+	public boolean isParked(int robotID) {
 		return (isDriving.containsKey(robotID) && !isDriving.get(robotID));
 	}
 
@@ -148,7 +148,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 * @param robotID The ID of a robot.
 	 * @return <code>true</code> iff the given robot is known to the coordinator and is driving.
 	 */
-	boolean isDriving(int robotID) {
+	public boolean isDriving(int robotID) {
 		return (isDriving.containsKey(robotID) && isDriving.get(robotID));
 	}
 	
