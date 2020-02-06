@@ -1,7 +1,10 @@
 package se.oru.coordination.coordination_oru.fleetmasterinterface;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
+import org.jgrapht.alg.util.Pair;
 
 import com.sun.jna.NativeLong;
 import com.sun.jna.Pointer;
@@ -18,7 +21,7 @@ public interface FleetMasterInterfaceLib {
 
     boolean updateCurrentPathIdx(NativeLong pathId, NativeLong currentIdx);
     
-    double[] queryTimeDelay(NativeLong pathId1, NativeLong pathId2, NativeLong[] indexRangePath1, NativeLong[] indexRangePath2, PointerByReference pathId1TTCDelays, PointerByReference pathId2TTCDelays);
+    double[] queryTimeDelay(NativeLong pathId1, NativeLong pathId2, Pair<NativeLong, NativeLong> indexRangePath1, Pair<NativeLong, NativeLong> indexRangePath2, ArrayList<Pair<NativeLong, Double>> pathId1TTCDelays, ArrayList<Pair<NativeLong, Double>> pathId2TTCDelays);
 	
 	public static class Pose2d extends Structure {
 		public static class ByReference extends Pose2d implements Structure.ByReference {}
