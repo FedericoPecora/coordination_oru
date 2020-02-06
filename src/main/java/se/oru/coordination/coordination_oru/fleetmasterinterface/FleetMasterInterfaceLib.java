@@ -21,7 +21,7 @@ public interface FleetMasterInterfaceLib {
 
     boolean updateCurrentPathIdx(NativeLong pathId, NativeLong currentIdx);
     
-    double[] queryTimeDelay(NativeLong pathId1, NativeLong pathId2, Pair<NativeLong, NativeLong> indexRangePath1, Pair<NativeLong, NativeLong> indexRangePath2, ArrayList<Pair<NativeLong, Double>> pathId1TTCDelays, ArrayList<Pair<NativeLong, Double>> pathId2TTCDelays);
+    Pair<Double,Double> queryTimeDelay(NativeLong pathId1, NativeLong pathId2, Pair<NativeLong, NativeLong> indexRangePath1, Pair<NativeLong, NativeLong> indexRangePath2, ArrayList<Pair<NativeLong, Double>> pathId1TTCDelays, ArrayList<Pair<NativeLong, Double>> pathId2TTCDelays);
 	
 	public static class PathPose extends Structure {
 		public static class ByReference extends PathPose implements Structure.ByReference {

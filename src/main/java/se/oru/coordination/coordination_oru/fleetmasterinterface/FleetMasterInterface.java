@@ -29,6 +29,11 @@ public class FleetMasterInterface {
 		INSTANCE = Native.loadLibrary("fleetmaster", FleetMasterInterfaceLib.class);
 	}
 	
+	//FIXME
+	void init(PointerByReference gridParams) {
+		INSTANCE.init(gridParams);
+	}
+	
 	boolean addPath(int robotID, List<PoseSteering> pathToAdd, Coordinate ... coordinates) {
 		if (pathToAdd.size() == 0 || coordinates.length == 0) return false;
 		clearPath(robotID);
@@ -51,4 +56,19 @@ public class FleetMasterInterface {
 			INSTANCE.removePath(paths.get(robotID));
 		}
 	}
+	
+	/**
+	 * Function to update the current progress along the path according to the last received robot report.
+	 * @param robotID The robot ID.
+	 * @param currentIdx The path index.
+	 * @return true if the path index has been correctly updated.
+	 */
+	boolean updateCurrentPathIdx(int robotID, int currentIdx) {
+		if (paths.containsKey(robotID)) {
+			 return INSTANCE.updateCurrentPathIdx(paths.get(robotID), new NativeLong(currentIdx));
+		 }
+		 return false;
+	}
+	
+	//Pair<Double,Double> queryTimeDelay(NativeLong pathId1, NativeLong pathId2, Pair<NativeLong, NativeLong> indexRangePath1, Pair<NativeLong, NativeLong> indexRangePath2, ArrayList<Pair<NativeLong, Double>> pathId1TTCDelays, ArrayList<Pair<NativeLong, Double>> pathId2TTCDelays);
 }
