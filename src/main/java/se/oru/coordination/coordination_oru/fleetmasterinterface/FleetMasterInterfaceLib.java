@@ -104,7 +104,7 @@ public interface FleetMasterInterfaceLib {
 	public static class Polygon extends Structure {
 		public static class ByReference extends Polygon implements Structure.ByReference {}
 
-		public Pose2d[] points;
+		public ArrayList<Pose2d> points;
 		
 		public Polygon() {}
 		public Polygon(Pointer p) {
