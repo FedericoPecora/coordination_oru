@@ -1,7 +1,6 @@
 package se.oru.coordination.coordination_oru.fleetmasterinterface;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
@@ -14,6 +13,7 @@ import com.sun.jna.NativeLong;
 import com.sun.jna.ptr.PointerByReference;
 import com.vividsolutions.jts.geom.Coordinate;
 
+import se.oru.coordination.coordination_oru.CriticalSection;
 import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInterfaceLib.PathPose;
 
 
@@ -70,5 +70,14 @@ public class FleetMasterInterface {
 		 return false;
 	}
 	
-	//Pair<Double,Double> queryTimeDelay(NativeLong pathId1, NativeLong pathId2, Pair<NativeLong, NativeLong> indexRangePath1, Pair<NativeLong, NativeLong> indexRangePath2, ArrayList<Pair<NativeLong, Double>> pathId1TTCDelays, ArrayList<Pair<NativeLong, Double>> pathId2TTCDelays);
+	Pair<Double,Double> queryTimeDelay(CriticalSection cs, ArrayList<Pair<NativeLong, Double>> pathId1TTCDelays, ArrayList<Pair<NativeLong, Double>> pathId2TTCDelays) {
+		int robotID1 = cs.getTe1().getRobotID();
+		int robotID2 = cs.getTe2().getRobotID();
+		if (paths.containsKey(robotID1) && (paths.containsKey(robotID2))) {
+		return INSTANCE.queryTimeDelay(paths.get(robotID1), paths.get(robotID2), 
+				new Pair<NativeLong, NativeLong>(new NativeLong(cs.getTe1Start()), new NativeLong(cs.getTe1End())), new Pair<NativeLong, NativeLong>(new NativeLong(cs.getTe2Start()), new NativeLong(cs.getTe2End())), 
+				pathId1TTCDelays, pathId2TTCDelays);
+		}
+		return new Pair<Double, Double>(Double.NaN, Double.NaN);
+	}
 }
