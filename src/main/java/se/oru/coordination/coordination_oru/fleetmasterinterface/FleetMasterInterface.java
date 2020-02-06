@@ -39,7 +39,7 @@ public class FleetMasterInterface {
 			path.add(new PathPose(pathToAdd.get(i).getX(),pathToAdd.get(i).getY(),pathToAdd.get(i).getTheta()));
 		}
 		List<Pair<Double,Double>> footprint = new ArrayList<Pair<Double,Double>>();
-		for (int i = 0; i < coordinates.length; i++) footprint.add(new Pair<Double,Double>(coordinates[i].x,coordinates[i].x));
+		for (int i = 0; i < coordinates.length; i++) footprint.add(new Pair<Double,Double>(coordinates[i].x,coordinates[i].y));
 		
 		//Call the method
 		paths.put(robotID, INSTANCE.addPath(path, trajParams.get(robotID), footprint));
