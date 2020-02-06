@@ -43,11 +43,6 @@ public interface FleetMasterInterfaceLib {
 		public PathPose(Pointer p) {
 			super(p);
 		}
-		public void setValue(double x, double y, double theta) {
-			this.x = x;
-			this.y = y;
-			this.theta = theta;			
-		}
 
 		@Override
 		protected List<String> getFieldOrder() {
