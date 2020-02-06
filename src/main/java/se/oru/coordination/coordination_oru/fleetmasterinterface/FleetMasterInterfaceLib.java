@@ -15,7 +15,7 @@ public interface FleetMasterInterfaceLib {
 	
 	void init(PointerByReference gridParams);
 	
-	NativeLong addPath(PointerByReference path, PointerByReference trajParams, PointerByReference footPrint);
+	NativeLong addPath(List<PathPose> path, PointerByReference trajParams, List<Pair<Double,Double>> footPrint);
 	
     void removePath(NativeLong id);
 
@@ -23,27 +23,42 @@ public interface FleetMasterInterfaceLib {
     
     double[] queryTimeDelay(NativeLong pathId1, NativeLong pathId2, Pair<NativeLong, NativeLong> indexRangePath1, Pair<NativeLong, NativeLong> indexRangePath2, ArrayList<Pair<NativeLong, Double>> pathId1TTCDelays, ArrayList<Pair<NativeLong, Double>> pathId2TTCDelays);
 	
-	public static class Pose2d extends Structure {
-		public static class ByReference extends Pose2d implements Structure.ByReference {}
+	public static class PathPose extends Structure {
+		public static class ByReference extends PathPose implements Structure.ByReference {
+
+			public ByReference(Pointer p) {
+				super(p);
+				// TODO Auto-generated constructor stub
+			}}
 
 		public double x;
 		public double y;
 		public double theta;
 		
-		public Pose2d() {}
-		public Pose2d(Pointer p) {
+		public PathPose(double x, double y, double theta) {
+			this.x = x;
+			this.y = y;
+			this.theta = theta;
+		}
+		public PathPose(Pointer p) {
 			super(p);
 		}
+		public void setValue(double x, double y, double theta) {
+			this.x = x;
+			this.y = y;
+			this.theta = theta;			
+		}
+
 		@Override
 		protected List<String> getFieldOrder() {
 			return Arrays.asList(new String[] {"x", "y", "theta"});
 		}
 	}
-	
+		
 	public static class GridParams extends Structure {
 		public static class ByReference extends GridParams implements Structure.ByReference {}
 
-		public Pose2d origin;
+		public PathPose origin;
 		public double resolution;
 		public NativeLong width;
 		public NativeLong height;
@@ -98,21 +113,6 @@ public interface FleetMasterInterfaceLib {
 			return Arrays.asList(new String[] {"maxVel", "maxVelRev", "useSteerDriveVel", "maxRotationalVel", "maxRotationalVelRev", "maxSteeringAngleVel", "initVel", "endVel",
 			"initSteeringAngleVel", "endSteeringAngleVel", "maxAcc", "maxRotationalAcc", "maxSteeringAngleAcc", "timeStep", "wheelBaseX", "wheelBaseY", "useInitialState", "nbZeroVelControlCommands", "minDist", 
 			"useCoordTimeAccConstraints", "useCoordTimeContraintPoints", "debug", "debugPrefix", "creepSpeed", "creepDistance", "setCreepSpeedAsEndConstraint", "citiTruckNbClearSpeedCommands"});
-		}
-	}
-	
-	public static class Polygon extends Structure {
-		public static class ByReference extends Polygon implements Structure.ByReference {}
-
-		public ArrayList<Pose2d> points;
-		
-		public Polygon() {}
-		public Polygon(Pointer p) {
-			super(p);
-		}
-		@Override
-		protected List<String> getFieldOrder() {
-			return Arrays.asList(new String[] {"points"});
 		}
 	}
 }
