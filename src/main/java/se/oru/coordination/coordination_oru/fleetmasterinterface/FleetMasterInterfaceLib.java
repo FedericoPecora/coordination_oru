@@ -3,6 +3,7 @@ package se.oru.coordination.coordination_oru.fleetmasterinterface;
 import java.util.Arrays;
 import java.util.List;
 
+import com.sun.jna.NativeLong;
 import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
 import com.sun.jna.ptr.PointerByReference;
@@ -11,13 +12,13 @@ public interface FleetMasterInterfaceLib {
 	
 	void init(PointerByReference gridParams);
 	
-	long addPath(PointerByReference path, PointerByReference trajParams, PointerByReference footPrint);
+	NativeLong addPath(PointerByReference path, PointerByReference trajParams, PointerByReference footPrint);
 	
-    void removePath(long id);
+    void removePath(NativeLong id);
 
-    boolean updateCurrentPathIdx(long pathId, long currentIdx);
+    boolean updateCurrentPathIdx(NativeLong pathId, NativeLong currentIdx);
     
-    double[] queryTimeDelay(long pathId1, long pathId2, long[] indexRangePath1, long[] indexRangePath2, PointerByReference pathId1TTCDelays, PointerByReference pathId2TTCDelays);
+    double[] queryTimeDelay(NativeLong pathId1, NativeLong pathId2, NativeLong[] indexRangePath1, NativeLong[] indexRangePath2, PointerByReference pathId1TTCDelays, PointerByReference pathId2TTCDelays);
 	
 	public static class Pose2d extends Structure {
 		public static class ByReference extends Pose2d implements Structure.ByReference {}
@@ -41,8 +42,8 @@ public interface FleetMasterInterfaceLib {
 
 		public Pose2d origin;
 		public double resolution;
-		public long width;
-		public long height;
+		public NativeLong width;
+		public NativeLong height;
 		
 		public GridParams() {}
 		public GridParams(Pointer p) {
