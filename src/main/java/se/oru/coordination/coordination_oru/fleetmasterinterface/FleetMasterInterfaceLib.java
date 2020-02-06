@@ -9,7 +9,6 @@ import org.jgrapht.alg.util.Pair;
 import com.sun.jna.NativeLong;
 import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
-import com.sun.jna.ptr.PointerByReference;
 
 public interface FleetMasterInterfaceLib {
 	

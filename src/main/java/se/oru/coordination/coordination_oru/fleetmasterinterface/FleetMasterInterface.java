@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 
 import org.jgrapht.alg.util.Pair;
+import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 
@@ -17,17 +18,52 @@ import se.oru.coordination.coordination_oru.CriticalSection;
 import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInterfaceLib.GridParams;
 import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInterfaceLib.PathPose;
 import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInterfaceLib.TrajParams;
+import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
 
 
 public class FleetMasterInterface {
 	
-	private HashMap<Integer, NativeLong> paths = new HashMap<Integer, NativeLong>(); //teID, pathID
-	private HashMap<Integer, TrajParams> trajParams = new HashMap<Integer, TrajParams>(); //robotID, trajectory parameters
+	private HashMap<Integer, NativeLong> paths = null; //teID (or this pathID), fleetmaster pathID 
+	private HashMap<Integer, TrajParams> trajParams = null; //robotID, trajectory parameters
+	private GridParams gridParams = null;
 	
+	/**
+	 * The default footprint used for robots if none is specified.
+	 * NOTE: coordinates in footprints must be given in in CCW or CW order. 
+	 */
+	public static Coordinate[] DEFAULT_FOOTPRINT = new Coordinate[] {
+			new Coordinate(-1.7, 0.7),	//back left
+			new Coordinate(-1.7, -0.7),	//back right
+			new Coordinate(2.7, -0.7),	//front right
+			new Coordinate(2.7, 0.7)	//front left
+	};
+	
+	public Coordinate[] getDefaultFootprint() {
+		return DEFAULT_FOOTPRINT;
+	}
+	
+	/**
+	 * The default trajectory params used for robots if none is specified.
+	 * FIXME For debugging purposes (Values are defined according to default values of trajectory_processor.h).
+	 */
+	public static TrajParams DEFAULT_TRAJ_PARAMS = new TrajParams(1.0, 1.0, true, 1.0, 1.0, 1.0, 0., 0., 
+		    0., 0., 1., 1., 1., 0.06, 0.68, 0., true, 5, 0.00001, true, false, true, new String(""), 0., 0., false, 0);
+		
 	public static FleetMasterInterfaceLib INSTANCE = null;
 	static {
 		NativeLibrary.addSearchPath("fleetmaster", "FleetMasterInterface"); //FIXME How to add the path of the library? Now it is in {$FLEETMASTER_WS}/devel
 		INSTANCE = Native.loadLibrary("fleetmaster", FleetMasterInterfaceLib.class);
+	}
+	
+	public FleetMasterInterface() {
+		this.paths = new HashMap<Integer, NativeLong>();
+		this.trajParams = new HashMap<Integer, TrajParams>();
+	}
+	
+	public boolean setDefaultFootprints(Coordinate ... coordinates) {
+		if (coordinates.length == 0) return false;
+		DEFAULT_FOOTPRINT = coordinates;
+		return true;
 	}
 	
 	/**
@@ -40,39 +76,25 @@ public class FleetMasterInterface {
 	 * @param height Number of rows of the map (in cells).
 	 */
 	void setGridMapParams(double origin_x, double origin_y, double origin_theta, double resolution, long width, long height) {
-		INSTANCE.init(new GridParams(origin_x, origin_y, origin_theta, resolution, new NativeLong(width), new NativeLong(height)));
+		gridParams = new GridParams(origin_x, origin_y, origin_theta, resolution, new NativeLong(width), new NativeLong(height));
+		INSTANCE.init(gridParams);
 	}
 	
 	/**
-	 * Set the trajectory parameters for a robot
+	 * Use the default fleetmaster gridmap parameters (see grid_opencv.h)
+	 * origin: 0., 0., 0.
+	 * resolution: .1
+	 * width: 100
+	 * height: 100
+	 */
+	void useDefaultGridParams() {
+		gridParams = new GridParams(0., 0., 0., .1, new NativeLong(100), new NativeLong(100));
+		INSTANCE.init(gridParams);
+	}
+	
+	/**
+	 * Set the trajectory parameters for a robot (see trajectory_processor.h).
 	 * @param robotID The robot ID.
-	 * @param maxVel
-	 * @param maxVelRev
-	 * @param useSteerDriveVel
-	 * @param maxRotationalVel
-	 * @param maxRotationalVelRev
-	 * @param maxSteeringAngleVel
-	 * @param initVel
-	 * @param endVel
-	 * @param initSteeringAngleVel
-	 * @param endSteeringAngleVel
-	 * @param maxAcc
-	 * @param maxRotationalAcc
-	 * @param maxSteeringAngleAcc
-	 * @param timeStep
-	 * @param wheelBaseX
-	 * @param wheelBaseY
-	 * @param useInitialState
-	 * @param nbZeroVelControlCommands
-	 * @param minDist
-	 * @param useCoordTimeAccConstraints
-	 * @param useCoordTimeContraintPoints
-	 * @param debug
-	 * @param debugPrefix
-	 * @param creepSpeed
-	 * @param creepDistance
-	 * @param setCreepSpeedAsEndConstraint
-	 * @param citiTruckNbClearSpeedCommands
 	 */
 	void addTrajParams(int robotID, double maxVel, double maxVelRev, boolean useSteerDriveVel, double maxRotationalVel, double maxRotationalVelRev, double maxSteeringAngleVel, double initVel, double endVel, 
 		    double initSteeringAngleVel, double endSteeringAngleVel, double maxAcc, double maxRotationalAcc, double maxSteeringAngleAcc, double timeStep, double wheelBaseX, double wheelBaseY, boolean useInitialState,
@@ -89,10 +111,23 @@ public class FleetMasterInterface {
 	 * @return
 	 */
 	boolean addPath(TrajectoryEnvelope te) {
-		PoseSteering[] pathToAdd = te.getTrajectory().getPoseSteering();
-		Coordinate[] coordinates = te.getFootprint().getCoordinates();
-		if (pathToAdd.length == 0 || coordinates.length == 0 || !trajParams.containsKey(te.getRobotID())) return false;
-		clearPath(te.getID());
+		return addPath(te.getRobotID(), te.getID(), te.getTrajectory().getPoseSteering(), te.getFootprint().getCoordinates());
+	}
+	
+	/**
+	 * Add a spatial envelope to the fleetmaster gridmap.
+	 * @param robotID ID of the robot for which adding the new path.
+	 * @param pathID ID of the path to be added.
+	 * @param pathToAdd The path to be added.
+	 * @param coordinates The footprint to be swept along the path.
+	 * @return true if success.
+	 */
+	boolean addPath(int robotID, int pathID, PoseSteering[] pathToAdd, Coordinate ... coordinates) {
+		if (gridParams == null || pathToAdd.length == 0) return false;
+		if (coordinates.length == 0) coordinates = DEFAULT_FOOTPRINT;
+		TrajParams trjParams = DEFAULT_TRAJ_PARAMS;
+		if (trajParams.containsKey(pathID)) trjParams = trajParams.get(robotID);
+		if (!clearPath(pathID)) return false;
 		
 		//Parse the Java values for the path and the footprint
 		List<PathPose> path = new ArrayList<PathPose>();
@@ -103,7 +138,7 @@ public class FleetMasterInterface {
 		for (int i = 0; i < coordinates.length; i++) footprint.add(new Pair<Double,Double>(coordinates[i].x,coordinates[i].y));
 		
 		//Call the method
-		paths.put(te.getID(), INSTANCE.addPath(path, trajParams.get(te.getRobotID()), footprint));
+		paths.put(pathID, INSTANCE.addPath(path, trjParams, footprint));
 		return true;
 	}
 	
@@ -111,10 +146,10 @@ public class FleetMasterInterface {
 	 * Remove the path related to the given {@link TrajectoryEnvelope} from the fleetmaster gridmap.
 	 * @param teID The ID of the trajectory envelope to be cleared.
 	 */
-	void clearPath(int teID) {
-		if (paths.containsKey(teID)) {
-			INSTANCE.removePath(paths.get(teID));
-		}
+	boolean clearPath(int teID) {
+		if (gridParams != null && paths.containsKey(teID)) return false;
+		INSTANCE.removePath(paths.get(teID));
+		return true;
 	}
 	
 	/**
@@ -124,7 +159,7 @@ public class FleetMasterInterface {
 	 * @return true if the path index has been correctly updated.
 	 */
 	boolean updateCurrentPathIdx(int teID, int currentIdx) {
-		if (paths.containsKey(teID)) {
+		if (gridParams != null && paths.containsKey(teID)) {
 			 return INSTANCE.updateCurrentPathIdx(paths.get(teID), new NativeLong(currentIdx));
 		 }
 		 return false;
@@ -140,6 +175,9 @@ public class FleetMasterInterface {
 	 * @return The time of completion increments.
 	 */
 	Pair<Double,Double> queryTimeDelay(CriticalSection cs, ArrayList<Pair<NativeLong, Double>> te1TCDelays, ArrayList<Pair<NativeLong, Double>> te2TCDelays) {
+		
+		if (gridParams == null || cs == null) return new Pair<Double, Double>(Double.NaN, Double.NaN);
+		
 		int teID1 = cs.getTe1().getID();
 		int teID2 = cs.getTe2().getID();
 		if (paths.containsKey(teID1) && (paths.containsKey(teID2))) {
@@ -148,5 +186,51 @@ public class FleetMasterInterface {
 				te1TCDelays, te2TCDelays);
 		}
 		return new Pair<Double, Double>(Double.NaN, Double.NaN);
+	}
+	
+	public static void main(String[] args) {
+		FleetMasterInterface flint = new FleetMasterInterface();
+		flint.useDefaultGridParams();
+		
+		//Test 1: using default robot footprint	
+		Pose startRobot1 = new Pose(45.0,5.0,0.0);
+		Pose goalRobot11 = new Pose(40.0,7.0,0.0);
+		Pose goalRobot12 = new Pose(10.0,7.0,0.0);
+		Pose goalRobot13 = new Pose(5.0,5.0,0.0);
+
+		//Set up path planner (using empty map)
+		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
+		rsp.setRadius(0.2);
+		rsp.setFootprint(flint.getDefaultFootprint());
+		rsp.setTurningRadius(4.0);
+		rsp.setDistanceBetweenPathPoints(0.1);
+		rsp.setStart(startRobot1);
+		rsp.setGoals(goalRobot11,goalRobot12,goalRobot13);
+		rsp.plan();
+		
+		//Add the path to the fleetmaster
+		flint.addPath(1, rsp.getPath().hashCode(), rsp.getPath());
+		
+		//Show image
+		
+		try {
+			Thread.sleep(5000);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		//Delete the path
+		flint.addPath(1, rsp.getPath().hashCode(), rsp.getPath());
+		
+		//Show image
+		
+		try {
+			Thread.sleep(5000);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 	}
 }
