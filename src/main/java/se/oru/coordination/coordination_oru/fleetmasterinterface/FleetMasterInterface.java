@@ -55,11 +55,17 @@ public class FleetMasterInterface {
 		INSTANCE = Native.loadLibrary("fleetmaster", FleetMasterInterfaceLib.class);
 	}
 	
+	/**
+	 * Constructor.
+	 */
 	public FleetMasterInterface() {
 		this.paths = new HashMap<Integer, NativeLong>();
 		this.trajParams = new HashMap<Integer, TrajParams>();
 	}
 	
+	/**
+	 * Set the value of the footprint used for robots if none is specified.
+	 */
 	public boolean setDefaultFootprints(Coordinate ... coordinates) {
 		if (coordinates.length == 0) return false;
 		DEFAULT_FOOTPRINT = coordinates;
@@ -67,7 +73,7 @@ public class FleetMasterInterface {
 	}
 	
 	/**
-	 * Set the fleetmaster gridmap parameters.
+	 * Set the fleetmaster gridmap parameters. Calling this function is mandatory.
 	 * @param origin_x The x origin of the map
 	 * @param origin_y The y origin of the map
 	 * @param origin_theta The theta origin of the map
@@ -81,7 +87,7 @@ public class FleetMasterInterface {
 	}
 	
 	/**
-	 * Use the default fleetmaster gridmap parameters (see grid_opencv.h)
+	 * Use the default fleetmaster gridmap parameters (see grid_opencv.h).
 	 * origin: 0., 0., 0.
 	 * resolution: .1
 	 * width: 100
@@ -90,6 +96,14 @@ public class FleetMasterInterface {
 	void useDefaultGridParams() {
 		gridParams = new GridParams(0., 0., 0., .1, new NativeLong(100), new NativeLong(100));
 		INSTANCE.init(gridParams);
+	}
+	
+	/**
+	 * Set if showing the content of each GridMaps.
+	 * @param enable true if enabled.
+	 */
+	void show(boolean enable) {
+		INSTANCE.show(enable);
 	}
 	
 	/**

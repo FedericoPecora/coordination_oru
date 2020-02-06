@@ -12,6 +12,8 @@ import com.sun.jna.Structure;
 
 public interface FleetMasterInterfaceLib {
 	
+	void show(boolean enable);
+	
 	void init(GridParams gridParams);
 	
 	NativeLong addPath(List<PathPose> path, TrajParams trajParams, List<Pair<Double,Double>> footPrint);
