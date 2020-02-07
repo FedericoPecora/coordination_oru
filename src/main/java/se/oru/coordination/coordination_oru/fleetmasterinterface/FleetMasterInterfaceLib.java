@@ -6,11 +6,12 @@ import java.util.List;
 
 import org.jgrapht.alg.util.Pair;
 
+import com.sun.jna.Library;
 import com.sun.jna.NativeLong;
 import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
 
-public interface FleetMasterInterfaceLib {
+public interface FleetMasterInterfaceLib extends Library {
 	
 	void show(boolean enable);
 	
