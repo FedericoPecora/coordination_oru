@@ -1,4 +1,4 @@
-package se.oru.coordination.coordination_oru.fleetmaster.tests;
+package se.oru.coordination.coordination_oru.fleetmasterinterface.tests;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 
@@ -6,7 +6,8 @@ import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInte
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
 
 public class TestAddPathSingleRobotEmptyMap {
-	public static void main(String[] args) {
+	
+	public static void main(String[] args) throws InterruptedException {
 		System.out.print("FleetMasterInterference class");
 		FleetMasterInterface flint = new FleetMasterInterface();
 		flint.useDefaultGridParams();
