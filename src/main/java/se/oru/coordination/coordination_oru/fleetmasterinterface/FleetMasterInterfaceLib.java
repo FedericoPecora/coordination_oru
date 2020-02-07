@@ -107,33 +107,33 @@ public interface FleetMasterInterfaceLib {
 			}
 		}
 
-	    double maxVel;
-	    double maxVelRev;
-	    boolean useSteerDriveVel;
-	    double maxRotationalVel;
-	    double maxRotationalVelRev;
-	    double maxSteeringAngleVel;
-	    double initVel;
-	    double endVel;
-	    double initSteeringAngleVel;
-	    double endSteeringAngleVel;
-	    double maxAcc;
-	    double maxRotationalAcc;
-	    double maxSteeringAngleAcc;
-	    double timeStep;
-	    double wheelBaseX;
-	    double wheelBaseY;
-	    boolean useInitialState;
-	    int nbZeroVelControlCommands;
-	    double minDist;
-	    boolean useCoordTimeAccConstraints;
-	    boolean useCoordTimeContraintPoints;
-	    boolean debug;
-	    String debugPrefix;
-	    double creepSpeed;
-	    double creepDistance;
-	    boolean setCreepSpeedAsEndConstraint;
-	    int citiTruckNbClearSpeedCommands;
+		public double maxVel;
+		public double maxVelRev;
+		public boolean useSteerDriveVel;
+	    public double maxRotationalVel;
+	    public double maxRotationalVelRev;
+	    public double maxSteeringAngleVel;
+	    public double initVel;
+	    public double endVel;
+	    public double initSteeringAngleVel;
+	    public double endSteeringAngleVel;
+	    public double maxAcc;
+	    public double maxRotationalAcc;
+	    public double maxSteeringAngleAcc;
+	    public double timeStep;
+	    public double wheelBaseX;
+	    public double wheelBaseY;
+	    public boolean useInitialState;
+	    public int nbZeroVelControlCommands;
+	    public double minDist;
+	    public boolean useCoordTimeAccConstraints;
+	    public boolean useCoordTimeContraintPoints;
+	    public boolean debug;
+	    public String debugPrefix;
+	    public double creepSpeed;
+	    public double creepDistance;
+	    public boolean setCreepSpeedAsEndConstraint;
+	    public int citiTruckNbClearSpeedCommands;
 		
 		public TrajParams(double maxVel, double maxVelRev, boolean useSteerDriveVel, double maxRotationalVel, double maxRotationalVelRev, double maxSteeringAngleVel, double initVel, double endVel, 
 	    double initSteeringAngleVel, double endSteeringAngleVel, double maxAcc, double maxRotationalAcc, double maxSteeringAngleAcc, double timeStep, double wheelBaseX, double wheelBaseY, boolean useInitialState,
