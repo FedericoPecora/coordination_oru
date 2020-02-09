@@ -10,20 +10,21 @@ import com.sun.jna.Library;
 import com.sun.jna.NativeLong;
 import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
+import com.sun.jna.ptr.PointerByReference;
 
 public interface FleetMasterInterfaceLib extends Library {
+			
+	void init(PointerByReference p, GridParams gridParams);
 	
-	void show(boolean enable);
+	void show(PointerByReference p, boolean enable);
 	
-	void init(GridParams gridParams);
+	NativeLong addPath(PointerByReference p, List<PathPose> path, TrajParams trajParams, List<Pair<Double,Double>> footPrint);
 	
-	NativeLong addPath(List<PathPose> path, TrajParams trajParams, List<Pair<Double,Double>> footPrint);
-	
-    void removePath(NativeLong id);
+    void removePath(PointerByReference p, NativeLong id);
 
-    boolean updateCurrentPathIdx(NativeLong pathId, NativeLong currentIdx);
+    boolean updateCurrentPathIdx(PointerByReference p, NativeLong pathId, NativeLong currentIdx);
     
-    Pair<Double,Double> queryTimeDelay(NativeLong pathId1, NativeLong pathId2, Pair<NativeLong, NativeLong> indexRangePath1, Pair<NativeLong, NativeLong> indexRangePath2, ArrayList<Pair<NativeLong, Double>> pathId1TTCDelays, ArrayList<Pair<NativeLong, Double>> pathId2TTCDelays);
+    Pair<Double,Double> queryTimeDelay(PointerByReference p, NativeLong pathId1, NativeLong pathId2, Pair<NativeLong, NativeLong> indexRangePath1, Pair<NativeLong, NativeLong> indexRangePath2, ArrayList<Pair<NativeLong, Double>> pathId1TTCDelays, ArrayList<Pair<NativeLong, Double>> pathId2TTCDelays);
 	
 	public static class PathPose extends Structure {
 		public static class ByReference extends PathPose implements Structure.ByReference {
@@ -172,9 +173,12 @@ public interface FleetMasterInterfaceLib extends Library {
 		}
 		@Override
 		protected List<String> getFieldOrder() {
-			return Arrays.asList(new String[] {"maxVel", "maxVelRev", "useSteerDriveVel", "maxRotationalVel", "maxRotationalVelRev", "maxSteeringAngleVel", "initVel", "endVel",
+			return Arrays.asList(new String[] {
+			"maxVel", "maxVelRev", "useSteerDriveVel", "maxRotationalVel", "maxRotationalVelRev", "maxSteeringAngleVel", "initVel", "endVel",
 			"initSteeringAngleVel", "endSteeringAngleVel", "maxAcc", "maxRotationalAcc", "maxSteeringAngleAcc", "timeStep", "wheelBaseX", "wheelBaseY", "useInitialState", "nbZeroVelControlCommands", "minDist", 
-			"useCoordTimeAccConstraints", "useCoordTimeContraintPoints", "debug", "debugPrefix", "creepSpeed", "creepDistance", "setCreepSpeedAsEndConstraint", "citiTruckNbClearSpeedCommands"});
+			"useCoordTimeAccConstraints", "useCoordTimeContraintPoints", "debug", "debugPrefix", "creepSpeed", "creepDistance", "setCreepSpeedAsEndConstraint", "citiTruckNbClearSpeedCommands"
+			//"citiTruckNbClearSpeedCommands", "creepDistance", "creepSpeed", "debug", "debugPrefix", "endSteeringAngleVel", "endVel", "initSteeringAngleVel", "initVel", "maxAcc", "maxRotationalAcc", "maxRotationalVel", "maxRotationalVelRev", "maxSteeringAngleAcc", "maxSteeringAngleVel", "maxVel", "maxVelRev", "minDist", "nbZeroVelControlCommands", "setCreepSpeedAsEndConstraint", "timeStep", "useCoordTimeAccConstraints", "useCoordTimeContraintPoints", "useInitialState", "useSteerDriveVel", "wheelBaseX", "wheelBaseY"
+			});
 		}
 	}
 }

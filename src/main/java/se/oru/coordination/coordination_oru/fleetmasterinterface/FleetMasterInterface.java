@@ -12,6 +12,7 @@ import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 import com.sun.jna.Native;
 import com.sun.jna.NativeLibrary;
 import com.sun.jna.NativeLong;
+import com.sun.jna.ptr.PointerByReference;
 import com.vividsolutions.jts.geom.Coordinate;
 
 import se.oru.coordination.coordination_oru.CriticalSection;
@@ -26,6 +27,7 @@ public class FleetMasterInterface {
 	private HashMap<Integer, NativeLong> paths = null; //teID (or this pathID), fleetmaster pathID 
 	private HashMap<Integer, TrajParams> trajParams = null; //robotID, trajectory parameters
 	private GridParams gridParams = null;
+	PointerByReference p = null;
 	
 	/**
 	 * The default footprint used for robots if none is specified.
@@ -83,6 +85,8 @@ public class FleetMasterInterface {
 	 */
 	public void setGridMapParams(double origin_x, double origin_y, double origin_theta, double resolution, long width, long height) {
 		gridParams = new GridParams(origin_x, origin_y, origin_theta, resolution, new NativeLong(width), new NativeLong(height));
+		p = new PointerByReference();
+		INSTANCE.init(p, gridParams);
 		INSTANCE.init(gridParams);
 	}
 	
@@ -95,7 +99,8 @@ public class FleetMasterInterface {
 	 */
 	public void useDefaultGridParams() {
 		gridParams = new GridParams(0., 0., 0., .1, new NativeLong(100), new NativeLong(100));
-		INSTANCE.init(gridParams);
+		p = new PointerByReference();
+		INSTANCE.init(p, gridParams);
 	}
 	
 	/**
@@ -103,7 +108,7 @@ public class FleetMasterInterface {
 	 * @param enable true if enabled.
 	 */
 	public void show(boolean enable) {
-		INSTANCE.show(enable);
+		INSTANCE.show(p, enable);
 	}
 	
 	/**
@@ -152,7 +157,7 @@ public class FleetMasterInterface {
 		for (int i = 0; i < coordinates.length; i++) footprint.add(new Pair<Double,Double>(coordinates[i].x,coordinates[i].y));
 		
 		//Call the method
-		paths.put(pathID, INSTANCE.addPath(path, trjParams, footprint));
+		paths.put(pathID, INSTANCE.addPath(p, path, trjParams, footprint));
 		return true;
 	}
 	
@@ -162,7 +167,7 @@ public class FleetMasterInterface {
 	 */
 	public boolean clearPath(int teID) {
 		if (gridParams != null && paths.containsKey(teID)) return false;
-		INSTANCE.removePath(paths.get(teID));
+		INSTANCE.removePath(p, paths.get(teID));
 		return true;
 	}
 	
@@ -174,7 +179,7 @@ public class FleetMasterInterface {
 	 */
 	public boolean updateCurrentPathIdx(int teID, int currentIdx) {
 		if (gridParams != null && paths.containsKey(teID)) {
-			 return INSTANCE.updateCurrentPathIdx(paths.get(teID), new NativeLong(currentIdx));
+			 return INSTANCE.updateCurrentPathIdx(p, paths.get(teID), new NativeLong(currentIdx));
 		 }
 		 return false;
 	}
@@ -195,7 +200,7 @@ public class FleetMasterInterface {
 		int teID1 = cs.getTe1().getID();
 		int teID2 = cs.getTe2().getID();
 		if (paths.containsKey(teID1) && (paths.containsKey(teID2))) {
-		return INSTANCE.queryTimeDelay(paths.get(teID1), paths.get(teID2), 
+		return INSTANCE.queryTimeDelay(p, paths.get(teID1), paths.get(teID2), 
 				new Pair<NativeLong, NativeLong>(new NativeLong(cs.getTe1Start()), new NativeLong(cs.getTe1End())), new Pair<NativeLong, NativeLong>(new NativeLong(cs.getTe2Start()), new NativeLong(cs.getTe2End())), 
 				te1TCDelays, te2TCDelays);
 		}

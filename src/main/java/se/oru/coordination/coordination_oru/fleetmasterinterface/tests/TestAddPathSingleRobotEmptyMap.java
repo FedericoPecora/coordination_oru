@@ -11,7 +11,7 @@ public class TestAddPathSingleRobotEmptyMap {
 		System.out.print("FleetMasterInterference class");
 		FleetMasterInterface flint = new FleetMasterInterface();
 		flint.useDefaultGridParams();
-		flint.show(true);
+		flint.show(true);		
 		
 		//Test 1: using default robot footprint	
 		Pose startRobot1 = new Pose(45.0,5.0,0.0);
