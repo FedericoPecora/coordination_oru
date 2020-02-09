@@ -86,8 +86,7 @@ public class FleetMasterInterface {
 	public void setGridMapParams(double origin_x, double origin_y, double origin_theta, double resolution, long width, long height) {
 		gridParams = new GridParams(origin_x, origin_y, origin_theta, resolution, new NativeLong(width), new NativeLong(height));
 		p = new PointerByReference();
-		INSTANCE.init(p, gridParams);
-		INSTANCE.init(gridParams);
+		p = INSTANCE.init(gridParams);
 	}
 	
 	/**
@@ -99,8 +98,7 @@ public class FleetMasterInterface {
 	 */
 	public void useDefaultGridParams() {
 		gridParams = new GridParams(0., 0., 0., .1, new NativeLong(100), new NativeLong(100));
-		p = new PointerByReference();
-		INSTANCE.init(p, gridParams);
+		p = INSTANCE.init(gridParams);
 	}
 	
 	/**
@@ -149,15 +147,21 @@ public class FleetMasterInterface {
 		if (!clearPath(pathID)) return false;
 		
 		//Parse the Java values for the path and the footprint
-		List<PathPose> path = new ArrayList<PathPose>();
+		PathPose[] path = new PathPose[pathToAdd.length];
+		double[] steering = new double[pathToAdd.length];
 		for (int i = 0; i < pathToAdd.length; i++) {
-			path.add(new PathPose(pathToAdd[i].getX(),pathToAdd[i].getY(),pathToAdd[i].getTheta()));
+			path[i] = new PathPose(pathToAdd[i].getX(), pathToAdd[i].getY(), pathToAdd[i].getTheta());
+			steering[i] = pathToAdd[i].getSteering();
 		}
-		List<Pair<Double,Double>> footprint = new ArrayList<Pair<Double,Double>>();
-		for (int i = 0; i < coordinates.length; i++) footprint.add(new Pair<Double,Double>(coordinates[i].x,coordinates[i].y));
+		double[] coordinates_x = new double[coordinates.length];
+		double[] coordinates_y = new double[coordinates.length];
+		for (int i = 0; i < coordinates.length; i++) {
+			coordinates_x[i] = coordinates[i].x;
+			coordinates_y[i] = coordinates[i].y;
+		}
 		
 		//Call the method
-		paths.put(pathID, INSTANCE.addPath(p, path, trjParams, footprint));
+		paths.put(pathID, INSTANCE.addPath(p, path, steering, pathToAdd.length, trjParams, coordinates_x, coordinates_y, coordinates.length));
 		return true;
 	}
 	

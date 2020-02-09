@@ -14,16 +14,17 @@ import com.sun.jna.ptr.PointerByReference;
 
 public interface FleetMasterInterfaceLib extends Library {
 			
-	void init(PointerByReference p, GridParams gridParams);
+	PointerByReference init(GridParams gridParams);
 	
 	void show(PointerByReference p, boolean enable);
 	
-	NativeLong addPath(PointerByReference p, List<PathPose> path, TrajParams trajParams, List<Pair<Double,Double>> footPrint);
+	NativeLong addPath(PointerByReference p, PathPose[] path, double[] steering, int pathLength, TrajParams trajParams, double[] coordinates_x, double[] coordinates_y, int num_coordinate);
 	
     void removePath(PointerByReference p, NativeLong id);
 
     boolean updateCurrentPathIdx(PointerByReference p, NativeLong pathId, NativeLong currentIdx);
     
+    //FIXME remove dynamic vectors
     Pair<Double,Double> queryTimeDelay(PointerByReference p, NativeLong pathId1, NativeLong pathId2, Pair<NativeLong, NativeLong> indexRangePath1, Pair<NativeLong, NativeLong> indexRangePath2, ArrayList<Pair<NativeLong, Double>> pathId1TTCDelays, ArrayList<Pair<NativeLong, Double>> pathId2TTCDelays);
 	
 	public static class PathPose extends Structure {
