@@ -147,7 +147,7 @@ public class FleetMasterInterface {
 		if (!clearPath(pathID)) return false;
 		
 		//Parse the Java values for the path and the footprint
-		PathPose[] path = new PathPose[pathToAdd.length];
+		PathPose[] path = (PathPose[])new PathPose().toArray(pathToAdd.length);
 		double[] steering = new double[pathToAdd.length];
 		for (int i = 0; i < pathToAdd.length; i++) {
 			path[i] = new PathPose(pathToAdd[i].getX(), pathToAdd[i].getY(), pathToAdd[i].getTheta());
@@ -172,6 +172,7 @@ public class FleetMasterInterface {
 	public boolean clearPath(int teID) {
 		if (gridParams != null && paths.containsKey(teID)) return false;
 		INSTANCE.removePath(p, paths.get(teID));
+		paths.remove(teID);
 		return true;
 	}
 	

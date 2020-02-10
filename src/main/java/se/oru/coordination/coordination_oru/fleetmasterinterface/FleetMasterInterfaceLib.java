@@ -50,6 +50,9 @@ public interface FleetMasterInterfaceLib extends Library {
 			super(p);
 		}
 
+		public PathPose() {
+			// TODO Auto-generated constructor stub
+		}
 		@Override
 		protected List<String> getFieldOrder() {
 			return Arrays.asList(new String[] {"x", "y", "theta"});
