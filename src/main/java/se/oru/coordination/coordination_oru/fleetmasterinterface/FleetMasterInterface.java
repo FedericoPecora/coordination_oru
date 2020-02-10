@@ -150,7 +150,9 @@ public class FleetMasterInterface {
 		PathPose[] path = (PathPose[])new PathPose().toArray(pathToAdd.length);
 		double[] steering = new double[pathToAdd.length];
 		for (int i = 0; i < pathToAdd.length; i++) {
-			path[i] = new PathPose(pathToAdd[i].getX(), pathToAdd[i].getY(), pathToAdd[i].getTheta());
+			path[i].x = pathToAdd[i].getX();
+			path[i].y = pathToAdd[i].getY();
+			path[i].theta = pathToAdd[i].getTheta();
 			steering[i] = pathToAdd[i].getSteering();
 		}
 		double[] coordinates_x = new double[coordinates.length];
