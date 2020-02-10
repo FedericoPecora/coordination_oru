@@ -65,7 +65,7 @@ public interface FleetMasterInterfaceLib extends Library {
 	
 	public static class TrajParams extends Structure {
 		public static class ByReference extends TrajParams implements Structure.ByReference {}
-
+		
 		public double maxVel;
 		public double maxVelRev;
 		public boolean useSteerDriveVel;
@@ -79,21 +79,7 @@ public interface FleetMasterInterfaceLib extends Library {
 	    public double maxAcc;
 	    public double maxRotationalAcc;
 	    public double maxSteeringAngleAcc;
-	    public double timeStep;
-	    public double wheelBaseX;
-	    public double wheelBaseY;
-	    public boolean useInitialState;
-	    public int nbZeroVelControlCommands;
-	    public double minDist;
-	    public boolean useCoordTimeAccConstraints;
-	    public boolean useCoordTimeContraintPoints;
-	    public boolean debug;
-	    public String debugPrefix;
-	    public double creepSpeed;
-	    public double creepDistance;
-	    public boolean setCreepSpeedAsEndConstraint;
-	    public int citiTruckNbClearSpeedCommands;
-		
+
 		public TrajParams() {}
 		public TrajParams(Pointer p) {
 			super(p);
@@ -102,9 +88,7 @@ public interface FleetMasterInterfaceLib extends Library {
 		protected List<String> getFieldOrder() {
 			return Arrays.asList(new String[] {
 			"maxVel", "maxVelRev", "useSteerDriveVel", "maxRotationalVel", "maxRotationalVelRev", "maxSteeringAngleVel", "initVel", "endVel",
-			"initSteeringAngleVel", "endSteeringAngleVel", "maxAcc", "maxRotationalAcc", "maxSteeringAngleAcc", "timeStep", "wheelBaseX", "wheelBaseY", "useInitialState", "nbZeroVelControlCommands", "minDist", 
-			"useCoordTimeAccConstraints", "useCoordTimeContraintPoints", "debug", "debugPrefix", "creepSpeed", "creepDistance", "setCreepSpeedAsEndConstraint", "citiTruckNbClearSpeedCommands"
-			});
+			"initSteeringAngleVel", "endSteeringAngleVel", "maxAcc", "maxRotationalAcc", "maxSteeringAngleAcc"});
 		}
 	}
 }

@@ -10,7 +10,7 @@ public class TestAddPathSingleRobotEmptyMap {
 	public static void main(String[] args) throws InterruptedException {
 		System.out.print("FleetMasterInterference class");
 		FleetMasterInterface flint = new FleetMasterInterface();
-		flint.useDefaultGridParams();
+		flint.init();
 		flint.show(true);		
 		
 		//Test 1: using default robot footprint	
@@ -43,6 +43,8 @@ public class TestAddPathSingleRobotEmptyMap {
 		}
 		
 		//Delete the path
+		flint.clearPath(rsp.getPath().hashCode());
+				
 		flint.addPath(1, rsp.getPath().hashCode(), rsp.getPath());
 		
 		//Show image

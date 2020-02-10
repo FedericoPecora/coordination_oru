@@ -59,33 +59,27 @@ public class FleetMasterInterface {
 	public FleetMasterInterface() {
 		
 		DEFAULT_TRAJ_PARAMS = new TrajParams();
-		DEFAULT_TRAJ_PARAMS.maxVel = 1.0;
-	    DEFAULT_TRAJ_PARAMS.maxVelRev = 1.0;
+		DEFAULT_TRAJ_PARAMS.maxVel = 1.;
+	    DEFAULT_TRAJ_PARAMS.maxVelRev = 1.;
 	    DEFAULT_TRAJ_PARAMS.useSteerDriveVel = true;
-	    DEFAULT_TRAJ_PARAMS.maxRotationalVel = 1.0;	
-	    DEFAULT_TRAJ_PARAMS.maxRotationalVelRev = 1.0;
-	    DEFAULT_TRAJ_PARAMS.maxSteeringAngleVel = 1.0;
+	    DEFAULT_TRAJ_PARAMS.maxRotationalVel = 1.;	
+	    DEFAULT_TRAJ_PARAMS.maxRotationalVelRev = 1.;
+	    DEFAULT_TRAJ_PARAMS.maxSteeringAngleVel = 1.;
 	    DEFAULT_TRAJ_PARAMS.initVel = 0.;
 	    DEFAULT_TRAJ_PARAMS.endVel = 0.;
 	    DEFAULT_TRAJ_PARAMS.initSteeringAngleVel = 0.;
 	    DEFAULT_TRAJ_PARAMS.endSteeringAngleVel = 0.;
-	    DEFAULT_TRAJ_PARAMS.maxAcc = 1.0;
+	    DEFAULT_TRAJ_PARAMS.maxAcc = 1.;
 	    DEFAULT_TRAJ_PARAMS.maxRotationalAcc = 1.;
 	    DEFAULT_TRAJ_PARAMS.maxSteeringAngleAcc = 1.;
-	    DEFAULT_TRAJ_PARAMS.timeStep = 0.06;
-	    DEFAULT_TRAJ_PARAMS.wheelBaseX = 0.68;
-	    DEFAULT_TRAJ_PARAMS.wheelBaseY = 0.;
-	    DEFAULT_TRAJ_PARAMS.useInitialState = true;
-	    DEFAULT_TRAJ_PARAMS.nbZeroVelControlCommands = 5;
-	    DEFAULT_TRAJ_PARAMS.minDist = 0.00001;
-	    DEFAULT_TRAJ_PARAMS.useCoordTimeAccConstraints = true;
-	    DEFAULT_TRAJ_PARAMS.useCoordTimeContraintPoints = false;
-	    DEFAULT_TRAJ_PARAMS.debug = true;
-	    DEFAULT_TRAJ_PARAMS.debugPrefix = new String("");
-	    DEFAULT_TRAJ_PARAMS.creepSpeed = 0.;
-	    DEFAULT_TRAJ_PARAMS.creepDistance = 0.;
-	    DEFAULT_TRAJ_PARAMS.setCreepSpeedAsEndConstraint = false;
-	    DEFAULT_TRAJ_PARAMS.citiTruckNbClearSpeedCommands = 0;
+	    
+		gridParams = new GridParams();
+		gridParams.origin.x = 0.;
+		gridParams.origin.y = 0.;
+		gridParams.origin.theta = 0.;
+		gridParams.resolution = .1;
+		gridParams.width = new NativeLong(100);
+		gridParams.height = new NativeLong(100);
 	    
 		this.paths = new HashMap<Integer, NativeLong>();
 		this.trajParams = new HashMap<Integer, TrajParams>();
@@ -94,8 +88,7 @@ public class FleetMasterInterface {
 	 * Set the value of the trajectory parameters used for robots if none is specified.
 	 */
 	public void setDefaultTrajectoryParams(double maxVel, double maxVelRev, boolean useSteerDriveVel, double maxRotationalVel, double maxRotationalVelRev, double maxSteeringAngleVel, double initVel, double endVel, 
-		    double initSteeringAngleVel, double endSteeringAngleVel, double maxAcc, double maxRotationalAcc, double maxSteeringAngleAcc, double timeStep, double wheelBaseX, double wheelBaseY, boolean useInitialState,
-		    int nbZeroVelControlCommands, double minDist, boolean useCoordTimeAccConstraints, boolean useCoordTimeContraintPoints, boolean debug, String debugPrefix, double creepSpeed, double creepDistance, boolean setCreepSpeedAsEndConstraint, int citiTruckNbClearSpeedCommands) {
+		    double initSteeringAngleVel, double endSteeringAngleVel, double maxAcc, double maxRotationalAcc, double maxSteeringAngleAcc) {
 		DEFAULT_TRAJ_PARAMS.maxVel = maxVel;
 		DEFAULT_TRAJ_PARAMS.maxVelRev = maxVelRev;
 		DEFAULT_TRAJ_PARAMS.useSteerDriveVel = useSteerDriveVel;
@@ -109,20 +102,6 @@ public class FleetMasterInterface {
 		DEFAULT_TRAJ_PARAMS.maxAcc = maxAcc;
 		DEFAULT_TRAJ_PARAMS.maxRotationalAcc = maxRotationalAcc;
 		DEFAULT_TRAJ_PARAMS.maxSteeringAngleAcc = maxSteeringAngleAcc;
-		DEFAULT_TRAJ_PARAMS.timeStep = timeStep;
-		DEFAULT_TRAJ_PARAMS.wheelBaseX = wheelBaseX;
-		DEFAULT_TRAJ_PARAMS.wheelBaseY = wheelBaseY;
-		DEFAULT_TRAJ_PARAMS.useInitialState = useInitialState;
-		DEFAULT_TRAJ_PARAMS.nbZeroVelControlCommands = nbZeroVelControlCommands;
-		DEFAULT_TRAJ_PARAMS.minDist = minDist;
-		DEFAULT_TRAJ_PARAMS.useCoordTimeAccConstraints = useCoordTimeAccConstraints;
-		DEFAULT_TRAJ_PARAMS.useCoordTimeContraintPoints = useCoordTimeContraintPoints;
-		DEFAULT_TRAJ_PARAMS.debug = debug;
-		DEFAULT_TRAJ_PARAMS.debugPrefix = debugPrefix;
-		DEFAULT_TRAJ_PARAMS.creepSpeed = creepSpeed;
-		DEFAULT_TRAJ_PARAMS.creepDistance = creepDistance;
-		DEFAULT_TRAJ_PARAMS.setCreepSpeedAsEndConstraint = setCreepSpeedAsEndConstraint;
-		DEFAULT_TRAJ_PARAMS.citiTruckNbClearSpeedCommands = citiTruckNbClearSpeedCommands;
 	}
 	/**
 	 * Set the value of the footprint used for robots if none is specified.
@@ -143,31 +122,18 @@ public class FleetMasterInterface {
 	 * @param height Number of rows of the map (in cells).
 	 */
 	public void setGridMapParams(double origin_x, double origin_y, double origin_theta, double resolution, long width, long height) {
-		gridParams = new GridParams();
-		gridParams.origin.x = 0.;
-		gridParams.origin.y = 0.; 
-		gridParams.origin.theta = 0.;
-		gridParams.resolution = .1;
-		gridParams.width = new NativeLong(100);
-		gridParams.height = new NativeLong(100);
-		p = INSTANCE.init(gridParams);
+		gridParams.origin.x = origin_x;
+		gridParams.origin.y = origin_y;
+		gridParams.origin.theta = origin_theta;
+		gridParams.resolution = resolution;
+		gridParams.width = new NativeLong(width);
+		gridParams.height = new NativeLong(height);
 	}
 	
 	/**
-	 * Use the default fleetmaster gridmap parameters (see grid_opencv.h).
-	 * origin: 0., 0., 0.
-	 * resolution: .1
-	 * width: 100
-	 * height: 100
+	 * Initilize gridmaps.
 	 */
-	public void useDefaultGridParams() {
-		gridParams = new GridParams();
-		gridParams.origin.x = 0.;
-		gridParams.origin.y = 0.; 
-		gridParams.origin.theta = 0.;
-		gridParams.resolution = .1;
-		gridParams.width = new NativeLong(100);
-		gridParams.height = new NativeLong(100);
+	public void init() {
 		p = INSTANCE.init(gridParams);
 	}
 	
@@ -184,8 +150,7 @@ public class FleetMasterInterface {
 	 * @param robotID The robot ID.
 	 */
 	public void addTrajParams(int robotID, double maxVel, double maxVelRev, boolean useSteerDriveVel, double maxRotationalVel, double maxRotationalVelRev, double maxSteeringAngleVel, double initVel, double endVel, 
-		    double initSteeringAngleVel, double endSteeringAngleVel, double maxAcc, double maxRotationalAcc, double maxSteeringAngleAcc, double timeStep, double wheelBaseX, double wheelBaseY, boolean useInitialState,
-		    int nbZeroVelControlCommands, double minDist, boolean useCoordTimeAccConstraints, boolean useCoordTimeContraintPoints, boolean debug, String debugPrefix, double creepSpeed, double creepDistance, boolean setCreepSpeedAsEndConstraint, int citiTruckNbClearSpeedCommands) {;
+		    double initSteeringAngleVel, double endSteeringAngleVel, double maxAcc, double maxRotationalAcc, double maxSteeringAngleAcc) {;
 		    
 		    trajParams.put(robotID, new TrajParams());
 		    trajParams.get(robotID).maxVel = maxVel;
@@ -201,20 +166,6 @@ public class FleetMasterInterface {
 		    trajParams.get(robotID).maxAcc = maxAcc;
 		    trajParams.get(robotID).maxRotationalAcc = maxRotationalAcc;
 		    trajParams.get(robotID).maxSteeringAngleAcc = maxSteeringAngleAcc;
-		    trajParams.get(robotID).timeStep = timeStep;
-		    trajParams.get(robotID).wheelBaseX = wheelBaseX;
-		    trajParams.get(robotID).wheelBaseY = wheelBaseY;
-		    trajParams.get(robotID).useInitialState = useInitialState;
-		    trajParams.get(robotID).nbZeroVelControlCommands = nbZeroVelControlCommands;
-		    trajParams.get(robotID).minDist = minDist;
-		    trajParams.get(robotID).useCoordTimeAccConstraints = useCoordTimeAccConstraints;
-		    trajParams.get(robotID).useCoordTimeContraintPoints = useCoordTimeContraintPoints;
-		    trajParams.get(robotID).debug = debug;
-		    trajParams.get(robotID).debugPrefix = debugPrefix;
-		    trajParams.get(robotID).creepSpeed = creepSpeed;
-		    trajParams.get(robotID).creepDistance = creepDistance;
-		    trajParams.get(robotID).setCreepSpeedAsEndConstraint = setCreepSpeedAsEndConstraint;
-		    trajParams.get(robotID).citiTruckNbClearSpeedCommands = citiTruckNbClearSpeedCommands;
 	}
 	
 	/**
@@ -235,11 +186,8 @@ public class FleetMasterInterface {
 	 * @return true if success.
 	 */
 	public boolean addPath(int robotID, int pathID, PoseSteering[] pathToAdd, Coordinate ... coordinates) {
-		if (gridParams == null || pathToAdd.length == 0) return false;
-		if (coordinates.length == 0) coordinates = DEFAULT_FOOTPRINT;
-		TrajParams trjParams = DEFAULT_TRAJ_PARAMS;
-		if (trajParams.containsKey(pathID)) trjParams = trajParams.get(robotID);
-		if (!clearPath(pathID)) return false;
+		if (pathToAdd.length == 0) return false;
+		clearPath(pathID);
 		
 		//Parse the Java values for the path and the footprint
 		PathPose[] path = (PathPose[])new PathPose().toArray(pathToAdd.length);
@@ -250,6 +198,8 @@ public class FleetMasterInterface {
 			path[i].theta = pathToAdd[i].getTheta();
 			steering[i] = pathToAdd[i].getSteering();
 		}
+		
+		if (coordinates.length == 0) coordinates = DEFAULT_FOOTPRINT;	
 		double[] coordinates_x = new double[coordinates.length];
 		double[] coordinates_y = new double[coordinates.length];
 		for (int i = 0; i < coordinates.length; i++) {
@@ -258,7 +208,11 @@ public class FleetMasterInterface {
 		}
 		
 		//Call the method
-		paths.put(pathID, INSTANCE.addPath(p, path, steering, pathToAdd.length, trjParams, coordinates_x, coordinates_y, coordinates.length));
+		if (trajParams.containsKey(pathID)) 
+			paths.put(pathID, INSTANCE.addPath(p, path, steering, pathToAdd.length, trajParams.get(robotID), coordinates_x, coordinates_y, coordinates.length));
+		else
+			paths.put(pathID, INSTANCE.addPath(p, path, steering, pathToAdd.length, DEFAULT_TRAJ_PARAMS, coordinates_x, coordinates_y, coordinates.length));
+
 		return true;
 	}
 	
@@ -267,10 +221,12 @@ public class FleetMasterInterface {
 	 * @param teID The ID of the trajectory envelope to be cleared.
 	 */
 	public boolean clearPath(int teID) {
-		if (gridParams != null && paths.containsKey(teID)) return false;
-		INSTANCE.removePath(p, paths.get(teID));
-		paths.remove(teID);
-		return true;
+		if (paths.containsKey(teID)) {
+			INSTANCE.removePath(p, paths.get(teID));
+			paths.remove(teID);
+			return true;
+		}
+		return false;
 	}
 	
 	/**
@@ -280,7 +236,7 @@ public class FleetMasterInterface {
 	 * @return true if the path index has been correctly updated.
 	 */
 	public boolean updateCurrentPathIdx(int teID, int currentIdx) {
-		if (gridParams != null && paths.containsKey(teID)) {
+		if (paths.containsKey(teID)) {
 			 return INSTANCE.updateCurrentPathIdx(p, paths.get(teID), new NativeLong(currentIdx));
 		 }
 		 return false;
