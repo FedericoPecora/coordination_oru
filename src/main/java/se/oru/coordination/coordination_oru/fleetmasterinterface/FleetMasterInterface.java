@@ -2,10 +2,8 @@ package se.oru.coordination.coordination_oru.fleetmasterinterface;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 
 import org.jgrapht.alg.util.Pair;
-import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 
@@ -19,7 +17,6 @@ import se.oru.coordination.coordination_oru.CriticalSection;
 import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInterfaceLib.GridParams;
 import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInterfaceLib.PathPose;
 import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInterfaceLib.TrajParams;
-import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
 
 
 public class FleetMasterInterface {
@@ -48,12 +45,11 @@ public class FleetMasterInterface {
 	 * The default trajectory params used for robots if none is specified.
 	 * FIXME For debugging purposes (Values are defined according to default values of trajectory_processor.h).
 	 */
-	public static TrajParams DEFAULT_TRAJ_PARAMS = new TrajParams(1.0, 1.0, true, 1.0, 1.0, 1.0, 0., 0., 
-		    0., 0., 1., 1., 1., 0.06, 0.68, 0., true, 5, 0.00001, true, false, true, new String(""), 0., 0., false, 0);
-		
+	public static TrajParams DEFAULT_TRAJ_PARAMS = null;
+
 	public static FleetMasterInterfaceLib INSTANCE = null;
 	static {
-		NativeLibrary.addSearchPath("fleetmaster", "FleetMasterInterface"); //FIXME How to add the path of the library? Now it is in {$FLEETMASTER_WS}/devel
+		NativeLibrary.addSearchPath("fleetmaster", "/home/anna/fleet_ws/devel/lib"); //FIXME How to add the path of the library? Now it is in {$FLEETMASTER_WS}/devel
 		INSTANCE = Native.loadLibrary("fleetmaster", FleetMasterInterfaceLib.class);
 	}
 	
@@ -61,10 +57,73 @@ public class FleetMasterInterface {
 	 * Constructor.
 	 */
 	public FleetMasterInterface() {
+		
+		DEFAULT_TRAJ_PARAMS = new TrajParams();
+		DEFAULT_TRAJ_PARAMS.maxVel = 1.0;
+	    DEFAULT_TRAJ_PARAMS.maxVelRev = 1.0;
+	    DEFAULT_TRAJ_PARAMS.useSteerDriveVel = true;
+	    DEFAULT_TRAJ_PARAMS.maxRotationalVel = 1.0;	
+	    DEFAULT_TRAJ_PARAMS.maxRotationalVelRev = 1.0;
+	    DEFAULT_TRAJ_PARAMS.maxSteeringAngleVel = 1.0;
+	    DEFAULT_TRAJ_PARAMS.initVel = 0.;
+	    DEFAULT_TRAJ_PARAMS.endVel = 0.;
+	    DEFAULT_TRAJ_PARAMS.initSteeringAngleVel = 0.;
+	    DEFAULT_TRAJ_PARAMS.endSteeringAngleVel = 0.;
+	    DEFAULT_TRAJ_PARAMS.maxAcc = 1.0;
+	    DEFAULT_TRAJ_PARAMS.maxRotationalAcc = 1.;
+	    DEFAULT_TRAJ_PARAMS.maxSteeringAngleAcc = 1.;
+	    DEFAULT_TRAJ_PARAMS.timeStep = 0.06;
+	    DEFAULT_TRAJ_PARAMS.wheelBaseX = 0.68;
+	    DEFAULT_TRAJ_PARAMS.wheelBaseY = 0.;
+	    DEFAULT_TRAJ_PARAMS.useInitialState = true;
+	    DEFAULT_TRAJ_PARAMS.nbZeroVelControlCommands = 5;
+	    DEFAULT_TRAJ_PARAMS.minDist = 0.00001;
+	    DEFAULT_TRAJ_PARAMS.useCoordTimeAccConstraints = true;
+	    DEFAULT_TRAJ_PARAMS.useCoordTimeContraintPoints = false;
+	    DEFAULT_TRAJ_PARAMS.debug = true;
+	    DEFAULT_TRAJ_PARAMS.debugPrefix = new String("");
+	    DEFAULT_TRAJ_PARAMS.creepSpeed = 0.;
+	    DEFAULT_TRAJ_PARAMS.creepDistance = 0.;
+	    DEFAULT_TRAJ_PARAMS.setCreepSpeedAsEndConstraint = false;
+	    DEFAULT_TRAJ_PARAMS.citiTruckNbClearSpeedCommands = 0;
+	    
 		this.paths = new HashMap<Integer, NativeLong>();
 		this.trajParams = new HashMap<Integer, TrajParams>();
 	}
-	
+	/**
+	 * Set the value of the trajectory parameters used for robots if none is specified.
+	 */
+	public void setDefaultTrajectoryParams(double maxVel, double maxVelRev, boolean useSteerDriveVel, double maxRotationalVel, double maxRotationalVelRev, double maxSteeringAngleVel, double initVel, double endVel, 
+		    double initSteeringAngleVel, double endSteeringAngleVel, double maxAcc, double maxRotationalAcc, double maxSteeringAngleAcc, double timeStep, double wheelBaseX, double wheelBaseY, boolean useInitialState,
+		    int nbZeroVelControlCommands, double minDist, boolean useCoordTimeAccConstraints, boolean useCoordTimeContraintPoints, boolean debug, String debugPrefix, double creepSpeed, double creepDistance, boolean setCreepSpeedAsEndConstraint, int citiTruckNbClearSpeedCommands) {
+		DEFAULT_TRAJ_PARAMS.maxVel = maxVel;
+		DEFAULT_TRAJ_PARAMS.maxVelRev = maxVelRev;
+		DEFAULT_TRAJ_PARAMS.useSteerDriveVel = useSteerDriveVel;
+		DEFAULT_TRAJ_PARAMS.maxRotationalVel = maxRotationalVel;
+		DEFAULT_TRAJ_PARAMS.maxRotationalVelRev = maxRotationalVelRev;
+		DEFAULT_TRAJ_PARAMS.maxSteeringAngleVel = maxSteeringAngleVel;
+		DEFAULT_TRAJ_PARAMS.initVel = initVel;
+		DEFAULT_TRAJ_PARAMS.endVel = endVel;
+		DEFAULT_TRAJ_PARAMS.initSteeringAngleVel = initSteeringAngleVel;
+		DEFAULT_TRAJ_PARAMS.endSteeringAngleVel = endSteeringAngleVel;
+		DEFAULT_TRAJ_PARAMS.maxAcc = maxAcc;
+		DEFAULT_TRAJ_PARAMS.maxRotationalAcc = maxRotationalAcc;
+		DEFAULT_TRAJ_PARAMS.maxSteeringAngleAcc = maxSteeringAngleAcc;
+		DEFAULT_TRAJ_PARAMS.timeStep = timeStep;
+		DEFAULT_TRAJ_PARAMS.wheelBaseX = wheelBaseX;
+		DEFAULT_TRAJ_PARAMS.wheelBaseY = wheelBaseY;
+		DEFAULT_TRAJ_PARAMS.useInitialState = useInitialState;
+		DEFAULT_TRAJ_PARAMS.nbZeroVelControlCommands = nbZeroVelControlCommands;
+		DEFAULT_TRAJ_PARAMS.minDist = minDist;
+		DEFAULT_TRAJ_PARAMS.useCoordTimeAccConstraints = useCoordTimeAccConstraints;
+		DEFAULT_TRAJ_PARAMS.useCoordTimeContraintPoints = useCoordTimeContraintPoints;
+		DEFAULT_TRAJ_PARAMS.debug = debug;
+		DEFAULT_TRAJ_PARAMS.debugPrefix = debugPrefix;
+		DEFAULT_TRAJ_PARAMS.creepSpeed = creepSpeed;
+		DEFAULT_TRAJ_PARAMS.creepDistance = creepDistance;
+		DEFAULT_TRAJ_PARAMS.setCreepSpeedAsEndConstraint = setCreepSpeedAsEndConstraint;
+		DEFAULT_TRAJ_PARAMS.citiTruckNbClearSpeedCommands = citiTruckNbClearSpeedCommands;
+	}
 	/**
 	 * Set the value of the footprint used for robots if none is specified.
 	 */
@@ -84,8 +143,13 @@ public class FleetMasterInterface {
 	 * @param height Number of rows of the map (in cells).
 	 */
 	public void setGridMapParams(double origin_x, double origin_y, double origin_theta, double resolution, long width, long height) {
-		gridParams = new GridParams(origin_x, origin_y, origin_theta, resolution, new NativeLong(width), new NativeLong(height));
-		p = new PointerByReference();
+		gridParams = new GridParams();
+		gridParams.origin.x = 0.;
+		gridParams.origin.y = 0.; 
+		gridParams.origin.theta = 0.;
+		gridParams.resolution = .1;
+		gridParams.width = new NativeLong(100);
+		gridParams.height = new NativeLong(100);
 		p = INSTANCE.init(gridParams);
 	}
 	
@@ -97,7 +161,13 @@ public class FleetMasterInterface {
 	 * height: 100
 	 */
 	public void useDefaultGridParams() {
-		gridParams = new GridParams(0., 0., 0., .1, new NativeLong(100), new NativeLong(100));
+		gridParams = new GridParams();
+		gridParams.origin.x = 0.;
+		gridParams.origin.y = 0.; 
+		gridParams.origin.theta = 0.;
+		gridParams.resolution = .1;
+		gridParams.width = new NativeLong(100);
+		gridParams.height = new NativeLong(100);
 		p = INSTANCE.init(gridParams);
 	}
 	
@@ -117,9 +187,34 @@ public class FleetMasterInterface {
 		    double initSteeringAngleVel, double endSteeringAngleVel, double maxAcc, double maxRotationalAcc, double maxSteeringAngleAcc, double timeStep, double wheelBaseX, double wheelBaseY, boolean useInitialState,
 		    int nbZeroVelControlCommands, double minDist, boolean useCoordTimeAccConstraints, boolean useCoordTimeContraintPoints, boolean debug, String debugPrefix, double creepSpeed, double creepDistance, boolean setCreepSpeedAsEndConstraint, int citiTruckNbClearSpeedCommands) {;
 		    
-		    trajParams.put(robotID, new TrajParams(maxVel, maxVelRev, useSteerDriveVel, maxRotationalVel, maxRotationalVelRev, maxSteeringAngleVel, initVel, endVel, 
-				    initSteeringAngleVel, endSteeringAngleVel, maxAcc, maxRotationalAcc, maxSteeringAngleAcc, timeStep, wheelBaseX, wheelBaseY, useInitialState,
-				    nbZeroVelControlCommands, minDist, useCoordTimeAccConstraints, useCoordTimeContraintPoints, debug, debugPrefix, creepSpeed, creepDistance, setCreepSpeedAsEndConstraint, citiTruckNbClearSpeedCommands));
+		    trajParams.put(robotID, new TrajParams());
+		    trajParams.get(robotID).maxVel = maxVel;
+		    trajParams.get(robotID).maxVelRev = maxVelRev;
+		    trajParams.get(robotID).useSteerDriveVel = useSteerDriveVel;
+		    trajParams.get(robotID).maxRotationalVel = maxRotationalVel;
+		    trajParams.get(robotID).maxRotationalVelRev = maxRotationalVelRev;
+		    trajParams.get(robotID).maxSteeringAngleVel = maxSteeringAngleVel;
+		    trajParams.get(robotID).initVel = initVel;
+		    trajParams.get(robotID).endVel = endVel;
+		    trajParams.get(robotID).initSteeringAngleVel = initSteeringAngleVel;
+		    trajParams.get(robotID).endSteeringAngleVel = endSteeringAngleVel;
+		    trajParams.get(robotID).maxAcc = maxAcc;
+		    trajParams.get(robotID).maxRotationalAcc = maxRotationalAcc;
+		    trajParams.get(robotID).maxSteeringAngleAcc = maxSteeringAngleAcc;
+		    trajParams.get(robotID).timeStep = timeStep;
+		    trajParams.get(robotID).wheelBaseX = wheelBaseX;
+		    trajParams.get(robotID).wheelBaseY = wheelBaseY;
+		    trajParams.get(robotID).useInitialState = useInitialState;
+		    trajParams.get(robotID).nbZeroVelControlCommands = nbZeroVelControlCommands;
+		    trajParams.get(robotID).minDist = minDist;
+		    trajParams.get(robotID).useCoordTimeAccConstraints = useCoordTimeAccConstraints;
+		    trajParams.get(robotID).useCoordTimeContraintPoints = useCoordTimeContraintPoints;
+		    trajParams.get(robotID).debug = debug;
+		    trajParams.get(robotID).debugPrefix = debugPrefix;
+		    trajParams.get(robotID).creepSpeed = creepSpeed;
+		    trajParams.get(robotID).creepDistance = creepDistance;
+		    trajParams.get(robotID).setCreepSpeedAsEndConstraint = setCreepSpeedAsEndConstraint;
+		    trajParams.get(robotID).citiTruckNbClearSpeedCommands = citiTruckNbClearSpeedCommands;
 	}
 	
 	/**
