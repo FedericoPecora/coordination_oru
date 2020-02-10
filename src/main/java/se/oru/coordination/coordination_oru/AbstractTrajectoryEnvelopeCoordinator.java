@@ -34,6 +34,7 @@ import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.util.AffineTransformation;
 import aima.core.util.datastructure.Pair;
+import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInterface;
 import se.oru.coordination.coordination_oru.motionplanning.AbstractMotionPlanner;
 import se.oru.coordination.coordination_oru.util.FleetVisualization;
 import se.oru.coordination.coordination_oru.util.StringUtils;
@@ -123,6 +124,9 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	
 	protected AbstractMotionPlanner defaultMotionPlanner = null;
 	protected HashMap<Integer,AbstractMotionPlanner> motionPlanners = new HashMap<Integer, AbstractMotionPlanner>();
+	
+	protected FleetMasterInterface fleetMasterInterface = null;
+	protected boolean useFleetMaster = false;
 	
 	//Network knowledge
 	protected double packetLossProbability = NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS;
@@ -247,6 +251,18 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 */
 	public void setCheckEscapePoses(boolean value) {
 		this.checkEscapePoses = value;
+	}
+	
+	/**
+	 * Set if using the fleetmaster library to estimate precedences to minimize the overall completion time.
+	 * @param value <code>true</code> if using the library.
+	 */
+	public void setUseFleetMaster(boolean value) {
+		this.useFleetMaster = value;
+		if (value) {
+			this.fleetMasterInterface = new FleetMasterInterface();
+			this.fleetMasterInterface.setDefaultFootprints(DEFAULT_FOOTPRINT);
+		}
 	}
 	
 	/**
@@ -580,9 +596,9 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				}
 			};
 
-			currentParkingEnvelopes.put(robotID,tracker.getTrajectoryEnvelope());	
-			
-			//TODO Add parking (in start) envelope to fleetmaster
+			TrajectoryEnvelope te = tracker.getTrajectoryEnvelope();
+			currentParkingEnvelopes.put(robotID, te);	
+			if (useFleetMaster) fleetMasterInterface.addPath(te);
 
 			synchronized (trackers) {
 				externalCPCounters.remove(trackers.get(robotID));
@@ -1293,10 +1309,10 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	protected void cleanUp(TrajectoryEnvelope te) {
 		synchronized (solver) {
 			metaCSPLogger.info("Cleaning up " + te);
+			if (useFleetMaster) fleetMasterInterface.clearPath(te.getID());
 			Constraint[] consToRemove = solver.getConstraintNetwork().getIncidentEdgesIncludingDependentVariables(te);
 			solver.removeConstraints(consToRemove);
 			solver.removeVariable(te);
-			//TODO remove trajectory envelope from the fleetmaster
 		}
 	}
 	
@@ -1354,7 +1370,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				//Create end parking envelope
 				final TrajectoryEnvelope endParking = solver.createParkingEnvelope(te.getRobotID(), PARKING_DURATION, te.getTrajectory().getPose()[te.getTrajectory().getPose().length-1], "whatever", getFootprint(te.getRobotID()));
 
-				//TODO Add parking envelope to fleetmaster
+				//TODO Add parking envelope to fleetmaster?
 				
 				//Driving meets final parking
 				AllenIntervalConstraint meets1 = new AllenIntervalConstraint(AllenIntervalConstraint.Type.Meets);
@@ -1486,7 +1502,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 					externalCPCounters.put(tracker, -1);
 				}
 				
-				//TODO Add driving envelope to the fleetmaster
+				if (useFleetMaster) fleetMasterInterface.addPath(te);
 
 				//Now we can signal the parking that it can end (i.e., its deadline will no longer be prolonged)
 				//Note: the parking tracker will anyway wait to exit until earliest end time has been reached

@@ -1,6 +1,5 @@
 package se.oru.coordination.coordination_oru.fleetmasterinterface;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.logging.Logger;
 
@@ -23,6 +22,11 @@ import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInte
 import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInterfaceLib.TrajParams;
 
 
+/**
+ * TODO Write down class description. 
+ * @author am
+ *
+ */
 public class FleetMasterInterface {
 	
 	private HashMap<Integer, NativeLong> paths = null; //teID (or this pathID), fleetmaster pathID 
@@ -150,7 +154,7 @@ public class FleetMasterInterface {
 	
 	/**
 	 * Set if showing the content of each GridMaps.
-	 * @param enable true if enabled.
+	 * @param enable <code>true</code> if enabled.
 	 */
 	public void show(boolean enable) {
 		INSTANCE.show(p, enable);
@@ -194,7 +198,7 @@ public class FleetMasterInterface {
 	 * @param pathID ID of the path to be added.
 	 * @param pathToAdd The path to be added.
 	 * @param coordinates The footprint to be swept along the path.
-	 * @return true if success.
+	 * @return <code>true</code> if success.
 	 */
 	public boolean addPath(int robotID, int pathID, PoseSteering[] pathToAdd, Coordinate ... coordinates) {
 		if (p == null || pathToAdd.length == 0) return false; //FIXME log error
@@ -252,7 +256,7 @@ public class FleetMasterInterface {
 	 * Update the current progress along the trajectory envelope (according to the last received robot report).
 	 * @param teID The trajectory envelope ID.
 	 * @param currentIdx The current path index.
-	 * @return true if the path index has been correctly updated.
+	 * @return <code>true</code> if the path index has been correctly updated.
 	 */
 	public boolean updateCurrentPathIdx(int teID, int currentIdx) {
 		if (p != null && paths.containsKey(teID)) {

@@ -1163,7 +1163,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					this.trackers.get(robotID).updateTrajectoryEnvelope(newTE);
 				}
 				
-				//TODO fleetmaster remove the old path and add the new path
+				if (useFleetMaster) {
+					fleetMasterInterface.clearPath(te.getID());
+					fleetMasterInterface.addPath(newTE);
+				}
 				
 				//Stitch together with rest of constraint network (temporal constraints with parking envelopes etc.)
 				for (Constraint con : solver.getConstraintNetwork().getOutgoingEdges(te)) {
