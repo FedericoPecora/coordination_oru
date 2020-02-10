@@ -93,7 +93,31 @@ public class Missions {
 		return ret.toArray(new PoseSteering[ret.size()]);
 	}
 
-	
+	/**
+	 * Get the length in meters of a path. This is the sum of distances between path poses.
+	 * @return The length in meters of a path. This is the sum of distances between path poses.
+	 */
+	public static double getPathLength(PoseSteering[] path) {
+		double length = 0.0;
+		for (int i = 0; i < path.length-1; i++) {
+			length += path[i].getPose().distanceTo(path[i+1].getPose());
+		}
+		return length;
+	}
+
+
+	/**
+	 * Get the length in meters of a path. This is the sum of distances between path poses.
+	 * @return The length in meters of a path. This is the sum of distances between path poses.
+	 */
+	public static double getPathLength(Pose[] path) {
+		double length = 0.0;
+		for (int i = 0; i < path.length-1; i++) {
+			length += path[i].distanceTo(path[i+1]);
+		}
+		return length;
+	}
+
 	public static BufferedImage getMap() {
 		return Missions.map;
 	}
