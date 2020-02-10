@@ -12,12 +12,14 @@ import org.metacsp.utility.logging.MetaCSPLogging;
 import com.sun.jna.Native;
 import com.sun.jna.NativeLibrary;
 import com.sun.jna.NativeLong;
+import com.sun.jna.ptr.DoubleByReference;
 import com.sun.jna.ptr.PointerByReference;
 import com.vividsolutions.jts.geom.Coordinate;
 
 import se.oru.coordination.coordination_oru.CriticalSection;
 import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInterfaceLib.GridParams;
 import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInterfaceLib.PathPose;
+import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInterfaceLib.PropagationTCDelays;
 import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInterfaceLib.TrajParams;
 
 
@@ -49,7 +51,7 @@ public class FleetMasterInterface {
 
 	public static FleetMasterInterfaceLib INSTANCE = null;
 	static {
-		NativeLibrary.addSearchPath("fleetmaster", "/home/anna/fleet_ws/devel/lib"); //FIXME How to add the path of the library? Now it is in {$FLEETMASTER_WS}/devel
+		NativeLibrary.addSearchPath("fleetmaster", "FleetMasterInterface"); //FIXME How to add the path of the library? Now it is in {$FLEETMASTER_WS}/devel
 		INSTANCE = Native.loadLibrary("fleetmaster", FleetMasterInterfaceLib.class);
 	}
 	
@@ -195,8 +197,7 @@ public class FleetMasterInterface {
 	 * @return true if success.
 	 */
 	public boolean addPath(int robotID, int pathID, PoseSteering[] pathToAdd, Coordinate ... coordinates) {
-		//return false in case of empty path
-		if (pathToAdd.length == 0) return false;
+		if (p == null || pathToAdd.length == 0) return false; //FIXME log error
 		
 		//already added
 		if (paths.containsKey(pathID)) {
@@ -239,7 +240,7 @@ public class FleetMasterInterface {
 	 * @param teID The ID of the trajectory envelope to be cleared.
 	 */
 	public boolean clearPath(int teID) {
-		if (paths.containsKey(teID)) {
+		if (p != null && paths.containsKey(teID)) {
 			INSTANCE.removePath(p, paths.get(teID));
 			paths.remove(teID);
 			return true;
@@ -254,7 +255,7 @@ public class FleetMasterInterface {
 	 * @return true if the path index has been correctly updated.
 	 */
 	public boolean updateCurrentPathIdx(int teID, int currentIdx) {
-		if (paths.containsKey(teID)) {
+		if (p != null && paths.containsKey(teID)) {
 			 return INSTANCE.updateCurrentPathIdx(p, paths.get(teID), new NativeLong(currentIdx));
 		 }
 		 return false;
@@ -269,16 +270,17 @@ public class FleetMasterInterface {
 	 * @param te2TCDelays Additional delays to the single-robot time of completion of te2 due to future critical sections along te2 (to be used for propagation).
 	 * @return The time of completion increments.
 	 */
-	public Pair<Double,Double> queryTimeDelay(CriticalSection cs, ArrayList<Pair<NativeLong, Double>> te1TCDelays, ArrayList<Pair<NativeLong, Double>> te2TCDelays) {
+	public Pair<Double,Double> queryTimeDelay(CriticalSection cs, PropagationTCDelays te1TCDelays, PropagationTCDelays te2TCDelays) {
 		
 		if (cs == null) return new Pair<Double, Double>(Double.NaN, Double.NaN);
 		
 		int teID1 = cs.getTe1().getID();
 		int teID2 = cs.getTe2().getID();
 		if (paths.containsKey(teID1) && (paths.containsKey(teID2))) {
-		return INSTANCE.queryTimeDelay(p, paths.get(teID1), paths.get(teID2), 
-				new Pair<NativeLong, NativeLong>(new NativeLong(cs.getTe1Start()), new NativeLong(cs.getTe1End())), new Pair<NativeLong, NativeLong>(new NativeLong(cs.getTe2Start()), new NativeLong(cs.getTe2End())), 
-				te1TCDelays, te2TCDelays);
+			DoubleByReference delayTe1 = new DoubleByReference();
+			DoubleByReference delayTe2 = new DoubleByReference();
+			INSTANCE.queryTimeDelay(p, paths.get(teID1), paths.get(teID2), cs.getTe1Start(), cs.getTe1End(), cs.getTe2Start(), cs.getTe2End(), te1TCDelays, te2TCDelays, delayTe1, delayTe2);
+			return new Pair<Double, Double>(delayTe1.getValue(), delayTe2.getValue());
 		}
 		return new Pair<Double, Double>(Double.NaN, Double.NaN);
 	}

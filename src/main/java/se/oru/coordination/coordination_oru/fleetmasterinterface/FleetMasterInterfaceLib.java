@@ -1,15 +1,13 @@
 package se.oru.coordination.coordination_oru.fleetmasterinterface;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
-import org.jgrapht.alg.util.Pair;
 
 import com.sun.jna.Library;
 import com.sun.jna.NativeLong;
 import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
+import com.sun.jna.ptr.DoubleByReference;
 import com.sun.jna.ptr.PointerByReference;
 
 
@@ -26,8 +24,12 @@ public interface FleetMasterInterfaceLib extends Library {
     boolean updateCurrentPathIdx(PointerByReference p, NativeLong pathId, NativeLong currentIdx);
     
     //FIXME remove dynamic vectors
-    Pair<Double,Double> queryTimeDelay(PointerByReference p, NativeLong pathId1, NativeLong pathId2, Pair<NativeLong, NativeLong> indexRangePath1, Pair<NativeLong, NativeLong> indexRangePath2, ArrayList<Pair<NativeLong, Double>> pathId1TTCDelays, ArrayList<Pair<NativeLong, Double>> pathId2TTCDelays);
+    //Pair<Double,Double> queryTimeDelay(PointerByReference p, NativeLong pathId1, NativeLong pathId2, Pair<NativeLong, NativeLong> indexRangePath1, Pair<NativeLong, NativeLong> indexRangePath2, ArrayList<Pair<NativeLong, Double>> pathId1TTCDelays, ArrayList<Pair<NativeLong, Double>> pathId2TTCDelays);
 	
+    void queryTimeDelay(PointerByReference p, NativeLong pathId1, NativeLong pathId2, int csStart1, int csEnd1, int csStart2, int csEnd2,
+    				PropagationTCDelays pTC1, PropagationTCDelays pTC2, DoubleByReference delay1, DoubleByReference delay2);
+
+    
 	public static class PathPose extends Structure {
 		public static class ByReference extends PathPose implements Structure.ByReference {}
 
@@ -89,6 +91,23 @@ public interface FleetMasterInterfaceLib extends Library {
 			return Arrays.asList(new String[] {
 			"maxVel", "maxVelRev", "useSteerDriveVel", "maxRotationalVel", "maxRotationalVelRev", "maxSteeringAngleVel", "initVel", "endVel",
 			"initSteeringAngleVel", "endSteeringAngleVel", "maxAcc", "maxRotationalAcc", "maxSteeringAngleAcc"});
+		}
+	}
+	
+	public static class PropagationTCDelays extends Structure {
+		public static class ByReference extends PropagationTCDelays implements Structure.ByReference {}
+
+        public NativeLong[] indices;
+        public double[] values;
+        public int size;
+		
+		public PropagationTCDelays() {}
+		public PropagationTCDelays(Pointer p) {
+			super(p);
+		}
+		@Override
+		protected List<String> getFieldOrder() {
+			return Arrays.asList(new String[] {"indices", "values", "size"});
 		}
 	}
 }
