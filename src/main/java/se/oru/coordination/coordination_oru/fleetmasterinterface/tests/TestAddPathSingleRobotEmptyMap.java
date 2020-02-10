@@ -44,8 +44,6 @@ public class TestAddPathSingleRobotEmptyMap {
 		
 		//Delete the path
 		flint.clearPath(rsp.getPath().hashCode());
-				
-		flint.addPath(1, rsp.getPath().hashCode(), rsp.getPath());
 		
 		//Show image
 		
