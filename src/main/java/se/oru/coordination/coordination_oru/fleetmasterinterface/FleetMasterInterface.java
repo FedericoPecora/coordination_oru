@@ -2,10 +2,12 @@ package se.oru.coordination.coordination_oru.fleetmasterinterface;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.logging.Logger;
 
 import org.jgrapht.alg.util.Pair;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
+import org.metacsp.utility.logging.MetaCSPLogging;
 
 import com.sun.jna.Native;
 import com.sun.jna.NativeLibrary;
@@ -25,6 +27,7 @@ public class FleetMasterInterface {
 	private HashMap<Integer, TrajParams> trajParams = null; //robotID, trajectory parameters
 	private GridParams gridParams = null;
 	PointerByReference p = null;
+	protected Logger metaCSPLogger = MetaCSPLogging.getLogger(FleetMasterInterface.class);
 	
 	/**
 	 * The default footprint used for robots if none is specified.
@@ -37,15 +40,12 @@ public class FleetMasterInterface {
 			new Coordinate(2.7, 0.7)	//front left
 	};
 	
-	public Coordinate[] getDefaultFootprint() {
-		return DEFAULT_FOOTPRINT;
-	}
-	
 	/**
 	 * The default trajectory params used for robots if none is specified.
-	 * FIXME For debugging purposes (Values are defined according to default values of trajectory_processor.h).
+	 * (Values are defined according to the file trajectory_processor.h).
 	 */
 	public static TrajParams DEFAULT_TRAJ_PARAMS = null;
+
 
 	public static FleetMasterInterfaceLib INSTANCE = null;
 	static {
@@ -54,7 +54,7 @@ public class FleetMasterInterface {
 	}
 	
 	/**
-	 * Constructor.
+	 * Class constructor.
 	 */
 	public FleetMasterInterface() {
 		
@@ -84,6 +84,23 @@ public class FleetMasterInterface {
 		this.paths = new HashMap<Integer, NativeLong>();
 		this.trajParams = new HashMap<Integer, TrajParams>();
 	}
+	
+	/**
+	 * Set the value of the footprint used for robots if none is specified.
+	 */
+	public boolean setDefaultFootprints(Coordinate ... coordinates) {
+		if (coordinates.length == 0) return false;
+		DEFAULT_FOOTPRINT = coordinates;
+		return true;
+	}
+	
+	/**
+	 * Return the value of the trajectory parameters used for robots if none is specified.
+	 */
+	public Coordinate[] getDefaultFootprint() {
+		return DEFAULT_FOOTPRINT;
+	}
+	
 	/**
 	 * Set the value of the trajectory parameters used for robots if none is specified.
 	 */
@@ -103,15 +120,7 @@ public class FleetMasterInterface {
 		DEFAULT_TRAJ_PARAMS.maxRotationalAcc = maxRotationalAcc;
 		DEFAULT_TRAJ_PARAMS.maxSteeringAngleAcc = maxSteeringAngleAcc;
 	}
-	/**
-	 * Set the value of the footprint used for robots if none is specified.
-	 */
-	public boolean setDefaultFootprints(Coordinate ... coordinates) {
-		if (coordinates.length == 0) return false;
-		DEFAULT_FOOTPRINT = coordinates;
-		return true;
-	}
-	
+		
 	/**
 	 * Set the fleetmaster gridmap parameters. Calling this function is mandatory.
 	 * @param origin_x The x origin of the map
@@ -186,7 +195,16 @@ public class FleetMasterInterface {
 	 * @return true if success.
 	 */
 	public boolean addPath(int robotID, int pathID, PoseSteering[] pathToAdd, Coordinate ... coordinates) {
+		//return false in case of empty path
 		if (pathToAdd.length == 0) return false;
+		
+		//already added
+		if (paths.containsKey(pathID)) {
+			metaCSPLogger.warning("Path already stored.");
+			return true;
+		}
+		
+		//Add the new path
 		clearPath(pathID);
 		
 		//Parse the Java values for the path and the footprint
@@ -253,7 +271,7 @@ public class FleetMasterInterface {
 	 */
 	public Pair<Double,Double> queryTimeDelay(CriticalSection cs, ArrayList<Pair<NativeLong, Double>> te1TCDelays, ArrayList<Pair<NativeLong, Double>> te2TCDelays) {
 		
-		if (gridParams == null || cs == null) return new Pair<Double, Double>(Double.NaN, Double.NaN);
+		if (cs == null) return new Pair<Double, Double>(Double.NaN, Double.NaN);
 		
 		int teID1 = cs.getTe1().getID();
 		int teID2 = cs.getTe2().getID();
