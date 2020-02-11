@@ -25,6 +25,7 @@ import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 import org.metacsp.utility.PermutationsWithRepetition;
 import com.vividsolutions.jts.geom.Geometry;
 import aima.core.util.datastructure.Pair;
+import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInterfaceLib.PropagationTCDelays;
 import se.oru.coordination.coordination_oru.motionplanning.AbstractMotionPlanner;
 
 
@@ -510,6 +511,13 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 		//If both can stop before entering, use ordering function (or closest if no ordering function)
 		metaCSPLogger.finest("Both robots can stop at " + cs);
+		
+		if (useFleetMaster) {
+			PropagationTCDelays te1TCDelays = new PropagationTCDelays();
+			PropagationTCDelays te2TCDelays = new PropagationTCDelays();
+			Pair<Double, Double> delays = fleetMasterInterface.queryTimeDelay(cs, te1TCDelays, te2TCDelays);
+			return delays.getFirst() < delays.getSecond() ? true : false;
+		}
 		
 		if (yieldIfParking) {
 			boolean robot1ParksInCS = cs.getTe1End() == cs.getTe1().getPathLength()-1;

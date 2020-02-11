@@ -7,7 +7,7 @@ import com.vividsolutions.jts.geom.Coordinate;
 import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInterface;
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
 
-public class AddPathOneRobotEmptyMap {
+public class OneRobotEmptyMapWithoutCoordinator {
 	
 	public static void main(String[] args) throws InterruptedException {
 		System.out.print("Test1: only FleetMasterInterference class");

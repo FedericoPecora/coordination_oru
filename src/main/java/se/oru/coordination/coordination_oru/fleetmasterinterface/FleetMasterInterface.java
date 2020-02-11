@@ -3,7 +3,7 @@ package se.oru.coordination.coordination_oru.fleetmasterinterface;
 import java.util.HashMap;
 import java.util.logging.Logger;
 
-import org.jgrapht.alg.util.Pair;
+import aima.core.util.datastructure.Pair;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 import org.metacsp.utility.logging.MetaCSPLogging;

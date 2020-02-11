@@ -255,6 +255,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	
 	/**
 	 * Enable and initialize the fleetmaster library to estimate precedences to minimize the overall completion time.
+	 * Note: this function should be called before placing the first robot.
 	 * @param origin_x The x origin of the map.
 	 * @param origin_y The y origin of the map.
 	 * @param origin_theta The theta origin of the map.
