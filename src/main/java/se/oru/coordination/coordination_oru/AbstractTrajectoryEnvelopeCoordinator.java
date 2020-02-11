@@ -354,7 +354,26 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 * @param fm The robot's {@link ForwardModel}.
 	 */
 	public void setForwardModel(int robotID, ForwardModel fm) {
-		this.forwardModels.put(robotID, fm);
+		this.forwardModels.put(robotID, fm); 
+	}
+	
+	/**
+	 * Set the parameters for estimating the temporal profile for the trajectories a given robot. 
+	 * ATTENTION: Use negative values when the parameter is unknown.
+	 * @param robotID The robot ID.
+	 * @param maxVel The maximum forward linear velocity (m/s).
+	 * @param maxVelRev The maximum backward linear velocity (m/s).
+	 * @param useSteerDriveVel <code>true</code> if the steering velocity should be used.
+	 * @param maxRotationalVel The maximum anti clockwise angular velocity (rad/s).
+	 * @param maxRotationalVelRev The maximum clockwise angular velocity (rad/s).
+	 * @param maxSteeringAngleVel The maximum clockwise steering velocity (rad/s).
+	 * @param maxAcc The maximum linear acceleration (m/s^2).
+	 * @param maxRotationalAcc The maximum angular acceleration (rad/s^2).
+	 * @param maxSteeringAngleAcc The maximum steering acceleration (rad/s^2).
+	 */
+	public void setNominalTrajectoryParameters(int robotID, double maxVel, double maxVelRev, boolean useSteerDriveVel, double maxRotationalVel, double maxRotationalVelRev, double maxSteeringAngleVel, double maxAcc, double maxRotationalAcc, double maxSteeringAngleAcc) {
+		if (useFleetMaster)
+			fleetMasterInterface.addTrajParams(robotID, maxVel, maxVelRev, useSteerDriveVel, maxRotationalVel, maxRotationalVelRev, maxSteeringAngleVel, maxAcc, maxRotationalAcc, maxSteeringAngleAcc);
 	}
 
 	/**

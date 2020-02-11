@@ -62,6 +62,8 @@ public class TwoRobotsFollowingEmptyMap {
 
 		//Need to instantiate the fleetmaster interface
 		tec.instantiateFleetMaster(0., 0., 0., 0.1, 500, 500, false);
+		tec.setNominalTrajectoryParameters(1, MAX_VEL, MAX_VEL, false, -1, -1, -1, MAX_ACCEL, -1, -1);
+		tec.setNominalTrajectoryParameters(2, MAX_VEL, MAX_VEL, false, -1, -1, -1, MAX_ACCEL, -1, -1);
 		
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
