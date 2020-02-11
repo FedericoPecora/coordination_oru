@@ -127,7 +127,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 */
 	public void setAvoidDeadlocksGlobally(boolean value) {
 		this.avoidDeadlockGlobally = value;
-		if (value == true) {
+		if (value) {
 			this.breakDeadlocksByReordering = false;
 			this.breakDeadlocksByReplanning = false;
 		}
@@ -1031,24 +1031,24 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			for (int otherRobotID : allRobots) if (otherRobotID != robotID) otherRobotIDs[counter++] = otherRobotID;
 			
 			//FIXME not synchronized on current dependencies
-			//Geometry[] obstacles = getObstaclesInCriticalPoints(otherRobotIDs);
-			Geometry[] otherOstacles = getObstaclesInCriticalPoints(otherRobotIDs);
-			
-			//to get a different path, add an obstacle along this robot path
-			Geometry placementWaiting = makeObstacles(robotID, currentWaitingPose)[0]; 
-			Geometry obstacleAlongOwnPath = null;
-			for (int i = currentWaitingIndex+1; i < oldPath.length; i++) {
-				Geometry obstacleAlongOwnPathTmp = makeObstacles(robotID, oldPath[i].getPose())[0];
-				if (!placementWaiting.intersects(obstacleAlongOwnPathTmp) && i < oldPath.length-1) {
-					obstacleAlongOwnPath = makeObstacles(robotID, oldPath[i+1].getPose())[0];;
-					break;
-				}
-			}
-			if (obstacleAlongOwnPath == null) continue;
-			
-			Geometry[] obstacles = new Geometry[otherOstacles.length+1];
-			for (int i = 0; i < obstacles.length-1; i++) obstacles[i] = otherOstacles[i];
-			obstacles[obstacles.length-1] = obstacleAlongOwnPath;
+			Geometry[] obstacles = getObstaclesInCriticalPoints(otherRobotIDs);
+//			Geometry[] otherOstacles = getObstaclesInCriticalPoints(otherRobotIDs);
+//			
+//			//to get a different path, add an obstacle along this robot path
+//			Geometry placementWaiting = makeObstacles(robotID, currentWaitingPose)[0]; 
+//			Geometry obstacleAlongOwnPath = null;
+//			for (int i = currentWaitingIndex+1; i < oldPath.length; i++) {
+//				Geometry obstacleAlongOwnPathTmp = makeObstacles(robotID, oldPath[i].getPose())[0];
+//				if (!placementWaiting.intersects(obstacleAlongOwnPathTmp) && i < oldPath.length-1) {
+//					obstacleAlongOwnPath = makeObstacles(robotID, oldPath[i+1].getPose())[0];;
+//					break;
+//				}
+//			}
+//			if (obstacleAlongOwnPath == null) continue;
+//			
+//			Geometry[] obstacles = new Geometry[otherOstacles.length+1];
+//			for (int i = 0; i < obstacles.length-1; i++) obstacles[i] = otherOstacles[i];
+//			obstacles[obstacles.length-1] = obstacleAlongOwnPath;
 					
 			metaCSPLogger.info("Attempting to re-plan path of Robot" + robotID + " (with obstacles for robots " + Arrays.toString(otherRobotIDs) + ")...");
 			AbstractMotionPlanner mp = null;
@@ -1125,7 +1125,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			}
 		}
 	}
-	
+		
 	/**
 	 * Replace the path of a robot's {@link TrajectoryEnvelope} on the fly.
 	 * @param robotID The ID of the robot whose {@link TrajectoryEnvelope} is to be recomputed.
