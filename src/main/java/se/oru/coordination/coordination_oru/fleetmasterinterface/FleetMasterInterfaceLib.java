@@ -89,9 +89,9 @@ public interface FleetMasterInterfaceLib extends Library {
 	public static class PropagationTCDelays extends Structure {
 		public static class ByReference extends PropagationTCDelays implements Structure.ByReference {}
 
-        public NativeLong[] indices;
-        public double[] values;
-        public int size;
+        public NativeLong[] indices = new NativeLong[1];
+        public double[] values = new double[1];
+        public int size = 0;
 		
 		public PropagationTCDelays() {}
 		public PropagationTCDelays(Pointer p) {

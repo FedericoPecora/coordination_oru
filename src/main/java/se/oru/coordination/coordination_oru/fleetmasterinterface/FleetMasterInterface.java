@@ -251,17 +251,18 @@ public class FleetMasterInterface {
 	 * @return The time of completion increments.
 	 */
 	public Pair<Double,Double> queryTimeDelay(CriticalSection cs, PropagationTCDelays te1TCDelays, PropagationTCDelays te2TCDelays) {
-		
-		if (cs == null) return new Pair<Double, Double>(Double.NaN, Double.NaN);
-		
-		int teID1 = cs.getTe1().getID();
-		int teID2 = cs.getTe2().getID();
-		if (paths.containsKey(teID1) && (paths.containsKey(teID2))) {
-			DoubleByReference delayTe1 = new DoubleByReference();
-			DoubleByReference delayTe2 = new DoubleByReference();
-			INSTANCE.queryTimeDelay(p, paths.get(teID1), paths.get(teID2), cs.getTe1Start(), cs.getTe1End(), cs.getTe2Start(), cs.getTe2End(), te1TCDelays, te2TCDelays, delayTe1, delayTe2);
-			return new Pair<Double, Double>(delayTe1.getValue(), delayTe2.getValue());
+		Pair<Double, Double> ret = new Pair<Double, Double>(Double.NaN, Double.NaN);
+		if (cs != null) {
+			int teID1 = cs.getTe1().getID();
+			int teID2 = cs.getTe2().getID();
+			if (paths.containsKey(teID1) && (paths.containsKey(teID2))) {
+				DoubleByReference delayTe1 = new DoubleByReference();
+				DoubleByReference delayTe2 = new DoubleByReference();
+				INSTANCE.queryTimeDelay(p, paths.get(teID1), paths.get(teID2), cs.getTe1Start(), cs.getTe1End(), cs.getTe2Start(), cs.getTe2End(), te1TCDelays, te2TCDelays, delayTe1, delayTe2);
+				ret = new Pair<Double, Double>(delayTe1.getValue(), delayTe2.getValue());
+			}
 		}
-		return new Pair<Double, Double>(Double.NaN, Double.NaN);
+		metaCSPLogger.info("queryTimeDelay at cs: " + cs + " return: " + ret + ".");
+		return ret;
 	}
 }
