@@ -558,6 +558,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			for (int robotID : robotIDs) {
 				AbstractTrajectoryEnvelopeTracker robotTracker = trackers.get(robotID);
 				RobotReport robotReport = robotTracker.getRobotReport();
+				
+				if (useFleetMaster && !(robotTracker instanceof TrajectoryEnvelopeTrackerDummy))
+					fleetMasterInterface.updateCurrentPathIdx(robotTracker.getTrajectoryEnvelope().getID(), Math.max(0, robotReport.getPathIndex()));
+
 				synchronized(stoppingPoints) {
 					if (stoppingPoints.containsKey(robotID)) {
 						metaCSPLogger.info("Stopping points Robot"+robotID+": "+stoppingPoints.get(robotID).toString());

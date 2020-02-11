@@ -254,15 +254,19 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	}
 	
 	/**
-	 * Set if using the fleetmaster library to estimate precedences to minimize the overall completion time.
-	 * @param value <code>true</code> if using the library.
+	 * Enable and initialize the fleetmaster library to estimate precedences to minimize the overall completion time.
+	 * @param origin_x The x origin of the map.
+	 * @param origin_y The y origin of the map.
+	 * @param origin_theta The theta origin of the map.
+	 * @param resolution The resolution of the map (in meters/cell).
+	 * @param width Number of columns of the map (in cells).
+	 * @param height Number of rows of the map (in cells).
+	 * @param debug <code>true</code> enables showing the content of each GridMap.
 	 */
-	public void setUseFleetMaster(boolean value) {
-		this.useFleetMaster = value;
-		if (value) {
-			this.fleetMasterInterface = new FleetMasterInterface();
-			this.fleetMasterInterface.setDefaultFootprints(DEFAULT_FOOTPRINT);
-		}
+	public void instantiateFleetMaster(double origin_x, double origin_y, double origin_theta, double resolution, long width, long height, boolean debug) {
+		this.useFleetMaster = true;
+		this.fleetMasterInterface = new FleetMasterInterface(origin_x, origin_y, origin_theta, resolution, width, height, debug);
+		this.fleetMasterInterface.setDefaultFootprint(DEFAULT_FOOTPRINT);
 	}
 	
 	/**
@@ -444,6 +448,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	public void setDefaultFootprint(Coordinate ... coordinates) {
 		DEFAULT_FOOTPRINT = coordinates;
 		MAX_DEFAULT_FOOTPRINT_DIMENSION = computeMaxFootprintDimension(coordinates);
+		if (useFleetMaster) this.fleetMasterInterface.setDefaultFootprint(DEFAULT_FOOTPRINT);
 	}
 
 

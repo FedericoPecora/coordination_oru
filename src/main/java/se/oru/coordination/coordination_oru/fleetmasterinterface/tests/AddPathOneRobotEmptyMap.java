@@ -2,16 +2,22 @@ package se.oru.coordination.coordination_oru.fleetmasterinterface.tests;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 
+import com.vividsolutions.jts.geom.Coordinate;
+
 import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInterface;
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
 
-public class TestAddPathSingleRobotEmptyMap {
+public class AddPathOneRobotEmptyMap {
 	
 	public static void main(String[] args) throws InterruptedException {
-		System.out.print("FleetMasterInterference class");
-		FleetMasterInterface flint = new FleetMasterInterface();
-		flint.init();
-		flint.show(true);		
+		System.out.print("Test1: only FleetMasterInterference class");
+		FleetMasterInterface flint = new FleetMasterInterface(0., 0., 0., 0.1, 500, 500, true);	
+		
+		Coordinate footprint1 = new Coordinate(-0.5,0.5);
+		Coordinate footprint2 = new Coordinate(-0.5,-0.5);
+		Coordinate footprint3 = new Coordinate(0.7,-0.5);
+		Coordinate footprint4 = new Coordinate(0.7,0.5);
+		flint.setDefaultFootprint(footprint1, footprint2, footprint3, footprint4);
 		
 		//Test 1: using default robot footprint	
 		Pose startRobot1 = new Pose(45.0,5.0,0.0);
@@ -53,6 +59,9 @@ public class TestAddPathSingleRobotEmptyMap {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		
+		System.out.print("Test2: + coordination");
+		
 		
 	}
 }

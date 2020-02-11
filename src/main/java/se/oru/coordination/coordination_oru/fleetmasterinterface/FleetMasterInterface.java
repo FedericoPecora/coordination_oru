@@ -55,14 +55,21 @@ public class FleetMasterInterface {
 
 	public static FleetMasterInterfaceLib INSTANCE = null;
 	static {
-		NativeLibrary.addSearchPath("fleetmaster", "FleetMasterInterface"); //FIXME How to add the path of the library? Now it is in {$FLEETMASTER_WS}/devel
+		NativeLibrary.addSearchPath("fleetmaster", "/home/anna/fleet_ws/devel/lib"); //FIXME How to add the path of the library? Now it is in {$FLEETMASTER_WS}/devel
 		INSTANCE = Native.loadLibrary("fleetmaster", FleetMasterInterfaceLib.class);
 	}
 	
 	/**
 	 * Class constructor.
+	 * @param origin_x The x origin of the map.
+	 * @param origin_y The y origin of the map.
+	 * @param origin_theta The theta origin of the map.
+	 * @param resolution The resolution of the map (in meters/cell).
+	 * @param width Number of columns of the map (in cells).
+	 * @param height Number of rows of the map (in cells).
+	 * @param debug <code>true</code> enables showing the content of each GridMap layer.
 	 */
-	public FleetMasterInterface() {
+	public FleetMasterInterface(double origin_x, double origin_y, double origin_theta, double resolution, long width, long height, boolean debug) {
 		
 		DEFAULT_TRAJ_PARAMS = new TrajParams();
 		DEFAULT_TRAJ_PARAMS.maxVel = 1.;
@@ -71,21 +78,20 @@ public class FleetMasterInterface {
 	    DEFAULT_TRAJ_PARAMS.maxRotationalVel = 1.;	
 	    DEFAULT_TRAJ_PARAMS.maxRotationalVelRev = 1.;
 	    DEFAULT_TRAJ_PARAMS.maxSteeringAngleVel = 1.;
-	    DEFAULT_TRAJ_PARAMS.initVel = 0.;
-	    DEFAULT_TRAJ_PARAMS.endVel = 0.;
-	    DEFAULT_TRAJ_PARAMS.initSteeringAngleVel = 0.;
-	    DEFAULT_TRAJ_PARAMS.endSteeringAngleVel = 0.;
 	    DEFAULT_TRAJ_PARAMS.maxAcc = 1.;
 	    DEFAULT_TRAJ_PARAMS.maxRotationalAcc = 1.;
 	    DEFAULT_TRAJ_PARAMS.maxSteeringAngleAcc = 1.;
 	    
 		gridParams = new GridParams();
-		gridParams.origin.x = 0.;
-		gridParams.origin.y = 0.;
-		gridParams.origin.theta = 0.;
-		gridParams.resolution = .1;
-		gridParams.width = new NativeLong(100);
-		gridParams.height = new NativeLong(100);
+		gridParams.origin.x = origin_x;
+		gridParams.origin.y = origin_y;
+		gridParams.origin.theta = origin_theta;
+		gridParams.resolution = resolution;
+		gridParams.width = new NativeLong(width);
+		gridParams.height = new NativeLong(height);
+		p = INSTANCE.init(gridParams);
+		
+		show(debug);
 	    
 		this.paths = new HashMap<Integer, NativeLong>();
 		this.trajParams = new HashMap<Integer, TrajParams>();
@@ -94,7 +100,7 @@ public class FleetMasterInterface {
 	/**
 	 * Set the value of the footprint used for robots if none is specified.
 	 */
-	public boolean setDefaultFootprints(Coordinate ... coordinates) {
+	public boolean setDefaultFootprint(Coordinate ... coordinates) {
 		if (coordinates.length == 0) return false;
 		DEFAULT_FOOTPRINT = coordinates;
 		return true;
@@ -110,46 +116,16 @@ public class FleetMasterInterface {
 	/**
 	 * Set the value of the trajectory parameters used for robots if none is specified.
 	 */
-	public void setDefaultTrajectoryParams(double maxVel, double maxVelRev, boolean useSteerDriveVel, double maxRotationalVel, double maxRotationalVelRev, double maxSteeringAngleVel, double initVel, double endVel, 
-		    double initSteeringAngleVel, double endSteeringAngleVel, double maxAcc, double maxRotationalAcc, double maxSteeringAngleAcc) {
+	public void setDefaultTrajectoryParams(double maxVel, double maxVelRev, boolean useSteerDriveVel, double maxRotationalVel, double maxRotationalVelRev, double maxSteeringAngleVel, double maxAcc, double maxRotationalAcc, double maxSteeringAngleAcc) {
 		DEFAULT_TRAJ_PARAMS.maxVel = maxVel;
 		DEFAULT_TRAJ_PARAMS.maxVelRev = maxVelRev;
 		DEFAULT_TRAJ_PARAMS.useSteerDriveVel = useSteerDriveVel;
 		DEFAULT_TRAJ_PARAMS.maxRotationalVel = maxRotationalVel;
 		DEFAULT_TRAJ_PARAMS.maxRotationalVelRev = maxRotationalVelRev;
 		DEFAULT_TRAJ_PARAMS.maxSteeringAngleVel = maxSteeringAngleVel;
-		DEFAULT_TRAJ_PARAMS.initVel = initVel;
-		DEFAULT_TRAJ_PARAMS.endVel = endVel;
-		DEFAULT_TRAJ_PARAMS.initSteeringAngleVel = initSteeringAngleVel;
-		DEFAULT_TRAJ_PARAMS.endSteeringAngleVel = endSteeringAngleVel;
 		DEFAULT_TRAJ_PARAMS.maxAcc = maxAcc;
 		DEFAULT_TRAJ_PARAMS.maxRotationalAcc = maxRotationalAcc;
 		DEFAULT_TRAJ_PARAMS.maxSteeringAngleAcc = maxSteeringAngleAcc;
-	}
-		
-	/**
-	 * Set the fleetmaster gridmap parameters. Calling this function is mandatory.
-	 * @param origin_x The x origin of the map
-	 * @param origin_y The y origin of the map
-	 * @param origin_theta The theta origin of the map
-	 * @param resolution The resolution of the map (in meters/cell).
-	 * @param width Number of columns of the map (in cells).
-	 * @param height Number of rows of the map (in cells).
-	 */
-	public void setGridMapParams(double origin_x, double origin_y, double origin_theta, double resolution, long width, long height) {
-		gridParams.origin.x = origin_x;
-		gridParams.origin.y = origin_y;
-		gridParams.origin.theta = origin_theta;
-		gridParams.resolution = resolution;
-		gridParams.width = new NativeLong(width);
-		gridParams.height = new NativeLong(height);
-	}
-	
-	/**
-	 * Initilize gridmaps.
-	 */
-	public void init() {
-		p = INSTANCE.init(gridParams);
 	}
 	
 	/**
@@ -164,8 +140,7 @@ public class FleetMasterInterface {
 	 * Set the trajectory parameters for a robot (see trajectory_processor.h).
 	 * @param robotID The robot ID.
 	 */
-	public void addTrajParams(int robotID, double maxVel, double maxVelRev, boolean useSteerDriveVel, double maxRotationalVel, double maxRotationalVelRev, double maxSteeringAngleVel, double initVel, double endVel, 
-		    double initSteeringAngleVel, double endSteeringAngleVel, double maxAcc, double maxRotationalAcc, double maxSteeringAngleAcc) {;
+	public void addTrajParams(int robotID, double maxVel, double maxVelRev, boolean useSteerDriveVel, double maxRotationalVel, double maxRotationalVelRev, double maxSteeringAngleVel, double maxAcc, double maxRotationalAcc, double maxSteeringAngleAcc) {;
 		    
 		    trajParams.put(robotID, new TrajParams());
 		    trajParams.get(robotID).maxVel = maxVel;
@@ -174,10 +149,6 @@ public class FleetMasterInterface {
 		    trajParams.get(robotID).maxRotationalVel = maxRotationalVel;
 		    trajParams.get(robotID).maxRotationalVelRev = maxRotationalVelRev;
 		    trajParams.get(robotID).maxSteeringAngleVel = maxSteeringAngleVel;
-		    trajParams.get(robotID).initVel = initVel;
-		    trajParams.get(robotID).endVel = endVel;
-		    trajParams.get(robotID).initSteeringAngleVel = initSteeringAngleVel;
-		    trajParams.get(robotID).endSteeringAngleVel = endSteeringAngleVel;
 		    trajParams.get(robotID).maxAcc = maxAcc;
 		    trajParams.get(robotID).maxRotationalAcc = maxRotationalAcc;
 		    trajParams.get(robotID).maxSteeringAngleAcc = maxSteeringAngleAcc;
@@ -186,7 +157,7 @@ public class FleetMasterInterface {
 	/**
 	 * Add a trajectory envelope to the fleetmaster gridmap.
 	 * @param te The trajectory envelope to add.
-	 * @return
+	 * @return <code>true</code> if success.
 	 */
 	public boolean addPath(TrajectoryEnvelope te) {
 		return addPath(te.getRobotID(), te.getID(), te.getTrajectory().getPoseSteering(), te.getFootprint().getCoordinates());
@@ -236,31 +207,36 @@ public class FleetMasterInterface {
 		else
 			paths.put(pathID, INSTANCE.addPath(p, path, steering, pathToAdd.length, DEFAULT_TRAJ_PARAMS, coordinates_x, coordinates_y, coordinates.length));
 
+
+		metaCSPLogger.info("Adding path RobotID: " + robotID + ", pathID: " + pathID + ", fleetmaster pathID: " + path.hashCode() +".");
+		
 		return true;
 	}
 	
 	/**
-	 * Remove the path related to the given {@link TrajectoryEnvelope} from the fleetmaster gridmap.
-	 * @param teID The ID of the trajectory envelope to be cleared.
+	 * Remove the path from the fleetmaster GridMaps.
+	 * @param pathID The ID of the path to be cleared.
 	 */
-	public boolean clearPath(int teID) {
-		if (p != null && paths.containsKey(teID)) {
-			INSTANCE.removePath(p, paths.get(teID));
-			paths.remove(teID);
+	public boolean clearPath(int pathID) {
+		if (p != null && paths.containsKey(pathID)) {
+			INSTANCE.removePath(p, paths.get(pathID));
+			paths.remove(pathID);
+			metaCSPLogger.info("Clearing path pathID: " + pathID);
 			return true;
 		}
 		return false;
 	}
 	
 	/**
-	 * Update the current progress along the trajectory envelope (according to the last received robot report).
-	 * @param teID The trajectory envelope ID.
+	 * Update the current progress along the path (according to the last received robot report).
+	 * @param pathID The path ID.
 	 * @param currentIdx The current path index.
 	 * @return <code>true</code> if the path index has been correctly updated.
 	 */
-	public boolean updateCurrentPathIdx(int teID, int currentIdx) {
-		if (p != null && paths.containsKey(teID)) {
-			 return INSTANCE.updateCurrentPathIdx(p, paths.get(teID), new NativeLong(currentIdx));
+	public boolean updateCurrentPathIdx(int pathID, int currentIdx) {
+		if (p != null && paths.containsKey(pathID)) {
+			metaCSPLogger.info("Updating path pathID: " + pathID + ", current path index: " + currentIdx + ".");
+			return INSTANCE.updateCurrentPathIdx(p, paths.get(pathID), new NativeLong(currentIdx));
 		 }
 		 return false;
 	}
