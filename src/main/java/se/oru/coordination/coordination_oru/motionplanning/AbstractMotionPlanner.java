@@ -4,7 +4,9 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Shape;
 import java.awt.image.BufferedImage;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -22,6 +24,7 @@ import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.util.AffineTransformation;
 
+import se.oru.coordination.coordination_oru.util.BrowserVisualizationSocket;
 import se.oru.coordination.coordination_oru.util.Missions;
 
 public abstract class AbstractMotionPlanner {
@@ -69,6 +72,28 @@ public abstract class AbstractMotionPlanner {
 		this.goal = newGoals.toArray(new Pose[newGoals.size()]);
 	}
 	
+	public void setMap(String mapYAMLFile) {
+		try {
+			File file = new File(mapYAMLFile);
+			BufferedReader br = new BufferedReader(new FileReader(file));
+			String st;
+			while((st=br.readLine()) != null){
+				String key = st.substring(0, st.indexOf(":")).trim();
+				String value = st.substring(st.indexOf(":")+1).trim();
+				if (key.equals("image")) this.setMapFilename(file.getParentFile()+File.separator+value);
+				else if (key.equals("resolution")) this.setMapResolution(Double.parseDouble(value));
+				else if (key.equals("origin")) {
+					String x = value.substring(1, value.indexOf(",")).trim();
+					String y = value.substring(value.indexOf(",")+1, value.indexOf(",", value.indexOf(",")+1)).trim();
+					//FIXME: deal with map origin
+					//this.setMapOrigin(new Coordinate(Double.parseDouble(x),Double.parseDouble(y)));
+				}
+			}
+			br.close();
+		}
+		catch (IOException e) { e.printStackTrace(); }
+	}
+	
 	public void setMapFilename(String filename) {
 		this.mapFilename = filename;
 		this.mapFilenameBAK = filename;
@@ -78,6 +103,7 @@ public abstract class AbstractMotionPlanner {
 		this.mapResolution = res;
 	}
 	
+	
 	private synchronized void addObstaclesToMap() {
 		BufferedImage img = null;
 		try {
@@ -86,7 +112,6 @@ public abstract class AbstractMotionPlanner {
 			Graphics2D g2 = img.createGraphics();
 			ShapeWriter writer = new ShapeWriter();
 			g2.setPaint(Color.black);
-			//for (Geometry g : geom) {
 			for (Geometry g : this.obstacles) {
 				AffineTransformation at = new AffineTransformation();
 				at.scale(1.0/mapResolution, -1.0/mapResolution);
@@ -106,7 +131,9 @@ public abstract class AbstractMotionPlanner {
 	public synchronized void addObstacles(Geometry ... geom) {
 		for (Geometry g : geom) this.obstacles.add(g);
 		// If there is a map file, stamp obstacles into the map file...
-		if (this.mapFilename != null) this.addObstaclesToMap();
+		if (this.mapFilename == null) this.setMap("maps/map-empty.yaml");
+		this.addObstaclesToMap();
+		//if (this.mapFilename != null) this.addObstaclesToMap();
 	}
 
 	public synchronized void addObstacles(Geometry geom, Pose ... poses) {
@@ -118,7 +145,9 @@ public abstract class AbstractMotionPlanner {
 			this.obstacles.add(obs);			
 		}
 		// If there is a map file, stamp obstacles into the map file...
-		if (this.mapFilename != null) this.addObstaclesToMap();
+		//if (this.mapFilename != null) this.addObstaclesToMap();
+		if (this.mapFilename == null) this.setMap("maps/map-empty.yaml");
+		this.addObstaclesToMap();
 	}
 
 	public synchronized void clearObstacles() {
@@ -137,6 +166,10 @@ public abstract class AbstractMotionPlanner {
 		return inv.toArray(new PoseSteering[inv.size()]);
 	}
 
+	/**
+	 * This method needs to write the protected field PoseSteering[] pathPS.
+	 * @return <code>true</code> iff path planning was successful.
+	 */
 	public abstract boolean doPlanning();
 	
 	public synchronized boolean plan() {
@@ -160,6 +193,7 @@ public abstract class AbstractMotionPlanner {
 		}
 		
 		boolean ret = doPlanning();
+		
 		if (!verifyPlanning) return ret;
 		
 		PoseSteering[] path = getPath();
@@ -182,9 +216,10 @@ public abstract class AbstractMotionPlanner {
 				}
 			}
 		}
+	
 		return ret;
 	}
-	
+		
 	public static boolean deleteDir(File dir) {
 	    if (dir.isDirectory()) {
 	        String[] children = dir.list();
