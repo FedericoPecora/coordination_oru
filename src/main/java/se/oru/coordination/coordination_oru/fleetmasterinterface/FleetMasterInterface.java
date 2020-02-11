@@ -202,7 +202,7 @@ public class FleetMasterInterface {
 		}
 		
 		//Call the method
-		if (trajParams.containsKey(pathID)) 
+		if (trajParams.containsKey(robotID)) 
 			paths.put(pathID, INSTANCE.addPath(p, path, steering, pathToAdd.length, trajParams.get(robotID), coordinates_x, coordinates_y, coordinates.length));
 		else
 			paths.put(pathID, INSTANCE.addPath(p, path, steering, pathToAdd.length, DEFAULT_TRAJ_PARAMS, coordinates_x, coordinates_y, coordinates.length));
