@@ -258,7 +258,7 @@ public class FleetMasterInterface {
 			if (paths.containsKey(teID1) && (paths.containsKey(teID2))) {
 				DoubleByReference delayTe1 = new DoubleByReference();
 				DoubleByReference delayTe2 = new DoubleByReference();
-				INSTANCE.queryTimeDelay(p, paths.get(teID1), paths.get(teID2), cs.getTe1Start(), cs.getTe1End(), cs.getTe2Start(), cs.getTe2End(), te1TCDelays, te2TCDelays, delayTe1, delayTe2);
+				INSTANCE.queryTimeDelay(p, paths.get(teID1), paths.get(teID2), Math.max(0, cs.getTe1Start()-1), Math.min(cs.getTe1().getPathLength()-1, cs.getTe1End()+1), Math.max(0, cs.getTe2Start()-1), Math.min(cs.getTe2().getPathLength()-1, cs.getTe2End()+1), te1TCDelays, te2TCDelays, delayTe1, delayTe2);
 				ret = new Pair<Double, Double>(delayTe1.getValue(), delayTe2.getValue());
 			}
 		}

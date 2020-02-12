@@ -44,9 +44,12 @@ public class ThreeDifferentRobotsEmptyMap {
 				return (o2.getRobotReport().getRobotID()-o1.getRobotReport().getRobotID());
 			}
 		});
+		tec.setAvoidDeadlocksGlobally(false);
+		tec.setBreakDeadlocksByReordering(true);
+		tec.setBreakDeadlocksByReplanning(true);
 		
-		NetworkConfiguration.setDelays(0,3000);
-		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0.1;
+		NetworkConfiguration.setDelays(0,0);
+		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0.;
 		tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, NetworkConfiguration.getMaximumTxDelay(), 0.01);
 
 		//You can set a footprint that is specific for each robot
@@ -104,7 +107,7 @@ public class ThreeDifferentRobotsEmptyMap {
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
 		rsp.setRadius(0.2);
 		rsp.setTurningRadius(4.0);
-		rsp.setDistanceBetweenPathPoints(0.5);
+		rsp.setDistanceBetweenPathPoints(0.1);
 
 		Pose startPoseRobot1 = new Pose(4.0,6.0,0.0);
 		Pose goalPoseRobot1 = new Pose(16.0,15.0,Math.PI/4);

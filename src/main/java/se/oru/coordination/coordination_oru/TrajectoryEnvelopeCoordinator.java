@@ -516,7 +516,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			PropagationTCDelays te1TCDelays = new PropagationTCDelays();
 			PropagationTCDelays te2TCDelays = new PropagationTCDelays();
 			Pair<Double, Double> delays = fleetMasterInterface.queryTimeDelay(cs, te1TCDelays, te2TCDelays);
-			return delays.getFirst() < delays.getSecond() ? true : false;
+			return delays.getFirst() < delays.getSecond() ? false : true;
 		}
 		
 		if (yieldIfParking) {
