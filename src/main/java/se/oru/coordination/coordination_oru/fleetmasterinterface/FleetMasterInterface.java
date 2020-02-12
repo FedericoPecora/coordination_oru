@@ -67,7 +67,7 @@ public class FleetMasterInterface {
 	 * @param resolution The resolution of the map (in meters/cell).
 	 * @param width Number of columns of the map (in cells).
 	 * @param height Number of rows of the map (in cells).
-	 * @param debug <code>true</code> enables showing the content of each GridMap layer.
+	 * @param debug <code>true</code> enables writing to screen debugging info.
 	 */
 	public FleetMasterInterface(double origin_x, double origin_y, double origin_theta, double resolution, long width, long height, boolean debug) {
 		
@@ -89,12 +89,24 @@ public class FleetMasterInterface {
 		gridParams.resolution = resolution;
 		gridParams.width = new NativeLong(width);
 		gridParams.height = new NativeLong(height);
+		gridParams.debug = debug;
 		p = INSTANCE.init(gridParams);
-		
-		show(debug);
 	    
 		this.paths = new HashMap<Integer, NativeLong>();
 		this.trajParams = new HashMap<Integer, TrajParams>();
+	}
+	
+	/**
+	 * Class constructor.
+	 * @param origin_x The x origin of the map.
+	 * @param origin_y The y origin of the map.
+	 * @param origin_theta The theta origin of the map.
+	 * @param resolution The resolution of the map (in meters/cell).
+	 * @param width Number of columns of the map (in cells).
+	 * @param height Number of rows of the map (in cells).
+	 */
+	public FleetMasterInterface(double origin_x, double origin_y, double origin_theta, double resolution, long width, long height) {
+		this(origin_x, origin_y, origin_theta, resolution, width,  height, false);
 	}
 	
 	/**
@@ -126,14 +138,6 @@ public class FleetMasterInterface {
 		DEFAULT_TRAJ_PARAMS.maxAcc = maxAcc;
 		DEFAULT_TRAJ_PARAMS.maxRotationalAcc = maxRotationalAcc;
 		DEFAULT_TRAJ_PARAMS.maxSteeringAngleAcc = maxSteeringAngleAcc;
-	}
-	
-	/**
-	 * Set if showing the content of each GridMaps.
-	 * @param enable <code>true</code> if enabled.
-	 */
-	public void show(boolean enable) {
-		INSTANCE.show(p, enable);
 	}
 	
 	/**

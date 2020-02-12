@@ -15,8 +15,6 @@ public interface FleetMasterInterfaceLib extends Library {
 			
 	PointerByReference init(GridParams gridParams);
 	
-	void show(PointerByReference p, boolean enable);
-	
 	NativeLong addPath(PointerByReference p, PathPose[] path, double[] steering, int pathLength, TrajParams trajParams, double[] coordinates_x, double[] coordinates_y, int num_coordinate);
 	
     void removePath(PointerByReference p, NativeLong id);
@@ -51,6 +49,7 @@ public interface FleetMasterInterfaceLib extends Library {
 		public double resolution;
 		public NativeLong width;
 		public NativeLong height;
+		public boolean debug;
 		
 		public GridParams() {}
 		public GridParams(Pointer p) {
@@ -58,7 +57,7 @@ public interface FleetMasterInterfaceLib extends Library {
 		}
 		@Override
 		protected List<String> getFieldOrder() {
-			return Arrays.asList(new String[] {"origin", "resolution", "width", "height"});
+			return Arrays.asList(new String[] {"origin", "resolution", "width", "height", "debug"});
 		}
 	}
 	

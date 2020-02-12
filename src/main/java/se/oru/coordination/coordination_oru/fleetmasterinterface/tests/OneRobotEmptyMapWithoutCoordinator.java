@@ -36,33 +36,17 @@ public class OneRobotEmptyMapWithoutCoordinator {
 		rsp.plan();
 		
 		//Add the path to the fleetmaster
-		boolean ret = flint.addPath(1, rsp.getPath().hashCode(), rsp.getPath());
-		System.out.println("[FleetMasterInterference] addPath: " + ret);
-		
-		//Show image
-		
+		flint.addPath(1, rsp.getPath().hashCode(), rsp.getPath());
+			
 		try {
-			Thread.sleep(5000);
+			Thread.sleep(2000);
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		
 		//Delete the path
-		flint.clearPath(rsp.getPath().hashCode());
-		
-		//Show image
-		
-		try {
-			Thread.sleep(5000);
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-		System.out.print("Test2: + coordination");
-		
-		
+		flint.clearPath(rsp.getPath().hashCode());		
 	}
 }
 
