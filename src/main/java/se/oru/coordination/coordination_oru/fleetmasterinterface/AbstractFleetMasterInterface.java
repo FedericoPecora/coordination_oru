@@ -201,7 +201,7 @@ public abstract class AbstractFleetMasterInterface {
 		}
 				
 		//Call the method. -1 is used as special value to indicate that the path was not correctly added.
-		NativeLong pathCode = new NativeLong(-1);
+		NativeLong pathCode = new NativeLong(0);
 		if (trajParams.containsKey(robotID)) 
 			pathCode = INSTANCE.addPath(p, path, steering, pathToAdd.length, trajParams.get(robotID), coordinates_x, coordinates_y, coordinates.length);
 		else
@@ -211,7 +211,7 @@ public abstract class AbstractFleetMasterInterface {
 
 		metaCSPLogger.info("Adding path RobotID: " + robotID + ", pathID: " + pathID + ", fleetmaster pathID: " + path.hashCode() +".");
 		
-		return !pathCode.equals(-1);
+		return !pathCode.equals(new NativeLong(0));
 	}
 	
 	/**
@@ -273,7 +273,7 @@ public abstract class AbstractFleetMasterInterface {
 	 * @return <code>true</code> if correctly added.
 	 */
 	public boolean checkPathHasBeenAdded(int pathID) {
-		if (paths.containsKey(pathID) && !paths.get(pathID).equals(-1))	
+		if (paths.containsKey(pathID) && !paths.get(pathID).equals(new NativeLong(0)))	
 			return true;
 		return false;
 	}
