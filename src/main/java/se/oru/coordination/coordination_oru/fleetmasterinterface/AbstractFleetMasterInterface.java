@@ -1,14 +1,7 @@
 package se.oru.coordination.coordination_oru.fleetmasterinterface;
 
-import java.awt.image.BufferedImage;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.logging.Logger;
-
-import javax.imageio.ImageIO;
 
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
@@ -55,7 +48,7 @@ public abstract class AbstractFleetMasterInterface {
 
 	public static FleetMasterInterfaceLib INSTANCE = null;
 	static {
-		NativeLibrary.addSearchPath("fleetmaster", "/home/anna/fleet_ws/devel/lib"); //FIXME How to add the path of the library? Now it is in {$FLEETMASTER_WS}/devel
+		NativeLibrary.addSearchPath("fleetmaster", "FleetMasterInterface"); //FIXME How to add the path of the library? Now it is in {$FLEETMASTER_WS}/devel
 		INSTANCE = Native.loadLibrary("fleetmaster", FleetMasterInterfaceLib.class);
 	}
 	
