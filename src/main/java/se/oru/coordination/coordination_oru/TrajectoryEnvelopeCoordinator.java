@@ -512,7 +512,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		//If both can stop before entering, use ordering function (or closest if no ordering function)
 		metaCSPLogger.finest("Both robots can stop at " + cs);
 		
-		if (useFleetMaster) {
+		if (useFleetMaster && fleetMasterInterface.checkTrajectoryEnvelopeHasBeenAdded(cs.getTe1()) && fleetMasterInterface.checkTrajectoryEnvelopeHasBeenAdded(cs.getTe2())) {
 			PropagationTCDelays te1TCDelays = new PropagationTCDelays();
 			PropagationTCDelays te2TCDelays = new PropagationTCDelays();
 			Pair<Double, Double> delays = fleetMasterInterface.queryTimeDelay(cs, te1TCDelays, te2TCDelays);
@@ -1034,6 +1034,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			
 			//FIXME not synchronized on current dependencies
 			Geometry[] obstacles = getObstaclesInCriticalPoints(otherRobotIDs);
+			
+			//FIXME to be discussed
 //			Geometry[] otherOstacles = getObstaclesInCriticalPoints(otherRobotIDs);
 //			
 //			//to get a different path, add an obstacle along this robot path
@@ -1177,7 +1179,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				
 				if (useFleetMaster) {
 					fleetMasterInterface.clearPath(te.getID());
-					fleetMasterInterface.addPath(newTE);
+					if (!fleetMasterInterface.addPath(newTE)) {
+						metaCSPLogger.severe("Unable to add the path to the fleetmaster gridmap. Check if the map contains the given path.");
+					}
 				}
 				
 				//Stitch together with rest of constraint network (temporal constraints with parking envelopes etc.)

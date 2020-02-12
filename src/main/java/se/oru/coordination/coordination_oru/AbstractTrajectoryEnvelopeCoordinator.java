@@ -34,6 +34,7 @@ import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.util.AffineTransformation;
 import aima.core.util.datastructure.Pair;
+import se.oru.coordination.coordination_oru.fleetmasterinterface.AbstractFleetMasterInterface;
 import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInterface;
 import se.oru.coordination.coordination_oru.motionplanning.AbstractMotionPlanner;
 import se.oru.coordination.coordination_oru.util.FleetVisualization;
@@ -125,7 +126,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	protected AbstractMotionPlanner defaultMotionPlanner = null;
 	protected HashMap<Integer,AbstractMotionPlanner> motionPlanners = new HashMap<Integer, AbstractMotionPlanner>();
 	
-	protected FleetMasterInterface fleetMasterInterface = null;
+	protected AbstractFleetMasterInterface fleetMasterInterface = null;
 	protected boolean useFleetMaster = false;
 	
 	//Network knowledge
@@ -256,6 +257,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	/**
 	 * Enable and initialize the fleetmaster library to estimate precedences to minimize the overall completion time.
 	 * Note: this function should be called before placing the first robot.
+	 * ATTENTION: It is required the user to check that all the paths will lay in the given area.
 	 * @param origin_x The x origin of the map.
 	 * @param origin_y The y origin of the map.
 	 * @param origin_theta The theta origin of the map.
@@ -264,10 +266,32 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 * @param height Number of rows of the map (in cells).
 	 * @param debug <code>true</code> enables showing the content of each GridMap.
 	 */
+	@Deprecated
 	public void instantiateFleetMaster(double origin_x, double origin_y, double origin_theta, double resolution, long width, long height, boolean debug) {
 		this.useFleetMaster = true;
 		this.fleetMasterInterface = new FleetMasterInterface(origin_x, origin_y, origin_theta, resolution, width, height, debug);
 		this.fleetMasterInterface.setDefaultFootprint(DEFAULT_FOOTPRINT);
+	}
+	
+	/**
+	 * Enable and initialize the fleetmaster library to estimate precedences to minimize the overall completion time.
+	 * @param mapYAMLFile file to the global map of the environment (with absolute path specified as "/home/...").
+	 * @param debug <code>true</code> enables showing the content of each GridMap.
+	 * Note: it is required the map to contain all the possible paths.
+	 */
+	public void instantiateFleetMaster(String mapYAMLFile, boolean debug) {
+		this.useFleetMaster = true;
+		this.fleetMasterInterface = new FleetMasterInterface(mapYAMLFile, debug);
+		this.fleetMasterInterface.setDefaultFootprint(DEFAULT_FOOTPRINT);
+	}
+	
+	/**
+	 * Enable and initialize the fleetmaster library to estimate precedences to minimize the overall completion time.
+	 * @param mapYAMLFile file to the global map of the environment (with absolute path specified as "/home/...").
+	 * Note: it is required the map to contain all the possible paths.
+	 */
+	public void instantiateFleetMaster(String mapYAMLFile) {
+		instantiateFleetMaster(mapYAMLFile, false);
 	}
 	
 	/**
@@ -623,7 +647,11 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 
 			TrajectoryEnvelope te = tracker.getTrajectoryEnvelope();
 			currentParkingEnvelopes.put(robotID, te);	
-			if (useFleetMaster) fleetMasterInterface.addPath(te);
+			if (useFleetMaster) {
+				if (!fleetMasterInterface.addPath(te)) {
+					metaCSPLogger.severe("Unable to add the path to the fleetmaster gridmap. Check if the map contains the given path.");
+				}
+			}
 
 			synchronized (trackers) {
 				externalCPCounters.remove(trackers.get(robotID));
@@ -1527,7 +1555,11 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 					externalCPCounters.put(tracker, -1);
 				}
 				
-				if (useFleetMaster) fleetMasterInterface.addPath(te);
+				if (useFleetMaster) {
+					if (!fleetMasterInterface.addPath(te)) {
+						metaCSPLogger.severe("Unable to add the path to the fleetmaster gridmap. Check if the map contains the given path.");
+					}
+				}
 
 				//Now we can signal the parking that it can end (i.e., its deadline will no longer be prolonged)
 				//Note: the parking tracker will anyway wait to exit until earliest end time has been reached
