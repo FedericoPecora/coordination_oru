@@ -174,7 +174,7 @@ public abstract class AbstractFleetMasterInterface {
 		if (p == null || pathToAdd.length == 0) return false; //FIXME log error
 		
 		//already added
-		if (paths.containsKey(pathID)) {
+		if (paths.containsKey(pathID) && paths.get(pathID) != new NativeLong(0)) {
 			metaCSPLogger.warning("Path already stored.");
 			return true;
 		}
@@ -219,7 +219,7 @@ public abstract class AbstractFleetMasterInterface {
 	 * @param pathID The ID of the path to be cleared.
 	 */
 	public boolean clearPath(int pathID) {
-		if (p != null && paths.containsKey(pathID)) {
+		if (p != null && paths.containsKey(pathID) && paths.get(pathID) != new NativeLong(0)) {
 			INSTANCE.removePath(p, paths.get(pathID));
 			paths.remove(pathID);
 			metaCSPLogger.info("Clearing path pathID: " + pathID);
@@ -235,7 +235,7 @@ public abstract class AbstractFleetMasterInterface {
 	 * @return <code>true</code> if the path index has been correctly updated.
 	 */
 	public boolean updateCurrentPathIdx(int pathID, int currentIdx) {
-		if (p != null && paths.containsKey(pathID)) {
+		if (p != null && paths.containsKey(pathID) && paths.get(pathID) != new NativeLong(0)) {
 			metaCSPLogger.info("Updating path pathID: " + pathID + ", current path index: " + currentIdx + ".");
 			return INSTANCE.updateCurrentPathIdx(p, paths.get(pathID), new NativeLong(currentIdx));
 		 }
