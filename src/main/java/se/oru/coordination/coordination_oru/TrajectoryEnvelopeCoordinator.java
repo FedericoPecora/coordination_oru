@@ -550,6 +550,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 		//System.out.println("Caller of updateDependencies(): " + Thread.currentThread().getStackTrace()[2]);
 		synchronized(solver) {
+			HashMap<Integer,RobotReport> currentReports = new HashMap<Integer,RobotReport>();
 			HashMap<Integer,HashSet<Dependency>> currentDeps = new HashMap<Integer,HashSet<Dependency>>();
 			HashMap<Integer,HashSet<Dependency>> artificialDependencies = new HashMap<Integer,HashSet<Dependency>>(); 
 			HashSet<Dependency> currentReversibleDependencies = new HashSet<Dependency>();
@@ -559,6 +560,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			for (int robotID : robotIDs) {
 				AbstractTrajectoryEnvelopeTracker robotTracker = trackers.get(robotID);
 				RobotReport robotReport = robotTracker.getRobotReport();
+				//Update the coordinator view
+				currentReports.put(robotID,this.getRobotReport(robotID));
 				
 				synchronized(stoppingPoints) {
 					if (stoppingPoints.containsKey(robotID)) {
@@ -580,19 +583,11 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					}
 				}
 			}
-			
-			HashMap<Integer,RobotReport> currentReports = new HashMap<Integer,RobotReport>();
-			
+						
 			//Make deps from critical sections, and remove obsolete critical sections
 			synchronized(allCriticalSections) {
 				
-				depsToCS.clear();
-				
-				//Update the coordinator view
-				for (int robotID : robotIDs) {
-					currentReports.put(robotID,this.getRobotReport(robotID));
-				}
-				
+				depsToCS.clear();				
 				this.blocked = false;
 				
 				HashSet<CriticalSection> toRemove = new HashSet<CriticalSection>();
@@ -1518,10 +1513,11 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		
 		synchronized(solver) {
 			
+			HashMap<Integer,RobotReport> currentReports = new HashMap<Integer,RobotReport>();
 			HashMap<Integer,HashSet<Dependency>> currentDeps = new HashMap<Integer,HashSet<Dependency>>();
 			HashMap<Integer,HashSet<Dependency>> artificialDependencies = new HashMap<Integer,HashSet<Dependency>>(); 
 			DirectedMultigraph<Integer,Dependency> depsGraph = new DirectedMultigraph<Integer, Dependency>(Dependency.class);
-			HashSet<Integer> askForReplan = new HashSet<Integer>();			
+			HashSet<Integer> askForReplan = new HashSet<Integer>();		
 			
 			HashSet<Pair<Integer,Integer>> edgesToDelete = new HashSet<Pair<Integer,Integer>>();
 			HashSet<Pair<Integer,Integer>> edgesToAdd = new HashSet<Pair<Integer,Integer>>();
@@ -1532,6 +1528,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			for (int robotID : robotIDs) {
 				AbstractTrajectoryEnvelopeTracker robotTracker = trackers.get(robotID);
 				RobotReport robotReport = robotTracker.getRobotReport();
+				//Update the coordinator view
+				currentReports.put(robotID,this.getRobotReport(robotID));
+
 				synchronized(stoppingPoints) {
 					if (stoppingPoints.containsKey(robotID)) {
 						metaCSPLogger.info("Stopping points Robot"+robotID+": "+stoppingPoints.get(robotID).toString());
@@ -1554,19 +1553,12 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					}
 				}
 			}
-	
-			HashMap<Integer,RobotReport> currentReports = new HashMap<Integer,RobotReport>();
 			
 			//Make deps from critical sections, and remove obsolete critical sections
 			synchronized(allCriticalSections) {
 				
 				depsToCS.clear();
 				
-				//Update the coordinator view
-				for (int robotID : robotIDs) {
-					currentReports.put(robotID,this.getRobotReport(robotID));
-				}
-	
 				HashSet<CriticalSection> toRemove = new HashSet<CriticalSection>();
 				
 				this.blocked = false;
