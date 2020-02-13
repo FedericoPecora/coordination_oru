@@ -247,13 +247,13 @@ public abstract class AbstractFleetMasterInterface {
 	
 	/**
 	 * Returning the increment of the time of completion of both the robots when giving precedence to the other at a given @{CriticalSection}. Specifically,
-	 * the first value is related to the first robot giving precedence to the second one, viceversa the second value.
+	 * the first value is the increment of the time of completion of the first robot due to the queried critical section when giving precedence to the second one, viceversa the second value.
 	 * Negative delays will be returned to indicate how much a robot may be delayed before the nominal temporal profile of the two robots may conflict while assuming the critical point of both to be set to -1.
 	 * @param cs The critical section to be queried.
 	 * @param te1TCDelays Additional delays to the single-robot time of completion of te1 due to future critical sections along te1 (to be used for propagation).
 	 * @param te2TCDelays Additional delays to the single-robot time of completion of te2 due to future critical sections along te2 (to be used for propagation).
 	 * @return The time of completion increments.
-	 */
+	 */	
 	public Pair<Double,Double> queryTimeDelay(CriticalSection cs, PropagationTCDelays te1TCDelays, PropagationTCDelays te2TCDelays) {
 		Pair<Double, Double> ret = new Pair<Double, Double>(Double.NaN, Double.NaN);
 		if (cs != null) {
