@@ -254,7 +254,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		return g;
 	}
 	
-	private HashSet<Dependency> computeClosestDependencies(HashMap<Integer,HashSet<Dependency>> allDeps, HashMap<Integer, HashSet<Dependency>> artificialDeps) {
+	protected HashSet<Dependency> computeClosestDependencies(HashMap<Integer,HashSet<Dependency>> allDeps, HashMap<Integer, HashSet<Dependency>> artificialDeps) {
 		
 		HashSet<Dependency> closestDeps = new HashSet<Dependency>();
 		
@@ -307,7 +307,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		return this.isDeadlocked;
 	}
 	
-	private HashMap<Integer,HashSet<Dependency>> findCurrentCycles(HashMap<Integer,HashSet<Dependency>> currentDeps, HashMap<Integer,HashSet<Dependency>> artificialDeps, HashSet<Dependency> reversibleDeps, HashMap<Integer,RobotReport> currentReports, Set<Integer> robotIDs) {
+	protected HashMap<Integer,HashSet<Dependency>> findCurrentCycles(HashMap<Integer,HashSet<Dependency>> currentDeps, HashMap<Integer,HashSet<Dependency>> artificialDeps, HashSet<Dependency> reversibleDeps, HashMap<Integer,RobotReport> currentReports, Set<Integer> robotIDs) {
 		
 		HashMap<Integer,HashSet<Dependency>> allDeps = new HashMap<Integer, HashSet<Dependency>>();
 		for (int robotID : currentDeps.keySet()) {
@@ -512,13 +512,6 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		//If both can stop before entering, use ordering function (or closest if no ordering function)
 		metaCSPLogger.finest("Both robots can stop at " + cs);
 		
-		if (useFleetMaster && fleetMasterInterface.checkTrajectoryEnvelopeHasBeenAdded(cs.getTe1()) && fleetMasterInterface.checkTrajectoryEnvelopeHasBeenAdded(cs.getTe2())) {
-			PropagationTCDelays te1TCDelays = new PropagationTCDelays();
-			PropagationTCDelays te2TCDelays = new PropagationTCDelays();
-			Pair<Double, Double> delays = fleetMasterInterface.queryTimeDelay(cs, te1TCDelays, te2TCDelays);
-			return delays.getFirst() < delays.getSecond() ? false : true;
-		}
-		
 		if (yieldIfParking) {
 			boolean robot1ParksInCS = cs.getTe1End() == cs.getTe1().getPathLength()-1;
 			boolean robot2ParksInCS = cs.getTe2End() == cs.getTe2().getPathLength()-1;
@@ -567,9 +560,6 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				AbstractTrajectoryEnvelopeTracker robotTracker = trackers.get(robotID);
 				RobotReport robotReport = robotTracker.getRobotReport();
 				
-				if (useFleetMaster && !(robotTracker instanceof TrajectoryEnvelopeTrackerDummy))
-					fleetMasterInterface.updateCurrentPathIdx(robotTracker.getTrajectoryEnvelope().getID(), Math.max(0, robotReport.getPathIndex()));
-
 				synchronized(stoppingPoints) {
 					if (stoppingPoints.containsKey(robotID)) {
 						metaCSPLogger.info("Stopping points Robot"+robotID+": "+stoppingPoints.get(robotID).toString());
@@ -1177,12 +1167,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					this.trackers.get(robotID).updateTrajectoryEnvelope(newTE);
 				}
 				
-				if (useFleetMaster) {
-					fleetMasterInterface.clearPath(te.getID());
-					if (!fleetMasterInterface.addPath(newTE)) {
-						metaCSPLogger.severe("Unable to add the path to the fleetmaster gridmap. Check if the map contains the given path.");
-					}
-				}
+				onClearingTe(te);
+				onAddingTe(newTE);
 				
 				//Stitch together with rest of constraint network (temporal constraints with parking envelopes etc.)
 				for (Constraint con : solver.getConstraintNetwork().getOutgoingEdges(te)) {

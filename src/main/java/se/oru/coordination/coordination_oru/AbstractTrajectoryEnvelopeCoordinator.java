@@ -126,9 +126,6 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	protected AbstractMotionPlanner defaultMotionPlanner = null;
 	protected HashMap<Integer,AbstractMotionPlanner> motionPlanners = new HashMap<Integer, AbstractMotionPlanner>();
 	
-	protected AbstractFleetMasterInterface fleetMasterInterface = null;
-	protected boolean useFleetMaster = false;
-	
 	//Network knowledge
 	protected double packetLossProbability = NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS;
 	public static int MAX_TX_DELAY = NetworkConfiguration.getMaximumTxDelay();
@@ -229,7 +226,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	public void setInferenceCallback(Callback cb) {
 		this.inferenceCallback = cb;
 	}
-	
+		
 	/**
 	 * Get the control period of this {@link TrajectoryEnvelopeCoordinator}.
 	 * @return the control period (in milliseconds) of this {@link TrajectoryEnvelopeCoordinator}.
@@ -252,46 +249,6 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 */
 	public void setCheckEscapePoses(boolean value) {
 		this.checkEscapePoses = value;
-	}
-	
-	/**
-	 * Enable and initialize the fleetmaster library to estimate precedences to minimize the overall completion time.
-	 * Note: this function should be called before placing the first robot.
-	 * ATTENTION: It is required the user to check that all the paths will lay in the given area.
-	 * @param origin_x The x origin of the map.
-	 * @param origin_y The y origin of the map.
-	 * @param origin_theta The theta origin of the map.
-	 * @param resolution The resolution of the map (in meters/cell).
-	 * @param width Number of columns of the map (in cells).
-	 * @param height Number of rows of the map (in cells).
-	 * @param debug <code>true</code> enables showing the content of each GridMap.
-	 */
-	@Deprecated
-	public void instantiateFleetMaster(double origin_x, double origin_y, double origin_theta, double resolution, long width, long height, boolean debug) {
-		this.useFleetMaster = true;
-		this.fleetMasterInterface = new FleetMasterInterface(origin_x, origin_y, origin_theta, resolution, width, height, debug);
-		this.fleetMasterInterface.setDefaultFootprint(DEFAULT_FOOTPRINT);
-	}
-	
-	/**
-	 * Enable and initialize the fleetmaster library to estimate precedences to minimize the overall completion time.
-	 * @param mapYAMLFile file to the global map of the environment (with absolute path specified as "/home/...").
-	 * @param debug <code>true</code> enables showing the content of each GridMap.
-	 * Note: it is required the map to contain all the possible paths.
-	 */
-	public void instantiateFleetMaster(String mapYAMLFile, boolean debug) {
-		this.useFleetMaster = true;
-		this.fleetMasterInterface = new FleetMasterInterface(mapYAMLFile, debug);
-		this.fleetMasterInterface.setDefaultFootprint(DEFAULT_FOOTPRINT);
-	}
-	
-	/**
-	 * Enable and initialize the fleetmaster library to estimate precedences to minimize the overall completion time.
-	 * @param mapYAMLFile file to the global map of the environment (with absolute path specified as "/home/...").
-	 * Note: it is required the map to contain all the possible paths.
-	 */
-	public void instantiateFleetMaster(String mapYAMLFile) {
-		instantiateFleetMaster(mapYAMLFile, false);
 	}
 	
 	/**
@@ -381,25 +338,6 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		this.forwardModels.put(robotID, fm); 
 	}
 	
-	/**
-	 * Set the parameters for estimating the temporal profile for the trajectories a given robot. 
-	 * Use <code>-1</code> when the parameter is unknown (maxSteeringAngleVel equal to <code>-1</code> will automatically force useSteerDriveVel to be <code>false</code>).
-	 * @param robotID The robot ID.
-	 * @param maxVel The maximum forward linear velocity (m/s).
-	 * @param maxVelRev The maximum backward linear velocity (m/s).
-	 * @param useSteerDriveVel <code>true</code> if the steering velocity should be used.
-	 * @param maxRotationalVel The maximum anti clockwise angular velocity (rad/s).
-	 * @param maxRotationalVelRev The maximum clockwise angular velocity (rad/s).
-	 * @param maxSteeringAngleVel The maximum clockwise steering velocity (rad/s).
-	 * @param maxAcc The maximum linear acceleration (m/s^2).
-	 * @param maxRotationalAcc The maximum angular acceleration (rad/s^2).
-	 * @param maxSteeringAngleAcc The maximum steering acceleration (rad/s^2).
-	 */
-	public void setNominalTrajectoryParameters(int robotID, double maxVel, double maxVelRev, boolean useSteerDriveVel, double maxRotationalVel, double maxRotationalVelRev, double maxSteeringAngleVel, double maxAcc, double maxRotationalAcc, double maxSteeringAngleAcc) {
-		if (useFleetMaster)
-			fleetMasterInterface.setTrajParams(robotID, maxVel, maxVelRev, useSteerDriveVel, maxRotationalVel, maxRotationalVelRev, maxSteeringAngleVel, maxAcc, maxRotationalAcc, maxSteeringAngleAcc);
-	}
-
 	/**
 	 * Get the {@link ForwardModel} of a given robot.
 	 * @param robotID The ID of the robot.
@@ -492,8 +430,13 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	public void setDefaultFootprint(Coordinate ... coordinates) {
 		DEFAULT_FOOTPRINT = coordinates;
 		MAX_DEFAULT_FOOTPRINT_DIMENSION = computeMaxFootprintDimension(coordinates);
-		if (useFleetMaster) this.fleetMasterInterface.setDefaultFootprint(DEFAULT_FOOTPRINT);
+		onSettingDefaultFootprint();
 	}
+	
+	/**
+	 * Additional operations to be performed when setting/updating the default footprint.
+	 */
+	protected void onSettingDefaultFootprint() {}
 
 
 	/**
@@ -520,7 +463,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		maxFootprintDimensions.put(robotID,computeMaxFootprintDimension(coordinates));
 	}
 
-	private double computeMaxFootprintDimension(Coordinate[] coords) {
+	protected double computeMaxFootprintDimension(Coordinate[] coords) {
 		ArrayList<Double> fpX = new ArrayList<Double>();
 		ArrayList<Double> fpY = new ArrayList<Double>();
 		for (Coordinate coord : coords) {
@@ -647,22 +590,28 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 
 			TrajectoryEnvelope te = tracker.getTrajectoryEnvelope();
 			currentParkingEnvelopes.put(robotID, te);	
-			if (useFleetMaster) {
-				if (!fleetMasterInterface.addPath(te)) {
-					metaCSPLogger.severe("Unable to add the path to the fleetmaster gridmap. Check if the map contains the given path.");
-				}
-			}
+			onAddingTe(te);
 
 			synchronized (trackers) {
 				externalCPCounters.remove(trackers.get(robotID));
 				trackers.remove(robotID);
-				
 				trackers.put(robotID, tracker);
 				externalCPCounters.put(tracker, -1);
 			}			
 		}
-			
 	}
+	
+	/**
+	 * Additional operations to be performed when adding a {@link TrajectoryEnvelope}.
+	 * @param te The trajectory envelope to be added.
+	 */
+	protected void onAddingTe(TrajectoryEnvelope te) {};
+	
+	/**
+	 * Additional operations to be performed when removing a {@link TrajectoryEnvelope}.
+	 * @param te The trajectory envelope to be added.
+	 */
+	protected void onClearingTe(TrajectoryEnvelope te) {};
 
 	/**
 	 * Get the {@link FleetVisualization} that is used for displaying the current fleet.
@@ -1362,10 +1311,10 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	protected void cleanUp(TrajectoryEnvelope te) {
 		synchronized (solver) {
 			metaCSPLogger.info("Cleaning up " + te);
-			if (useFleetMaster) fleetMasterInterface.clearPath(te.getID());
 			Constraint[] consToRemove = solver.getConstraintNetwork().getIncidentEdgesIncludingDependentVariables(te);
 			solver.removeConstraints(consToRemove);
 			solver.removeVariable(te);
+			onClearingTe(te);
 		}
 	}
 	
@@ -1555,11 +1504,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 					externalCPCounters.put(tracker, -1);
 				}
 				
-				if (useFleetMaster) {
-					if (!fleetMasterInterface.addPath(te)) {
-						metaCSPLogger.severe("Unable to add the path to the fleetmaster gridmap. Check if the map contains the given path.");
-					}
-				}
+				onAddingTe(te);
 
 				//Now we can signal the parking that it can end (i.e., its deadline will no longer be prolonged)
 				//Note: the parking tracker will anyway wait to exit until earliest end time has been reached

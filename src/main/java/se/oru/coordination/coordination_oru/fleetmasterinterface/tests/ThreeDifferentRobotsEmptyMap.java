@@ -14,7 +14,7 @@ import se.oru.coordination.coordination_oru.NetworkConfiguration;
 import se.oru.coordination.coordination_oru.RobotAtCriticalSection;
 import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
-import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
+import se.oru.coordination.coordination_oru.simulation2D.TimedTrajectoryEnvelopeCoordinatorSimultion;
 import se.oru.coordination.coordination_oru.util.BrowserVisualization;
 import se.oru.coordination.coordination_oru.util.JTSDrawingPanelVisualization;
 
@@ -28,7 +28,7 @@ public class ThreeDifferentRobotsEmptyMap {
 		// -- the factory method getNewTracker() which returns a trajectory envelope tracker
 		// -- the getCurrentTimeInMillis() method, which is used by the coordinator to keep time
 		//You still need to add one or more comparators to determine robot orderings thru critical sections (comparators are evaluated in the order in which they are added)
-		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(MAX_VEL,MAX_ACCEL);
+		final TimedTrajectoryEnvelopeCoordinatorSimultion tec = new TimedTrajectoryEnvelopeCoordinatorSimultion(MAX_VEL,MAX_ACCEL);
 		tec.addComparator(new Comparator<RobotAtCriticalSection> () {
 			@Override
 			public int compare(RobotAtCriticalSection o1, RobotAtCriticalSection o2) {
@@ -61,11 +61,10 @@ public class ThreeDifferentRobotsEmptyMap {
 		};
 		Coordinate[] fp2 = new Coordinate[] {
 				new Coordinate(0.36, 0.0),
-				new Coordinate(0.18, 0.36),
-				new Coordinate(-0.18, 0.36),
-				new Coordinate(-0.36, 0.0),
-				new Coordinate(-0.18, -0.36),
-				new Coordinate(0.18, -0.36)
+				new Coordinate(0.11, 0.34),
+				new Coordinate(-0.29, 0.21),
+				new Coordinate(-0.29, -0.21),
+				new Coordinate(0.11, -0.34),
 		};
 		Coordinate[] fp3 = new Coordinate[] {
 				new Coordinate(-2.0,0.9),
@@ -84,9 +83,9 @@ public class ThreeDifferentRobotsEmptyMap {
 		tec.setForwardModel(3, new ConstantAccelerationForwardModel(0.5*MAX_ACCEL, 0.5*MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
 
 		//Need to instantiate the fleetmaster interface
-		//tec.instantiateFleetMaster(0., 0., 0., 0.1, 500, 500, true);
-		String yamlFile = "maps/map-empty.yaml";
-		tec.instantiateFleetMaster(yamlFile, true);
+		tec.instantiateFleetMaster(0., 0., 0., 0.05, 1000, 1000, true);
+		//String yamlFile = "maps/map-empty.yaml";
+		//tec.instantiateFleetMaster(yamlFile, true);
 		tec.setNominalTrajectoryParameters(1, MAX_VEL, MAX_VEL, false, -1, -1, -1, MAX_ACCEL, -1, -1);
 		tec.setNominalTrajectoryParameters(2, 1.25*MAX_VEL, 1.25*MAX_VEL, false, -1, -1, -1, 1.25*MAX_ACCEL, -1, -1);
 		tec.setNominalTrajectoryParameters(3, 0.5*MAX_VEL, 0.5*MAX_VEL, false, -1, -1, -1, 0.5*MAX_ACCEL, -1, -1);
@@ -123,7 +122,9 @@ public class ThreeDifferentRobotsEmptyMap {
 		// -- each trajectory envelope has a path of one pose (the pose of the location)
 		// -- each trajectory envelope is the footprint of the corresponding robot in that pose
 		tec.placeRobot(1, startPoseRobot1);
+		Thread.sleep(100);
 		tec.placeRobot(2, startPoseRobot2);
+		Thread.sleep(100);
 		tec.placeRobot(3, startPoseRobot3);
 
 		rsp.setFootprint(fp1);
