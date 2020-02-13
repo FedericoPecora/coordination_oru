@@ -383,7 +383,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	
 	/**
 	 * Set the parameters for estimating the temporal profile for the trajectories a given robot. 
-	 * ATTENTION: Use negative values when the parameter is unknown.
+	 * Use <code>-1</code> when the parameter is unknown (maxSteeringAngleVel equal to <code>-1</code> will automatically force useSteerDriveVel to be <code>false</code>).
 	 * @param robotID The robot ID.
 	 * @param maxVel The maximum forward linear velocity (m/s).
 	 * @param maxVelRev The maximum backward linear velocity (m/s).
@@ -397,7 +397,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 */
 	public void setNominalTrajectoryParameters(int robotID, double maxVel, double maxVelRev, boolean useSteerDriveVel, double maxRotationalVel, double maxRotationalVelRev, double maxSteeringAngleVel, double maxAcc, double maxRotationalAcc, double maxSteeringAngleAcc) {
 		if (useFleetMaster)
-			fleetMasterInterface.addTrajParams(robotID, maxVel, maxVelRev, useSteerDriveVel, maxRotationalVel, maxRotationalVelRev, maxSteeringAngleVel, maxAcc, maxRotationalAcc, maxSteeringAngleAcc);
+			fleetMasterInterface.setTrajParams(robotID, maxVel, maxVelRev, useSteerDriveVel, maxRotationalVel, maxRotationalVelRev, maxSteeringAngleVel, maxAcc, maxRotationalAcc, maxSteeringAngleAcc);
 	}
 
 	/**

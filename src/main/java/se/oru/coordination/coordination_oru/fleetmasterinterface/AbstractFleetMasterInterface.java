@@ -136,10 +136,11 @@ public abstract class AbstractFleetMasterInterface {
 	}
 	
 	/**
-	 * Set the trajectory parameters for a robot (see trajectory_processor.h).
+	 * Set the trajectory parameters for a robot. Use <code>-1</code> when the parameter is not known,
+	 * where maxSteeringAngleVel equal to <code>-1</code> will automatically force useSteerDriveVel to be <code>false</code>.
 	 * @param robotID The robot ID.
 	 */
-	public void addTrajParams(int robotID, double maxVel, double maxVelRev, boolean useSteerDriveVel, double maxRotationalVel, double maxRotationalVelRev, double maxSteeringAngleVel, double maxAcc, double maxRotationalAcc, double maxSteeringAngleAcc) {;
+	public void setTrajParams(int robotID, double maxVel, double maxVelRev, boolean useSteerDriveVel, double maxRotationalVel, double maxRotationalVelRev, double maxSteeringAngleVel, double maxAcc, double maxRotationalAcc, double maxSteeringAngleAcc) {;
 		    
 		    trajParams.put(robotID, new TrajParams());
 		    trajParams.get(robotID).maxVel = maxVel;
@@ -167,7 +168,7 @@ public abstract class AbstractFleetMasterInterface {
 	 * @param robotID ID of the robot for which adding the new path.
 	 * @param pathID ID of the path to be added.
 	 * @param pathToAdd The path to be added.
-	 * @param coordinates The footprint to be swept along the path.
+	 * @param coordinates The polygon of the robot footprint (clockwise or anti clockwise coordinates).
 	 * @return <code>true</code> if success.
 	 */
 	public boolean addPath(int robotID, int pathID, PoseSteering[] pathToAdd, Coordinate ... coordinates) {
@@ -182,10 +183,12 @@ public abstract class AbstractFleetMasterInterface {
 		//Add the new path
 		clearPath(pathID);
 		
+		//NOTE fleet
 		if (coordinates.length == 0) coordinates = DEFAULT_FOOTPRINT;	
-		double[] coordinates_x = new double[coordinates.length];
-		double[] coordinates_y = new double[coordinates.length];
-		for (int i = 0; i < coordinates.length; i++) {
+		int num_coordinates = (coordinates.length > 1 && coordinates[0].equals(coordinates[coordinates.length-1])) ? coordinates.length-1 : coordinates.length;
+		double[] coordinates_x = new double[num_coordinates];
+		double[] coordinates_y = new double[num_coordinates];
+		for (int i = 0; i < num_coordinates; i++) {
 			coordinates_x[i] = coordinates[i].x;
 			coordinates_y[i] = coordinates[i].y;
 		}
@@ -203,9 +206,9 @@ public abstract class AbstractFleetMasterInterface {
 		//Call the method. -1 is used as special value to indicate that the path was not correctly added.
 		NativeLong pathCode = new NativeLong(0);
 		if (trajParams.containsKey(robotID)) 
-			pathCode = INSTANCE.addPath(p, path, steering, pathToAdd.length, trajParams.get(robotID), coordinates_x, coordinates_y, coordinates.length);
+			pathCode = INSTANCE.addPath(p, path, steering, pathToAdd.length, trajParams.get(robotID), coordinates_x, coordinates_y, num_coordinates);
 		else
-			pathCode = INSTANCE.addPath(p, path, steering, pathToAdd.length, DEFAULT_TRAJ_PARAMS, coordinates_x, coordinates_y, coordinates.length);
+			pathCode = INSTANCE.addPath(p, path, steering, pathToAdd.length, DEFAULT_TRAJ_PARAMS, coordinates_x, coordinates_y, num_coordinates);
 		paths.put(pathID, pathCode);
 
 
