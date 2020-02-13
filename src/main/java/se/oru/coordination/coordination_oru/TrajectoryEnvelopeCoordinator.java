@@ -1527,9 +1527,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			Set<Integer> robotIDs = trackers.keySet();
 			for (int robotID : robotIDs) {
 				AbstractTrajectoryEnvelopeTracker robotTracker = trackers.get(robotID);
-				RobotReport robotReport = robotTracker.getRobotReport();
 				//Update the coordinator view
-				currentReports.put(robotID,this.getRobotReport(robotID));
+				RobotReport robotReport = robotTracker.getRobotReport();
+				currentReports.put(robotID, robotReport);
 
 				synchronized(stoppingPoints) {
 					if (stoppingPoints.containsKey(robotID)) {

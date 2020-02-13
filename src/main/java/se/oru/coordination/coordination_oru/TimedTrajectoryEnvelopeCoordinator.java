@@ -148,9 +148,9 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 			Set<Integer> robotIDs = trackers.keySet();
 			for (int robotID : robotIDs) {
 				AbstractTrajectoryEnvelopeTracker robotTracker = trackers.get(robotID);
-				RobotReport robotReport = robotTracker.getRobotReport();
 				//Update the coordinator view
-				currentReports.put(robotID,this.getRobotReport(robotID));
+				RobotReport robotReport = robotTracker.getRobotReport();
+				currentReports.put(robotID, robotReport);
 				
 				if (!(robotTracker instanceof TrajectoryEnvelopeTrackerDummy))
 					fleetMasterInterface.updateCurrentPathIdx(robotTracker.getTrajectoryEnvelope().getID(), Math.max(0, robotReport.getPathIndex()));
