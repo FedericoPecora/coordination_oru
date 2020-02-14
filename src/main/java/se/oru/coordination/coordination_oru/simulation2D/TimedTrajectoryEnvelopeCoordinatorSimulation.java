@@ -63,7 +63,7 @@ public class TimedTrajectoryEnvelopeCoordinatorSimulation extends TimedTrajector
 	}
 
 	/**
-	 * Create a new {@link TrajectoryEnvelopeCoordinatorSimulation} with the following default values:
+	 * Create a new {@link TimedTrajectoryEnvelopeCoordinatorSimulation} with the following default values:
 	 * <ul>
 	 * <li><code>CONTROL_PERIOD</code> = 1000</li>
 	 * <li><code>TEMPORAL_RESOLUTION</code> = 1000</li>
@@ -78,7 +78,7 @@ public class TimedTrajectoryEnvelopeCoordinatorSimulation extends TimedTrajector
 	}
 
 	/**
-	 * Create a new {@link TrajectoryEnvelopeCoordinatorSimulation} with the following default values:
+	 * Create a new {@link TimedTrajectoryEnvelopeCoordinatorSimulation} with the following default values:
 	 * <ul>
 	 * <li><code>CONTROL_PERIOD</code> = 1000</li>
 	 * <li><code>TEMPORAL_RESOLUTION</code> = 1000</li>
@@ -91,7 +91,7 @@ public class TimedTrajectoryEnvelopeCoordinatorSimulation extends TimedTrajector
 	}
 
 	/**
-	 * Create a new {@link TrajectoryEnvelopeCoordinatorSimulation} with the following default values:
+	 * Create a new {@link TimedTrajectoryEnvelopeCoordinatorSimulation} with the following default values:
 	 * <ul>
 	 * <li><code>CONTROL_PERIOD</code> = 1000</li>
 	 * <li><code>TEMPORAL_RESOLUTION</code> = 1000</li>
@@ -104,7 +104,7 @@ public class TimedTrajectoryEnvelopeCoordinatorSimulation extends TimedTrajector
 	}
 
 	/**
-	 * Create a new {@link TrajectoryEnvelopeCoordinatorSimulation} with the following default values:
+	 * Create a new {@link TimedTrajectoryEnvelopeCoordinatorSimulation} with the following default values:
 	 * <li><code>MAX_VELOCITY</code> = 10.0</li>
 	 * <li><code>MAX_ACCELERATION</code> = 1.0</li>
 	 * <li><code>trackingPeriodInMillis</code> = 30</li>
@@ -160,7 +160,7 @@ public class TimedTrajectoryEnvelopeCoordinatorSimulation extends TimedTrajector
 
 
 	/**
-	 * Create a new {@link TrajectoryEnvelopeCoordinatorSimulation} with given parameters.
+	 * Create a new {@link TimedTrajectoryEnvelopeCoordinatorSimulation} with given parameters.
 	 * @param CONTROL_PERIOD The control period of the coordinator (e.g., 1000 msec)
 	 * @param TEMPORAL_RESOLUTION The temporal resolution at which the control period is specified (e.g., 1000)
 	 * @param MAX_VELOCITY The maximum speed of a robot (used to appropriately instantiate the {@link TrajectoryEnvelopeTrackerRK4} instances).
