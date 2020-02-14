@@ -92,7 +92,18 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 		if (!fleetMasterInterface.addPath(te)) 
 			metaCSPLogger.severe("Unable to add the path to the fleetmaster gridmap. Check if the map contains the given path.");
 	}
-		
+	
+	/**
+	 * Check if the comparison between two delays is meaningful, i.e., when two delays are both negative,
+	 * then both the precedence orderings are safe, so another heuristic may be used to decide the precedence order.
+	 * @param delay1 The first delay.
+	 * @param delay2 The second delay.
+	 * @return If at least one of them is positive.
+	 */
+	protected boolean oneOrderingIsUnsafe(double delay1, double delay2) {
+		return (delay1 >= 0 || delay2 >= 0) && !(delay1 == 0 && delay2 == 0);
+	}
+	
 	@Override
 	//returns true if robot1 should go before robot2
 	//returns false if robot2 should go before robot1
@@ -105,7 +116,9 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 			PropagationTCDelays te1TCDelays = new PropagationTCDelays();
 			PropagationTCDelays te2TCDelays = new PropagationTCDelays();
 			Pair<Double, Double> delays = fleetMasterInterface.queryTimeDelay(cs, te1TCDelays, te2TCDelays);
-			return delays.getFirst() < delays.getSecond() ? false : true;
+			if (oneOrderingIsUnsafe(delays.getFirst(), delays.getSecond())) {
+				return delays.getFirst() < delays.getSecond() ? false : true;
+			}
 		}
 		
 		if (yieldIfParking) {
