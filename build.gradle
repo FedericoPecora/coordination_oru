@@ -51,8 +51,14 @@ group = 'se.oru.coordination'
 
 dependencies {
 
-  implementation 'com.github.FedericoPecora:coordination_oru:master-SNAPSHOT'
-  //implementation 'com.github.FedericoPecora:coordination_oru:0.5.1'	
+  //Github release:
+  implementation 'com.github.FedericoPecora:coordination_oru:0.5.5'
+
+  //Local snapshot (in your Gradle cache):
+  //implementation 'se.oru.coordination:coordination_oru:0.0.0-SNAPSHOT'
+
+  //Github master snapshot:
+  //implementation 'com.github.FedericoPecora:coordination_oru:master-SNAPSHOT'
 
   implementation 'com.github.FedericoPecora:meta-csp-framework:master-SNAPSHOT'
 

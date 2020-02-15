@@ -14,12 +14,13 @@ import se.oru.coordination.coordination_oru.RobotAtCriticalSection;
 import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
+import se.oru.coordination.coordination_oru.util.BrowserVisualization;
 import se.oru.coordination.coordination_oru.util.JTSDrawingPanelVisualization;
 import se.oru.coordination.coordination_oru.util.Missions;
 
 public class FourRobotsPathPlanning {
 
-		public static void main(String[] args) throws InterruptedException {
+	public static void main(String[] args) throws InterruptedException {
 
 		double MAX_ACCEL = 1.0;
 		double MAX_VEL = 4.0;
@@ -45,26 +46,28 @@ public class FourRobotsPathPlanning {
 			}
 		});
 
-		//You probably also want to provide a non-trivial forward model
-		//(the default assumes that robots can always stop)
+		//Provide a simple forward model
 		tec.setForwardModel(1, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
 		tec.setForwardModel(2, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
 		tec.setForwardModel(3, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
 		tec.setForwardModel(4, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
 
-		Coordinate footprint1 = new Coordinate(-1.0,0.5);
-		Coordinate footprint2 = new Coordinate(1.0,0.5);
-		Coordinate footprint3 = new Coordinate(1.0,-0.5);
-		Coordinate footprint4 = new Coordinate(-1.0,-0.5);
-		tec.setDefaultFootprint(footprint1, footprint2, footprint3, footprint4);
+		Coordinate[] footprint = new Coordinate[] {
+				new Coordinate(-1.0,0.5),
+				new Coordinate(1.0,0.5),
+				new Coordinate(1.0,-0.5),
+				new Coordinate(-1.0,-0.5),
+		};
+		tec.setDefaultFootprint(footprint);
 
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
 
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
-		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
-		//final BrowserVisualization viz = new BrowserVisualization();
-		//viz.setInitialTransform(43, 11, 1.6);
+		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
+		final BrowserVisualization viz = new BrowserVisualization();
+		//viz.setMap("maps/combined3.yaml");
+		viz.setInitialTransform(43, 11, 0.2);
 		tec.setVisualization(viz);
 
 		tec.setUseInternalCriticalPoints(false);
@@ -73,7 +76,7 @@ public class FourRobotsPathPlanning {
 
 		HashMap<Integer,Pose> posesFrom = new HashMap<Integer, Pose>();
 		HashMap<Integer,Pose> posesTo = new HashMap<Integer, Pose>();
-		
+
 		posesFrom.put(1,new Pose(10.0,3.0,Math.PI));
 		posesFrom.put(2,new Pose(3.0,10.0,Math.PI/2));
 		posesFrom.put(3,new Pose(10.0,17.0,0.0));
@@ -87,10 +90,10 @@ public class FourRobotsPathPlanning {
 
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
 		rsp.setRadius(0.2);
-		rsp.setFootprint(footprint1, footprint2, footprint3, footprint4);
+		rsp.setFootprint(footprint);
 		rsp.setTurningRadius(3.0);
 		rsp.setDistanceBetweenPathPoints(0.1);
-		
+
 		for (int robotID = 1; robotID <= 4; robotID++) {
 			rsp.setStart(posesFrom.get(robotID));
 			rsp.setGoals(posesTo.get(robotID));
@@ -100,9 +103,9 @@ public class FourRobotsPathPlanning {
 			Mission mInv = new Mission(robotID, rsp.getPathInv());
 			Missions.enqueueMission(mInv);
 		}
-		
+
 		//Missions.saveScenario("FourRobotsExampleScenario");
-		
+
 		//Place robots in their initial locations (looked up in the data file that was loaded above)
 		// -- creates a trajectory envelope for each location, representing the fact that the robot is parked
 		// -- each trajectory envelope has a path of one pose (the pose of the location)
@@ -111,13 +114,13 @@ public class FourRobotsPathPlanning {
 		tec.placeRobot(2, posesFrom.get(2));
 		tec.placeRobot(3, posesFrom.get(3));
 		tec.placeRobot(4, posesFrom.get(4));
-		
+
 		tec.setBreakDeadlocksByReordering(true);
 		tec.setBreakDeadlocksByReplanning(true);
 		tec.setDefaultMotionPlanner(rsp);
-		
+
 		Missions.startMissionDispatchers(tec, 1,2,3,4);
-		
+
 	}
 
 }

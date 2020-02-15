@@ -12,14 +12,16 @@ import se.oru.coordination.coordination_oru.ConstantAccelerationForwardModel;
 import se.oru.coordination.coordination_oru.CriticalSection;
 import se.oru.coordination.coordination_oru.RobotAtCriticalSection;
 import se.oru.coordination.coordination_oru.RobotReport;
+import se.oru.coordination.coordination_oru.TrackingCallback;
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
+import se.oru.coordination.coordination_oru.util.BrowserVisualization;
 import se.oru.coordination.coordination_oru.util.JTSDrawingPanelVisualization;
 import se.oru.coordination.coordination_oru.util.Missions;
 
 public class FourRobotsSavedScenario {
 
-		public static void main(String[] args) throws InterruptedException {
+	public static void main(String[] args) throws InterruptedException {
 
 		double MAX_ACCEL = 1.0;
 		double MAX_VEL = 4.0;
@@ -41,45 +43,81 @@ public class FourRobotsSavedScenario {
 			}
 		});
 
-		Coordinate footprint1 = new Coordinate(-1.0,0.5);
-		Coordinate footprint2 = new Coordinate(1.0,0.5);
-		Coordinate footprint3 = new Coordinate(1.0,-0.5);
-		Coordinate footprint4 = new Coordinate(-1.0,-0.5);
-		tec.setDefaultFootprint(footprint1, footprint2, footprint3, footprint4);
+		Coordinate[] footprint = new Coordinate[] {
+				new Coordinate(-1.0,0.5),
+				new Coordinate(1.0,0.5),
+				new Coordinate(1.0,-0.5),
+				new Coordinate(-1.0,-0.5),
+		};
+		tec.setDefaultFootprint(footprint);
 
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
 
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
-		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
-		//final BrowserVisualization viz = new BrowserVisualization();
-		//viz.setInitialTransform(43, 11, 1.6);
+		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
+		final BrowserVisualization viz = new BrowserVisualization();
+		viz.setInitialTransform(43, 11, 0.2);
 		tec.setVisualization(viz);
 
 		tec.setUseInternalCriticalPoints(false);
 
 		//Load scenario (obtained from FourRobotsPathPlanning example)
 		Missions.loadScenario("FourRobotsExampleScenario");
-		
+
 		HashMap<Integer,Pose> initPoses = Missions.getInitialPoses();
 		Set<Integer> robotIDs = initPoses.keySet();
 		for (Integer robotID : robotIDs) {
 			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));			
 			tec.placeRobot(robotID, initPoses.get(robotID));
 		}
-		
+
 		tec.setBreakDeadlocksByReordering(true);
-		
+
 		tec.setBreakDeadlocksByReplanning(true);
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
 		rsp.setRadius(0.2);
-		rsp.setFootprint(footprint1, footprint2, footprint3, footprint4);
+		rsp.setFootprint(footprint);
 		rsp.setTurningRadius(3.0);
 		rsp.setDistanceBetweenPathPoints(0.1);
 		tec.setDefaultMotionPlanner(rsp);
-		
+
+		for (Integer robotID : robotIDs) {
+
+			final int myRobotID = robotID;
+
+			tec.addTrackingCallback(robotID, new TrackingCallback() {
+
+				private int missionNumber = 0;
+
+				@Override
+				public void onTrackingStart() {
+					if (tec.isDriving(myRobotID)) missionNumber++;
+				}
+
+				@Override
+				public void onTrackingFinished() { }
+
+				@Override
+				public String[] onPositionUpdate() {				
+					//return new String[0];
+					return new String[] { "(" + missionNumber + ")" };
+				}
+
+				@Override
+				public void onNewGroundEnvelope() { }
+
+				@Override
+				public void beforeTrackingStart() { }
+
+				@Override
+				public void beforeTrackingFinished() { }
+			});
+		}
+
+
 		Missions.startMissionDispatchers(tec, 1,2,3,4);
-		
+
 	}
 
 }
