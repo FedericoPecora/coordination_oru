@@ -16,7 +16,6 @@ import se.oru.coordination.coordination_oru.TrackingCallback;
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
 import se.oru.coordination.coordination_oru.util.BrowserVisualization;
-import se.oru.coordination.coordination_oru.util.JTSDrawingPanelVisualization;
 import se.oru.coordination.coordination_oru.util.Missions;
 
 public class FourRobotsSavedScenario {
@@ -65,6 +64,7 @@ public class FourRobotsSavedScenario {
 		//Load scenario (obtained from FourRobotsPathPlanning example)
 		Missions.loadScenario("FourRobotsExampleScenario");
 
+		//Put robots in their initial poses (= first pose of each robot's first mission)
 		HashMap<Integer,Pose> initPoses = Missions.getInitialPoses();
 		Set<Integer> robotIDs = initPoses.keySet();
 		for (Integer robotID : robotIDs) {
@@ -73,7 +73,7 @@ public class FourRobotsSavedScenario {
 		}
 
 		tec.setBreakDeadlocksByReordering(true);
-
+		
 		tec.setBreakDeadlocksByReplanning(true);
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
 		rsp.setRadius(0.2);
@@ -82,6 +82,8 @@ public class FourRobotsSavedScenario {
 		rsp.setDistanceBetweenPathPoints(0.1);
 		tec.setDefaultMotionPlanner(rsp);
 
+		//For each robot, add a callback which will print additional information
+		//in the visualization (the number of missions completed)
 		for (Integer robotID : robotIDs) {
 
 			final int myRobotID = robotID;
@@ -115,9 +117,9 @@ public class FourRobotsSavedScenario {
 			});
 		}
 
-
+		//Start mission dispatchers (loop through all missions forever)
 		Missions.startMissionDispatchers(tec, 1,2,3,4);
-
+	
 	}
 
 }
