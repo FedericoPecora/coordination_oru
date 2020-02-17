@@ -34,8 +34,6 @@ import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.util.AffineTransformation;
 import aima.core.util.datastructure.Pair;
-import se.oru.coordination.coordination_oru.fleetmasterinterface.AbstractFleetMasterInterface;
-import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInterface;
 import se.oru.coordination.coordination_oru.motionplanning.AbstractMotionPlanner;
 import se.oru.coordination.coordination_oru.util.FleetVisualization;
 import se.oru.coordination.coordination_oru.util.StringUtils;
@@ -429,7 +427,12 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 */
 	public void setDefaultFootprint(Coordinate ... coordinates) {
 		DEFAULT_FOOTPRINT = coordinates;
-		MAX_DEFAULT_FOOTPRINT_DIMENSION = computeMaxFootprintDimension(coordinates);
+		double[] maxMinDimension = computeMaxMinFootprintDimension(coordinates);
+		if (maxMinDimension[1] == 0) {
+			metaCSPLogger.severe("Robots' footprint cannot have null area!");
+			throw new Error("Robots' footprint cannot have null area!");
+		}
+		MAX_DEFAULT_FOOTPRINT_DIMENSION = maxMinDimension[0];
 		onSettingDefaultFootprint();
 	}
 	
@@ -437,19 +440,6 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 * Additional operations to be performed when setting/updating the default footprint.
 	 */
 	protected void onSettingDefaultFootprint() {}
-
-
-	/**
-	 * Set the default footprint of robots, which is used for computing spatial envelopes.
-	 * Provide the bounding polygon of the machine assuming its reference point is in (0,0), and its
-	 * orientation is aligned with the x-axis. The coordinates must be in CW or CCW order.
-	 * @param coordinates The coordinates delimiting bounding polygon of the footprint.
-	 */
-	@Deprecated
-	public void setFootprint(Coordinate ... coordinates) {
-		DEFAULT_FOOTPRINT = coordinates;
-		MAX_DEFAULT_FOOTPRINT_DIMENSION = computeMaxFootprintDimension(coordinates);
-	}
 
 	/**
 	 * Set the footprint of a given robot, which is used for computing spatial envelopes.
@@ -460,10 +450,15 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 */
 	public void setFootprint(int robotID, Coordinate ... coordinates) {
 		this.footprints.put(robotID, coordinates);
-		maxFootprintDimensions.put(robotID,computeMaxFootprintDimension(coordinates));
+		double[] maxMinDimension = computeMaxMinFootprintDimension(coordinates);
+		if (maxMinDimension[1] == 0) {
+			metaCSPLogger.severe("Robots' footprint cannot have null area!");
+			throw new Error("Robots' footprint cannot have null area!");
+		}
+		maxFootprintDimensions.put(robotID,computeMaxMinFootprintDimension(coordinates)[0]);
 	}
 
-	protected double computeMaxFootprintDimension(Coordinate[] coords) {
+	protected double[] computeMaxMinFootprintDimension(Coordinate[] coords) {
 		ArrayList<Double> fpX = new ArrayList<Double>();
 		ArrayList<Double> fpY = new ArrayList<Double>();
 		for (Coordinate coord : coords) {
@@ -472,7 +467,8 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		}
 		Collections.sort(fpX);
 		Collections.sort(fpY);
-		return Math.max(fpX.get(fpX.size()-1)-fpX.get(0), fpY.get(fpY.size()-1)-fpY.get(0));
+		return new double[] {Math.max(fpX.get(fpX.size()-1)-fpX.get(0), fpY.get(fpY.size()-1)-fpY.get(0)), 
+				Math.min(fpX.get(fpX.size()-1)-fpX.get(0), fpY.get(fpY.size()-1)-fpY.get(0))};
 	}
 
 	/**
@@ -1371,8 +1367,6 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				final TrajectoryEnvelope startParking = startParkingTracker.getTrajectoryEnvelope();
 				//Create end parking envelope
 				final TrajectoryEnvelope endParking = solver.createParkingEnvelope(te.getRobotID(), PARKING_DURATION, te.getTrajectory().getPose()[te.getTrajectory().getPose().length-1], "whatever", getFootprint(te.getRobotID()));
-
-				//TODO Add parking envelope to fleetmaster?
 				
 				//Driving meets final parking
 				AllenIntervalConstraint meets1 = new AllenIntervalConstraint(AllenIntervalConstraint.Type.Meets);

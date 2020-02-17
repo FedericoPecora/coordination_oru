@@ -13,6 +13,8 @@ import com.sun.jna.NativeLong;
 import com.sun.jna.ptr.DoubleByReference;
 import com.sun.jna.ptr.PointerByReference;
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryFactory;
 
 import aima.core.util.datastructure.Pair;
 import se.oru.coordination.coordination_oru.CriticalSection;
@@ -48,22 +50,24 @@ public abstract class AbstractFleetMasterInterface {
 
 	public static FleetMasterInterfaceLib INSTANCE = null;
 	static {
-		NativeLibrary.addSearchPath("fleetmaster", "FleetMasterInterface"); //FIXME How to add the path of the library? Now it is in {$FLEETMASTER_WS}/devel
+		NativeLibrary.addSearchPath("fleetmaster", "/home/anna/fleet_ws/devel/lib"); //FIXME How to add the path of the library? Now it is in {$FLEETMASTER_WS}/devel
 		INSTANCE = Native.loadLibrary("fleetmaster", FleetMasterInterfaceLib.class);
 	}
 	
 
 	/**
 	 * Class constructor.
-	 * @param origin_x The x origin of the map.
-	 * @param origin_y The y origin of the map.
-	 * @param origin_theta The theta origin of the map.
-	 * @param resolution The resolution of the map (in meters/cell).
-	 * @param width Number of columns of the map (in cells).
-	 * @param height Number of rows of the map (in cells).
-	 * @param debug <code>true</code> enables writing to screen debugging info.
+	 * @param origin_x The x coordinate (in global inertial frame) of the lower-left pixel of fleetmaster GridMap.
+	 * @param origin_y The y coordinate (in global inertial frame) of the lower-left pixel of fleetmaster GridMap.
+	 * @param origin_theta The theta origin of the lower-left pixel map (counterclockwise rotation. 
+	 * 					   However, many parts of the system currently ignore it).
+	 * @param resolution The resolution of the map (in meters/cell). It is assumed this parameter to be global among the fleet.
+	 * @param width Number of columns of the map (in cells) if dynamic sizing is not enabled.
+	 * @param height Number of rows of the map (in cells) if dynamic sizing is not enabled.
+	 * @param dynamic_size If <code>true</code>, it allows to store only the bounding box containing each path.
+	 * @param debug If <code>true</code>, it enables writing to screen debugging info.
 	 */
-	public AbstractFleetMasterInterface(double origin_x, double origin_y, double origin_theta, double resolution, long width, long height, boolean debug) {
+	public AbstractFleetMasterInterface(double origin_x, double origin_y, double origin_theta, double resolution, long width, long height, boolean dynamic_size, boolean debug) {
 		DEFAULT_TRAJ_PARAMS = new TrajParams();
 		DEFAULT_TRAJ_PARAMS.maxVel = 1.;
 	    DEFAULT_TRAJ_PARAMS.maxVelRev = 1.;
@@ -82,6 +86,7 @@ public abstract class AbstractFleetMasterInterface {
 		gridParams.resolution = resolution;
 		gridParams.width = new NativeLong(width);
 		gridParams.height = new NativeLong(height);
+		gridParams.dynamic_size = dynamic_size;
 		gridParams.debug = debug;
 	    
 		this.paths = new HashMap<Integer, NativeLong>();
@@ -92,7 +97,7 @@ public abstract class AbstractFleetMasterInterface {
 	 * Abstract class constructor
 	 */
 	public AbstractFleetMasterInterface() {
-		this(0., 0., 0., 0.1, 100, 100, false);
+		this(0., 0., 0., 0.1, 100, 100, false, false);
 	}
 	
 	/**
@@ -155,25 +160,37 @@ public abstract class AbstractFleetMasterInterface {
 	}
 	
 	/**
-	 * Add a trajectory envelope to the fleetmaster gridmap.
-	 * @param te The trajectory envelope to add.
-	 * @return <code>true</code> if success.
-	 */
-	public boolean addPath(TrajectoryEnvelope te) {
-		return addPath(te.getRobotID(), te.getID(), te.getTrajectory().getPoseSteering(), te.getFootprint().getCoordinates());
-	}
-	
-	/**
-	 * Add a spatial envelope to the fleetmaster gridmap.
+	 * Add a spatial envelope to the fleetmaster gridmap while giving its bounding box.
 	 * @param robotID ID of the robot for which adding the new path.
 	 * @param pathID ID of the path to be added.
 	 * @param pathToAdd The path to be added.
 	 * @param coordinates The polygon of the robot footprint (clockwise or anti clockwise coordinates).
 	 * @return <code>true</code> if success.
 	 */
-	public boolean addPath(int robotID, int pathID, PoseSteering[] pathToAdd, Coordinate ... coordinates) {
-		if (p == null || pathToAdd.length == 0) return false; //FIXME log error
+	public boolean addPath(int robotID, int pathID, PoseSteering[] pathToAdd, Geometry boundingBox, Coordinate ... coordinates) {
+		if (p == null) {
+			metaCSPLogger.severe("The fleetmaster has noot been initialized yet. Call init function first!");
+			return false;
+		}
 		
+		if (pathToAdd.length == 0) {
+				metaCSPLogger.severe("Added paths cannot have have null length!");
+				return false;
+		}
+		
+		if (coordinates.length == 0) coordinates = DEFAULT_FOOTPRINT;	
+		GeometryFactory gf = new GeometryFactory();
+		Coordinate[] newCoords = new Coordinate[coordinates.length+1];
+		for (int i = 0; i < coordinates.length; i++) {
+			newCoords[i] = coordinates[i];
+		}
+		newCoords[newCoords.length-1] = coordinates[0];
+		gf.createPolygon(newCoords);
+		if (gf.createPolygon(newCoords).getArea() == 0) {
+			metaCSPLogger.severe("Robots' footprint cannot have null area!");
+			throw new Error("Robots' footprint cannot have null area!");
+		}
+			
 		//already added
 		if (paths.containsKey(pathID) && paths.get(pathID) != new NativeLong(0)) {
 			metaCSPLogger.warning("Path already stored.");
@@ -183,17 +200,14 @@ public abstract class AbstractFleetMasterInterface {
 		//Add the new path
 		clearPath(pathID);
 		
-		//NOTE fleet
-		if (coordinates.length == 0) coordinates = DEFAULT_FOOTPRINT;	
-		int num_coordinates = (coordinates.length > 1 && coordinates[0].equals(coordinates[coordinates.length-1])) ? coordinates.length-1 : coordinates.length;
-		double[] coordinates_x = new double[num_coordinates];
-		double[] coordinates_y = new double[num_coordinates];
-		for (int i = 0; i < num_coordinates; i++) {
+		//Parse the Java values for the path and the footprint
+		double[] coordinates_x = new double[coordinates.length];
+		double[] coordinates_y = new double[coordinates.length];
+		for (int i = 0; i < coordinates.length; i++) {
 			coordinates_x[i] = coordinates[i].x;
 			coordinates_y[i] = coordinates[i].y;
 		}
 		
-		//Parse the Java values for the path and the footprint
 		PathPose[] path = (PathPose[])new PathPose().toArray(pathToAdd.length);
 		double[] steering = new double[pathToAdd.length];
 		for (int i = 0; i < pathToAdd.length; i++) {
@@ -202,20 +216,41 @@ public abstract class AbstractFleetMasterInterface {
 			path[i].theta = pathToAdd[i].getTheta();
 			steering[i] = pathToAdd[i].getSteering();
 		}
+		
+		Coordinate[] bbx = (boundingBox == null) ? null : boundingBox.getCoordinates();
 				
 		//Call the method. -1 is used as special value to indicate that the path was not correctly added.
 		NativeLong pathCode = new NativeLong(0);
-		if (trajParams.containsKey(robotID)) 
-			pathCode = INSTANCE.addPath(p, path, steering, pathToAdd.length, trajParams.get(robotID), coordinates_x, coordinates_y, num_coordinates);
-		else
-			pathCode = INSTANCE.addPath(p, path, steering, pathToAdd.length, DEFAULT_TRAJ_PARAMS, coordinates_x, coordinates_y, num_coordinates);
+		TrajParams trjp = trajParams.containsKey(robotID) ? trajParams.get(robotID) : DEFAULT_TRAJ_PARAMS;
+		double bottom_left_x = (bbx == null) ? Double.MAX_VALUE : bbx[0].x;
+		double bottom_left_y = (bbx == null) ? Double.MAX_VALUE : bbx[0].y;
+		double top_right_x = (bbx == null) ? Double.MAX_VALUE : bbx[2].x;
+		double top_right_y = (bbx == null) ? Double.MAX_VALUE : bbx[2].y;
+		pathCode = INSTANCE.addPath(p, path, steering, pathToAdd.length, trjp, coordinates_x, coordinates_y, coordinates.length, bottom_left_x, bottom_left_y, top_right_x, top_right_y);
 		paths.put(pathID, pathCode);
-
 
 		metaCSPLogger.info("Adding path RobotID: " + robotID + ", pathID: " + pathID + ", fleetmaster pathID: " + path.hashCode() +".");
 		
 		return !pathCode.equals(new NativeLong(0));
 	}
+	
+	/**
+	 * Add a trajectory envelope to the fleetmaster gridmap while giving its bounding box.
+	 * @param te The trajectory envelope to add.
+	 * @return <code>true</code> if success.
+	 */
+	public boolean addPath(TrajectoryEnvelope te) {
+		if (te.getEnvelopeBoundingBox() == null) {
+			metaCSPLogger.severe("The given TrajectoryEnvelope is empty!");
+			throw new Error("The given TrajectoryEnvelope is empty!");
+		}
+		if (te.getEnvelopeBoundingBox().getArea() <= 0) {
+			metaCSPLogger.severe("Robots' footprint cannot have null area!");
+			throw new Error("Robots' footprint cannot have null area!");
+		}
+		return addPath(te.getRobotID(), te.getID(), te.getTrajectory().getPoseSteering(), te.getEnvelopeBoundingBox(), te.getFootprint().getCoordinates());
+	}
+
 	
 	/**
 	 * Remove the path from the fleetmaster GridMaps.

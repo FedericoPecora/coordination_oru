@@ -122,9 +122,7 @@ public class ThreeDifferentRobotsEmptyMap {
 		// -- each trajectory envelope has a path of one pose (the pose of the location)
 		// -- each trajectory envelope is the footprint of the corresponding robot in that pose
 		tec.placeRobot(1, startPoseRobot1);
-		Thread.sleep(100);
 		tec.placeRobot(2, startPoseRobot2);
-		Thread.sleep(100);
 		tec.placeRobot(3, startPoseRobot3);
 
 		rsp.setFootprint(fp1);

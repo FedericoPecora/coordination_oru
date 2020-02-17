@@ -18,42 +18,44 @@ public class FleetMasterInterface extends AbstractFleetMasterInterface {
 	
 	/**
 	 * Class constructor.
-	 * ATTENTION: It is required the user to check that all the paths will lay in the given area.
-	 * @param origin_x The x origin of the map.
-	 * @param origin_y The y origin of the map.
-	 * @param origin_theta The theta origin of the map.
-	 * @param resolution The resolution of the map (in meters/cell).
-	 * @param width Number of columns of the map (in cells).
-	 * @param height Number of rows of the map (in cells).
-	 * @param debug <code>true</code> enables writing to screen debugging info.
+	 * ATTENTION: If dynamic_size is <code>false</code>, then the user should check that all the paths will lay in the given area.
+	 * @param origin_x The x coordinate (in global inertial frame) of the lower-left pixel of fleetmaster GridMap.
+	 * @param origin_y The y coordinate (in global inertial frame) of the lower-left pixel of fleetmaster GridMap.
+	 * @param origin_theta The theta origin of the lower-left pixel map (counterclockwise rotation. 
+	 * 					   However, many parts of the system currently ignore it).
+	 * @param resolution The resolution of the map (in meters/cell). It is assumed this parameter to be global among the fleet.
+	 * @param width Number of columns of the map (in cells) if dynamic sizing is not enabled.
+	 * @param height Number of rows of the map (in cells) if dynamic sizing is not enabled.
+	 * @param dynamic_size If <code>true</code>, it allows to store only the bounding box containing each path.
+	 * @param debug If <code>true</code>, it enables writing to screen debugging info.
 	 */
-	@Deprecated
-	public FleetMasterInterface(double origin_x, double origin_y, double origin_theta, double resolution, long width, long height, boolean debug) {
-		super(origin_x, origin_y, origin_theta, resolution, width,  height, debug);
+	public FleetMasterInterface(double origin_x, double origin_y, double origin_theta, double resolution, long width, long height, boolean dynamic_size, boolean debug) {
+		super(origin_x, origin_y, origin_theta, resolution, width,  height, dynamic_size, debug);
 		init();
 	}
 	
 	/**
 	 * Class constructor.
-	 * ATTENTION: It is required the user to check that all the paths will lay in the given area.
-	 * @param origin_x The x origin of the map.
-	 * @param origin_y The y origin of the map.
-	 * @param origin_theta The theta origin of the map.
-	 * @param resolution The resolution of the map (in meters/cell).
-	 * @param width Number of columns of the map (in cells).
-	 * @param height Number of rows of the map (in cells).
+	 * ATTENTION: If dynamic_size is <code>false</code>, then the user should check that all the paths will lay in the given area.
+	 * @param origin_x The x coordinate (in global inertial frame) of the lower-left pixel of fleetmaster GridMap.
+	 * @param origin_y The y coordinate (in global inertial frame) of the lower-left pixel of fleetmaster GridMap.
+	 * @param origin_theta The theta origin of the lower-left pixel map (counterclockwise rotation. 
+	 * 					   However, many parts of the system currently ignore it).
+	 * @param resolution The resolution of the map (in meters/cell). It is assumed this parameter to be global among the fleet.
+	 * @param width Number of columns of the map (in cells) if dynamic sizing is not enabled.
+	 * @param height Number of rows of the map (in cells) if dynamic sizing is not enabled.
 	 */
-	@Deprecated
-	public FleetMasterInterface(double origin_x, double origin_y, double origin_theta, double resolution, long width, long height) {
-		this(origin_x, origin_y, origin_theta, resolution, width,  height, false);
+	public FleetMasterInterface(double origin_x, double origin_y, double origin_theta, double resolution, long width, long height, boolean dynamic_size) {
+		this(origin_x, origin_y, origin_theta, resolution, width,  height, dynamic_size, false);
 	}
 	
 	/**
-	 * Class constructor.
+	 * Class constructor when not using dynamic sizing (e.g., for small maps). All the grid parameters are set according to the yaml file.
 	 * @param mapYAMLFile file to the global map of the environment (path specified as "/.../...").
 	 * Possible: absolute paths or stored in the maps directory of the coordination_oru package (e.g., "maps/map-empty");
 	 * Note: it is required the map to contain all the possible paths.
 	 */
+	@Deprecated
 	public FleetMasterInterface(String mapYAMLFile, boolean debug) {
 		super();
 		
@@ -110,6 +112,7 @@ public class FleetMasterInterface extends AbstractFleetMasterInterface {
 		gridParams.resolution = resolution;
 		gridParams.width = new NativeLong(width);
 		gridParams.height = new NativeLong(height);
+		gridParams.dynamic_size = false;
 		gridParams.debug = debug;
 		
 		init();

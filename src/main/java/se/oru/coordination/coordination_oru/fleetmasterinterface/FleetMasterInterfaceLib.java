@@ -14,8 +14,9 @@ import com.sun.jna.ptr.PointerByReference;
 public interface FleetMasterInterfaceLib extends Library {
 			
 	PointerByReference init(GridParams gridParams);
-	
-	NativeLong addPath(PointerByReference p, PathPose[] path, double[] steering, int pathLength, TrajParams trajParams, double[] coordinates_x, double[] coordinates_y, int num_coordinate);
+		
+	NativeLong addPath(PointerByReference p, PathPose[] path, double[] steering, int pathLength, TrajParams trajParams, double[] coordinates_x, double[] coordinates_y, int num_coordinate, 
+			double bottom_left_x, double bottom_left_y, double top_right_x, double top_right_y);
 	
     void removePath(PointerByReference p, NativeLong id);
 
@@ -49,6 +50,7 @@ public interface FleetMasterInterfaceLib extends Library {
 		public double resolution;
 		public NativeLong width;
 		public NativeLong height;
+		public boolean dynamic_size;
 		public boolean debug;
 		
 		public GridParams() {}
@@ -57,7 +59,7 @@ public interface FleetMasterInterfaceLib extends Library {
 		}
 		@Override
 		protected List<String> getFieldOrder() {
-			return Arrays.asList(new String[] {"origin", "resolution", "width", "height", "debug"});
+			return Arrays.asList(new String[] {"origin", "resolution", "width", "height", "dynamic_size", "debug"});
 		}
 	}
 	

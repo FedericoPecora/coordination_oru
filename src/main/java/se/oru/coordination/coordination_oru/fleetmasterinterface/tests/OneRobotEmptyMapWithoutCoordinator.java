@@ -3,6 +3,7 @@ package se.oru.coordination.coordination_oru.fleetmasterinterface.tests;
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Geometry;
 
 import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInterface;
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
@@ -36,7 +37,7 @@ public class OneRobotEmptyMapWithoutCoordinator {
 		rsp.plan();
 		
 		//Add the path to the fleetmaster
-		flint.addPath(1, rsp.getPath().hashCode(), rsp.getPath());
+		flint.addPath(1, rsp.getPath().hashCode(), rsp.getPath(), null);
 			
 		try {
 			Thread.sleep(2000);
