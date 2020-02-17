@@ -44,7 +44,8 @@ import se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator;
 import se.oru.coordination.coordination_oru.motionplanning.AbstractMotionPlanner;
 
 /**
- * This class collects utility methods for storing missions and extracting information from YAML files.
+ * This class collects utility methods for storing {@link Mission}s, regulating their dispatch, maintaining locations
+ * and paths (i.e., a roadmap), finding shortest paths through the roadmap, and extracting information from YAML files.
  * 
  * @author fpa
  *
@@ -118,10 +119,18 @@ public class Missions {
 		return length;
 	}
 
+	/**
+	 * Get the image of the current map, if set.
+	 * @return The image of the current map, <code>null</code> if no map is known.
+	 */
 	public static BufferedImage getMap() {
 		return Missions.map;
 	}
 	
+	/**
+	 * Get the YAML file of the current map, if set.
+	 * @return The YAML file of the current map, <code>null</code> if no map is known.
+	 */
 	public static String getMapYAML() {
 		return Missions.mapYAML;
 	}
@@ -192,6 +201,12 @@ public class Missions {
 		}
 	}
 	
+	/**
+	 * Save the current scenario. A scenario consists of all known locations and paths,
+	 * all known missions, and a map of the environment if it is known. This is stored in a
+	 * ZIP file with the given name, and can be re-loaded via a call to {@link Missions#loadScenario(String)}.
+	 * @param scenarioName The name of the archive in which to save the current scenario.
+	 */
 	public static void saveScenario(String scenarioName) {
         try {
         	String zipFilename = scenarioName+".zip";
@@ -208,6 +223,13 @@ public class Missions {
         catch (IOException e) { e.printStackTrace(); }		
 	}
 	
+	/**
+	 * Load a scenario. A scenario contains one or more of the following:
+	 * locations, paths, missions, and a map of the environment.
+	 * Scenarios are stored in ZIP files, which can be saved via a call
+	 * to {@link Missions#saveScenario(String)}.
+	 * @param scenarioName The name of the scenario to load.
+	 */
 	@SuppressWarnings("unchecked")
 	public static void loadScenario(String scenarioName) {
 		String zipFilename = scenarioName+".zip";
@@ -240,6 +262,10 @@ public class Missions {
 		return gson.fromJson(json, t);
 	}
 	
+	/**
+	 * Set the current map.
+	 * @param mapYAMLFile A file containing the description of the current map and a pointer to its image.
+	 */
 	public static void setMap(String mapYAMLFile) {
 		try {
 			File file = new File(mapYAMLFile);
@@ -264,6 +290,11 @@ public class Missions {
 		catch (IOException e) { e.printStackTrace(); }
 	}
 	
+	/**
+	 * Get the names of the initial locations of each robot's first {@link Mission}.
+	 * The poses corresponding to each location name can be looked up via the method {@link Missions#getLocation(String)}.
+	 * @return
+	 */
 	public static HashMap<Integer,String> getInitialLocations() {
 		HashMap<Integer,String> ret = new HashMap<Integer, String>();
 		for (Integer robotID : missions.keySet()) {
@@ -526,10 +557,19 @@ public class Missions {
 	 * Get the known locations and their poses.
 	 * @return All known locations and their poses.
 	 */
+	@Deprecated
 	public static HashMap<String,Pose> getLocations() {
 		return locations;
 	}
-	
+
+	/**
+	 * Get the known locations and their poses.
+	 * @return All known locations and their poses.
+	 */
+	public static HashMap<String,Pose> getLocationsAndPoses() {
+		return locations;
+	}
+
 	/**
 	 * Load location and path data from a file
 	 * @param fileName The file to load the data from
@@ -583,7 +623,7 @@ public class Missions {
 	}
 
 	/**
-	 * Remove a location.
+	 * Remove a named location.
 	 * @param locationName The name of the location to remove.
 	 */
 	public static void removeLocation(String locationName) {
@@ -602,11 +642,24 @@ public class Missions {
 	 * @param name The name of the location to get
 	 * @return The {@link Pose} of the location
 	 */
+	@Deprecated
 	public static Pose getLocation(String name) {
 		Pose ret = locations.get(name);
 		if (ret == null) throw new Error("Unknown location " + name);
 		return ret;
 	}
+	
+	/**
+	 * Get the pose of a given named location.
+	 * @param name The name of the location to get the pose of.
+	 * @return The {@link Pose} of the location
+	 */
+	public static Pose getLocationPose(String name) {
+		Pose ret = locations.get(name);
+		if (ret == null) throw new Error("Unknown location " + name);
+		return ret;
+	}
+
 	
 	/**
 	 * Get the mission following a given mission.
@@ -636,10 +689,10 @@ public class Missions {
 	}
 
 	/**
-	 * Get path files from the data loaded by method loadLocationAndPathData()
-	 * @param fromLocation The name of the source location
-	 * @param toLocation The name of the destination location
-	 * @return The name of the file where the path is stored 
+	 * Get path files from the data loaded by method {@link Missions#loadLocationAndPathData(String)}.
+	 * @param fromLocation The name of the source location.
+	 * @param toLocation The name of the destination location.
+	 * @return The name of the file where the path is stored. 
 	 */
 	public static String getPathFile(String fromLocation, String toLocation) {
 		//String ret = paths.get(fromLocation+"->"+toLocation);
@@ -653,10 +706,10 @@ public class Missions {
 	}
 	
 	/**
-	 * Queries whether a path between two locations is known
-	 * @param fromLocation The source location
-	 * @param toLocation The goal location
-	 * @return <code>true</code> iff a path between two locations is known
+	 * Queries whether a path between two named locations is known.
+	 * @param fromLocation The source location.
+	 * @param toLocation The goal location.
+	 * @return <code>true</code> iff a path between two locations is known.
 	 */
 	public static boolean isKnownPath(String fromLocation, String toLocation) {
 		return paths.containsKey(fromLocation+"->"+toLocation);
@@ -746,6 +799,12 @@ public class Missions {
         catch (Exception e) { e.printStackTrace(); }
 	}
 
+	/**
+	 * Tag a set of {@link Mission}s as concatenated, meaning that they should be executed in sequence.
+	 * This marking will be accounted for by the dispatchers started via methods {@link Missions#startMissionDispatchers(TrajectoryEnvelopeCoordinator, int...)}
+	 * and {@link Missions#startMissionDispatchers(TrajectoryEnvelopeCoordinator, boolean, int...)}.
+	 * @param m The {@link Mission}s that should be considered concatenated.
+	 */
 	public static void concatenateMissions(Mission ... m) {
 		ArrayList<Mission> toAdd = new ArrayList<Mission>();
 		for (Mission oneM : m) toAdd.add(oneM);

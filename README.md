@@ -123,9 +123,9 @@ This project is supported by
 * The iQMobility Project, funded by <a href="https://www.vinnova.se/">Vinnova</a>
 
 ## License
-coordination_oru - Online coordination for multiple robots
+coordination_oru - Robot-agnostic online coordination for multiple robots
 
-Copyright &copy; 2017-2018 Federico Pecora
+Copyright &copy; 2017-2020 Federico Pecora
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
