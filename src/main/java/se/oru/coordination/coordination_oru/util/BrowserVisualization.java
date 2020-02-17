@@ -1,10 +1,13 @@
 package se.oru.coordination.coordination_oru.util;
 
 
+import java.awt.Desktop;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 
 import javax.imageio.ImageIO;
@@ -60,6 +63,15 @@ public class BrowserVisualization implements FleetVisualization {
         };
         updateThread.start();
         BrowserVisualization.setupVizServer(serverHostNameOrIP);
+        startOpenInBrowser(serverHostNameOrIP);
+	}
+	
+	private void startOpenInBrowser(String serverHostNameOrIP) {
+		if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+			try { Desktop.getDesktop().browse(new URI("http://" + serverHostNameOrIP + ":8080")); }
+			catch (IOException e) { e.printStackTrace(); }
+			catch (URISyntaxException e) { e.printStackTrace(); }
+		}
 	}
 	
 	private void updateOverlayText() {
