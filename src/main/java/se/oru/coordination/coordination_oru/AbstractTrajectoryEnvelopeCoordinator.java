@@ -49,8 +49,8 @@ import se.oru.coordination.coordination_oru.util.StringUtils;
  */
 public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	
-	public static String TITLE = "coordination_oru - Online coordination for multiple robots";
-	public static String COPYRIGHT = "Copyright \u00a9 2017-2018 Federico Pecora";
+	public static String TITLE = "coordination_oru - Robot-agnostic online coordination for multiple robots";
+	public static String COPYRIGHT = "Copyright \u00a9 2017-2020 Federico Pecora";
 
 	//null -> public (GPL3) license
 	public static String LICENSE = null;
