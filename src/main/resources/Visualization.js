@@ -260,19 +260,34 @@ class Visualization {
 		//Resize properly
 		this.resizeCanvasToMouseMovement();
 
+		//Find max area
+		var maxArea = -1.0;
+		Object.keys(this.geometries).forEach(function(key,index) {
+			// key: the name of the object key
+			// index: the ordinal position of the key within the object
+			if (key.startsWith("R")) {
+				var area = viz.calcPolygonArea(viz.geometries[key]);
+				if (area > maxArea) maxArea = area;
+			}
+		});
+		if (maxArea < 0) maxArea = 1.0;
+
 		//Draw all geoms
 		Object.keys(this.geometries).forEach(function(key,index) {
 			// key: the name of the object key
 			// index: the ordinal position of the key within the object
 			//console.log("drawing geom " + key);
-			var area = viz.calcPolygonArea(viz.geometries[key]);
-			var linewidth = Math.sqrt(area)/70;
+			//var area = viz.calcPolygonArea(viz.geometries[key]);
+			//var linewidth = Math.sqrt(area)/70;
+			var linewidth = Math.sqrt(maxArea)/30;
+			//var linewidth = 0.1;
 			viz.drawPolygon(viz.geometries[key], viz.geometryColors[key], !viz.geometryFilled[key], linewidth);
-			var textSize = 0.2;
-			if (key.startsWith("R")) {
-				//textSize = Math.sqrt(area)/2;
-				textSize = Math.sqrt(area);
-			}
+			//var textSize = 0.2;
+			//if (key.startsWith("R")) {
+			//	//textSize = Math.sqrt(area)/2;
+			//	textSize = 1.3*Math.sqrt(area);
+			//}
+			var textSize = 1.3*Math.sqrt(maxArea);
 			if (!key.startsWith("_")) {
 				var text = key;
 				if (viz.geometryExtraData[key] != null) {
@@ -331,8 +346,8 @@ class Visualization {
 
 	drawText(text, coord, color, size) {
 		var scale = size/10;
-		//this.ctx.font = 'italic ' + size + 'pt Calibri';
-		this.ctx.font = 'italic 12pt Calibri';
+		this.ctx.font = 'italic ' + size + 'pt Calibri';
+		//this.ctx.font = 'italic 12pt Calibri';
 		//console.log(size);
 		//var w = this.ctx.measureText(text).width;
 		//var h = w/text.length;

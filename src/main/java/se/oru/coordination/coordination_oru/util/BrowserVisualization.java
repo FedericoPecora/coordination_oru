@@ -318,7 +318,7 @@ public class BrowserVisualization implements FleetVisualization {
 			BufferedReader br = new BufferedReader(new FileReader(file));
 			String imageFileName = null;
 			String st;
-			while((st=br.readLine()) != null){
+			while((st=br.readLine()) != null){ 
 				String key = st.substring(0, st.indexOf(":")).trim();
 				String value = st.substring(st.indexOf(":")+1).trim();
 				if (key.equals("image")) imageFileName = file.getParentFile()+File.separator+value;
