@@ -315,6 +315,8 @@ public class Missions {
 		
 		graph = new SimpleDirectedWeightedGraph<String, DefaultWeightedEdge>(DefaultWeightedEdge.class);
 		
+		metaCSPLogger.info("Updating the roadmap...");
+		
 		for (String oneLoc : locations.keySet()) {
 			graph.addVertex(oneLoc);
 			metaCSPLogger.info("Added vertex " + oneLoc);
@@ -337,8 +339,8 @@ public class Missions {
 
 	/**
 	 * Get the shortest path connecting given locations (two or more). The path between successive pairs of locations
-	 * is computed with Dijkstra with edge weights = path lengths.
-	 * @param locations At least two locations.
+	 * is computed with Dijkstra's algorithm, where edge weights are path lengths.
+	 * @param locations At least two location names.
 	 * @return The shortest path connecting given locations.
 	 */
 	public static PoseSteering[] getShortestPath(String ... locations) {
