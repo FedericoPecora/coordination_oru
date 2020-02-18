@@ -133,53 +133,23 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 	protected void updateDependencies() {
 		synchronized(solver) {
 			if (this.fleetMasterInterface != null && this.propagateDelays) localCheckAndReviseWithDelayPropagation();
-			else super.updateDependencies();
+			else //use "the super" updateDependencies()
+				if (this.avoidDeadlockGlobally) globalCheckAndRevise();
+				else localCheckAndRevise();
 		}
 	}
 	
 	@Override
-	//returns true if robot1 should go before robot2
-	//returns false if robot2 should go before robot1
-	protected boolean getOrder(AbstractTrajectoryEnvelopeTracker robotTracker1, RobotReport robotReport1, AbstractTrajectoryEnvelopeTracker robotTracker2, RobotReport robotReport2, CriticalSection cs) {
-
-		if (this.fleetMasterInterface == null) return super.getOrder(robotTracker1, robotReport1, robotTracker2, robotReport2, cs);
-		
-		//If both can stop before entering, use ordering function (or closest if no ordering function)
-		metaCSPLogger.finest("Both robots can stop at " + cs);
-		
-		if (fleetMasterInterface.checkTrajectoryEnvelopeHasBeenAdded(cs.getTe1()) && fleetMasterInterface.checkTrajectoryEnvelopeHasBeenAdded(cs.getTe2())) {
+	protected int getOrderWithAdvancedHeuristics(AbstractTrajectoryEnvelopeTracker robotTracker1, RobotReport robotReport1, AbstractTrajectoryEnvelopeTracker robotTracker2, RobotReport robotReport2, CriticalSection cs) {
+		if (this.fleetMasterInterface != null && fleetMasterInterface.checkTrajectoryEnvelopeHasBeenAdded(cs.getTe1()) && fleetMasterInterface.checkTrajectoryEnvelopeHasBeenAdded(cs.getTe2())) {
 			PropagationTCDelays te1TCDelays = new PropagationTCDelays();
 			PropagationTCDelays te2TCDelays = new PropagationTCDelays();
 			Pair<Double, Double> delays = fleetMasterInterface.queryTimeDelay(cs, te1TCDelays, te2TCDelays);
 			if (oneOrderingIsUnsafe(delays.getFirst(), delays.getSecond())) {
-				return delays.getFirst() < delays.getSecond() ? false : true;
+				return delays.getFirst() < delays.getSecond() ? 1 : -1;
 			}
 		}
-		
-		if (yieldIfParking) {
-			boolean robot1ParksInCS = cs.getTe1End() == cs.getTe1().getPathLength()-1;
-			boolean robot2ParksInCS = cs.getTe2End() == cs.getTe2().getPathLength()-1;
-			if (robot1ParksInCS && !robot2ParksInCS) {
-				metaCSPLogger.finest("Robot" + cs.getTe1().getRobotID() + " will park in " + cs + ", letting Robot" + cs.getTe2().getRobotID() + " go first");
-				return false;
-			}
-			else if (!robot1ParksInCS && robot2ParksInCS) {
-				metaCSPLogger.finest("Robot" + cs.getTe2().getRobotID() + " will park in " + cs + ", letting Robot" + cs.getTe1().getRobotID() + " go first");
-				return true;
-			}
-			else if (robot1ParksInCS && robot2ParksInCS) 
-				metaCSPLogger.finest("Both Robot" + cs.getTe1().getRobotID() + " and Robot" + cs.getTe2().getRobotID() + " will park in " + cs + ". Decide according to the heuristic.");
-		}
-			
-		RobotAtCriticalSection r1atcs = new RobotAtCriticalSection(robotReport1, cs);
-		RobotAtCriticalSection r2atcs = new RobotAtCriticalSection(robotReport2, cs);
-		boolean ret = false;
-		if (this.comparators.size() > 0) ret = (this.comparators.compare(r1atcs,r2atcs) < 0);
-		//No ordering function, decide an ordering based on distance (closest goes first)
-		else ret = ((cs.getTe2Start()-robotReport2.getPathIndex()) > (cs.getTe1Start()-robotReport1.getPathIndex()));
-		if (ret && muted.contains(robotReport2.getRobotID())) return false;
-		if (!ret && muted.contains(robotReport1.getRobotID())) return true;
-		return ret;
+		return 0;
 	}
 	
 

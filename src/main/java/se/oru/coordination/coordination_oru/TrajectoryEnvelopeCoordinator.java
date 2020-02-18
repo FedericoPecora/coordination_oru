@@ -512,6 +512,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		//If both can stop before entering, use ordering function (or closest if no ordering function)
 		metaCSPLogger.finest("Both robots can stop at " + cs);
 		
+		int result = getOrderWithAdvancedHeuristics(robotTracker1, robotReport1, robotTracker2, robotReport2, cs);
+		if (result == 1) return true;
+		if (result == -1) return false;
+		
 		if (yieldIfParking) {
 			boolean robot1ParksInCS = cs.getTe1End() == cs.getTe1().getPathLength()-1;
 			boolean robot2ParksInCS = cs.getTe2End() == cs.getTe2().getPathLength()-1;
@@ -537,6 +541,18 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		if (!ret && muted.contains(robotReport1.getRobotID())) return true;
 		return ret;
 	}
+	
+	/**
+	 * Function to extend the getOrder with more advanced heuristics.
+	 * @return <ul>
+	 * <li> 1 if robot1 should go before robot2,
+	 * <li> -1 if robot2 should go before robot1, 
+	 * <li> 0 if the heuristic cannot be used or cannot retrieve a valid estimation.
+	 * </ul>
+	 */
+	protected int getOrderWithAdvancedHeuristics(AbstractTrajectoryEnvelopeTracker robotTracker1, RobotReport robotReport1, AbstractTrajectoryEnvelopeTracker robotTracker2, RobotReport robotReport2, CriticalSection cs) {
+		return 0;
+	};
 	
 	@Override
 	protected void updateDependencies() {
