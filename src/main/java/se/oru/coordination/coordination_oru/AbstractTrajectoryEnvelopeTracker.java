@@ -489,5 +489,13 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 		return this.te;
 	}
 	
+	/**
+	 * Returns the ID of the robot driving the {@link TrajectoryEnvelope} that this tracker is tracking.
+	 * @return The robot ID.
+	 */
+	public int getRobotID() {
+		return this.te.getRobotID();
+	}
+	
 	
 }
