@@ -83,7 +83,7 @@ public class ThreeDifferentRobotsEmptyMap {
 		tec.setForwardModel(3, new ConstantAccelerationForwardModel(0.5*MAX_ACCEL, 0.5*MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
 
 		//Need to instantiate the fleetmaster interface
-		tec.instantiateFleetMaster(0., 0., 0., 0.05, 1000, 1000, true);
+		tec.instantiateFleetMaster(0.1, false);
 		//String yamlFile = "maps/map-empty.yaml";
 		//tec.instantiateFleetMaster(yamlFile, true);
 		tec.setNominalTrajectoryParameters(1, MAX_VEL, MAX_VEL, false, -1, -1, -1, MAX_ACCEL, -1, -1);

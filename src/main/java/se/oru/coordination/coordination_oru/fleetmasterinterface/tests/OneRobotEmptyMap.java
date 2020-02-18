@@ -63,7 +63,7 @@ public class OneRobotEmptyMap {
 		tec.setForwardModel(1, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
 		
 		//Need to instantiate the fleetmaster interface
-		tec.instantiateFleetMaster(0., 0., 0., 0.1, 500, 500, false);
+		tec.instantiateFleetMaster(0.1, false);
 		
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);

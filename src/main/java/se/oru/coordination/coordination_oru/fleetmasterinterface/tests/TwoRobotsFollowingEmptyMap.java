@@ -62,7 +62,7 @@ public class TwoRobotsFollowingEmptyMap {
 		tec.setForwardModel(2, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
 
 		//Need to instantiate the fleetmaster interface
-		tec.instantiateFleetMaster(0., 0., 0., 0.1, 500, 500, false);
+		tec.instantiateFleetMaster(0.1, false);
 		tec.setNominalTrajectoryParameters(1, MAX_VEL, MAX_VEL, false, -1, -1, -1, MAX_ACCEL, -1, -1);
 		tec.setNominalTrajectoryParameters(2, MAX_VEL, MAX_VEL, false, -1, -1, -1, MAX_ACCEL, -1, -1);
 		
