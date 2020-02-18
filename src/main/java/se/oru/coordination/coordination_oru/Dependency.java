@@ -14,23 +14,52 @@ import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
  */
 public class Dependency implements Comparable<Dependency> {
 	
-	private int robotIDWaiting, robotIDDriving;
-	private TrajectoryEnvelope teWaiting, teDriving;
-	private int waitingPoint, thresholdPoint;
+	/**
+	 * Class to store the static data (teWaiting, teDriving, thresholdPoint) of a {@link Dependency}.
+	 * 
+	 * @author anna
+	 *
+	 */
+	public class DependencyStaticData {
+		
+		/**
+		 * Class constructor.
+		 * @param teWaiting The {@link TrajectoryEnvelope} of the yielding robot.
+		 * @param teDriving The {@link TrajectoryEnvelope} of the leading robot.
+		 * @param thresholdPoint The path index along the leading robot's path to be reached from the leading robot to deactivate the constraint.
+		 */
+		DependencyStaticData(TrajectoryEnvelope teWaiting, TrajectoryEnvelope teDriving, int thresholdPoint) {
+			this.teWaiting = teWaiting;
+			this.teDriving = teDriving;
+			this.thresholdPoint = thresholdPoint;
+		}
+		private final int thresholdPoint;
+		private final TrajectoryEnvelope teWaiting, teDriving;
+							
+		public TrajectoryEnvelope getTeWaiting() {
+			return this.teWaiting;
+		}
+		
+		public TrajectoryEnvelope getTeDriving() {
+			return this.teDriving;
+		}
+		
+		public int getThresholdPoint() {
+			return this.thresholdPoint;
+		}
+	}
+	
+	private final DependencyStaticData data;
+	private int waitingPoint;
 	
 	public Dependency(TrajectoryEnvelope teWaiting, TrajectoryEnvelope teDriving, int waitingPoint, int thresholdPoint) {
-		this.teWaiting = teWaiting;
-		this.teDriving = teDriving;
+		this.data = new DependencyStaticData(teWaiting, teDriving, thresholdPoint);
 		this.waitingPoint = waitingPoint;
-		this.thresholdPoint = thresholdPoint;
-		this.robotIDWaiting = teWaiting.getRobotID();
-		if (teDriving != null) this.robotIDDriving = teDriving.getRobotID();
-		else this.robotIDDriving = 0;
 	}
 	
 	@Override
 	public int hashCode() {
-		long code = Long.parseLong(teWaiting.getRobotID()+"0"+waitingPoint+"0"+this.robotIDDriving+"0"+thresholdPoint);
+		long code = Long.parseLong(this.getWaitingRobotID() +"0" + this.waitingPoint + "0"+ this.getDrivingRobotID() + "0" + this.getReleasingPoint());
 		code = code%Integer.MAX_VALUE;
 		return (int)code;
 	}
@@ -49,7 +78,9 @@ public class Dependency implements Comparable<Dependency> {
 	public boolean equals(Object obj) {
 		if (!(obj instanceof Dependency)) return false;
 		Dependency other = (Dependency)obj;
-		return this.teWaiting.equals(other.teWaiting) && this.teDriving.equals(other.teDriving) && this.waitingPoint == other.waitingPoint && this.thresholdPoint == other.thresholdPoint;
+		return this.getWaitingTrajectoryEnvelope().equals(other.getWaitingTrajectoryEnvelope()) && 
+				this.getDrivingTrajectoryEnvelope().equals(other.getDrivingTrajectoryEnvelope()) && 
+				this.waitingPoint == other.waitingPoint && this.getReleasingPoint() == other.getReleasingPoint();
 	}
 	
 	@Override
@@ -63,30 +94,30 @@ public class Dependency implements Comparable<Dependency> {
 	 */
 	public int compareTo(Dependency other) {
 		if (this.waitingPoint != other.waitingPoint) return this.waitingPoint-other.waitingPoint;
-		return this.thresholdPoint-other.thresholdPoint;
+		return this.data.getThresholdPoint()-other.data.getThresholdPoint();
 	}
 	
 	@Override
 	public String toString() {
 		int drivingTEID = 0;
-		if (teDriving != null) drivingTEID = teDriving.getID();
-		return getWaitingRobotID()+"/"+waitingPoint+"(TE" + teWaiting.getID() + ")-"+getDrivingRobotID()+"/"+thresholdPoint+"(TE" + drivingTEID + ")";
+		if (this.data.getTeDriving() != null) drivingTEID = this.data.getTeDriving().getID();
+		return getWaitingRobotID() + "/" + this.waitingPoint + "(TE" + getWaitingTrajectoryEnvelope().getID() + ")-" + getDrivingRobotID() + "/" + this.getReleasingPoint() +"(TE" + drivingTEID + ")";
 	}
 	
 	public Pose getWaitingPose() {
-		return teWaiting.getTrajectory().getPose()[this.getWaitingPoint()];
+		return data.getTeWaiting().getTrajectory().getPose()[this.getWaitingPoint()];
 	}
 	
 	public Pose getReleasingPose() {
-		return teDriving.getTrajectory().getPose()[this.getReleasingPoint()];
+		return data.getTeDriving().getTrajectory().getPose()[this.getReleasingPoint()];
 	}
 	
 	public TrajectoryEnvelope getWaitingTrajectoryEnvelope() {
-		return this.teWaiting;
+		return this.data.getTeWaiting();
 	}
 	
 	public TrajectoryEnvelope getDrivingTrajectoryEnvelope() {
-		return this.teDriving;
+		return this.data.getTeDriving();
 	}
 	
 	public int getWaitingPoint() {
@@ -94,15 +125,15 @@ public class Dependency implements Comparable<Dependency> {
 	}
 	
 	public int getReleasingPoint() {
-		return this.thresholdPoint;
+		return this.data.getThresholdPoint();
 	}
 	
 	public int getWaitingRobotID() {
-		return this.robotIDWaiting;
+		return this.data.getTeWaiting().getRobotID();
 	}
 
 	public int getDrivingRobotID() {
-		return this.robotIDDriving;
+		return (this.data.getTeDriving() != null) ? this.data.getTeDriving().getRobotID() : 0;
 	}
 	
 }
