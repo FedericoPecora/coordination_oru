@@ -1,10 +1,10 @@
 package se.oru.coordination.coordination_oru;
 
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.TreeSet;
 
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 
@@ -14,7 +14,7 @@ import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInte
 import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInterfaceLib.PropagationTCDelays;
 
 public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvelopeCoordinator {
-	protected ArrayList<HashMap<Integer, Double>> csToTimeCompletionDelay = new ArrayList<HashMap<Integer, Double>>();
+		
 	protected AbstractFleetMasterInterface fleetMasterInterface = null;
 	protected boolean propagateDelays = false;
 	
@@ -133,9 +133,10 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 	protected void updateDependencies() {
 		synchronized(solver) {
 			if (this.fleetMasterInterface != null && this.propagateDelays) localCheckAndReviseWithDelayPropagation();
-			else //use "the super" updateDependencies(), eventually with new heuristic, defined in the overridden getOrderWithAdvancedHeuristics function.
+			else { //use "the super" updateDependencies(), eventually with new heuristic, defined in the overridden getOrderWithAdvancedHeuristics function.
 				if (this.avoidDeadlockGlobally) globalCheckAndRevise();
 				else localCheckAndRevise();
+			}
 		}
 	}
 	
@@ -151,7 +152,6 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 		}
 		return 0;
 	}
-	
 
 	protected void localCheckAndReviseWithDelayPropagation() {
 
@@ -161,14 +161,16 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 			HashMap<Integer,HashSet<Dependency>> currentDeps = new HashMap<Integer,HashSet<Dependency>>();
 			HashMap<Integer,HashSet<Dependency>> artificialDependencies = new HashMap<Integer,HashSet<Dependency>>(); 
 			HashSet<Dependency> currentReversibleDependencies = new HashSet<Dependency>();
+			HashMap<Integer, TreeSet<IndexedDelay>> robotToIndexedTimeCompletionDelay = new HashMap<Integer, TreeSet<IndexedDelay>>();
 			
 			//Make deps from un-reached stopping points
 			Set<Integer> robotIDs = trackers.keySet();
 			for (int robotID : robotIDs) {
 				AbstractTrajectoryEnvelopeTracker robotTracker = trackers.get(robotID);
-				RobotReport robotReport = robotTracker.getRobotReport();
 				//Update the coordinator view
+				RobotReport robotReport = robotTracker.getRobotReport();
 				currentReports.put(robotID,this.getRobotReport(robotID));
+				robotToIndexedTimeCompletionDelay.put(robotID, new TreeSet<IndexedDelay>());
 				
 				synchronized(stoppingPoints) {
 					if (stoppingPoints.containsKey(robotID)) {
@@ -187,7 +189,11 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 								spawnWaitingThread(robotID, i, duration);
 							}
 							
-							//TODO set the delay to robotID at stopping point stoppingPoint equal to duration.
+							//Set the delay to robotID at stopping point stoppingPoint equal to duration.
+							if (!robotToIndexedTimeCompletionDelay.get(robotID).add(new IndexedDelay(robotTracker.getTrajectoryEnvelope().getID(), "stopping_point", stoppingPoint, duration/1000.0))) {
+								metaCSPLogger.severe("Delay not added for robot " + robotID + " (duplicated critical section, stopping point or wrong teID).");
+								throw new Error("Delay not added for robot " + robotID + " (duplicated critical section, stopping point or wrong teID).");
+							}
 						}
 					}
 				}
