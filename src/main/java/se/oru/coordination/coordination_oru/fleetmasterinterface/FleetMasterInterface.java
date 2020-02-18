@@ -19,41 +19,39 @@ public class FleetMasterInterface extends AbstractFleetMasterInterface {
 	/**
 	 * Class constructor.
 	 * ATTENTION: If dynamic_size is <code>false</code>, then the user should check that all the paths will lay in the given area.
-	 * @param origin_x The x coordinate (in global inertial frame) of the lower-left pixel of fleetmaster GridMap.
-	 * @param origin_y The y coordinate (in global inertial frame) of the lower-left pixel of fleetmaster GridMap.
-	 * @param origin_theta The theta origin of the lower-left pixel map (counterclockwise rotation. 
-	 * 					   However, many parts of the system currently ignore it).
-	 * @param resolution The resolution of the map (in meters/cell). It is assumed this parameter to be global among the fleet.
-	 * @param width Number of columns of the map (in cells) if dynamic sizing is not enabled.
-	 * @param height Number of rows of the map (in cells) if dynamic sizing is not enabled.
+	 * @param origin_x The x coordinate (in meters and in global inertial frame) of the lower-left pixel of fleetmaster GridMap.
+	 * @param origin_y The y coordinate (in meters and in global inertial frame) of the lower-left pixel of fleetmaster GridMap.
+	 * @param origin_theta The theta coordinate (in rads) of the lower-left pixel map (counterclockwise rotation). Many parts of the system currently ignore it.
+	 * @param resolution The resolution of the map (in meters/cell, 0.1 <= resolution <= 1). It is assumed this parameter to be global among the fleet.
+	 * @param width Number of columns of the map (>= 1) if dynamic sizing is not enabled.
+	 * @param height Number of rows of the map (>= 1) if dynamic sizing is not enabled.
 	 * @param dynamic_size If <code>true</code>, it allows to store only the bounding box containing each path.
 	 * @param debug If <code>true</code>, it enables writing to screen debugging info.
 	 */
 	public FleetMasterInterface(double origin_x, double origin_y, double origin_theta, double resolution, long width, long height, boolean dynamic_size, boolean debug) {
-		super(origin_x, origin_y, origin_theta, resolution, width,  height, dynamic_size, debug);
+		super(origin_x, origin_y, origin_theta, Math.min(Math.max(resolution, 0.01), 1.), Math.max(width,1),  Math.max(height,1), dynamic_size, debug);
 		init();
 	}
 	
 	/**
 	 * Class constructor.
 	 * ATTENTION: If dynamic_size is <code>false</code>, then the user should check that all the paths will lay in the given area.
-	 * @param origin_x The x coordinate (in global inertial frame) of the lower-left pixel of fleetmaster GridMap.
-	 * @param origin_y The y coordinate (in global inertial frame) of the lower-left pixel of fleetmaster GridMap.
-	 * @param origin_theta The theta origin of the lower-left pixel map (counterclockwise rotation. 
-	 * 					   However, many parts of the system currently ignore it).
-	 * @param resolution The resolution of the map (in meters/cell). It is assumed this parameter to be global among the fleet.
-	 * @param width Number of columns of the map (in cells) if dynamic sizing is not enabled.
-	 * @param height Number of rows of the map (in cells) if dynamic sizing is not enabled.
+	 * @param origin_x The x coordinate (in meters and in global inertial frame) of the lower-left pixel of fleetmaster GridMap.
+	 * @param origin_y The y coordinate (in meters and in global inertial frame) of the lower-left pixel of fleetmaster GridMap.
+	 * @param origin_theta The theta coordinate (in rads) of the lower-left pixel map (counterclockwise rotation). Many parts of the system currently ignore it.
+	 * @param resolution The resolution of the map (in meters/cell,  0.1 <= resolution <= 1). It is assumed this parameter to be global among the fleet.
+	 * @param width Number of columns of the map (>= 1) if dynamic sizing is not enabled.
+	 * @param height Number of rows of the map (>= 1) if dynamic sizing is not enabled. Resolution is automatically constrained in 0.01 <= resolution <= 1.
 	 */
 	public FleetMasterInterface(double origin_x, double origin_y, double origin_theta, double resolution, long width, long height, boolean dynamic_size) {
-		this(origin_x, origin_y, origin_theta, resolution, width,  height, dynamic_size, false);
+		this(origin_x, origin_y, origin_theta, Math.min(Math.max(resolution, 0.01), 1.), width,  height, dynamic_size, false);
 	}
 	
 	/**
 	 * Class constructor when not using dynamic sizing (e.g., for small maps). All the grid parameters are set according to the yaml file.
 	 * @param mapYAMLFile file to the global map of the environment (path specified as "/.../...").
 	 * Possible: absolute paths or stored in the maps directory of the coordination_oru package (e.g., "maps/map-empty");
-	 * Note: it is required the map to contain all the possible paths.
+	 * Note: it is required the map to contain all the possible paths. Resolution is automatically constrained in 0.01 <= resolution <= 1.
 	 */
 	@Deprecated
 	public FleetMasterInterface(String mapYAMLFile, boolean debug) {
@@ -109,9 +107,9 @@ public class FleetMasterInterface extends AbstractFleetMasterInterface {
 		gridParams.origin.x = origin_x;
 		gridParams.origin.y = origin_y;
 		gridParams.origin.theta = origin_theta;
-		gridParams.resolution = resolution;
-		gridParams.width = new NativeLong(width);
-		gridParams.height = new NativeLong(height);
+		gridParams.resolution = Math.min(Math.max(resolution, 0.01), 1.);
+		gridParams.width = new NativeLong(Math.max(width,1));
+		gridParams.height = new NativeLong(Math.max(height,1));
 		gridParams.dynamic_size = false;
 		gridParams.debug = debug;
 		
