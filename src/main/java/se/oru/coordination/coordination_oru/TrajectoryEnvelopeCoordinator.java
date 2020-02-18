@@ -25,7 +25,6 @@ import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 import org.metacsp.utility.PermutationsWithRepetition;
 import com.vividsolutions.jts.geom.Geometry;
 import aima.core.util.datastructure.Pair;
-import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInterfaceLib.PropagationTCDelays;
 import se.oru.coordination.coordination_oru.motionplanning.AbstractMotionPlanner;
 
 
@@ -41,12 +40,13 @@ import se.oru.coordination.coordination_oru.motionplanning.AbstractMotionPlanner
 public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEnvelopeCoordinator {
 	
 	//@note: currentOrdersGraph and currentCyclesList should be synchronized with allCriticalSection variable.
-	protected SimpleDirectedGraph<Integer,String> currentOrdersGraph = new SimpleDirectedGraph<Integer,String>(String.class);
-	protected HashMap<Pair<Integer,Integer>, HashSet<ArrayList<Integer>>> currentCyclesList = new HashMap<Pair<Integer,Integer>, HashSet<ArrayList<Integer>>>();
+	//These variables are instantiated only if required (when deadlocks are avoided globally).
+	protected SimpleDirectedGraph<Integer, String> currentOrdersGraph = null;
+	protected HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>> currentCyclesList = null;
 	
 	//Robots currently involved in a re-plan which critical point cannot increase beyond the one used for re-plan
 	//till the re-plan has not finished yet.
-	protected HashMap<Integer,CriticalSection> lockedRobots = new HashMap<Integer,CriticalSection>();
+	protected HashMap<Integer, CriticalSection> lockedRobots = new HashMap<Integer,CriticalSection>();
 	
 	protected boolean breakDeadlocksByReordering = true;
 	protected boolean breakDeadlocksByReplanning = true;
@@ -101,6 +101,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		if (value) {
 			this.breakDeadlocksByReordering = false;
 			this.breakDeadlocksByReplanning = false;
+			this.currentOrdersGraph = new SimpleDirectedGraph<Integer,String>(String.class);
+			this.currentCyclesList = new HashMap<Pair<Integer,Integer>, HashSet<ArrayList<Integer>>>();
 		}
 	}
 	
