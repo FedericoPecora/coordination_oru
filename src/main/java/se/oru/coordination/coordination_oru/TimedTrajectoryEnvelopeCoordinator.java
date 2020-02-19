@@ -1,11 +1,14 @@
 package se.oru.coordination.coordination_oru;
 
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Set;
 import java.util.TreeSet;
 
+import org.apache.commons.lang.ArrayUtils;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 
 import aima.core.util.datastructure.Pair;
@@ -140,6 +143,14 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 		}
 	}
 	
+	/**
+	 * Function to extend the getOrder with more advanced heuristics.
+	 * @return <ul>
+	 * <li> 1 if robot1 should go before robot2,
+	 * <li> -1 if robot2 should go before robot1, 
+	 * <li> 0 if the heuristic cannot be used or cannot retrieve a valid estimation.
+	 * </ul>
+	 */
 	@Override
 	protected int getOrderWithAdvancedHeuristics(AbstractTrajectoryEnvelopeTracker robotTracker1, RobotReport robotReport1, AbstractTrajectoryEnvelopeTracker robotTracker2, RobotReport robotReport2, CriticalSection cs) {
 		if (this.fleetMasterInterface != null && fleetMasterInterface.checkTrajectoryEnvelopeHasBeenAdded(cs.getTe1()) && fleetMasterInterface.checkTrajectoryEnvelopeHasBeenAdded(cs.getTe2())) {
@@ -147,12 +158,58 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 			PropagationTCDelays te2TCDelays = new PropagationTCDelays();
 			Pair<Double, Double> delays = fleetMasterInterface.queryTimeDelay(cs, te1TCDelays, te2TCDelays);
 			if (oneOrderingIsUnsafe(delays.getFirst(), delays.getSecond())) {
-				return delays.getFirst() < delays.getSecond() ? 1 : -1;
+				return delays.getFirst() < delays.getSecond() ? -1 : 1;
 			}
 		}
 		return 0;
 	}
 
+	//FIXME not the best way if we have to convert types!!
+	protected PropagationTCDelays toPropagationTCDelays(TreeSet<IndexedDelay> delays) {
+		//Handle exceptions
+		if (delays == null) throw new Error("Null input in function toPropagationTCDelays!!");
+		if (delays.isEmpty()) return new PropagationTCDelays();
+		
+		//Cast the type
+		ArrayList<Long> indices = new ArrayList<Long>();
+		ArrayList<Double> values = new ArrayList<Double>();
+		Iterator<IndexedDelay> it = delays.iterator();
+		IndexedDelay prev = delays.first();
+		int i = 0;
+		int real_size = 0;
+		while (it.hasNext()) {
+			IndexedDelay current = it.next();
+			if (current != delays.first() && prev.getIndex() == current.getIndex())
+				values.add(i-1, values.get(i-1) + it.next().getValue());
+			else {
+				if (current != delays.first() && prev.getIndex() > current.getIndex()) {
+					metaCSPLogger.severe("Invalid IndexedDelays TreeSet!!");
+					throw new Error("Invalid IndexedDelays TreeSet!!");
+				}
+				indices.add(i, new Long(current.getIndex()));
+				values.add(i, current.getValue());
+				real_size++;
+			}
+			prev = current;
+			i++;
+		}
+		PropagationTCDelays propTCDelays = new PropagationTCDelays(real_size);
+		propTCDelays.indices = ArrayUtils.toPrimitive((Long[]) indices.toArray(new Long[indices.size()]));
+		propTCDelays.values = ArrayUtils.toPrimitive((Double[]) values.toArray(new Double[values.size()]));
+		return propTCDelays;
+	}
+	
+	protected Pair<Double,Double> estimateTimeToCompletionDelays(AbstractTrajectoryEnvelopeTracker robotTracker1, RobotReport robotReport1, TreeSet<IndexedDelay> delaysRobot1, AbstractTrajectoryEnvelopeTracker robotTracker2, RobotReport robotReport2, TreeSet<IndexedDelay> delaysRobot2, CriticalSection cs) {
+		if (this.fleetMasterInterface != null && fleetMasterInterface.checkTrajectoryEnvelopeHasBeenAdded(cs.getTe1()) && fleetMasterInterface.checkTrajectoryEnvelopeHasBeenAdded(cs.getTe2())) {
+			PropagationTCDelays te1TCDelays = toPropagationTCDelays(delaysRobot1);
+			metaCSPLogger.info("[estimateTimeToCompletionDelays] te1TCDelays: " + te1TCDelays.toString());
+			PropagationTCDelays te2TCDelays = toPropagationTCDelays(delaysRobot2);
+			metaCSPLogger.info("[estimateTimeToCompletionDelays] te2TCDelays: " + te2TCDelays.toString());
+			return fleetMasterInterface.queryTimeDelay(cs, te1TCDelays, te2TCDelays);
+		}
+		return new Pair<Double, Double> (Double.NaN, Double.NaN);
+	}
+	
 	protected void localCheckAndReviseWithDelayPropagation() {
 
 		//System.out.println("Caller of updateDependencies(): " + Thread.currentThread().getStackTrace()[2]);
@@ -162,6 +219,7 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 			HashMap<Integer,HashSet<Dependency>> artificialDependencies = new HashMap<Integer,HashSet<Dependency>>(); 
 			HashSet<Dependency> currentReversibleDependencies = new HashSet<Dependency>();
 			HashMap<Integer, TreeSet<IndexedDelay>> robotToIndexedTimeCompletionDelay = new HashMap<Integer, TreeSet<IndexedDelay>>();
+			Pair<Double, Double> thisEstimatedDelays = new Pair<Double, Double>(Double.NaN, Double.NaN); //delays in the completion time of robot 1 (thisEstimatedDelays[0]) and robot 2 (thisEstimatedDelays[1]).
 			
 			//Make deps from un-reached stopping points
 			Set<Integer> robotIDs = trackers.keySet();
@@ -189,8 +247,10 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 								spawnWaitingThread(robotID, i, duration);
 							}
 							
+							thisEstimatedDelays = new Pair<Double, Double>(duration/1000.0, Double.NaN);
+							
 							//Set the delay to robotID at stopping point stoppingPoint equal to duration.
-							if (!robotToIndexedTimeCompletionDelay.get(robotID).add(new IndexedDelay(robotTracker.getTrajectoryEnvelope().getID(), "stopping_point", stoppingPoint, duration/1000.0))) {
+							if (!robotToIndexedTimeCompletionDelay.get(robotID).add(new IndexedDelay(robotTracker.getTrajectoryEnvelope().getID(), 0, stoppingPoint, duration/1000.0))) {
 								metaCSPLogger.severe("Delay not added for robot " + robotID + " (duplicated critical section, stopping point or wrong teID).");
 								throw new Error("Delay not added for robot " + robotID + " (duplicated critical section, stopping point or wrong teID).");
 							}
@@ -239,11 +299,13 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 							waitingTracker = robotTracker2;
 							drivingTracker = robotTracker1;
 							drivingCurrentIndex = robotReport1.getPathIndex();
+							thisEstimatedDelays = new Pair<Double, Double>(0., Double.POSITIVE_INFINITY); //robot 1 is parked in its goal, while robot2 should yield for an unbounded amount of time.
 						}
 						else if (robotTracker2 instanceof TrajectoryEnvelopeTrackerDummy) {
 							waitingTracker = robotTracker1;
 							drivingTracker = robotTracker2;	
 							drivingCurrentIndex = robotReport2.getPathIndex();
+							thisEstimatedDelays = new Pair<Double, Double>(Double.POSITIVE_INFINITY, 0.); //robot 2 is parked in its goal, while robot1 should yield for an unbounded amount of time.
 						}
 						//Compute the waiting point according to the decided precedence
 						waitingPoint = getCriticalPoint(waitingTracker.getRobotID(), cs, drivingCurrentIndex);
@@ -258,6 +320,10 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 							currentDeps.get(waitingTracker.getRobotID()).add(dep);
 							CSToDepsOrder.put(cs, new Pair<Integer,Integer>(dep.getWaitingRobotID(),dep.getWaitingPoint()));
 							depsToCS.put(dep, cs);
+							if (!robotToIndexedTimeCompletionDelay.get(waitingTracker.getRobotID()).add(new IndexedDelay(waitingTracker.getTrajectoryEnvelope().getID(), cs.hashCode(), waitingPoint, Double.POSITIVE_INFINITY))) {
+								metaCSPLogger.severe("Delay not added for robot " + waitingTracker.getRobotID() + " (duplicated critical section, stopping point or wrong teID).");
+								throw new Error("Delay not added for robot " + waitingTracker.getRobotID() + " (duplicated critical section, stopping point or wrong teID).");
+							}
 						}
 					}
 					else {//Both robots are driving, let's determine an ordering for them through this critical section
@@ -266,6 +332,9 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 						synchronized(lockedRobots) {
 							if (lockedRobots.containsValue(cs) && communicatedCPs.containsKey(robotTracker1) && communicatedCPs.containsKey(robotTracker2)) update = false;
 						}
+						
+						//estimate the delays considering the current robot poses.
+						thisEstimatedDelays = estimateTimeToCompletionDelays(robotTracker1, robotReport1, robotToIndexedTimeCompletionDelay.get(robotTracker1.getRobotID()), robotTracker2, robotReport2, robotToIndexedTimeCompletionDelay.get(robotTracker2.getRobotID()), cs);
 						
 						//Check if the robots can stop while changing the current order of accessing the critical section.
 						ForwardModel fm1 = getForwardModel(robotReport1.getRobotID());
@@ -343,7 +412,7 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 														waitingTracker.getRobotID() == robotReport1.getRobotID() ? robotReport1.getPathIndex() : robotReport2.getPathIndex());
 							int lastIndexOfCSDriving = drivingTracker.getRobotID() == cs.getTe1().getRobotID() ? cs.getTe1End() : cs.getTe2End();
 							//if (lastWaitingRobotCP >= startingWaitingRobotCS) {
-							if (!canExitCriticalSection(drivingCurrentIndex, waitingCurrentIndex, drivingTracker.getTrajectoryEnvelope(), waitingTracker.getTrajectoryEnvelope(),lastIndexOfCSDriving)) {
+							if (!canExitCriticalSection(drivingCurrentIndex, waitingCurrentIndex, drivingTracker.getTrajectoryEnvelope(), waitingTracker.getTrajectoryEnvelope(), lastIndexOfCSDriving)) {
 								//it's too late for escaping. Let's create a deadlock: the parked robot should wait for the moving one,
 								//while the other should be commanded to do not proceed beyond its last communicated CP. Both the dependencies should be added to the current set.									
 								
@@ -386,7 +455,7 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 						else { //Both the robot can stop.
 							
 							//If robot 1 has priority over robot 2
-							if (getOrder(robotTracker1, robotReport1, robotTracker2, robotReport2, cs)) {
+							if (thisEstimatedDelays.getSecond() < thisEstimatedDelays.getFirst()) { //robot 2 may be delayed for a lower time if it will be required to yield.
 								drivingTracker = robotTracker1;
 								waitingTracker = robotTracker2;
 								metaCSPLogger.finest("Both-can-stop (1) and Robot" + drivingTracker.getRobotID() + " ahead of Robot" + waitingTracker.getRobotID() + " and CS is: " + cs);
@@ -440,6 +509,11 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 							CSToDepsOrder.put(cs, new Pair<Integer,Integer>(dep.getWaitingRobotID(),dep.getWaitingPoint()));
 							depsToCS.put(dep, cs);
 							if (canStopRobot1 && canStopRobot2) currentReversibleDependencies.add(dep);
+							double estimatedDelayWaiter = waitingTracker.getRobotID() == robotTracker1.getRobotID() ? thisEstimatedDelays.getFirst() : thisEstimatedDelays.getSecond(); 
+							if (!robotToIndexedTimeCompletionDelay.get(waitingTracker.getRobotID()).add(new IndexedDelay(waitingTracker.getTrajectoryEnvelope().getID(), cs.hashCode(), waitingPoint, estimatedDelayWaiter))) {
+								metaCSPLogger.severe("Delay not added for robot " + waitingTracker.getRobotID() + " (duplicated critical section, stopping point or wrong teID).");
+								throw new Error("Delay not added for robot " + waitingTracker.getRobotID() + " (duplicated critical section, stopping point or wrong teID).");
+							}
 						}
 						else {
 							//If robot is asked to wait in an invalid path point, throw error and give up!
