@@ -9,22 +9,38 @@ package se.oru.coordination.coordination_oru;
  */
 public class IndexedDelay implements Comparable<IndexedDelay> {
 	private final int teID;
-	private final String csHash;
+	private final int csHash;
 	private int index;
-	private double delay;
+	private double value;
 
 	/**
 	 * Class constructor.
 	 * @param teID The ID of the {@link TrajectoryEnvelope}.
-	 * @param csHash  The hash code of the {@link CriticalSection} related to the given path index or the string "stopping_point" if the delay is related to a stopping point.
-	 * @param index The path index at which the robot will be delayed
-	 * @param delay The estimated delay (in secs).
+	 * @param csHash  The hash code of the {@link CriticalSection} related to the given path index or 0 if the delay is related to a stopping point (never a possible code for CS).
+	 * @param index The path index at which the robot will be delayed.
+	 * @param value The estimated delay (in secs).
 	 */
-	IndexedDelay(int teID, String csHash, int index, double delay) {
+	IndexedDelay(int teID, int csHash, int index, double delay) {
 		this.teID = teID;
 		this.csHash = csHash;
 		this.index = index;
-		this.delay = delay;
+		this.value = delay;
+	}
+	
+	/**
+	 * Returning the index of this delay.
+	 * @return The path index at which the robot will be delayed.
+	 */
+	public int getIndex() {
+		return this.index;
+	}
+	
+	/**
+	 * Returning the estimated delay.
+	 * @return The estimated delay (in secs).
+	 */
+	public double getValue() {
+		return this.value;
 	}
 	
 	@Override
@@ -40,9 +56,26 @@ public class IndexedDelay implements Comparable<IndexedDelay> {
 		if (teID != other.teID) return 0;
 		if (this.index < other.index) return -1;
 		if (this.index > other.index) return 1;
-		if ((long)index + Long.parseLong(csHash) < (long)other.index + Long.parseLong(other.csHash)) return -1;
-		if ((long)index + Long.parseLong(csHash) > (long)other.index + Long.parseLong(other.csHash)) return 1;
+		double thisCode = Double.parseDouble(Long.toString(index) + "." + Integer.toString(csHash));
+		double otherCode = Double.parseDouble(Long.toString(other.index) + "." + Integer.toString(other.csHash));
+		if (thisCode < otherCode) return -1;
+		if (thisCode > otherCode) return 1;
 		return 0;		
+	}
+
+
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + csHash;
+		result = prime * result + index;
+		result = prime * result + teID;
+		long temp;
+		temp = Double.doubleToLongBits(value);
+		result = prime * result + (int) (temp ^ (temp >>> 32));
+		return result;
 	}
 
 	@Override
@@ -54,31 +87,15 @@ public class IndexedDelay implements Comparable<IndexedDelay> {
 		if (getClass() != obj.getClass())
 			return false;
 		IndexedDelay other = (IndexedDelay) obj;
-		if (csHash == null) {
-			if (other.csHash != null)
-				return false;
-		} else if (!csHash.equals(other.csHash))
-			return false;
-		if (Double.doubleToLongBits(delay) != Double.doubleToLongBits(other.delay))
+		if (csHash != other.csHash)
 			return false;
 		if (index != other.index)
 			return false;
 		if (teID != other.teID)
 			return false;
+		if (Double.doubleToLongBits(value) != Double.doubleToLongBits(other.value))
+			return false;
 		return true;
-	}
-
-	@Override
-	public int hashCode() {
-		final int prime = 31;
-		int result = 1;
-		result = prime * result + ((csHash == null) ? 0 : csHash.hashCode());
-		long temp;
-		temp = Double.doubleToLongBits(delay);
-		result = prime * result + (int) (temp ^ (temp >>> 32));
-		result = prime * result + index;
-		result = prime * result + teID;
-		return result;
 	}
 
 	@Override
