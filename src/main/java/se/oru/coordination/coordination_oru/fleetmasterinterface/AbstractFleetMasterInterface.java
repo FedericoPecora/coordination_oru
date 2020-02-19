@@ -9,7 +9,6 @@ import org.metacsp.utility.logging.MetaCSPLogging;
 
 import com.sun.jna.Native;
 import com.sun.jna.NativeLibrary;
-import com.sun.jna.NativeLong;
 import com.sun.jna.ptr.DoubleByReference;
 import com.sun.jna.ptr.PointerByReference;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -24,7 +23,7 @@ import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInte
 import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInterfaceLib.TrajParams;
 
 public abstract class AbstractFleetMasterInterface {
-	protected HashMap<Integer, NativeLong> paths = null; //teID (or this pathID), fleetmaster pathID 
+	protected HashMap<Integer, Long> paths = null; //teID (or this pathID), fleetmaster pathID 
 	protected HashMap<Integer, TrajParams> trajParams = null; //robotID, trajectory parameters
 	protected GridParams gridParams = null;
 	protected PointerByReference p = null;
@@ -84,12 +83,12 @@ public abstract class AbstractFleetMasterInterface {
 		gridParams.origin.y = origin_y;
 		gridParams.origin.theta = origin_theta;
 		gridParams.resolution = resolution;
-		gridParams.width = new NativeLong(width);
-		gridParams.height = new NativeLong(height);
+		gridParams.width = new Long(width);
+		gridParams.height = new Long(height);
 		gridParams.dynamic_size = dynamic_size;
 		gridParams.debug = debug;
 	    
-		this.paths = new HashMap<Integer, NativeLong>();
+		this.paths = new HashMap<Integer, Long>();
 		this.trajParams = new HashMap<Integer, TrajParams>();
 	};
 	
@@ -192,7 +191,7 @@ public abstract class AbstractFleetMasterInterface {
 		}
 			
 		//already added
-		if (paths.containsKey(pathID) && paths.get(pathID) != new NativeLong(0)) {
+		if (paths.containsKey(pathID) && paths.get(pathID) != new Long(0)) {
 			metaCSPLogger.warning("Path already stored.");
 			return true;
 		}
@@ -220,7 +219,7 @@ public abstract class AbstractFleetMasterInterface {
 		Coordinate[] bbx = (boundingBox == null) ? null : boundingBox.getCoordinates();
 				
 		//Call the method. -1 is used as special value to indicate that the path was not correctly added.
-		NativeLong pathCode = new NativeLong(0);
+		Long pathCode = new Long(0);
 		TrajParams trjp = trajParams.containsKey(robotID) ? trajParams.get(robotID) : DEFAULT_TRAJ_PARAMS;
 		double bottom_left_x = (bbx == null) ? Double.MAX_VALUE : bbx[0].x;
 		double bottom_left_y = (bbx == null) ? Double.MAX_VALUE : bbx[0].y;
@@ -231,7 +230,7 @@ public abstract class AbstractFleetMasterInterface {
 
 		metaCSPLogger.info("Adding path RobotID: " + robotID + ", pathID: " + pathID + ", fleetmaster pathID: " + path.hashCode() +".");
 		
-		return !pathCode.equals(new NativeLong(0));
+		return !pathCode.equals(new Long(0));
 	}
 	
 	/**
@@ -257,7 +256,7 @@ public abstract class AbstractFleetMasterInterface {
 	 * @param pathID The ID of the path to be cleared.
 	 */
 	public boolean clearPath(int pathID) {
-		if (p != null && paths.containsKey(pathID) && paths.get(pathID) != new NativeLong(0)) {
+		if (p != null && paths.containsKey(pathID) && paths.get(pathID) != new Long(0)) {
 			INSTANCE.removePath(p, paths.get(pathID));
 			paths.remove(pathID);
 			metaCSPLogger.info("Clearing path pathID: " + pathID);
@@ -273,9 +272,9 @@ public abstract class AbstractFleetMasterInterface {
 	 * @return <code>true</code> if the path index has been correctly updated.
 	 */
 	public boolean updateCurrentPathIdx(int pathID, int currentIdx) {
-		if (p != null && paths.containsKey(pathID) && paths.get(pathID) != new NativeLong(0)) {
+		if (p != null && paths.containsKey(pathID) && paths.get(pathID) != new Long(0)) {
 			metaCSPLogger.info("Updating path pathID: " + pathID + ", current path index: " + currentIdx + ".");
-			return INSTANCE.updateCurrentPathIdx(p, paths.get(pathID), new NativeLong(currentIdx));
+			return INSTANCE.updateCurrentPathIdx(p, paths.get(pathID), new Long(currentIdx));
 		 }
 		 return false;
 	}
@@ -311,7 +310,7 @@ public abstract class AbstractFleetMasterInterface {
 	 * @return <code>true</code> if correctly added.
 	 */
 	public boolean checkPathHasBeenAdded(int pathID) {
-		if (paths.containsKey(pathID) && !paths.get(pathID).equals(new NativeLong(0)))	
+		if (paths.containsKey(pathID) && !paths.get(pathID).equals(new Long(0)))	
 			return true;
 		return false;
 	}

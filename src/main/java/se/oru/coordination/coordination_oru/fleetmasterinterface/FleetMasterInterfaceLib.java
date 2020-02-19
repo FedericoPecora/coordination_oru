@@ -4,7 +4,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import com.sun.jna.Library;
-import com.sun.jna.NativeLong;
 import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
 import com.sun.jna.ptr.DoubleByReference;
@@ -15,14 +14,14 @@ public interface FleetMasterInterfaceLib extends Library {
 			
 	PointerByReference init(GridParams gridParams);
 		
-	NativeLong addPath(PointerByReference p, PathPose[] path, double[] steering, int pathLength, TrajParams trajParams, double[] coordinates_x, double[] coordinates_y, int num_coordinate, 
+	Long addPath(PointerByReference p, PathPose[] path, double[] steering, int pathLength, TrajParams trajParams, double[] coordinates_x, double[] coordinates_y, int num_coordinate, 
 			double bottom_left_x, double bottom_left_y, double top_right_x, double top_right_y);
 	
-    void removePath(PointerByReference p, NativeLong id);
+    void removePath(PointerByReference p, long id);
 
-    boolean updateCurrentPathIdx(PointerByReference p, NativeLong pathId, NativeLong currentIdx);
+    boolean updateCurrentPathIdx(PointerByReference p, long pathId, long currentIdx);
     
-    void queryTimeDelay(PointerByReference p, NativeLong pathId1, NativeLong pathId2, int csStart1, int csEnd1, int csStart2, int csEnd2,
+    void queryTimeDelay(PointerByReference p, long pathId1, long pathId2, int csStart1, int csEnd1, int csStart2, int csEnd2,
     				PropagationTCDelays pTC1, PropagationTCDelays pTC2, DoubleByReference delay1, DoubleByReference delay2);
 
     
@@ -48,8 +47,8 @@ public interface FleetMasterInterfaceLib extends Library {
 
 		public PathPose origin;
 		public double resolution;
-		public NativeLong width;
-		public NativeLong height;
+		public long width;
+		public long height;
 		public boolean dynamic_size;
 		public boolean debug;
 		
@@ -90,17 +89,27 @@ public interface FleetMasterInterfaceLib extends Library {
 	public static class PropagationTCDelays extends Structure {
 		public static class ByReference extends PropagationTCDelays implements Structure.ByReference {}
 
-        public NativeLong[] indices = new NativeLong[1];
+        public long[] indices = new long[1];
         public double[] values = new double[1];
-        public int size = 0;
+        public long size = 0;
 		
 		public PropagationTCDelays() {}
+		public PropagationTCDelays(long size) {
+			this.indices = new long[Math.max((int) size, 1)];
+			this.values = new double[Math.max((int) size, 1)];
+			this.size = size;
+		}
 		public PropagationTCDelays(Pointer p) {
 			super(p);
 		}
 		@Override
 		protected List<String> getFieldOrder() {
 			return Arrays.asList(new String[] {"indices", "values", "size"});
+		}
+		@Override
+		public String toString() {
+			return "PropagationTCDelays [indices=" + Arrays.toString(indices) + ", values=" + Arrays.toString(values)
+					+ ", size=" + size + "]";
 		}
 	}
 }
