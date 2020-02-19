@@ -9,6 +9,7 @@ import org.metacsp.utility.logging.MetaCSPLogging;
 
 import com.sun.jna.Native;
 import com.sun.jna.NativeLibrary;
+import com.sun.jna.NativeLong;
 import com.sun.jna.ptr.DoubleByReference;
 import com.sun.jna.ptr.PointerByReference;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -83,8 +84,8 @@ public abstract class AbstractFleetMasterInterface {
 		gridParams.origin.y = origin_y;
 		gridParams.origin.theta = origin_theta;
 		gridParams.resolution = resolution;
-		gridParams.width = new Long(width);
-		gridParams.height = new Long(height);
+		gridParams.width = new NativeLong(width);
+		gridParams.height = new NativeLong(height);
 		gridParams.dynamic_size = dynamic_size;
 		gridParams.debug = debug;
 	    
@@ -274,7 +275,7 @@ public abstract class AbstractFleetMasterInterface {
 	public boolean updateCurrentPathIdx(int pathID, int currentIdx) {
 		if (p != null && paths.containsKey(pathID) && paths.get(pathID) != new Long(0)) {
 			metaCSPLogger.info("Updating path pathID: " + pathID + ", current path index: " + currentIdx + ".");
-			return INSTANCE.updateCurrentPathIdx(p, paths.get(pathID), new Long(currentIdx));
+			return INSTANCE.updateCurrentPathIdx(p, paths.get(pathID), new Long(Math.max(currentIdx, 0)));
 		 }
 		 return false;
 	}
@@ -296,7 +297,8 @@ public abstract class AbstractFleetMasterInterface {
 			if (paths.containsKey(teID1) && (paths.containsKey(teID2))) {
 				DoubleByReference delayTe1 = new DoubleByReference();
 				DoubleByReference delayTe2 = new DoubleByReference();
-				INSTANCE.queryTimeDelay(p, paths.get(teID1), paths.get(teID2), Math.max(0, cs.getTe1Start()-1), Math.min(cs.getTe1().getPathLength()-1, cs.getTe1End()+1), Math.max(0, cs.getTe2Start()-1), Math.min(cs.getTe2().getPathLength()-1, cs.getTe2End()+1), te1TCDelays, te2TCDelays, delayTe1, delayTe2);
+				INSTANCE.queryTimeDelay(p, paths.get(teID1), paths.get(teID2), Math.max(0, cs.getTe1Start()-1), Math.min(cs.getTe1().getPathLength()-1, cs.getTe1End()+1), 
+						Math.max(0, cs.getTe2Start()-1), Math.min(cs.getTe2().getPathLength()-1, cs.getTe2End()+1), te1TCDelays.indices, te1TCDelays.values, te1TCDelays.size, te2TCDelays.indices, te2TCDelays.values, te2TCDelays.size, delayTe1, delayTe2);
 				ret = new Pair<Double, Double>(delayTe1.getValue(), delayTe2.getValue());
 			}
 		}

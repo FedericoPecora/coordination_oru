@@ -11,6 +11,8 @@ import java.util.TreeSet;
 import org.apache.commons.lang.ArrayUtils;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 
+import com.sun.jna.NativeLong;
+
 import aima.core.util.datastructure.Pair;
 import se.oru.coordination.coordination_oru.fleetmasterinterface.AbstractFleetMasterInterface;
 import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInterface;
@@ -163,7 +165,7 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 		}
 		return 0;
 	}
-
+	
 	//FIXME not the best way if we have to convert types!!
 	protected PropagationTCDelays toPropagationTCDelays(TreeSet<IndexedDelay> delays) {
 		//Handle exceptions
@@ -180,7 +182,7 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 		while (it.hasNext()) {
 			IndexedDelay current = it.next();
 			if (current != delays.first() && prev.getIndex() == current.getIndex())
-				values.add(i-1, values.get(i-1) + it.next().getValue());
+				values.set(i-1, values.get(i-1) + current.getValue());
 			else {
 				if (current != delays.first() && prev.getIndex() > current.getIndex()) {
 					metaCSPLogger.severe("Invalid IndexedDelays TreeSet!!");
@@ -193,9 +195,10 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 			prev = current;
 			i++;
 		}
-		PropagationTCDelays propTCDelays = new PropagationTCDelays(real_size);
-		propTCDelays.indices = ArrayUtils.toPrimitive((Long[]) indices.toArray(new Long[indices.size()]));
-		propTCDelays.values = ArrayUtils.toPrimitive((Double[]) values.toArray(new Double[values.size()]));
+		PropagationTCDelays propTCDelays = new PropagationTCDelays();
+		propTCDelays.size = real_size;
+		propTCDelays.indices = ArrayUtils.toPrimitive((Long[]) indices.toArray(new Long[real_size]));
+		propTCDelays.values = ArrayUtils.toPrimitive((Double[]) values.toArray(new Double[real_size]));
 		return propTCDelays;
 	}
 	
@@ -272,6 +275,10 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 					RobotReport robotReport1 = currentReports.get(cs.getTe1().getRobotID());
 					AbstractTrajectoryEnvelopeTracker robotTracker2 = trackers.get(cs.getTe2().getRobotID());
 					RobotReport robotReport2 = currentReports.get(cs.getTe2().getRobotID());
+					if (this.fleetMasterInterface != null) {
+						this.fleetMasterInterface.updateCurrentPathIdx(robotTracker1.getTrajectoryEnvelope().getID(), robotReport1.getPathIndex());
+						this.fleetMasterInterface.updateCurrentPathIdx(robotTracker2.getTrajectoryEnvelope().getID(), robotReport2.getPathIndex());
+					}
 	
 					//One or both robots past end of the critical section --> critical section is obsolete
 					//This condition is still valid in case of delays (new mission phases <--> new trackers)

@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import com.sun.jna.Library;
+import com.sun.jna.NativeLong;
 import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
 import com.sun.jna.ptr.DoubleByReference;
@@ -22,8 +23,7 @@ public interface FleetMasterInterfaceLib extends Library {
     boolean updateCurrentPathIdx(PointerByReference p, long pathId, long currentIdx);
     
     void queryTimeDelay(PointerByReference p, long pathId1, long pathId2, int csStart1, int csEnd1, int csStart2, int csEnd2,
-    				PropagationTCDelays pTC1, PropagationTCDelays pTC2, DoubleByReference delay1, DoubleByReference delay2);
-
+    				long[] indicesTCD1, double[] valuesTCD1, long sizeTCD1, long[] indicesTCD2, double[] valuesTCD2, long sizeTCD2, DoubleByReference delay1, DoubleByReference delay2);
     
 	public static class PathPose extends Structure {
 		public static class ByReference extends PathPose implements Structure.ByReference {}
@@ -47,8 +47,8 @@ public interface FleetMasterInterfaceLib extends Library {
 
 		public PathPose origin;
 		public double resolution;
-		public long width;
-		public long height;
+		public NativeLong width;
+		public NativeLong height;
 		public boolean dynamic_size;
 		public boolean debug;
 		
@@ -94,11 +94,6 @@ public interface FleetMasterInterfaceLib extends Library {
         public long size = 0;
 		
 		public PropagationTCDelays() {}
-		public PropagationTCDelays(long size) {
-			this.indices = new long[Math.max((int) size, 1)];
-			this.values = new double[Math.max((int) size, 1)];
-			this.size = size;
-		}
 		public PropagationTCDelays(Pointer p) {
 			super(p);
 		}

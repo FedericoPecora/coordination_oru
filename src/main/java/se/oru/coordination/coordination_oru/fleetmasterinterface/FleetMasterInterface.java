@@ -8,6 +8,8 @@ import java.io.IOException;
 
 import javax.imageio.ImageIO;
 
+import com.sun.jna.NativeLong;
+
 /**
  * TODO Write down class description. 
  * @author am
@@ -107,8 +109,8 @@ public class FleetMasterInterface extends AbstractFleetMasterInterface {
 		gridParams.origin.y = origin_y;
 		gridParams.origin.theta = origin_theta;
 		gridParams.resolution = Math.min(Math.max(resolution, 0.01), 1.);
-		gridParams.width = Math.max(width,1);
-		gridParams.height = Math.max(height,1);
+		gridParams.width = new NativeLong(Math.max(width,1));
+		gridParams.height = new NativeLong(Math.max(height,1));
 		gridParams.dynamic_size = false;
 		gridParams.debug = debug;
 		
