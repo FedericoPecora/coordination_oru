@@ -16,7 +16,7 @@ import com.sun.jna.NativeLong;
 import aima.core.util.datastructure.Pair;
 import se.oru.coordination.coordination_oru.fleetmasterinterface.AbstractFleetMasterInterface;
 import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInterface;
-import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInterfaceLib.PropagationTCDelays;
+import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInterfaceLib.CumulatedIndexedDelaysList;
 
 public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvelopeCoordinator {
 		
@@ -156,8 +156,8 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 	@Override
 	protected int getOrderWithAdvancedHeuristics(AbstractTrajectoryEnvelopeTracker robotTracker1, RobotReport robotReport1, AbstractTrajectoryEnvelopeTracker robotTracker2, RobotReport robotReport2, CriticalSection cs) {
 		if (this.fleetMasterInterface != null && fleetMasterInterface.checkTrajectoryEnvelopeHasBeenAdded(cs.getTe1()) && fleetMasterInterface.checkTrajectoryEnvelopeHasBeenAdded(cs.getTe2())) {
-			PropagationTCDelays te1TCDelays = new PropagationTCDelays();
-			PropagationTCDelays te2TCDelays = new PropagationTCDelays();
+			CumulatedIndexedDelaysList te1TCDelays = new CumulatedIndexedDelaysList();
+			CumulatedIndexedDelaysList te2TCDelays = new CumulatedIndexedDelaysList();
 			Pair<Double, Double> delays = fleetMasterInterface.queryTimeDelay(cs, te1TCDelays, te2TCDelays);
 			if (oneOrderingIsUnsafe(delays.getFirst(), delays.getSecond())) {
 				return delays.getFirst() < delays.getSecond() ? -1 : 1;
@@ -167,10 +167,10 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 	}
 	
 	//FIXME not the best way if we have to convert types!!
-	protected PropagationTCDelays toPropagationTCDelays(TreeSet<IndexedDelay> delays) {
+	protected CumulatedIndexedDelaysList toIndexedDelaysList(TreeSet<IndexedDelay> delays) {
 		//Handle exceptions
 		if (delays == null) throw new Error("Null input in function toPropagationTCDelays!!");
-		if (delays.isEmpty()) return new PropagationTCDelays();
+		if (delays.isEmpty()) return new CumulatedIndexedDelaysList();
 		
 		//Cast the type
 		ArrayList<Long> indices = new ArrayList<Long>();
@@ -181,21 +181,28 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 		int real_size = 0;
 		while (it.hasNext()) {
 			IndexedDelay current = it.next();
-			if (current != delays.first() && prev.getIndex() == current.getIndex())
-				values.set(i-1, values.get(i-1) + current.getValue());
-			else {
-				if (current != delays.first() && prev.getIndex() > current.getIndex()) {
-					metaCSPLogger.severe("Invalid IndexedDelays TreeSet!!");
-					throw new Error("Invalid IndexedDelays TreeSet!!");
-				}
+			if (current == delays.first()) {
 				indices.add(i, new Long(current.getIndex()));
 				values.add(i, current.getValue());
 				real_size++;
 			}
+			else {
+				if (prev.getIndex() == current.getIndex()) 
+					values.set(i-1, values.get(i-1) + current.getValue());
+				else if (prev.getIndex() > current.getIndex()) {
+					metaCSPLogger.severe("Invalid IndexedDelays TreeSet!!");
+					throw new Error("Invalid IndexedDelays TreeSet!!");
+				}
+				else {		
+					indices.add(i, new Long(current.getIndex()));
+					values.add(i, values.get(i-1) + current.getValue());
+					real_size++;
+				}
+			}
 			prev = current;
 			i++;
 		}
-		PropagationTCDelays propTCDelays = new PropagationTCDelays();
+		CumulatedIndexedDelaysList propTCDelays = new CumulatedIndexedDelaysList();
 		propTCDelays.size = real_size;
 		propTCDelays.indices = ArrayUtils.toPrimitive((Long[]) indices.toArray(new Long[real_size]));
 		propTCDelays.values = ArrayUtils.toPrimitive((Double[]) values.toArray(new Double[real_size]));
@@ -204,9 +211,9 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 	
 	protected Pair<Double,Double> estimateTimeToCompletionDelays(AbstractTrajectoryEnvelopeTracker robotTracker1, RobotReport robotReport1, TreeSet<IndexedDelay> delaysRobot1, AbstractTrajectoryEnvelopeTracker robotTracker2, RobotReport robotReport2, TreeSet<IndexedDelay> delaysRobot2, CriticalSection cs) {
 		if (this.fleetMasterInterface != null && fleetMasterInterface.checkTrajectoryEnvelopeHasBeenAdded(cs.getTe1()) && fleetMasterInterface.checkTrajectoryEnvelopeHasBeenAdded(cs.getTe2())) {
-			PropagationTCDelays te1TCDelays = toPropagationTCDelays(delaysRobot1);
+			CumulatedIndexedDelaysList te1TCDelays = toIndexedDelaysList(delaysRobot1);
 			metaCSPLogger.info("[estimateTimeToCompletionDelays] te1TCDelays: " + te1TCDelays.toString());
-			PropagationTCDelays te2TCDelays = toPropagationTCDelays(delaysRobot2);
+			CumulatedIndexedDelaysList te2TCDelays = toIndexedDelaysList(delaysRobot2);
 			metaCSPLogger.info("[estimateTimeToCompletionDelays] te2TCDelays: " + te2TCDelays.toString());
 			return fleetMasterInterface.queryTimeDelay(cs, te1TCDelays, te2TCDelays);
 		}

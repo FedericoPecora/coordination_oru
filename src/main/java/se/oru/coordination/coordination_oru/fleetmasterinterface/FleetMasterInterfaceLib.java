@@ -86,15 +86,15 @@ public interface FleetMasterInterfaceLib extends Library {
 		}
 	}
 	
-	public static class PropagationTCDelays extends Structure {
-		public static class ByReference extends PropagationTCDelays implements Structure.ByReference {}
+	public static class CumulatedIndexedDelaysList extends Structure {
+		public static class ByReference extends CumulatedIndexedDelaysList implements Structure.ByReference {}
 
         public long[] indices = new long[1];
         public double[] values = new double[1];
         public long size = 0;
 		
-		public PropagationTCDelays() {}
-		public PropagationTCDelays(Pointer p) {
+		public CumulatedIndexedDelaysList() {}
+		public CumulatedIndexedDelaysList(Pointer p) {
 			super(p);
 		}
 		@Override
@@ -103,7 +103,7 @@ public interface FleetMasterInterfaceLib extends Library {
 		}
 		@Override
 		public String toString() {
-			return "PropagationTCDelays [indices=" + Arrays.toString(indices) + ", values=" + Arrays.toString(values)
+			return "IndexedDelaysList [indices=" + Arrays.toString(indices) + ", values=" + Arrays.toString(values)
 					+ ", size=" + size + "]";
 		}
 	}

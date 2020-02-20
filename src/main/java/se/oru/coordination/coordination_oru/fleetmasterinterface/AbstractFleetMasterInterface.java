@@ -20,7 +20,7 @@ import aima.core.util.datastructure.Pair;
 import se.oru.coordination.coordination_oru.CriticalSection;
 import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInterfaceLib.GridParams;
 import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInterfaceLib.PathPose;
-import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInterfaceLib.PropagationTCDelays;
+import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInterfaceLib.CumulatedIndexedDelaysList;
 import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInterfaceLib.TrajParams;
 
 public abstract class AbstractFleetMasterInterface {
@@ -289,7 +289,7 @@ public abstract class AbstractFleetMasterInterface {
 	 * @param te2TCDelays Additional delays to the single-robot time of completion of te2 due to future critical sections along te2 (to be used for propagation).
 	 * @return The time of completion increments.
 	 */	
-	public Pair<Double,Double> queryTimeDelay(CriticalSection cs, PropagationTCDelays te1TCDelays, PropagationTCDelays te2TCDelays) {
+	public Pair<Double,Double> queryTimeDelay(CriticalSection cs, CumulatedIndexedDelaysList te1TCDelays, CumulatedIndexedDelaysList te2TCDelays) {
 		Pair<Double, Double> ret = new Pair<Double, Double>(Double.NaN, Double.NaN);
 		if (cs != null) {
 			int teID1 = cs.getTe1().getID();
