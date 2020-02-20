@@ -169,9 +169,12 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 	//FIXME not the best way if we have to convert types!!
 	protected CumulatedIndexedDelaysList toIndexedDelaysList(TreeSet<IndexedDelay> delays) {
 		//Handle exceptions
-		if (delays == null) throw new Error("Null input in function toPropagationTCDelays!!");
+		if (delays == null) {
+			metaCSPLogger.severe("Null input in function toPropagationTCDelays!!");
+			throw new Error("Null input in function toPropagationTCDelays!!");
+		}
 		if (delays.isEmpty()) return new CumulatedIndexedDelaysList();
-		
+			
 		//Cast the type
 		ArrayList<Long> indices = new ArrayList<Long>();
 		ArrayList<Double> values = new ArrayList<Double>();
@@ -181,21 +184,29 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 		int real_size = 0;
 		while (it.hasNext()) {
 			IndexedDelay current = it.next();
-			if (current == delays.first()) {
-				indices.add(i, new Long(current.getIndex()));
-				values.add(i, current.getValue());
+			if (current.getValue() == Double.NaN) {
+				metaCSPLogger.severe("NaN input in function toPropagationTCDelays!!");
+				throw new Error("NaN input in function toPropagationTCDelays!!");
+			}
+			if (current.getValue() == Double.NEGATIVE_INFINITY) {
+				metaCSPLogger.severe("-Inf input in function toPropagationTCDelays!!");
+				throw new Error("-Inf input in function toPropagationTCDelays!!");
+			}
+			if (values.size() == 0 && current.getValue() > 0) {
+				indices.add(new Long(current.getIndex()));
+				values.add(current.getValue());
 				real_size++;
 			}
 			else {
-				if (prev.getIndex() == current.getIndex()) 
-					values.set(i-1, values.get(i-1) + current.getValue());
-				else if (prev.getIndex() > current.getIndex()) {
+				if (prev.getIndex() == current.getIndex() && current.getValue() > 0) 
+					values.set(values.size()-1, values.get(i-1) + current.getValue());
+				else if (prev.getIndex() > current.getIndex() && current.getValue() > 0) {
 					metaCSPLogger.severe("Invalid IndexedDelays TreeSet!!");
 					throw new Error("Invalid IndexedDelays TreeSet!!");
 				}
-				else {		
-					indices.add(i, new Long(current.getIndex()));
-					values.add(i, values.get(i-1) + current.getValue());
+				else if (current.getValue() > 0) {		
+					indices.add(new Long(current.getIndex()));
+					values.add(values.get(i-1) + current.getValue());
 					real_size++;
 				}
 			}
