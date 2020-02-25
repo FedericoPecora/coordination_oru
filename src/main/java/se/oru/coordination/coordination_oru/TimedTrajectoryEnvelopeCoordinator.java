@@ -167,23 +167,37 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 	}
 	
 	//FIXME not the best way if we have to convert types!!
-	protected CumulatedIndexedDelaysList toIndexedDelaysList(TreeSet<IndexedDelay> delays) {
+	/*
+	 * TTC 
+		indices: 0  1  2  3  4  5  6
+		values:  6  5  4  3  2  1  0
+	   Delays
+		indices: 1, 4, 5
+		values: 5, 3, 1. //always decreasing.
+	   Updated TTC
+		indices: 0  1  2  3  4  5  6
+		1) from 0 (included) to 1 (excluded) add 5;
+		2) from 1 (included) to 4 (excluded) add 3;
+		3) from 4 (included) to 5 (excluded) add 1;
+		values:  11  8  7  6  3  2  0
+	 */
+	protected CumulatedIndexedDelaysList toIndexedDelaysList(TreeSet<IndexedDelay> delays, int max_depth) {
 		//Handle exceptions
 		if (delays == null) {
-			metaCSPLogger.severe("Null input in function toPropagationTCDelays!!");
-			throw new Error("Null input in function toPropagationTCDelays!!");
+			metaCSPLogger.severe("Invalid input in function toPropagationTCDelays!!");
+			throw new Error("Invalid input in function toPropagationTCDelays!!");
 		}
-		if (delays.isEmpty()) return new CumulatedIndexedDelaysList();
+		if (delays.isEmpty() || max_depth < 1) return new CumulatedIndexedDelaysList();
 			
 		//Cast the type
 		ArrayList<Long> indices = new ArrayList<Long>();
 		ArrayList<Double> values = new ArrayList<Double>();
-		Iterator<IndexedDelay> it = delays.iterator();
-		IndexedDelay prev = delays.first();
-		int i = 0;
-		int real_size = 0;
+		Iterator<IndexedDelay> it = delays.descendingIterator();
+		IndexedDelay prev = delays.last();
 		while (it.hasNext()) {
 			IndexedDelay current = it.next();
+			//metaCSPLogger.info("[toIndexedDelaysList] current: " + current.toString() + ", prev: " + prev.toString());
+			//Check unfeasible values
 			if (current.getValue() == Double.NaN) {
 				metaCSPLogger.severe("NaN input in function toPropagationTCDelays!!");
 				throw new Error("NaN input in function toPropagationTCDelays!!");
@@ -192,39 +206,45 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 				metaCSPLogger.severe("-Inf input in function toPropagationTCDelays!!");
 				throw new Error("-Inf input in function toPropagationTCDelays!!");
 			}
-			if (values.size() == 0 && current.getValue() > 0) {
-				indices.add(new Long(current.getIndex()));
-				values.add(current.getValue());
-				real_size++;
+			if (prev.getIndex() < current.getIndex()) {
+				metaCSPLogger.severe("Invalid IndexedDelays TreeSet!!");
+				throw new Error("Invalid IndexedDelays TreeSet!!");
 			}
-			else {
-				if (prev.getIndex() == current.getIndex() && current.getValue() > 0) 
-					values.set(values.size()-1, values.get(i-1) + current.getValue());
-				else if (prev.getIndex() > current.getIndex() && current.getValue() > 0) {
-					metaCSPLogger.severe("Invalid IndexedDelays TreeSet!!");
-					throw new Error("Invalid IndexedDelays TreeSet!!");
-				}
-				else if (current.getValue() > 0) {		
+			
+			//Update the value only if positive and only if the index is lower than the max depth
+			if (current.getValue() > 0 && current.getIndex() < max_depth) {
+				if (values.size() == 0) {
+					//Add the index the first time its value is positive
 					indices.add(new Long(current.getIndex()));
-					values.add(values.get(i-1) + current.getValue());
-					real_size++;
+					values.add(current.getValue());
+				}
+				else if (prev.getIndex() == current.getIndex())				
+					//Handle multiple delays in the same critical point
+					values.set(values.size()-1, values.get(values.size()-1) + current.getValue());
+				else {
+					//Add the cumulative value if it is not the first.
+					indices.add(new Long(current.getIndex()));
+					values.add(values.get(values.size()-1) + current.getValue());
 				}
 			}
 			prev = current;
-			i++;
 		}
 		CumulatedIndexedDelaysList propTCDelays = new CumulatedIndexedDelaysList();
-		propTCDelays.size = real_size;
-		propTCDelays.indices = ArrayUtils.toPrimitive((Long[]) indices.toArray(new Long[real_size]));
-		propTCDelays.values = ArrayUtils.toPrimitive((Double[]) values.toArray(new Double[real_size]));
+		if (indices.size() > 0) {
+			propTCDelays.size = indices.size();
+			propTCDelays.indices = ArrayUtils.toPrimitive((Long[]) indices.toArray(new Long[indices.size()]));
+			ArrayUtils.reverse(propTCDelays.indices);
+			propTCDelays.values = ArrayUtils.toPrimitive((Double[]) values.toArray(new Double[values.size()]));
+			ArrayUtils.reverse(propTCDelays.values);
+		}
 		return propTCDelays;
 	}
 	
 	protected Pair<Double,Double> estimateTimeToCompletionDelays(AbstractTrajectoryEnvelopeTracker robotTracker1, RobotReport robotReport1, TreeSet<IndexedDelay> delaysRobot1, AbstractTrajectoryEnvelopeTracker robotTracker2, RobotReport robotReport2, TreeSet<IndexedDelay> delaysRobot2, CriticalSection cs) {
 		if (this.fleetMasterInterface != null && fleetMasterInterface.checkTrajectoryEnvelopeHasBeenAdded(cs.getTe1()) && fleetMasterInterface.checkTrajectoryEnvelopeHasBeenAdded(cs.getTe2())) {
-			CumulatedIndexedDelaysList te1TCDelays = toIndexedDelaysList(delaysRobot1);
+			CumulatedIndexedDelaysList te1TCDelays = toIndexedDelaysList(delaysRobot1, cs.getTe1().getTrajectory().getPoseSteering().length);
 			metaCSPLogger.info("[estimateTimeToCompletionDelays] te1TCDelays: " + te1TCDelays.toString());
-			CumulatedIndexedDelaysList te2TCDelays = toIndexedDelaysList(delaysRobot2);
+			CumulatedIndexedDelaysList te2TCDelays = toIndexedDelaysList(delaysRobot2, cs.getTe2().getTrajectory().getPoseSteering().length);
 			metaCSPLogger.info("[estimateTimeToCompletionDelays] te2TCDelays: " + te2TCDelays.toString());
 			return fleetMasterInterface.queryTimeDelay(cs, te1TCDelays, te2TCDelays);
 		}

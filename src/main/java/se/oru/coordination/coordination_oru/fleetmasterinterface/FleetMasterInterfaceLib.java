@@ -15,7 +15,7 @@ public interface FleetMasterInterfaceLib extends Library {
 			
 	PointerByReference init(GridParams gridParams);
 		
-	Long addPath(PointerByReference p, PathPose[] path, double[] steering, int pathLength, TrajParams trajParams, double[] coordinates_x, double[] coordinates_y, int num_coordinate, 
+	long addPath(PointerByReference p, PathPose[] path, double[] steering, int pathLength, TrajParams trajParams, double[] coordinates_x, double[] coordinates_y, int num_coordinate, 
 			double bottom_left_x, double bottom_left_y, double top_right_x, double top_right_y);
 	
     void removePath(PointerByReference p, long id);

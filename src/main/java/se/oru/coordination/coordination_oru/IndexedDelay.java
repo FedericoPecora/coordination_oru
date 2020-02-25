@@ -98,8 +98,7 @@ public class IndexedDelay implements Comparable<IndexedDelay> {
 
 	@Override
 	public String toString() {
-		// TODO Auto-generated method stub
-		return super.toString();
+		return new String("(teID: " + this.teID + ", index: " + this.index + ", delay: " + this.value + ")");
 	}
 	
 }

@@ -222,14 +222,14 @@ public abstract class AbstractFleetMasterInterface {
 		//Call the method. -1 is used as special value to indicate that the path was not correctly added.
 		Long pathCode = new Long(0);
 		TrajParams trjp = trajParams.containsKey(robotID) ? trajParams.get(robotID) : DEFAULT_TRAJ_PARAMS;
-		double bottom_left_x = (bbx == null) ? Double.NaN : bbx[0].x;
-		double bottom_left_y = (bbx == null) ? Double.NaN : bbx[0].y;
-		double top_right_x = (bbx == null) ? Double.NaN : bbx[2].x;
-		double top_right_y = (bbx == null) ? Double.NaN : bbx[2].y;
-		pathCode = INSTANCE.addPath(p, path, steering, pathToAdd.length, trjp, coordinates_x, coordinates_y, coordinates.length, bottom_left_x, bottom_left_y, top_right_x, top_right_y);
+		double bottom_left_x = (bbx == null) ? Double.MAX_VALUE : bbx[0].x;
+		double bottom_left_y = (bbx == null) ? Double.MAX_VALUE : bbx[0].y;
+		double top_right_x = (bbx == null) ? Double.MAX_VALUE : bbx[2].x;
+		double top_right_y = (bbx == null) ? Double.MAX_VALUE : bbx[2].y;
+		pathCode = new Long(INSTANCE.addPath(p, path, steering, pathToAdd.length, trjp, coordinates_x, coordinates_y, coordinates.length, bottom_left_x, bottom_left_y, top_right_x, top_right_y));
 		paths.put(pathID, pathCode);
 
-		metaCSPLogger.info("Adding path RobotID: " + robotID + ", pathID: " + pathID + ", fleetmaster pathID: " + path.hashCode() +".");
+		metaCSPLogger.info("Adding path RobotID: " + robotID + ", pathID: " + pathID + ", fleetmaster pathID: " + pathCode + ".");
 		
 		return !pathCode.equals(new Long(0));
 	}
