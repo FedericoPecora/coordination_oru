@@ -50,7 +50,7 @@ public abstract class AbstractFleetMasterInterface {
 
 	public static FleetMasterInterfaceLib INSTANCE = null;
 	static {
-		NativeLibrary.addSearchPath("fleetmaster", "/home/anna/fleet_ws/devel/lib"); //FIXME How to add the path of the library? Now it is in {$FLEETMASTER_WS}/devel
+		NativeLibrary.addSearchPath("fleetmaster", "FleetMasterInterface"); //FIXME How to add the path of the library? Now it is in {$FLEETMASTER_WS}/devel
 		INSTANCE = Native.loadLibrary("fleetmaster", FleetMasterInterfaceLib.class);
 	}
 	
