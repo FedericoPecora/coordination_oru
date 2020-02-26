@@ -196,7 +196,6 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 		IndexedDelay prev = delays.last();
 		while (it.hasNext()) {
 			IndexedDelay current = it.next();
-			//metaCSPLogger.info("[toIndexedDelaysList] current: " + current.toString() + ", prev: " + prev.toString());
 			//Check unfeasible values
 			if (current.getValue() == Double.NaN) {
 				metaCSPLogger.severe("NaN input in function toPropagationTCDelays!!");
