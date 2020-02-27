@@ -61,7 +61,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	protected boolean staticReplan = false;
 	
 	protected boolean isDeadlocked = false;
-	protected boolean blocked = false;
+	protected boolean isBlocked = false;
 	
 	
 	/**
@@ -69,7 +69,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 * @return <code>true</code> iff a robot is waiting for another robot that is parked.
 	 */
 	public boolean isBlocked() {
-		return this.blocked;
+		return this.isBlocked;
 	}
 	
 	/**
@@ -332,7 +332,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		SimpleDirectedGraph<Integer,Dependency> g = depsToGraph(currentDependencies);
 		List<List<Integer>> nonliveCycles = findSimpleNonLiveCycles(g);
 		
-		if (nonliveCycles.size() > 0) this.isDeadlocked = true;
+		this.isDeadlocked = nonliveCycles.size() > 0;
 		
 		// ... keep tracks of size and old cycles for statistics
 		List<List<Integer>> nonliveCyclesNew = new ArrayList<List<Integer>>();
@@ -606,7 +606,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			synchronized(allCriticalSections) {
 				
 				depsToCS.clear();				
-				this.blocked = false;
+				this.isBlocked = false;
 				
 				HashSet<CriticalSection> toRemove = new HashSet<CriticalSection>();
 				for (CriticalSection cs : this.allCriticalSections) {
@@ -635,7 +635,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					//but the information has not been received.					
 					if (robotTracker1 instanceof TrajectoryEnvelopeTrackerDummy || robotTracker2 instanceof TrajectoryEnvelopeTrackerDummy) {
 						
-						this.blocked = true;
+						this.isBlocked = true;
 						
 						//Robot1 is parking in critical section. If it is the driver, make robot 2 wait.
 						if (robotTracker1 instanceof TrajectoryEnvelopeTrackerDummy) {
@@ -1525,7 +1525,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				
 				HashSet<CriticalSection> toRemove = new HashSet<CriticalSection>();
 				
-				this.blocked = false;
+				this.isBlocked = false;
 				
 				for (CriticalSection cs : this.allCriticalSections) {
 					
@@ -1551,7 +1551,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					//If the precedence IS CONSTRAINED BY PARKED ROBOTS ...
 					if (robotTracker1 instanceof TrajectoryEnvelopeTrackerDummy || robotTracker2 instanceof TrajectoryEnvelopeTrackerDummy) {
 						
-						this.blocked = true;
+						this.isBlocked = true;
 						
 						//Robot1 is parking in critical section. If it is the driver, make robot 2 wait.
 						if (robotTracker1 instanceof TrajectoryEnvelopeTrackerDummy) {
