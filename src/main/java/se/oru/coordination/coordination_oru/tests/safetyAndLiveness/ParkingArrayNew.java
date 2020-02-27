@@ -129,11 +129,11 @@ public class ParkingArrayNew {
 		}
 				
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
-		RVizVisualization viz = new RVizVisualization();
+		//RVizVisualization viz = new RVizVisualization();
 		//RVizVisualization.writeRVizConfigFile(robotIDs);
-		//BrowserVisualization viz = new BrowserVisualization();
+		BrowserVisualization viz = new BrowserVisualization();
 		//viz.setMap(yamlFile);
-		//viz.setInitialTransform(60, 33.58, 13.49);
+		viz.setInitialTransform(35,-20,-24);
 		tec.setVisualization(viz);
 				
 		//Determine locations around the circle, with random orientation

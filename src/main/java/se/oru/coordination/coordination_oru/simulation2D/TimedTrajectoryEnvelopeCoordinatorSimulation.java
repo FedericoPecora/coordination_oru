@@ -15,16 +15,13 @@ import com.vividsolutions.jts.geom.Geometry;
 import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeTracker;
 import se.oru.coordination.coordination_oru.CollisionEvent;
 import se.oru.coordination.coordination_oru.CriticalSection;
-import se.oru.coordination.coordination_oru.Dependency;
 import se.oru.coordination.coordination_oru.Mission;
 import se.oru.coordination.coordination_oru.RobotReport;
+import se.oru.coordination.coordination_oru.TimedTrajectoryEnvelopeCoordinator;
 import se.oru.coordination.coordination_oru.TrackingCallback;
-import se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator;
 import se.oru.coordination.coordination_oru.TrajectoryEnvelopeTrackerDummy;
-import se.oru.coordination.coordination_oru.motionplanning.AbstractMotionPlanner;
 
-public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeCoordinator {
-
+public class TimedTrajectoryEnvelopeCoordinatorSimulation extends TimedTrajectoryEnvelopeCoordinator {
 	protected static final long START_TIME = Calendar.getInstance().getTimeInMillis();
 	protected double MAX_VELOCITY;
 	protected double MAX_ACCELERATION;
@@ -66,7 +63,7 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	}
 
 	/**
-	 * Create a new {@link TrajectoryEnvelopeCoordinatorSimulation} with the following default values:
+	 * Create a new {@link TimedTrajectoryEnvelopeCoordinatorSimulation} with the following default values:
 	 * <ul>
 	 * <li><code>CONTROL_PERIOD</code> = 1000</li>
 	 * <li><code>TEMPORAL_RESOLUTION</code> = 1000</li>
@@ -76,12 +73,12 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	 * <li><code>PARKING_DURATION</code> = 3000</li>
 	 * </ul>
 	 */
-	public TrajectoryEnvelopeCoordinatorSimulation() {
+	public TimedTrajectoryEnvelopeCoordinatorSimulation() {
 		this(1000, 1000, 10.0, 1.0, 30);
 	}
 
 	/**
-	 * Create a new {@link TrajectoryEnvelopeCoordinatorSimulation} with the following default values:
+	 * Create a new {@link TimedTrajectoryEnvelopeCoordinatorSimulation} with the following default values:
 	 * <ul>
 	 * <li><code>CONTROL_PERIOD</code> = 1000</li>
 	 * <li><code>TEMPORAL_RESOLUTION</code> = 1000</li>
@@ -89,12 +86,12 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	 * <li><code>PARKING_DURATION</code> = 3000</li>
 	 * </ul>
 	 */
-	public TrajectoryEnvelopeCoordinatorSimulation(int CONTROL_PERIOD, double TEMPORAL_RESOLUTION, double MAX_VELOCITY, double MAX_ACCELERATION) {
+	public TimedTrajectoryEnvelopeCoordinatorSimulation(int CONTROL_PERIOD, double TEMPORAL_RESOLUTION, double MAX_VELOCITY, double MAX_ACCELERATION) {
 		this(CONTROL_PERIOD, TEMPORAL_RESOLUTION, MAX_VELOCITY, MAX_ACCELERATION, 30);
 	}
 
 	/**
-	 * Create a new {@link TrajectoryEnvelopeCoordinatorSimulation} with the following default values:
+	 * Create a new {@link TimedTrajectoryEnvelopeCoordinatorSimulation} with the following default values:
 	 * <ul>
 	 * <li><code>CONTROL_PERIOD</code> = 1000</li>
 	 * <li><code>TEMPORAL_RESOLUTION</code> = 1000</li>
@@ -102,12 +99,12 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	 * <li><code>PARKING_DURATION</code> = 3000</li>
 	 * </ul>
 	 */
-	public TrajectoryEnvelopeCoordinatorSimulation(double MAX_VELOCITY, double MAX_ACCELERATION) {
+	public TimedTrajectoryEnvelopeCoordinatorSimulation(double MAX_VELOCITY, double MAX_ACCELERATION) {
 		this(1000, 1000, MAX_VELOCITY, MAX_ACCELERATION, 30);
 	}
 
 	/**
-	 * Create a new {@link TrajectoryEnvelopeCoordinatorSimulation} with the following default values:
+	 * Create a new {@link TimedTrajectoryEnvelopeCoordinatorSimulation} with the following default values:
 	 * <li><code>MAX_VELOCITY</code> = 10.0</li>
 	 * <li><code>MAX_ACCELERATION</code> = 1.0</li>
 	 * <li><code>trackingPeriodInMillis</code> = 30</li>
@@ -117,7 +114,7 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	 * @param CONTROL_PERIOD The control period of the coordinator (e.g., 1000 msec)
 	 * @param TEMPORAL_RESOLUTION The temporal resolution at which the control period is specified (e.g., 1000)
 	 */
-	public TrajectoryEnvelopeCoordinatorSimulation(int CONTROL_PERIOD, double TEMPORAL_RESOLUTION) {
+	public TimedTrajectoryEnvelopeCoordinatorSimulation(int CONTROL_PERIOD, double TEMPORAL_RESOLUTION) {
 		this(CONTROL_PERIOD, TEMPORAL_RESOLUTION, 10.0, 1.0, 30);
 	}
 
@@ -163,14 +160,14 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 
 
 	/**
-	 * Create a new {@link TrajectoryEnvelopeCoordinatorSimulation} with given parameters.
+	 * Create a new {@link TimedTrajectoryEnvelopeCoordinatorSimulation} with given parameters.
 	 * @param CONTROL_PERIOD The control period of the coordinator (e.g., 1000 msec)
 	 * @param TEMPORAL_RESOLUTION The temporal resolution at which the control period is specified (e.g., 1000)
 	 * @param MAX_VELOCITY The maximum speed of a robot (used to appropriately instantiate the {@link TrajectoryEnvelopeTrackerRK4} instances).
 	 * @param MAX_ACCELERATION The maximum acceleration/deceleration of a robot (used to appropriately instantiate the {@link TrajectoryEnvelopeTrackerRK4} instances).
 	 * @param trackingPeriodInMillis The tracking period in milliseconds (used to appropriately instantiate the {@link TrajectoryEnvelopeTrackerRK4} instances).
 	 */
-	public TrajectoryEnvelopeCoordinatorSimulation(int CONTROL_PERIOD, double TEMPORAL_RESOLUTION, double MAX_VELOCITY, double MAX_ACCELERATION, int trackingPeriodInMillis) {
+	public TimedTrajectoryEnvelopeCoordinatorSimulation(int CONTROL_PERIOD, double TEMPORAL_RESOLUTION, double MAX_VELOCITY, double MAX_ACCELERATION, int trackingPeriodInMillis) {
 		super(CONTROL_PERIOD, TEMPORAL_RESOLUTION);
 		this.MAX_VELOCITY = MAX_VELOCITY;
 		this.MAX_ACCELERATION = MAX_ACCELERATION;
@@ -351,5 +348,5 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 			collisionThread.start();
 		}
 	}
-	
+
 }
