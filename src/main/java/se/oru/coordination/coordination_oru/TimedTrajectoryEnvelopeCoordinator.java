@@ -211,7 +211,7 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 			}
 			
 			//Update the value only if positive and only if the index is lower than the max depth
-			if (current.getValue() > 0 && current.getIndex() < max_depth) {
+			if (current.getValue() > 0 && current.getValue() < Double.MAX_VALUE && current.getIndex() < max_depth) {
 				if (values.size() == 0) {
 					//Add the index the first time its value is positive
 					indices.add(new Long(current.getIndex()));
