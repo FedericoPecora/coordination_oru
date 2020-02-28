@@ -303,7 +303,7 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 			synchronized(allCriticalSections) {
 				
 				depsToCS.clear();				
-				this.blocked = false;
+				this.isBlocked = false;
 				
 				HashSet<CriticalSection> toRemove = new HashSet<CriticalSection>();
 				for (CriticalSection cs : this.allCriticalSections) {
@@ -336,7 +336,7 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 					//but the information has not been received.					
 					if (robotTracker1 instanceof TrajectoryEnvelopeTrackerDummy || robotTracker2 instanceof TrajectoryEnvelopeTrackerDummy) {
 						
-						this.blocked = true;
+						this.isBlocked = true;
 						
 						//Robot1 is parking in critical section. If it is the driver, make robot 2 wait.
 						if (robotTracker1 instanceof TrajectoryEnvelopeTrackerDummy) {
