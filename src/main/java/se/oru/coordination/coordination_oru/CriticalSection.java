@@ -115,7 +115,9 @@ public class CriticalSection {
 	@Override
 	public String toString() {
 		String ret = "";
-		ret += "CriticalSection (Robot" + te1.getRobotID() + " [" + te1Start + ";" + te1End + "], Robot" + te2.getRobotID() + " [" + te2Start + ";" + te2End + "])"; //\n\t" + te1 + "\n\t" + te2; 
+		String robot1 = (te1 == null ? "null" : "Robot"+te1.getRobotID());
+		String robot2 = (te2 == null ? "null" : "Robot"+te2.getRobotID());
+		ret += "CriticalSection (" + robot1 + " [" + te1Start + ";" + te1End + "], " + robot2 + " [" + te2Start + ";" + te2End + "])";
 		return ret;
 	}
 }

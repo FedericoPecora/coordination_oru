@@ -1126,7 +1126,6 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 //		Geometry shape1 = ((GeometricShapeDomain)poly1.getDomain()).getGeometry();
 //		Geometry shape2 = ((GeometricShapeDomain)poly2.getDomain()).getGeometry();
 
-		
 		if (te1 != null) se1 = te1.getSpatialEnvelope();
 		if (te2 != null) se2 = te2.getSpatialEnvelope();
 		
@@ -1294,11 +1293,18 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	}
 
 
-	protected CriticalSection[] getCriticalSections(TrajectoryEnvelope te1, TrajectoryEnvelope te2) {
-		double maxDimensionOfSmallestRobot = Math.min(getMaxFootprintDimension(te1.getRobotID()), getMaxFootprintDimension(te2.getRobotID()));
-		return getCriticalSections(null, null, te1, -1, te2, -1, this.checkEscapePoses, maxDimensionOfSmallestRobot);
+	public static CriticalSection[] getCriticalSections(SpatialEnvelope se1, SpatialEnvelope se2, TrajectoryEnvelope te1, TrajectoryEnvelope te2, boolean checkEscapePoses, double maxDimensionOfSmallestRobot) {
+		return getCriticalSections(se1, se2, te1, -1, te2, -1, checkEscapePoses, maxDimensionOfSmallestRobot);
 	}
-
+	
+	public static CriticalSection[] getCriticalSections(SpatialEnvelope se1, SpatialEnvelope se2, boolean checkEscapePoses, double maxDimensionOfSmallestRobot) {
+		return getCriticalSections(se1, se2, null, -1, null, -1, checkEscapePoses, maxDimensionOfSmallestRobot);
+	}
+	
+	public static CriticalSection[] getCriticalSections(SpatialEnvelope se1, SpatialEnvelope se2, double maxDimensionOfSmallestRobot) {
+		return getCriticalSections(se1, se2, null, -1, null, -1, true, maxDimensionOfSmallestRobot);
+	}
+	
 	protected void cleanUp(TrajectoryEnvelope te) {
 		synchronized (solver) {
 			metaCSPLogger.info("Cleaning up " + te);
