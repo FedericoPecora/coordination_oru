@@ -1134,16 +1134,19 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		}
 
 	}
-	
+		
 	protected CriticalSection[] getCriticalSections(TrajectoryEnvelope te1, int minStart1, TrajectoryEnvelope te2, int minStart2) {
 
 		ArrayList<CriticalSection> css = new ArrayList<CriticalSection>();
 			
-		GeometricShapeVariable poly1 = te1.getEnvelopeVariable();
-		GeometricShapeVariable poly2 = te2.getEnvelopeVariable();
-		Geometry shape1 = ((GeometricShapeDomain)poly1.getDomain()).getGeometry();
-		Geometry shape2 = ((GeometricShapeDomain)poly2.getDomain()).getGeometry();
+//		GeometricShapeVariable poly1 = te1.getEnvelopeVariable();
+//		GeometricShapeVariable poly2 = te2.getEnvelopeVariable();
+//		Geometry shape1 = ((GeometricShapeDomain)poly1.getDomain()).getGeometry();
+//		Geometry shape2 = ((GeometricShapeDomain)poly2.getDomain()).getGeometry();
 
+		Geometry shape1 = te1.getSpatialEnvelope().getPolygon();
+		Geometry shape2 = te2.getSpatialEnvelope().getPolygon();
+		
 		if (shape1.intersects(shape2)) {
 			PoseSteering[] path1 = te1.getTrajectory().getPoseSteering();
 			PoseSteering[] path2 = te2.getTrajectory().getPoseSteering();

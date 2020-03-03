@@ -496,6 +496,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						---------------------------------------------------------------------------------------
 					 */
 					
+					//TODO: see issue on Github
 					ConnectivityInspector<Integer,Dependency> connInsp = new ConnectivityInspector<Integer,Dependency>(g);
 					HashSet<Integer> allRobots = (HashSet<Integer>) connInsp.connectedSetOf(cycle.get(0));
 					spawnReplanning(depsAlongCycle, allRobots);
