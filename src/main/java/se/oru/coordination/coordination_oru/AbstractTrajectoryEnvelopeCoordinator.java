@@ -25,6 +25,7 @@ import org.metacsp.multi.spatial.DE9IM.GeometricShapeVariable;
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
+import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope.SpatialEnvelope;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelopeSolver;
 import org.metacsp.time.Bounds;
 import org.metacsp.utility.UI.Callback;
@@ -99,7 +100,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	protected HashMap<Integer,AbstractTrajectoryEnvelopeTracker> trackers = new HashMap<Integer, AbstractTrajectoryEnvelopeTracker>();
 	protected HashSet<Dependency> currentDependencies = new HashSet<Dependency>();
 	
-	protected Logger metaCSPLogger = MetaCSPLogging.getLogger(TrajectoryEnvelopeCoordinator.class);
+	protected static Logger metaCSPLogger = MetaCSPLogging.getLogger(TrajectoryEnvelopeCoordinator.class);
 	protected String logDirName = null;
 
 	protected HashMap<AbstractTrajectoryEnvelopeTracker,Pair<Integer,Long>> communicatedCPs = new HashMap<AbstractTrajectoryEnvelopeTracker, Pair<Integer,Long>>();
@@ -1135,7 +1136,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 
 	}
 		
-	protected CriticalSection[] getCriticalSections(TrajectoryEnvelope te1, int minStart1, TrajectoryEnvelope te2, int minStart2) {
+	protected static CriticalSection[] getCriticalSections(SpatialEnvelope se1, SpatialEnvelope se2, TrajectoryEnvelope te1, int minStart1, TrajectoryEnvelope te2, int minStart2, boolean checkEscapePoses, double maxDimensionOfSmallestRobot) {
 
 		ArrayList<CriticalSection> css = new ArrayList<CriticalSection>();
 			
@@ -1144,18 +1145,25 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 //		Geometry shape1 = ((GeometricShapeDomain)poly1.getDomain()).getGeometry();
 //		Geometry shape2 = ((GeometricShapeDomain)poly2.getDomain()).getGeometry();
 
-		Geometry shape1 = te1.getSpatialEnvelope().getPolygon();
-		Geometry shape2 = te2.getSpatialEnvelope().getPolygon();
+		if (te1 != null) se1 = te1.getSpatialEnvelope();
+		if (te2 != null) se2 = te2.getSpatialEnvelope();
 		
+		Geometry shape1 = se1.getPolygon();
+		Geometry shape2 = se2.getPolygon();
+				
 		if (shape1.intersects(shape2)) {
-			PoseSteering[] path1 = te1.getTrajectory().getPoseSteering();
-			PoseSteering[] path2 = te2.getTrajectory().getPoseSteering();
-			
+//			PoseSteering[] path1 = te1.getTrajectory().getPoseSteering();
+//			PoseSteering[] path2 = te2.getTrajectory().getPoseSteering();
+
+			PoseSteering[] path1 = se1.getPath();
+			PoseSteering[] path2 = se2.getPath();
+
 			if (checkEscapePoses) {
 				//Check that there is an "escape pose" along the paths 
 				boolean safe = false;
 				for (int j = 0; j < path1.length; j++) {
-					Geometry placement1 = te1.makeFootprint(path1[j]);
+					//Geometry placement1 = te1.makeFootprint(path1[j]);
+					Geometry placement1 = TrajectoryEnvelope.getFootprint(se1.getFootprint(), path1[j].getPose().getX(), path1[j].getPose().getY(), path1[j].getPose().getTheta());
 					if (!placement1.intersects(shape2)) {
 						safe = true;
 						break;
@@ -1170,7 +1178,8 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 
 				safe = false;
 				for (int j = 0; j < path2.length; j++) {
-					Geometry placement2 = te2.makeFootprint(path2[j]);
+					//Geometry placement2 = te2.makeFootprint(path2[j]);
+					Geometry placement2 = TrajectoryEnvelope.getFootprint(se2.getFootprint(), path2[j].getPose().getX(), path2[j].getPose().getY(), path2[j].getPose().getTheta());
 					if (!placement2.intersects(shape1)) {
 						safe = true;
 						break;
@@ -1193,7 +1202,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				for (int i = 1; i < gc.getNumGeometries(); i++) {
 					Geometry prev = gc.getGeometryN(i-1);
 					Geometry next = gc.getGeometryN(i);					
-					if (prev.distance(next) < getMaxFootprintDimension(te1.getRobotID()) || prev.distance(next) < getMaxFootprintDimension(te2.getRobotID())) {
+					if (prev.distance(next) < maxDimensionOfSmallestRobot) {
 						allIntersections.add(prev.union(next).convexHull());
 					}
 					else {
@@ -1213,7 +1222,8 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				Geometry g = allIntersections.get(i);
 				boolean started = false;
 				for (int j = 0; j < path1.length; j++) {
-					Geometry placement1 = te1.makeFootprint(path1[j]);
+					//Geometry placement1 = te1.makeFootprint(path1[j]);
+					Geometry placement1 = TrajectoryEnvelope.getFootprint(se1.getFootprint(), path1[j].getPose().getX(), path1[j].getPose().getY(), path1[j].getPose().getTheta());
 					if (!started && placement1.intersects(g)) {
 						started = true;
 						te1Starts.add(j);
@@ -1228,7 +1238,8 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				}
 				started = false;
 				for (int j = 0; j < path2.length; j++) {
-					Geometry placement2 = te2.makeFootprint(path2[j]);
+					//Geometry placement2 = te2.makeFootprint(path2[j]);
+					Geometry placement2 = TrajectoryEnvelope.getFootprint(se2.getFootprint(), path2[j].getPose().getX(), path2[j].getPose().getY(), path2[j].getPose().getTheta());
 					if (!started && placement2.intersects(g)) {
 						started = true;
 						te2Starts.add(j);
@@ -1299,12 +1310,21 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		
 		return css.toArray(new CriticalSection[css.size()]);
 	}
-
-
-	protected CriticalSection[] getCriticalSections(TrajectoryEnvelope te1, TrajectoryEnvelope te2) {
-		return getCriticalSections(te1, -1, te2, -1);
+	
+	protected CriticalSection[] getCriticalSections(TrajectoryEnvelope te1, int minStart1, TrajectoryEnvelope te2, int minStart2) {
+		double maxDimensionOfSmallestRobot= Math.min(this.getMaxFootprintDimension(te1.getRobotID()), this.getMaxFootprintDimension(te2.getRobotID()));
+		return getCriticalSections(te1.getSpatialEnvelope(), te2.getSpatialEnvelope(), te1, minStart1, te2, minStart2, this.checkEscapePoses, maxDimensionOfSmallestRobot);
 	}
 
+	public static CriticalSection[] getCriticalSections(TrajectoryEnvelope te1, TrajectoryEnvelope te2, boolean checkEscapePoses, double maxDimensionOfSmallestRobot) {
+		return getCriticalSections(te1.getSpatialEnvelope(), te2.getSpatialEnvelope(), te1, -1, te2, -1, checkEscapePoses, maxDimensionOfSmallestRobot);
+	}
+	
+	public static CriticalSection[] getCriticalSections(SpatialEnvelope se1, SpatialEnvelope se2, boolean checkEscapePoses, double maxDimensionOfSmallestRobot) {
+		return getCriticalSections(se1, se2, null, -1, null, -1, checkEscapePoses, maxDimensionOfSmallestRobot);
+	}
+	
+	
 	protected void cleanUp(TrajectoryEnvelope te) {
 		synchronized (solver) {
 			metaCSPLogger.info("Cleaning up " + te);
