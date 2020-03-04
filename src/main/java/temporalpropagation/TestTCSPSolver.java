@@ -49,6 +49,22 @@ public class TestTCSPSolver {
 		 *   /
 		 *  /  4
 		 *	
+		 *  (t1) --[d1,D1] OR [d2,D2] OR ... [dn,Dn]--> (t2)
+		 *  
+		 *  t2-t1 >= d1 AND t2-t1 <= D1
+		 *  
+		 *  OR
+		 *  
+		 *  t2-t1 >= d2 AND t2-t1 <= D2
+		 *  
+		 *  OR
+		 *  
+		 *  ...
+		 *  
+		 *  t2-t1 >= dn AND t2-t1 <= Dn
+		 *  
+		 *  
+		 *  
 		 *
 		 */
 		
@@ -229,15 +245,15 @@ public class TestTCSPSolver {
 		metaSolver.addMetaConstraint(metaCons);
 
 		ConstraintNetwork[] resolvers = new ConstraintNetwork[0];
-		long max = -APSPSolver.INF;
 		
 		while (metaSolver.backtrack()) {
+			long max = -APSPSolver.INF;
 			resolvers = metaSolver.getAddedResolvers();
 			
 			for (Variable var : groundSolver.getVariables()) {
 				MultiTimePoint tp = (MultiTimePoint)var;
-//				System.out.println(var.getComponent() + ": " + var.getDomain());
-				//System.out.println(var.getComponent() + ": " + tp.getLowerBound());
+				System.out.println(var.getComponent() + ": " + var.getDomain());
+//				System.out.println(var.getComponent() + ": " + tp.getLowerBound());
 				if (tp.getComponent() != null && max < tp.getLowerBound()) max = tp.getLowerBound();				
 			}
 
@@ -252,6 +268,7 @@ public class TestTCSPSolver {
 			metaSolver.retractResolvers();
 
 			max--;
+			
 			DistanceConstraint maxR1 = new DistanceConstraint(new Bounds(0,max));
 			maxR1.setFrom(groundSolver.getSource());
 			maxR1.setTo(r1_goal);
@@ -266,5 +283,6 @@ public class TestTCSPSolver {
 		}
 
 	}
+
 
 }
