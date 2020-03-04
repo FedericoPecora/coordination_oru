@@ -1,5 +1,6 @@
 package temporalpropagation;
 
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Random;
 import java.util.logging.Level;
@@ -35,7 +36,7 @@ public class TestTCSPSolver {
 		DistanceConstraintSolver groundSolver = (DistanceConstraintSolver)metaSolver.getConstraintSolvers()[0];		
 		APSPSolver groundGroundSolver = (APSPSolver)groundSolver.getConstraintSolvers()[0];
 		
-		MetaCSPLogging.setLevel(metaSolver.getClass(), Level.FINEST);
+		//MetaCSPLogging.setLevel(metaSolver.getClass(), Level.FINEST);
 		
 		/*                  5
 		 *                -------
@@ -82,7 +83,7 @@ public class TestTCSPSolver {
 
 //		ConstraintNetwork.draw(groundSolver.getConstraintNetwork(), "TCSP");
 //		ConstraintNetwork.draw(groundGroundSolver.getConstraintNetwork(), "STP");
-		
+				
 		//Robot 1
 		DistanceConstraint duration_r1_init_c1 = new DistanceConstraint(new Bounds(8,APSPSolver.INF));
 		duration_r1_init_c1.setFrom(r1_init);
@@ -148,19 +149,19 @@ public class TestTCSPSolver {
 		
 		// Possible orderings of robots through critical sections (with delays provided by Henrik's function)
 		//
-		// t1 before t2 iff t1 --[d,INF)--> t2, which means
-		//                  t2-t1 > d and t2-t1 < INF
+		// t1 before t2 iff t1 --[d1,INF)--> t2, which means
+		//                  t2-t1 >= d1 and t2-t1 < INF
 		//
 		// OR:
 		//
-		// t2 before t1 iff t2 --[d,INF)--> t1, which means
-		//                  t1-t2 > d  and t1-t2 < INF, hence
-		//                  t2-t1 > -INF and t2-t1 < -d, hence
-		//                  t1 --(-INF,-d]--> t2
+		// t2 before t1 iff t2 --[d2,INF)--> t1, which means
+		//                  t1-t2 >= d2  and t1-t2 < INF, hence
+		//                  t2-t1 > -INF and t2-t1 <= -d, hence
+		//                  t1 --(-INF,-d2]--> t2
 		//
 		// So, overall, a disjunctive constraint:
 		//
-		//           t1 --[d,INF) v (-INF,-d]--> t2
+		//           t1 --[d1,INF) v (-INF,-d2]--> t2
 		
 		
 		// Robots R1 and R2 access critical section C1
@@ -206,31 +207,64 @@ public class TestTCSPSolver {
 //		VariableOrderingH varOH = new MostConstrainedFirstVarOH();
 //		ValueOrderingH valOH = new WidestIntervalFirstValOH();
 
+//		ValueOrderingH valOH = new ValueOrderingH() {
+//			@Override
+//			public int compare(ConstraintNetwork o1, ConstraintNetwork o2) {
+//				return 1-rand.nextInt(3);
+//			}
+//		};		
+
 		ValueOrderingH valOH = new ValueOrderingH() {
 			@Override
 			public int compare(ConstraintNetwork o1, ConstraintNetwork o2) {
-				return 1-rand.nextInt(3);
+				Bounds b1 = ((DistanceConstraint)o1.getConstraints()[0]).getBounds()[0];
+				Bounds b2 = ((DistanceConstraint)o2.getConstraints()[0]).getBounds()[0];
+				long d1 = b1.min < 0 ? -b1.max : b1.min;
+				long d2 = b2.min < 0 ? -b2.max : b2.min;
+				return (int)(d1-d2);
 			}
 		};		
-		
+
 		TCSPLabeling metaCons = new TCSPLabeling(null,valOH);
 		metaSolver.addMetaConstraint(metaCons);
+
+		ConstraintNetwork[] resolvers = new ConstraintNetwork[0];
+		long max = -APSPSolver.INF;
 		
-		System.out.println("Solved? " + metaSolver.backtrack());
-//		metaSolver.draw();
-				
-		System.out.println("\nEarliest times when timepoints can occur (a valid solution):");
-		for (Variable var : groundSolver.getVariables()) {
-			MultiTimePoint tp = (MultiTimePoint)var;
-//			System.out.println(var.getComponent() + ": " + var.getDomain());
-			System.out.println(var.getComponent() + ": " + tp.getLowerBound());
-		}
-		
-		System.out.println("\nOrdering decisions made:");
-		for (ConstraintNetwork cn : metaSolver.getAddedResolvers()) {
-			DistanceConstraint dc = (DistanceConstraint)cn.getConstraints()[0];
-			System.out.println(dc.getFrom().getComponent() + (dc.getBounds()[0].min < 0 ? " after " : " before ") + dc.getTo().getComponent());
+		while (metaSolver.backtrack()) {
+			resolvers = metaSolver.getAddedResolvers();
+			
+			for (Variable var : groundSolver.getVariables()) {
+				MultiTimePoint tp = (MultiTimePoint)var;
+//				System.out.println(var.getComponent() + ": " + var.getDomain());
+				//System.out.println(var.getComponent() + ": " + tp.getLowerBound());
+				if (tp.getComponent() != null && max < tp.getLowerBound()) max = tp.getLowerBound();				
+			}
+
+			System.out.println("\nFound solution with makespan " + max);
+			
+			System.out.println("Ordering decisions made:");
+			for (ConstraintNetwork cn : resolvers) {
+				DistanceConstraint dc = (DistanceConstraint)cn.getConstraints()[0];
+				System.out.println(dc.getFrom().getComponent() + (dc.getBounds()[0].min < 0 ? " after " : " before ") + dc.getTo().getComponent());
+			}
+			
+			metaSolver.retractResolvers();
+
+			max--;
+			DistanceConstraint maxR1 = new DistanceConstraint(new Bounds(0,max));
+			maxR1.setFrom(groundSolver.getSource());
+			maxR1.setTo(r1_goal);
+			DistanceConstraint maxR2 = new DistanceConstraint(new Bounds(0,max));
+			maxR2.setFrom(groundSolver.getSource());
+			maxR2.setTo(r2_goal);
+			DistanceConstraint maxR3 = new DistanceConstraint(new Bounds(0,max));
+			maxR3.setFrom(groundSolver.getSource());
+			maxR3.setTo(r3_goal);
+			
+			if (!groundSolver.addConstraints(maxR1,maxR2,maxR3)) break;
 		}
 
 	}
+
 }
