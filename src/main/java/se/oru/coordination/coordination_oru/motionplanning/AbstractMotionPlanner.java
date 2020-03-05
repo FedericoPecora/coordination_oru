@@ -70,7 +70,7 @@ public abstract class AbstractMotionPlanner {
 			for (Pose pose : p) {
 				if (prev == null || prev != null && !prev.equals(pose))
 					newGoals.add(new Pose(pose.getX(),pose.getY(),Missions.wrapAngle180b(pose.getTheta())));
-				else metaCSPLogger.warning("Removing duplicated useless goal" + pose.toString() + ".");
+				else metaCSPLogger.warning("Removing duplicated useless goal " + pose.toString() + ".");
 				prev = pose;
 			}
 		}
