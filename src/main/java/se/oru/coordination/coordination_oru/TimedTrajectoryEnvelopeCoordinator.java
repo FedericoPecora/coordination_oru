@@ -104,17 +104,24 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 	 * @param maxSteeringAngleAcc The maximum steering acceleration (rad/s^2).
 	 */
 	public void setNominalTrajectoryParameters(int robotID, double maxVel, double maxVelRev, boolean useSteerDriveVel, double maxRotationalVel, double maxRotationalVelRev, double maxSteeringAngleVel, double maxAcc, double maxRotationalAcc, double maxSteeringAngleAcc) {
-		fleetMasterInterface.setTrajParams(robotID, maxVel, maxVelRev, useSteerDriveVel, maxRotationalVel, maxRotationalVelRev, maxSteeringAngleVel, maxAcc, maxRotationalAcc, maxSteeringAngleAcc);
+		if (this.fleetMasterInterface != null) 
+			this.fleetMasterInterface.setTrajParams(robotID, maxVel, maxVelRev, useSteerDriveVel, maxRotationalVel, maxRotationalVelRev, maxSteeringAngleVel, maxAcc, maxRotationalAcc, maxSteeringAngleAcc);
+		else {
+			metaCSPLogger.severe("Unable to set Robot" + robotID + " trajectory parameters. Instantiate the fleetmaster first!");
+			throw new Error("Unable to set Robot" + robotID + " trajectory parameters. Instantiate the fleetmaster first!");
+		}
 	}
 	
 	@Override
 	protected void onSettingDefaultFootprint() {
-		this.fleetMasterInterface.setDefaultFootprint(DEFAULT_FOOTPRINT);
+		if (this.fleetMasterInterface != null)
+			this.fleetMasterInterface.setDefaultFootprint(DEFAULT_FOOTPRINT);
 	}
 		
 	@Override
 	protected void onClearingTe(TrajectoryEnvelope te) {
-		fleetMasterInterface.clearPath(te.getID());
+		if (this.fleetMasterInterface != null) 
+			this.fleetMasterInterface.clearPath(te.getID());
 	}
 	
 	@Override
