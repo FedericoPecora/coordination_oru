@@ -5,6 +5,7 @@ import java.util.logging.Logger;
 
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
+import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope.SpatialEnvelope;
 import org.metacsp.utility.logging.MetaCSPLogging;
 
 import com.sun.jna.Native;
@@ -217,7 +218,13 @@ public abstract class AbstractFleetMasterInterface {
 			steering[i] = pathToAdd[i].getSteering();
 		}
 		
-		Coordinate[] bbx = (boundingBox == null) ? null : boundingBox.getCoordinates();
+		
+		Coordinate[] bbx = null;
+		if (boundingBox != null) bbx = boundingBox.getCoordinates();
+		else if (gridParams.dynamic_size) {
+			SpatialEnvelope se = TrajectoryEnvelope.createSpatialEnvelope(pathToAdd, coordinates);
+			boundingBox = se.getPolygon();
+		}
 				
 		//Call the method. -1 is used as special value to indicate that the path was not correctly added.
 		Long pathCode = new Long(0);
