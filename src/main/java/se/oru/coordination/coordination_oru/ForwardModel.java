@@ -6,6 +6,10 @@ public interface ForwardModel {
 	
 	public boolean canStop(TrajectoryEnvelope te, RobotReport currentState, int targetPathIndex, boolean useVelocity);
 	
-	public int getEarliestStoppingPathIndex(TrajectoryEnvelope te, RobotReport currentState);
+	public default int getEarliestStoppingPathIndex(TrajectoryEnvelope te, RobotReport currentState) {
+		return getStoppingPathIndicesBounds(te, currentState, 1)[0];
+	}
+	
+	public int[] getStoppingPathIndicesBounds(TrajectoryEnvelope te, RobotReport currentState, int numberOfAdditionalCoordinationPeriods);
 
 }

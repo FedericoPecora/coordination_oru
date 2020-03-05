@@ -349,9 +349,10 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				return true;
 			}
 			@Override
-			public int getEarliestStoppingPathIndex(TrajectoryEnvelope te, RobotReport currentState) {
+			public int[] getStoppingPathIndicesBounds(TrajectoryEnvelope te, RobotReport currentState,
+					int numberOfAdditionalCoordinationPeriods) {
 				// TODO Auto-generated method stub
-				return 0;
+				return null;
 			}
 		};
 	}

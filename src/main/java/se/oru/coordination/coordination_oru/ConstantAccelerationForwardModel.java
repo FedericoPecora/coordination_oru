@@ -68,12 +68,14 @@ public class ConstantAccelerationForwardModel implements ForwardModel {
 		}
 		return currentPathIndex;
 	}
-	
+		
 	@Override
-	public int getEarliestStoppingPathIndex(TrajectoryEnvelope te, RobotReport currentState) {
+	public int[] getStoppingPathIndicesBounds(TrajectoryEnvelope te, RobotReport currentState, int numberOfAdditionalCoordinationPeriods) {
+		int[] bounds = {-1,-1};
 		State state = new State(currentState.getDistanceTraveled(), currentState.getVelocity());
 		double time = 0.0;
 		double deltaTime = 0.0001;
+		//Earliest
 		long lookaheadInMillis = 2*(this.controlPeriodInMillis + TrajectoryEnvelopeCoordinator.MAX_TX_DELAY + trackingPeriodInMillis);
 		if (lookaheadInMillis > 0) {
 			while (time*temporalResolution < lookaheadInMillis) {
@@ -85,7 +87,25 @@ public class ConstantAccelerationForwardModel implements ForwardModel {
 			se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeTrackerRK4.integrateRK4(state, time, deltaTime, true, maxVel, 1.0, maxAccel*0.9);
 			time += deltaTime;
 		}
-		return getPathIndex(te,state);
+		bounds[0] = getPathIndex(te, state);
+		bounds[1] = bounds[0];
+		
+		//Latest path index
+		if (numberOfAdditionalCoordinationPeriods > 1 && bounds[0] < te.getPathLength()-1) {
+			lookaheadInMillis = (numberOfAdditionalCoordinationPeriods + 1)*(this.controlPeriodInMillis + TrajectoryEnvelopeCoordinator.MAX_TX_DELAY + trackingPeriodInMillis);
+			if (lookaheadInMillis > 0) {
+				while (time*temporalResolution < lookaheadInMillis) {
+					se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeTrackerRK4.integrateRK4(state, time, deltaTime, false, maxVel, 1.0, maxAccel*1.1);
+					time += deltaTime;
+				}
+			}
+			while (state.getVelocity() > 0) {
+				se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeTrackerRK4.integrateRK4(state, time, deltaTime, true, maxVel, 1.0, maxAccel*0.9);
+				time += deltaTime;
+			}
+			bounds[1] = getPathIndex(te, state);
+		}
+		return bounds;
 	}
 
 }
