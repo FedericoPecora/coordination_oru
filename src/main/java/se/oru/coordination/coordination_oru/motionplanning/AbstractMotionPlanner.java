@@ -65,7 +65,15 @@ public abstract class AbstractMotionPlanner {
 	
 	public void setGoals(Pose ... p) {
 		ArrayList<Pose> newGoals = new ArrayList<Pose>();
-		for (Pose pose : p) newGoals.add(new Pose(pose.getX(),pose.getY(),Missions.wrapAngle180b(pose.getTheta())));
+		if (p != null) {
+			Pose prev = null;
+			for (Pose pose : p) {
+				if (prev == null || prev != null && !prev.equals(pose))
+					newGoals.add(new Pose(pose.getX(),pose.getY(),Missions.wrapAngle180b(pose.getTheta())));
+				else metaCSPLogger.warning("Removing duplicated useless goal" + pose.toString() + ".");
+				prev = pose;
+			}
+		}
 		//for (Pose pose : p) newGoals.add(new Pose(pose.getX(),pose.getY(),Missions.wrapAngle180a(pose.getTheta())));
 		//for (Pose pose : p) newGoals.add(new Pose(pose.getX(),pose.getY(),Missions.wrapAngle180(pose.getTheta())));
 		//for (Pose pose : p) newGoals.add(new Pose(pose.getX(),pose.getY(),Missions.wrapAngle360(pose.getTheta())));
