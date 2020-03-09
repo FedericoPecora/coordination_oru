@@ -75,14 +75,17 @@ public class ConstantAccelerationForwardModel implements ForwardModel {
 		State state = new State(currentState.getDistanceTraveled(), currentState.getVelocity());
 		double time = 0.0;
 		double deltaTime = 0.0001;
+		long minOneMsgDelay = this.controlPeriodInMillis + TrajectoryEnvelopeCoordinator.MAX_TX_DELAY + this.trackingPeriodInMillis;
 		//Earliest
-		long lookaheadInMillis = 2*(this.controlPeriodInMillis + TrajectoryEnvelopeCoordinator.MAX_TX_DELAY + trackingPeriodInMillis);
+		long lookaheadInMillis = 2*minOneMsgDelay;
 		if (lookaheadInMillis > 0) {
 			while (time*temporalResolution < lookaheadInMillis) {
 				se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeTrackerRK4.integrateRK4(state, time, deltaTime, false, maxVel, 1.0, maxAccel*1.1);
 				time += deltaTime;
 			}
 		}
+		State midState = new State (state.getPosition(), state.getVelocity());
+		double midTime = time;
 		while (state.getVelocity() > 0) {
 			se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeTrackerRK4.integrateRK4(state, time, deltaTime, true, maxVel, 1.0, maxAccel*0.9);
 			time += deltaTime;
@@ -91,10 +94,10 @@ public class ConstantAccelerationForwardModel implements ForwardModel {
 		bounds[1] = bounds[0];
 		
 		//Latest path index
-		state = new State(currentState.getDistanceTraveled(), currentState.getVelocity());
-		time = 0.0;
 		if (numberOfAdditionalCoordinationPeriods > 1 && bounds[0] < te.getPathLength()-1) {
-			lookaheadInMillis = (numberOfAdditionalCoordinationPeriods + 1)*(this.controlPeriodInMillis + TrajectoryEnvelopeCoordinator.MAX_TX_DELAY + trackingPeriodInMillis);
+			state = midState;
+			time = midTime;
+			lookaheadInMillis = (numberOfAdditionalCoordinationPeriods - 1)*minOneMsgDelay;
 			if (lookaheadInMillis > 0) {
 				while (time*temporalResolution < lookaheadInMillis) {
 					se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeTrackerRK4.integrateRK4(state, time, deltaTime, false, maxVel, 1.0, maxAccel*1.1);
