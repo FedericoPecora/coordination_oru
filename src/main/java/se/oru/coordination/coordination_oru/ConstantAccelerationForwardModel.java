@@ -21,7 +21,7 @@ public class ConstantAccelerationForwardModel implements ForwardModel {
 		this.controlPeriodInMillis = controlPeriodInMillis;
 		this.trackingPeriodInMillis = trackingPeriodInMillis;
 	}
-
+	
 	@Override
 	public boolean canStop(TrajectoryEnvelope te, RobotReport currentState, int targetPathIndex, boolean useVelocity) {
 		if (useVelocity && currentState.getVelocity() <= 0.0) return true;
@@ -91,6 +91,7 @@ public class ConstantAccelerationForwardModel implements ForwardModel {
 		bounds[1] = bounds[0];
 		
 		//Latest path index
+		time = 0.0;
 		if (numberOfAdditionalCoordinationPeriods > 1 && bounds[0] < te.getPathLength()-1) {
 			lookaheadInMillis = (numberOfAdditionalCoordinationPeriods + 1)*(this.controlPeriodInMillis + TrajectoryEnvelopeCoordinator.MAX_TX_DELAY + trackingPeriodInMillis);
 			if (lookaheadInMillis > 0) {
