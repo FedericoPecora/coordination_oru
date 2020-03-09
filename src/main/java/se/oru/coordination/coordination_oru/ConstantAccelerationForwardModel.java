@@ -91,6 +91,7 @@ public class ConstantAccelerationForwardModel implements ForwardModel {
 		bounds[1] = bounds[0];
 		
 		//Latest path index
+		state = new State(currentState.getDistanceTraveled(), currentState.getVelocity());
 		time = 0.0;
 		if (numberOfAdditionalCoordinationPeriods > 1 && bounds[0] < te.getPathLength()-1) {
 			lookaheadInMillis = (numberOfAdditionalCoordinationPeriods + 1)*(this.controlPeriodInMillis + TrajectoryEnvelopeCoordinator.MAX_TX_DELAY + trackingPeriodInMillis);
