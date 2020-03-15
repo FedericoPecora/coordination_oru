@@ -61,7 +61,7 @@ extern "C" bool plan(const char* mapFilename, double mapResolution, double robot
   // attempt to solve the problem within 30 seconds of planning time
   ob::PlannerStatus solved = ss.solve(30.0);
   
-  if (solved) {
+  if (solved == ob::PlannerStatus::StatusType::EXACT_SOLUTION) {
     std::cout << "Found solution:" << std::endl;
     ss.simplifySolution();
     og::PathGeometric pth = ss.getSolutionPath();
@@ -82,8 +82,8 @@ extern "C" bool plan(const char* mapFilename, double mapResolution, double robot
       (*path)[i].y = reals[1];
       (*path)[i].theta = reals[2];
     }
-    return 1;
+    return true;
   }
   std::cout << "No solution found" << std::endl;
-  return 0;
+  return false;
 }

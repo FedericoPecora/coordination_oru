@@ -89,6 +89,14 @@ public class ReedsSheppCarPlanner extends AbstractMotionPlanner {
 	public void setTurningRadius(double rad) {
 		this.turningRadius = rad;
 	}
+	
+	public Pose getStart() {
+		return this.start;
+	}
+	
+	public Pose[] getGoals() {
+		return this.goal;
+	}
 
 	@Override
 	public boolean doPlanning() {
@@ -101,7 +109,10 @@ public class ReedsSheppCarPlanner extends AbstractMotionPlanner {
 			path = new PointerByReference();
 			pathLength = new IntByReference();
 			if (collisionCircleCenters == null) {
-				if (!INSTANCE.plan(mapFilename, mapResolution, robotRadius, start_.getX(), start_.getY(), start_.getTheta(), goal_.getX(), goal_.getY(), goal_.getTheta(), path, pathLength, distanceBetweenPathPoints, turningRadius)) return false;
+				if (!INSTANCE.plan(mapFilename, mapResolution, robotRadius, start_.getX(), start_.getY(), start_.getTheta(), goal_.getX(), goal_.getY(), goal_.getTheta(), path, pathLength, distanceBetweenPathPoints, turningRadius)) {
+					System.out.println("[ReedsSheppCarPlanner] Path not found.");
+					return false;
+				}
 			}
 			else {
 				double[] xCoords = new double[collisionCircleCenters.length];
