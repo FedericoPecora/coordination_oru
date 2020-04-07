@@ -45,6 +45,7 @@ public abstract class AbstractMotionPlanner {
 	
 	protected PoseSteering[] pathPS = null;
 
+	public abstract AbstractMotionPlanner getCopy();
 	
 	public void setFootprint(Coordinate ... coords) {
 		this.footprintCoords = coords;
