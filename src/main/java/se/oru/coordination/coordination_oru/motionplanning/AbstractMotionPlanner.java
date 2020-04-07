@@ -241,5 +241,12 @@ public abstract class AbstractMotionPlanner {
 	    }
 	    return dir.delete();
 	}
+	
+	public boolean isFree(Pose p) {
+		AbstractMotionPlanner planner = this.getCopy();
+		planner.setStart(p);
+		planner.setGoals(p);
+		return planner.plan();
+	}
 
 }

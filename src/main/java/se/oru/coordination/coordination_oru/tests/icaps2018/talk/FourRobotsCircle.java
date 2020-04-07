@@ -6,6 +6,7 @@ import java.util.Comparator;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
+import org.sat4j.ExitCode;
 
 import com.vividsolutions.jts.geom.Coordinate;
 
@@ -87,7 +88,7 @@ public class FourRobotsCircle {
 		Pose startPoseRobot3 = new Pose(10.0,17.0,0.0);
 		Pose goalPoseRobot3 = new Pose(17.0,10.0,-Math.PI/2);
 		Pose startPoseRobot4 = new Pose(17.0,10.0,-Math.PI/2);
-		Pose goalPoseRobot4 = new Pose(10.0,3.0,Math.PI);
+		Pose goalPoseRobot4 = new Pose(10.0,3.0,Math.PI);		
 
 		//Place robots in their initial locations (looked up in the data file that was loaded above)
 		// -- creates a trajectory envelope for each location, representing the fact that the robot is parked
