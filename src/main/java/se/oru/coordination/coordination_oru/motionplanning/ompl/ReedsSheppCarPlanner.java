@@ -34,6 +34,17 @@ public class ReedsSheppCarPlanner extends AbstractMotionPlanner {
 		NativeLibrary.addSearchPath("simplereedssheppcarplanner", "SimpleReedsSheppCarPlanner");
 		INSTANCE = Native.loadLibrary("simplereedssheppcarplanner", ReedsSheppCarPlannerLib.class);
 	}
+
+	@Override
+	public AbstractMotionPlanner getCopy() {
+		ReedsSheppCarPlanner ret = new ReedsSheppCarPlanner();
+		ret.setRadius(this.robotRadius);
+		ret.setDistanceBetweenPathPoints(this.distanceBetweenPathPoints);
+		ret.setTurningRadius(this.turningRadius);
+		ret.setFootprint(this.footprintCoords);
+		ret.setMap(this.mapFilename);
+		return ret;
+	}
 	
 	@Override
 	public void setFootprint(Coordinate ... coords) {
