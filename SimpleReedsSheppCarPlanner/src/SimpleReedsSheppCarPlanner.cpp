@@ -18,7 +18,7 @@ extern "C" void cleanupPath(PathPose* path) {
   free(path);
 }
 
-extern "C" bool plan(const char* mapFilename, double mapResolution, double robotRadius, double startX, double startY, double startTheta, double goalX, double goalY, double goalTheta, PathPose** path, int* pathLength, double distanceBetweenPathPoints, double turningRadius) {
+extern "C" bool plan(const char* mapFilename, double mapResolution, double robotRadius, double startX, double startY, double startTheta, double goalX, double goalY, double goalTheta, PathPose** path, int* pathLength, double distanceBetweenPathPoints, double turningRadius, double planningTimeInSecs) {
 
   double pLen = 0.0;
   int numInterpolationPoints = 0;
@@ -44,6 +44,18 @@ extern "C" bool plan(const char* mapFilename, double mapResolution, double robot
   ob::SpaceInformationPtr si(ss.getSpaceInformation());
   si->setStateValidityChecker(ob::StateValidityCheckerPtr(new SimpleStateValidityChecker(si, mapFilename, (float)mapResolution, (float)robotRadius)));
   
+  //Return false if the goal is occupied.
+  ompl::base::State *statePtr = space->allocState();
+  statePtr->as<ompl::base::SE2StateSpace::StateType>()->setX(goalX);
+  statePtr->as<ompl::base::SE2StateSpace::StateType>()->setY(goalY);
+  statePtr->as<ompl::base::SE2StateSpace::StateType>()->setYaw(goalTheta);
+  bool isGoalValid = si->getStateValidityChecker()->isValid(statePtr);
+  space->freeState(statePtr);
+  if (!isGoalValid) {
+	  std::cout << "Invalid goal." << std::endl;
+	  return false;
+  }
+
   // set the start and goal states
   start[0] = startX;
   start[1] = startY;
@@ -58,8 +70,8 @@ extern "C" bool plan(const char* mapFilename, double mapResolution, double robot
   ss.setup();
   ss.print();
   
-  // attempt to solve the problem within 30 seconds of planning time
-  ob::PlannerStatus solved = ss.solve(30.0);
+  // attempt to solve the problem within planningTimeInSecs seconds of planning time
+  ob::PlannerStatus solved = ss.solve(planningTimeInSecs);
   
   if (solved) {
     std::cout << "Found solution:" << std::endl;
