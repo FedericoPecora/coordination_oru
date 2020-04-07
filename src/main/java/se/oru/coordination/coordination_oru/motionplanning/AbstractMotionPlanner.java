@@ -81,7 +81,7 @@ public abstract class AbstractMotionPlanner {
 		this.goal = newGoals.toArray(new Pose[newGoals.size()]);
 	}
 	
-	public void setMap(String mapYAMLFile) {
+	private void setMap(String mapYAMLFile) {
 		try {
 			File file = new File(mapYAMLFile);
 			BufferedReader br = new BufferedReader(new FileReader(file));
