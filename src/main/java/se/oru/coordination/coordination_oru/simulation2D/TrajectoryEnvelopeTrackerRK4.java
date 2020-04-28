@@ -362,8 +362,14 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 						if (rand.nextDouble() < (1-NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS)) //the real one
 							send = true;
 						else {
-							TrajectoryEnvelopeCoordinatorSimulation tc = (TrajectoryEnvelopeCoordinatorSimulation)tec;
-							tc.incrementLostPacketsCounter();
+							if (tec instanceof TimedTrajectoryEnvelopeCoordinatorSimulation) {
+								TimedTrajectoryEnvelopeCoordinatorSimulation tc = (TimedTrajectoryEnvelopeCoordinatorSimulation)tec;
+								tc.incrementLostPacketsCounter();
+							}
+							else {
+								TrajectoryEnvelopeCoordinatorSimulation tc = (TrajectoryEnvelopeCoordinatorSimulation)tec;
+								tc.incrementLostPacketsCounter();
+							}
 						}
 						trial++;
 					}

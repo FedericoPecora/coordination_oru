@@ -126,7 +126,7 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 	
 	@Override
 	protected void onAddingTe(TrajectoryEnvelope te) {
-		if (!fleetMasterInterface.addPath(te)) 
+		if (fleetMasterInterface != null && !fleetMasterInterface.addPath(te)) 
 			metaCSPLogger.severe("Unable to add the path to the fleetmaster gridmap. Check if the map contains the given path.");
 	}
 	
