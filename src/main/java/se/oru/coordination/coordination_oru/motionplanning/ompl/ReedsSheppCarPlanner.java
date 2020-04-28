@@ -43,7 +43,7 @@ public class ReedsSheppCarPlanner extends AbstractMotionPlanner {
 		ret.setDistanceBetweenPathPoints(this.distanceBetweenPathPoints);
 		ret.setTurningRadius(this.turningRadius);
 		ret.setFootprint(this.footprintCoords);
-		ret.setMap(this.mapFilename);
+		ret.setMapFilename(mapFilename);
 		return ret;
 	}
 	
