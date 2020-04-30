@@ -13,6 +13,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 import javax.swing.SwingUtilities;
@@ -107,9 +108,11 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	protected HashMap<AbstractTrajectoryEnvelopeTracker,Integer> externalCPCounters = new HashMap<AbstractTrajectoryEnvelopeTracker, Integer>();
 
 	protected ComparatorChain comparators = new ComparatorChain();
+	
+	//Robots knowledge
 	protected HashMap<Integer,ForwardModel> forwardModels = new HashMap<Integer, ForwardModel>();
-
 	protected HashMap<Integer,Coordinate[]> footprints = new HashMap<Integer, Coordinate[]>();
+	protected HashMap<Integer,Integer> types = new HashMap<Integer, Integer>();
 	protected HashMap<Integer,Double> maxFootprintDimensions = new HashMap<Integer, Double>();
 
 	protected HashSet<Integer> muted = new HashSet<Integer>();
@@ -151,7 +154,6 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		return (isDriving.containsKey(robotID) && isDriving.get(robotID));
 	}
 	
-	
 	/**
 	 * Returning the number of messages required by each send to be effective
 	 * (i.e. the probability of unsuccessful delivery will be lower than the threshold maxFaultsProbability)
@@ -160,6 +162,12 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		return numberOfReplicas;
 	}
 	
+	/**
+	 * Return the IDs of the tracked robots.
+	 */
+	public Set<Integer> getAllRobots() {
+		return trackers.keySet();
+	}
 	
 	/**
 	 * Utility method to treat internal resources from this library as filenames.
@@ -356,7 +364,16 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			}
 		};
 	}
-
+	
+	/**
+	 * Set the type of a given robot.
+	 * @param robotID The ID of the robot.
+	 * @param type The robot's type.
+	 */
+	public void setForwardModel(int robotID, int type) {
+		this.types.put(robotID, type); 
+	}
+		
 	protected void setupLogging() {
 		//logDirName = "log-" + Calendar.getInstance().getTimeInMillis();
 		logDirName = "logs";

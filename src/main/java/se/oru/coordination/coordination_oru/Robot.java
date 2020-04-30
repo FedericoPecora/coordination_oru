@@ -11,14 +11,14 @@ public class Robot {
 	 
 	 /**
 	 * Create a new {@link Robot} 
-	 * @param ID The robot ID. It is assumed to be unique among the fleet.
-	 * @param type The robot type.
-	 * @param footprint The robot footprint. 
+	 * @param ID The ID of the robot. It is assumed to be unique among the fleet.
+	 * @param type The robot's type.
+	 * @param footprint The robot's footprint. 
 	 * @param fm The forward model of the robot.
 	 */
-	 public Robot(int robotID, int robotType, Coordinate[] footprint, ForwardModel fm) {
-		 this.ID = robotID;
-		 this.type = robotType;
+	 public Robot(int ID, int type, Coordinate[] footprint, ForwardModel fm) {
+		 this.ID = ID;
+		 this.type = type;
 		 this.footprint = footprint;
 		 this.fm = fm;
 	 }
