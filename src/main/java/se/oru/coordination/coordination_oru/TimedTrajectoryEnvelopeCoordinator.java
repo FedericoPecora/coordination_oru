@@ -129,18 +129,7 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 		if (fleetMasterInterface != null && !fleetMasterInterface.addPath(te)) 
 			metaCSPLogger.severe("Unable to add the path to the fleetmaster gridmap. Check if the map contains the given path.");
 	}
-	
-	/**
-	 * Check if the comparison between two delays is meaningful, i.e., when two delays are both negative,
-	 * then both the precedence orderings are safe, so another heuristic may be used to decide the precedence order.
-	 * @param delay1 The first delay.
-	 * @param delay2 The second delay.
-	 * @return If at least one of them is positive.
-	 */
-	protected boolean oneOrderingIsUnsafe(double delay1, double delay2) {
-		return (delay1 >= 0 || delay2 >= 0) && !(delay1 == 0 && delay2 == 0);
-	}
-	
+		
 	@Override
 	protected void updateDependencies() {
 		synchronized(solver) {
@@ -166,8 +155,14 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 			CumulatedIndexedDelaysList te1TCDelays = new CumulatedIndexedDelaysList();
 			CumulatedIndexedDelaysList te2TCDelays = new CumulatedIndexedDelaysList();
 			Pair<Double, Double> delays = fleetMasterInterface.queryTimeDelay(cs, te1TCDelays, te2TCDelays);
-			if (oneOrderingIsUnsafe(delays.getFirst(), delays.getSecond())) {
-				if (Math.min(delays.getFirst(), delays.getSecond()) > Double.MAX_VALUE) return 0;
+			
+			/*Check if the comparison between two delays is meaningful, i.e., 
+			 * - when two delays are both negative both the precedence orderings are safe, 
+			 * - when both the robots will stop in a critical section,
+			 * so another heuristic may be used to decide the precedence order.
+			 * If yes, then compute the ordering with the advanced heuristic.*/
+			if (delays.getFirst() < Double.POSITIVE_INFINITY && delays.getSecond() < Double.POSITIVE_INFINITY && 
+					(delays.getFirst() >= 0 || delays.getSecond() >= 0) && !(delays.getFirst() == 0 && delays.getSecond() == 0)) {
 				return delays.getFirst() < delays.getSecond() ? -1 : 1;
 			}
 		}
