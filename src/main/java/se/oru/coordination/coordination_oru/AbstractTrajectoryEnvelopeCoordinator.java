@@ -165,7 +165,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	/**
 	 * Return the IDs of the tracked robots.
 	 */
-	public Set<Integer> getAllRobots() {
+	public Set<Integer> getAllRobotIDs() {
 		return trackers.keySet();
 	}
 	
