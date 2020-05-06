@@ -32,7 +32,7 @@ public class MultiRobotTaskAllocator {
 	//Force printing of (c) and license upon class loading
 	static { printLicense(); }
 	
-	TreeSet<SimpleTask> taskQueue = new TreeSet<SimpleTask>();
+	TreeSet<NonCooperativeTask> taskQueue = new TreeSet<NonCooperativeTask>();
 	protected ComparatorChain comparators = new ComparatorChain();
 	/**
 	 * Add a criterion for determining the order of robots through critical sections
@@ -40,7 +40,7 @@ public class MultiRobotTaskAllocator {
 	 * Comparators are considered in the order in which they are added.
 	 * @param c A new comparator for determining robot ordering through critical sections.
 	 */
-	public void addComparator(Comparator<SimpleTask> c) {
+	public void addComparator(Comparator<NonCooperativeTask> c) {
 		this.comparators.addComparator(c);
 	}
 	

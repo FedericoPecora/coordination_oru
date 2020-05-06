@@ -6,52 +6,40 @@ import java.util.List;
 import java.util.Set;
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
+
+import se.oru.coordination.coordination_oru.TaskData;
 import se.oru.coordination.coordination_oru.Mission;
 import se.oru.coordination.coordination_oru.Robot;
+import se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator;
 
-public class SimpleTask {
+public class NonCooperativeTask extends TaskData implements Comparable<NonCooperativeTask> {
 	
-	protected int ID;
-	protected Set<Integer> robotTypes = null;	
-	protected Pose start;
-	protected double startOperationTime = 0;
-	protected Pose target;
-	protected double targetOperationTime = 0;
+	protected static int NUMTASK = 0;
+	protected String name;
+	protected int robotID = -1;
 	protected HashMap<Integer, List<PoseSteering[]>> paths = null;
-	protected int assignedTo = -1;
 	protected double deadline = -1;
+	protected int order = NUMTASK++;
 	
 	/**
- 	 * Create a new {@link SimpleTask} to be executed.
-	 * @param ID The task ID.
-	 * @param start The starting pose of the task.
-	 * @param startOperationTime The estimated time to execute operations in the start position.
-	 * @param targetPose The target pose of the task.
-	 * @param targetOperationTime The estimated time to execute operations in the target position.
-	 * @param deadline The upper bound of the time in which the task should be executed.
+ 	 * Create a new {@link NonCooperativeTask} to be executed.
+	 * @param name The identifier of the task.
+	 * @param fromLocation The identifier of the source location.
+	 * @param toLocation The identifier of the destination location.
+	 * @param fromPose The pose of the source location.
+	 * @param toPose The pose of the destination location.
+	 * @param deadline The upper bound of the expected time to complete the task.
 	 * @param robotTypes Types of the robots that can execute this task.
 	 */
-	public SimpleTask(int ID, Pose start, double startOperationTime, Pose target, double targetOperationTime, double deadline, int ... robotTypes) {
-		this.ID = ID;
-		this.start = start;
-		this.target = target;
+	public NonCooperativeTask(String name, String fromLocation, String toLocation, Pose fromPose, Pose toPose, double deadline, int ... robotTypes) {
+		super(fromLocation, toLocation, fromPose, toPose);
+		this.name = name;
 		this.deadline = deadline;
-		if (robotTypes.length == 0) throw new Error("Need to specifiy at least one robot type!");
+		if (robotTypes.length == 0) throw new Error("Need to specify at least one robot type!");
 		this.paths = new HashMap<Integer, List<PoseSteering[]>>();
 		for (int rt : robotTypes) this.paths.put(rt, new ArrayList<PoseSteering[]>());
 	}
-	
-	/**
- 	 * Create a new {@link Task} to be executed.
-	 * @param ID The task ID.
-	 * @param start The starting pose of the task.
-	 * @param targetPose The target pose of the task.
-	 * @param robotTypes Types of the robots that can execute this task.
-	 */
-	public SimpleTask(int ID, Pose start, Pose target, int ... robotTypes) {
-		this(ID,start,0,target,0,-1,robotTypes);
-	}
-	
+		
 	/** 
 	 * Return the list of paths to execute this task for a given robot type. 
 	 * @param robotType The type of the robot for the returned set of paths.
@@ -76,17 +64,9 @@ public class SimpleTask {
 		this.paths.get(robotType).add(newPaths[newPaths.length-1]);
 		return true;
 	}
-	
-	public Pose getStart() {
-		return this.start;		
-	}
-	
-	public Pose getTarget() {
-		return this.target;	
-	}
-	
+		
 	public boolean isAssigned() {
-		return this.assignedTo != -1;
+		return this.robotID != -1;
 	}
 
 	public boolean hasDeadline() {
@@ -101,16 +81,8 @@ public class SimpleTask {
 		return this.deadline;
 	}
 	
-	public int getID() {
-		return this.ID;
-	}
-
-	public double getTargetOperationTime() {
-		return this.targetOperationTime;
-	}
-	
-	public double getStartOperationTime() {
-		return this.targetOperationTime;
+	public String getName() {
+		return this.name;
 	}
 	
 	/**
@@ -123,23 +95,29 @@ public class SimpleTask {
 			
 	public boolean assignToRobot(Robot robot) {
 		if (isCompatible(robot.getType())) {
-			this.assignedTo = robot.getID();
+			this.robotID = robot.getID();
 			return true;
 		}
 		return false;
 	}
-
+	
 	public Mission[] getMissions() {
 		if (this.paths == null) throw new Error("No paths specified!");
-		if (this.assignedTo == -1) throw new Error("No robot assigned!");
+		if (this.robotID == -1) throw new Error("No robot assigned!");
 		Mission[] ret = new Mission[paths.size()];
 		for (int i = 0; i < paths.size(); i++) {
-			ret[i] = new Mission(this.assignedTo, paths.get(this.assignedTo).get(i));
-			if (i == 0) ret[i].setFromLocation("Init for Robot" + this.assignedTo);
-			else if (i ==  paths.size()-1) ret[i].setFromLocation("Target for Robot" + this.assignedTo);
-			else ret[i].setFromLocation("Waypoint " + i + " for Robot" + this.assignedTo);
+			ret[i] = new Mission(this.robotID, paths.get(this.robotID).get(i));
+			if (i == 0) ret[i].setFromLocation("Init for Robot" + this.robotID);
+			else if (i ==  paths.size()-1) ret[i].setFromLocation("Target for Robot" + this.robotID);
+			else ret[i].setFromLocation("Waypoint " + i + " for Robot" + this.robotID);
 		}
 		return ret;
 	}
+	
+	@Override
+	public int compareTo(NonCooperativeTask o) {
+		return this.order-o.order;
+	}
+	
 
 }
