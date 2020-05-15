@@ -67,7 +67,7 @@ public class FourRobotsCircle {
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
 		final BrowserVisualization viz = new BrowserVisualization();
-		viz.setInitialTransform(43, 11, 1.6);
+		//viz.setInitialTransform(43, 11, 1.6);
 		tec.setVisualization(viz);
 
 		tec.setUseInternalCriticalPoints(false);
@@ -89,6 +89,8 @@ public class FourRobotsCircle {
 		Pose goalPoseRobot3 = new Pose(17.0,10.0,-Math.PI/2);
 		Pose startPoseRobot4 = new Pose(17.0,10.0,-Math.PI/2);
 		Pose goalPoseRobot4 = new Pose(10.0,3.0,Math.PI);		
+
+		viz.guessInitialTransform(2, startPoseRobot1, startPoseRobot2, startPoseRobot3, startPoseRobot4);
 
 		//Place robots in their initial locations (looked up in the data file that was loaded above)
 		// -- creates a trajectory envelope for each location, representing the fact that the robot is parked
