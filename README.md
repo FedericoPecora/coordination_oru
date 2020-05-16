@@ -84,11 +84,12 @@ The provided motion planner depends on the <a href="http://ompl.kavrakilab.org/"
 
 ## Installing the ```SimpleReedsSheppCarPlanner``` motion planner
 
-Please install the OMPL and MRPT libraries. Both are present in the official Ubuntu repositories (tested on Ubuntu 16.04):
+Please install the OMPL and MRPT libraries. Both are present in the official Ubuntu repositories for Ubuntu 16.04 and 18.04, but not for Ubuntu 20.04 (so, you can skip the second line below unless you are installing on Ubuntu 20.04):
 
 ```
-$ sudo apt-get install libompl-dev
-$ sudo apt-get install mrpt-apps libmrpt-dev
+$ sudo apt install libompl-dev
+$ sudo add-apt-repository ppa:joseluisblancoc/mrpt-stable
+$ sudo apt install mrpt-apps libmrpt-dev
 ```
 
 Then, compile and install the ```simplereedssheppcarplanner``` shared library as follows:
