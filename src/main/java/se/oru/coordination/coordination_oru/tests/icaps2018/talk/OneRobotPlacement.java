@@ -17,6 +17,7 @@ import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPla
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
 import se.oru.coordination.coordination_oru.util.BrowserVisualization;
 import se.oru.coordination.coordination_oru.util.JTSDrawingPanelVisualization;
+import se.oru.coordination.coordination_oru.util.Missions;
 
 @DemoDescription(desc = "One-shot navigation of 3 robots with different footprints coordinating on paths obtained with the ReedsSheppCarPlanner.")
 public class OneRobotPlacement {
@@ -59,7 +60,7 @@ public class OneRobotPlacement {
 		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
 		//viz.setSize(1024, 768);
 		BrowserVisualization viz = new BrowserVisualization();
-		viz.setInitialTransform(10, 10, 10);
+		viz.setInitialTransform(10, 25, 10);
 		tec.setVisualization(viz);
 		
 		tec.setUseInternalCriticalPoints(false);
@@ -72,8 +73,8 @@ public class OneRobotPlacement {
 		rsp.setTurningRadius(4.0);
 		rsp.setDistanceBetweenPathPoints(0.5);
 
-		Pose startPoseRobot1 = new Pose(0.0,0.0,Math.PI/2);
-		Pose goalPoseRobot1 = new Pose(10.0,0.0,0.0);
+		Pose startPoseRobot1 = new Pose(20.0,20.0,Math.PI/2);
+		Pose goalPoseRobot1 = new Pose(20.0,50.0,0.0);
 
 		//Place robots in their initial locations (looked up in the data file that was loaded above)
 		// -- creates a trajectory envelope for each location, representing the fact that the robot is parked
@@ -81,16 +82,18 @@ public class OneRobotPlacement {
 		// -- each trajectory envelope is the footprint of the corresponding robot in that pose
 		tec.placeRobot(1, startPoseRobot1);
 
-//		rsp.setFootprint(fp1);
-//		rsp.setStart(startPoseRobot1);
-//		rsp.setGoals(goalPoseRobot1);
-//		if (!rsp.plan()) throw new Error ("No path between " + startPoseRobot1 + " and " + goalPoseRobot1);
-//		PoseSteering[] pss1 = rsp.getPath();
-//
-//		Mission m1 = new Mission(1,pss1);
-//		tec.addMissions(m1);
-//		tec.computeCriticalSections();
-//		tec.startTrackingAddedMissions();
+		rsp.setFootprint(fp1);
+//		rsp.setMapFilename("maps/map-empty.png");
+//		rsp.setMapResolution(1);
+		
+		rsp.setStart(startPoseRobot1);
+		rsp.setGoals(goalPoseRobot1);
+		if (!rsp.plan()) throw new Error ("No path between " + startPoseRobot1 + " and " + goalPoseRobot1);
+		PoseSteering[] pss1 = rsp.getPath();
+
+		Mission m1 = new Mission(1,pss1);
+		Missions.enqueueMission(m1);
+		Missions.startMissionDispatchers(tec, 1);
 
 	}
 

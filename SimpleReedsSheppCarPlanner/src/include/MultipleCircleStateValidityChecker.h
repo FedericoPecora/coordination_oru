@@ -1,41 +1,45 @@
 #ifndef MultipleCircleStateValidityChecker_H
 #define MultipleCircleStateValidityChecker_H
 
-#include <mrpt/maps/COccupancyGridMap2D.h>
+#include <png.h>
 #include <ompl/base/spaces/ReedsSheppStateSpace.h>
 #include <ompl/base/ScopedState.h>
 #include <ompl/geometric/SimpleSetup.h>
 
-using namespace mrpt::maps;
 namespace ob = ompl::base;
 namespace og = ompl::geometric;
 
 class MultipleCircleStateValidityChecker : public ob::StateValidityChecker {
  public:
-  COccupancyGridMap2D gridmap;
+  png_bytepp map;
+  double mapResolution;
   float radius;
   double* xCoords;
   double* yCoords;
   int numCoords;
   bool noMap;
+  int mapWidth;
+  int mapHeight;
   
- MultipleCircleStateValidityChecker(const ob::SpaceInformationPtr &si, const char *mapFilename, double mapResolution, double _radius, double* _xCoords, double* _yCoords, int _numCoords) : ob::StateValidityChecker(si) {
+  MultipleCircleStateValidityChecker(const ob::SpaceInformationPtr &si, const png_bytepp _map, double _mapResolution, int _mapWidth, int _mapHeight, double _radius, double* _xCoords, double* _yCoords, int _numCoords) : ob::StateValidityChecker(si) {
     noMap = false;
     radius = (float)_radius;
     xCoords = _xCoords;
     yCoords = _yCoords;
     numCoords = _numCoords;
-    gridmap.loadFromBitmapFile( mapFilename, mapResolution, 0.0f, 0.0f );
-    std::cout << "Loaded map " << mapFilename << " for validity checking" << std::endl;
+    map = _map;
+    mapResolution = _mapResolution;
+    mapWidth = _mapWidth;
+    mapHeight = _mapHeight;
   }
-
-   MultipleCircleStateValidityChecker(const ob::SpaceInformationPtr &si) : ob::StateValidityChecker(si) {
-    noMap = true;
-    std::cout << "Using empty map for validity checking" << std::endl;
-  }
-
-  virtual bool isValid(const ob::State *state) const;
   
+  MultipleCircleStateValidityChecker(const ob::SpaceInformationPtr &si) : ob::StateValidityChecker(si) {
+    noMap = true;
+    std::cout << "(Using empty map for validity checking)" << std::endl;
+  }
+
+  virtual bool isValid(const ob::State *state) const;  
+
 };
 
 #endif

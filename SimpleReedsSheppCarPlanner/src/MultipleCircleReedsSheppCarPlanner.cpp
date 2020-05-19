@@ -11,7 +11,7 @@
 #include <ompl/control/planners/kpiece/KPIECE1.h>
 #include <boost/math/constants/constants.hpp>
 
-using namespace mrpt::maps;
+//using namespace mrpt::maps;
 using namespace std;
 
 namespace ob = ompl::base;
@@ -24,23 +24,61 @@ typedef struct PathPose {
   double theta;
 } PathPose;
 
+extern "C" void cleanupPath(PathPose* path) {
+  std::cout << "Cleaning up memory.." << std::endl;
+  free(path);
+}
+
 extern "C" bool plan_multiple_circles(const char* mapFilename, double mapResolution, double robotRadius, double* xCoords, double* yCoords, int numCoords, double startX, double startY, double startTheta, double goalX, double goalY, double goalTheta, PathPose** path, int* pathLength, double distanceBetweenPathPoints, double turningRadius, double planningTimeInSecs) {
 
 	  double pLen = 0.0;
 	  int numInterpolationPoints = 0;
 	  ob::StateSpacePtr space(new ob::ReedsSheppStateSpace(turningRadius));
 
-	  COccupancyGridMap2D gridmap;
-	  gridmap.loadFromBitmapFile( mapFilename, (float)mapResolution, 0.0f, 0.0f );
-	  std::cout << "Loaded map (1) " << mapFilename << std::endl;
+	  //COccupancyGridMap2D gridmap;
+	  //gridmap.loadFromBitmapFile( mapFilename, (float)mapResolution, 0.0f, 0.0f );
+	  ///////////////////////////
+	  png_bytepp map;
+	  png_structp png_ptr;
+	  png_infop info_ptr;
+	  FILE * fp;
+	  png_uint_32 width;
+	  png_uint_32 height;
+	  int bit_depth;
+	  int color_type;
+	  int interlace_method;
+	  int compression_method;
+	  int filter_method;
+	  int j;
+	  png_bytepp rows;
+	  fp = fopen (mapFilename, "rb");
+	  if (! fp) {
+	    std::cout << "Could not load map " << mapFilename << " for validity checking" << std::endl;
+	  }
+	  png_ptr = png_create_read_struct (PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+	  if (! png_ptr) {
+	    std::cout << "Could not create PNG read structure " << mapFilename << " for validity checking" << std::endl;
+	  }
+	  info_ptr = png_create_info_struct (png_ptr);
+	  if (! png_ptr) {
+            std::cout << "Could not create PNG info structure " << mapFilename << " for validity checking" << std::endl;
+	  }
+	  png_init_io (png_ptr, fp);
+	  png_read_png (png_ptr, info_ptr, 0, 0);
+	  png_get_IHDR (png_ptr, info_ptr, & width, & height, & bit_depth,
+			& color_type, & interlace_method, & compression_method,
+			& filter_method);
+	  map = png_get_rows (png_ptr, info_ptr);
+	  ///////////////////////////
+	  std::cout << "Loaded map " << mapFilename << " (" << width << "x" << height << " pixels)" << std::endl;
 
 	  ob::ScopedState<> start(space), goal(space);
 	  ob::RealVectorBounds bounds(2);
-	  bounds.low[0] = gridmap.getXMin();
-	  bounds.low[1] = gridmap.getYMin();
-	  bounds.high[0] = gridmap.getXMax();
-	  bounds.high[1] = gridmap.getYMax();
-
+	  bounds.low[0] = 0;
+	  bounds.low[1] = 0;
+	  bounds.high[0] = width*mapResolution;
+	  bounds.high[1] = height*mapResolution;
+	  
 	  space->as<ob::SE2StateSpace>()->setBounds(bounds);
 	  std::cout << "Bounds are [(" << bounds.low[0] << "," << bounds.low[1] << "),(" << bounds.high[0] << "," << bounds.high[1] << ")]" << std::endl;
 
@@ -49,7 +87,7 @@ extern "C" bool plan_multiple_circles(const char* mapFilename, double mapResolut
 
 	  // set state validity checking for this space
 	  ob::SpaceInformationPtr si(ss.getSpaceInformation());
-	  si->setStateValidityChecker(ob::StateValidityCheckerPtr(new MultipleCircleStateValidityChecker(si, mapFilename, mapResolution, robotRadius, xCoords, yCoords, numCoords)));
+	  si->setStateValidityChecker(ob::StateValidityCheckerPtr(new MultipleCircleStateValidityChecker(si, map, width*mapResolution, height*mapResolution, mapResolution, robotRadius, xCoords, yCoords, numCoords)));
 
 	  //Return false if the goal is occupied.
 	  ompl::base::State *statePtr = space->allocState();
@@ -207,8 +245,8 @@ extern "C" bool plan_multiple_circles_nomap(double* xCoords, double* yCoords, in
       (*path)[i].y = reals[1];
       (*path)[i].theta = reals[2];
     }
-    return false;
+    return true;
   }
   std::cout << "No solution found" << std::endl;
-  return true;
+  return false;
 }
