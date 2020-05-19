@@ -84,7 +84,7 @@ The provided motion planner depends on the <a href="http://ompl.kavrakilab.org/"
 
 ## Installing the ```SimpleReedsSheppCarPlanner``` motion planner
 
-Please install the OMPL development libraries, which are prvided in the official Ubuntu repositories for Ubuntu 16.04, 18.04 and 20.04:
+Please install the OMPL development libraries, available from the official Ubuntu repositories:
 
 ```
 $ sudo apt install libompl-dev
