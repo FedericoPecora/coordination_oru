@@ -42,7 +42,7 @@ public abstract class AbstractMotionPlanner {
 	protected ArrayList<Geometry> obstacles = new ArrayList<Geometry>();
 	protected Coordinate[] footprintCoords = null;
 	protected boolean verifyPlanning = true;
-	protected double occupiedThreshold = 0.3;
+	protected double occupiedThreshold = 0.7;
 	
 	protected PoseSteering[] pathPS = null;
 
