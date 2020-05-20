@@ -8,7 +8,8 @@ SET(CMAKE_SHARED_LINKER_FLAGS "-m64")
 project (simplereedssheppcarplanner)
 
 #Depends on OMPL and MRPT
-find_package(OMPL REQUIRED base)
+find_package(ompl REQUIRED base)
+find_package(PNG REQUIRED)
 #find_package(MRPT REQUIRED maps) 
 include_directories( ${OMPL_INCLUDE_DIRS} )
 #include_directories( ${MRPT_INCLUDE_DIRS} )
