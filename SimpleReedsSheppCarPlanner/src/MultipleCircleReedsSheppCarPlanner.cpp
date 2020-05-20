@@ -80,11 +80,13 @@ extern "C" bool plan_multiple_circles(const char* mapFilename, double occupiedTh
   
   occ = (int**)malloc(height*sizeof(int*)); 
   for (int i = 0; i < height; i++) occ[i] = (int*)malloc(width*sizeof(int)); 
-  
+
+  /*
   FILE * fpo;
   FILE * fpoV;
   fpo = fopen ("/home/fpa/tempMap.txt","w");
   fpoV = fopen ("/home/fpa/tempMapValues.txt","w");
+  */
   for (int j = 0; j < height; j++) {
     int i;
     png_bytep row;
@@ -94,7 +96,7 @@ extern "C" bool plan_multiple_circles(const char* mapFilename, double occupiedTh
       for (int k = 0; k < bpp; k++) pixel += row[i+k];
       pixel /= bpp;
       occ[j][i/bpp] = (int)pixel;
-
+      /*
       if (pixel < threshold) {
 	fprintf (fpo,"#");
       }
@@ -103,13 +105,17 @@ extern "C" bool plan_multiple_circles(const char* mapFilename, double occupiedTh
 	fprintf (fpo,".");
       }
       fprintf (fpoV,"%d ",occ[j][i/bpp]);
-      
+      */    
     }
+    /*
     fprintf (fpo,"\n");
     fprintf (fpoV,"\n");
+    */
   }
+  /*
   fclose (fpo);
   fclose (fpoV);
+  */
   
   ob::ScopedState<> start(space), goal(space);
   ob::RealVectorBounds bounds(2);
