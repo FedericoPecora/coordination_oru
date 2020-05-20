@@ -2,44 +2,51 @@
 
 bool MultipleCircleStateValidityChecker::isValid(const ob::State *state) const {
 
+  const ob::SE2StateSpace::StateType *s = state->as<ob::SE2StateSpace::StateType>();
+  float x, y, theta;
+
+  float refPoseX = (float)s->getX();
+  float refPoseY = (float)s->getY();
+  float refPoseTheta = (float)s->getYaw();
+  //std::cout << "Checking for collision in " << refPoseX << "," << refPoseY << "," << refPoseTheta << std::endl;
+
   if (noMap) {
     //std::cout << "No map, so no collision! " << std::endl;
     return true;
   }
-
-  const ob::SE2StateSpace::StateType *s = state->as<ob::SE2StateSpace::StateType>();
-  float x, y, theta, value;
+  
   for (int i = 0; i < numCoords; i++) {
-    theta = (float)s->getYaw();
-    x = xCoords[i]*cos(theta) - yCoords[i]*sin(theta);
-    y = xCoords[i]*sin(theta) + yCoords[i]*cos(theta);
-    x += (float)s->getX();
-    y += (float)s->getY();
-    //value = gridmap.computeClearance(x, y, radius);
+    x = xCoords[i]*cos(refPoseTheta) - yCoords[i]*sin(refPoseTheta);
+    y = xCoords[i]*sin(refPoseTheta) + yCoords[i]*cos(refPoseTheta);
+    x += refPoseX;
+    y += refPoseY;
 
-    int xMap = (int)x/mapResolution;
-    int yMap = (int)y/mapResolution;
-    int radiusMap = (int)radius/mapResolution;
-    //std::cout << "map coords are (x,y,r) " << xMap << "," << yMap << "," << radiusMap << std::endl;
+    int mapHeightPx = (int)(mapHeight/mapResolution);
+    int mapWidthPx = (int)(mapWidth/mapResolution);
+    int xPx = (int)(x/mapResolution);
+    int yPx = mapHeightPx-(int)(y/mapResolution);
+    int radiusPx = (int)(radius/mapResolution);
 
-    int threshold = 130;
-    for (int dx = 0; dx <= radiusMap; dx++) {
-      for (int dy = 0; dy <= radiusMap; dy++) {
+    //std::cout << "(" << x << "," << y << ") -> (" << xPx << "," << yPx << ") with radius in pixels of " << radiusPx << std::endl;
 	
-	if (xMap-dx < 0) return false;
-	if (yMap-dy < 0) return false;
-	if (xMap+dx > mapWidth/mapResolution) return false;
-	if (yMap+dy > mapHeight/mapResolution) return false;
+    for (int dx = 0; dx <= radiusPx; dx++) {
+      for (int dy = 0; dy <= radiusPx; dy++) {
+
+	if (xPx-dx < 0) { return false; }
+	if (yPx-dy < 0) { return false; }
+	if (xPx+dx >= mapWidthPx) { return false; }
+	if (yPx+dy >= mapHeightPx) { return false; }
 	
-	if (map[xMap+dx][yMap+dy] < threshold) return false;
-	if (map[xMap-dx][yMap+dy] < threshold) return false;
-	if (map[xMap+dx][yMap-dy] < threshold) return false;
-	if (map[xMap-dx][yMap-dy] < threshold) return false;
+	if (occ[yPx+dy][xPx+dx] < threshold) { return false; }
+	if (occ[yPx+dy][xPx-dx] < threshold) { return false; }
+	if (occ[yPx-dy][xPx+dx] < threshold) { return false; }
+	if (occ[yPx-dy][xPx-dx] < threshold) { return false; }
+	
       }
     }
   }
 
-  //std::cout << "Checked, no collision! " << std::endl;
+  //std::cout << "No collision found in " << refPoseX << "," << refPoseY << "," << refPoseTheta << std::endl;
   
   return true;
 }

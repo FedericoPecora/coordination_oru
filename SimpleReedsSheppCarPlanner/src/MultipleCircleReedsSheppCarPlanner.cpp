@@ -11,6 +11,8 @@
 #include <ompl/control/planners/kpiece/KPIECE1.h>
 #include <boost/math/constants/constants.hpp>
 
+#include <stdio.h>
+
 //using namespace mrpt::maps;
 using namespace std;
 
@@ -29,13 +31,14 @@ extern "C" void cleanupPath(PathPose* path) {
   free(path);
 }
 
-extern "C" bool plan_multiple_circles(const char* mapFilename, double mapResolution, double robotRadius, double* xCoords, double* yCoords, int numCoords, double startX, double startY, double startTheta, double goalX, double goalY, double goalTheta, PathPose** path, int* pathLength, double distanceBetweenPathPoints, double turningRadius, double planningTimeInSecs) {
+extern "C" bool plan_multiple_circles(const char* mapFilename, double occupiedThreshold, double mapResolution, double robotRadius, double* xCoords, double* yCoords, int numCoords, double startX, double startY, double startTheta, double goalX, double goalY, double goalTheta, PathPose** path, int* pathLength, double distanceBetweenPathPoints, double turningRadius, double planningTimeInSecs) {
 
   double pLen = 0.0;
   int numInterpolationPoints = 0;
   ob::StateSpacePtr space(new ob::ReedsSheppStateSpace(turningRadius));
 
   ///////////////////////////
+  int** occ;
   png_bytepp map;
   png_structp png_ptr;
   png_infop info_ptr;
@@ -47,8 +50,7 @@ extern "C" bool plan_multiple_circles(const char* mapFilename, double mapResolut
   int interlace_method;
   int compression_method;
   int filter_method;
-  int j;
-  png_bytepp rows;
+  int rowbytes;
   fp = fopen (mapFilename, "rb");
   if (! fp) {
     std::cout << "Could not load map " << mapFilename << " for validity checking" << std::endl;
@@ -68,8 +70,47 @@ extern "C" bool plan_multiple_circles(const char* mapFilename, double mapResolut
 		& filter_method);
   map = png_get_rows (png_ptr, info_ptr);
   ///////////////////////////
-  std::cout << "Loaded map " << mapFilename << " (" << width << "x" << height << " pixels)" << std::endl;
+  
+  rowbytes = png_get_rowbytes (png_ptr, info_ptr);
+  int bpp = rowbytes/width;
+  std::cout << "Loaded map " << mapFilename << " (" << width << "x" << height << " pixels) rowbytes = " << rowbytes << " bitdepth = " << bit_depth << " bytes-per-pixel = " << bpp << std::endl;
 
+  int threshold = (int)((1-occupiedThreshold)*255);
+  std::cout << "Occupied threshold = " << occupiedThreshold << ", pixel threshold = " << threshold << std::endl;
+  
+  occ = (int**)malloc(height*sizeof(int*)); 
+  for (int i = 0; i < height; i++) occ[i] = (int*)malloc(width*sizeof(int)); 
+  
+  FILE * fpo;
+  FILE * fpoV;
+  fpo = fopen ("/home/fpa/tempMap.txt","w");
+  fpoV = fopen ("/home/fpa/tempMapValues.txt","w");
+  for (int j = 0; j < height; j++) {
+    int i;
+    png_bytep row;
+    row = map[j];
+    for (i = 0; i < rowbytes; i+=bpp) {
+      png_byte pixel = 0;
+      for (int k = 0; k < bpp; k++) pixel += row[i+k];
+      pixel /= bpp;
+      occ[j][i/bpp] = (int)pixel;
+
+      if (pixel < threshold) {
+	fprintf (fpo,"#");
+      }
+
+      else {
+	fprintf (fpo,".");
+      }
+      fprintf (fpoV,"%d ",occ[j][i/bpp]);
+      
+    }
+    fprintf (fpo,"\n");
+    fprintf (fpoV,"\n");
+  }
+  fclose (fpo);
+  fclose (fpoV);
+  
   ob::ScopedState<> start(space), goal(space);
   ob::RealVectorBounds bounds(2);
   bounds.low[0] = 0;
@@ -85,17 +126,31 @@ extern "C" bool plan_multiple_circles(const char* mapFilename, double mapResolut
 
   // set state validity checking for this space
   ob::SpaceInformationPtr si(ss.getSpaceInformation());
-  si->setStateValidityChecker(ob::StateValidityCheckerPtr(new MultipleCircleStateValidityChecker(si, map, width*mapResolution, height*mapResolution, mapResolution, robotRadius, xCoords, yCoords, numCoords)));
+  si->setStateValidityChecker(ob::StateValidityCheckerPtr(new MultipleCircleStateValidityChecker(si, occ, threshold, mapResolution, width*mapResolution, height*mapResolution, robotRadius, xCoords, yCoords, numCoords)));
+  
+  //Return false if the start is occupied.
+  ompl::base::State *statePtrS = space->allocState();
+  statePtrS->as<ompl::base::SE2StateSpace::StateType>()->setX(startX);
+  statePtrS->as<ompl::base::SE2StateSpace::StateType>()->setY(startY);
+  statePtrS->as<ompl::base::SE2StateSpace::StateType>()->setYaw(startTheta);
+  std::cout << "Checking start pose (" << startX << "," << startY << "," << startTheta << ")" << std::endl;
+  bool isStartValid = si->getStateValidityChecker()->isValid(statePtrS);
+  space->freeState(statePtrS);
+  if (!isStartValid) {
+    std::cout << "Invalid start pose (" << startX << "," << startY << "," << startTheta << ") since pixel(s) around (" << startX/mapResolution << "," << (height-startY/mapResolution) << ") are occupied" << std::endl;
+    return false;
+  }
 
   //Return false if the goal is occupied.
-  ompl::base::State *statePtr = space->allocState();
-  statePtr->as<ompl::base::SE2StateSpace::StateType>()->setX(goalX);
-  statePtr->as<ompl::base::SE2StateSpace::StateType>()->setY(goalY);
-  statePtr->as<ompl::base::SE2StateSpace::StateType>()->setYaw(goalTheta);
-  bool isGoalValid = si->getStateValidityChecker()->isValid(statePtr);
-  space->freeState(statePtr);
+  ompl::base::State *statePtrG = space->allocState();
+  statePtrG->as<ompl::base::SE2StateSpace::StateType>()->setX(goalX);
+  statePtrG->as<ompl::base::SE2StateSpace::StateType>()->setY(goalY);
+  statePtrG->as<ompl::base::SE2StateSpace::StateType>()->setYaw(goalTheta);
+  std::cout << "Checking goal pose (" << goalX << "," << goalY << "," << goalTheta << ")" << std::endl;
+  bool isGoalValid = si->getStateValidityChecker()->isValid(statePtrG);
+  space->freeState(statePtrG);
   if (!isGoalValid) {
-    std::cout << "Invalid goal." << std::endl;
+    std::cout << "Invalid goal pose (" << goalX << "," << goalY << "," << goalTheta << ") since pixel(s) around (" << goalX/mapResolution << "," << (height-goalY/mapResolution) << ") are occupied" << std::endl;
     return false;
   }
 

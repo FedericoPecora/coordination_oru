@@ -80,8 +80,7 @@ public class FourRobotsCircle {
 		rsp.setFootprint(footprint1, footprint2, footprint3, footprint4);
 		rsp.setTurningRadius(4.0);
 		rsp.setDistanceBetweenPathPoints(0.5);
-		rsp.setMapFilename("maps/map-empty.png");
-		rsp.setMapResolution(0.1);
+		//rsp.setMap("maps/map-empty.yaml");
 
 		Pose startPoseRobot1 = new Pose(10.0,3.0,Math.PI);
 		Pose goalPoseRobot1 = new Pose(3.0,10.0,Math.PI/2);

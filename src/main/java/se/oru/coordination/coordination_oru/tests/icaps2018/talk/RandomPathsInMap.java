@@ -74,8 +74,8 @@ public class RandomPathsInMap {
 		
 		/*double MAX_ACCEL = 1.0;
 		double MAX_VEL = 2.5;*/
-		boolean useValidInfrastructure = true;
-		boolean randomObstacles = true;
+		boolean useValidInfrastructure = false;
+		boolean randomObstacles = false;
 
 		//Instantiate a trajectory envelope coordinator.
 		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(2000, 1000, MAX_VEL,MAX_ACCEL);
@@ -133,14 +133,15 @@ public class RandomPathsInMap {
 		String yamlFile = null;
 		if (randomObstacles) yamlFile = useValidInfrastructure ? "maps/map-partial-vi.yaml" : "maps/map-partial-2.yaml";
 		else yamlFile = useValidInfrastructure ? "maps/map-corridors-vi.yaml" : "maps/map-corridors.yaml"; 
-			
+		yamlFile = "maps/map-partial-2.yaml";	
+		
 		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
 		//viz.setMap(yamlFile);
-		RVizVisualization viz = new RVizVisualization();
-		viz.setMap(yamlFile);
-		//BrowserVisualization viz = new BrowserVisualization();
+		//RVizVisualization viz = new RVizVisualization();
 		//viz.setMap(yamlFile);
-		//viz.setInitialTransform(20.0, 9.0, 2.0);
+		BrowserVisualization viz = new BrowserVisualization();
+		viz.setMap(yamlFile);
+		viz.setInitialTransform(20.0, 9.0, 2.0);
 		tec.setVisualization(viz);
 		
 		Missions.loadLocationAndPathData("missions/icaps_locations_and_paths_4.txt");
@@ -149,16 +150,14 @@ public class RandomPathsInMap {
 
 		//Instantiate a simple motion planner
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-		rsp.setMapFilename("maps"+File.separator+Missions.getProperty("image", yamlFile));
-		double res = Double.parseDouble(Missions.getProperty("resolution", yamlFile));
-		rsp.setMapResolution(res);
+		rsp.setMap(yamlFile);
 		rsp.setRadius(0.1);
 		rsp.setFootprint(tec.getDefaultFootprint());
 		rsp.setTurningRadius(4.0);
 		rsp.setDistanceBetweenPathPoints(0.3);
 		
 		//In case deadlocks occur, we make the coordinator capable of re-planning on the fly (experimental, not working properly yet)
-		tec.setMotionPlanner(rsp);
+		tec.setDefaultMotionPlanner(rsp);
 		
 		boolean cachePaths = false;
 		String outputDir = "paths";
@@ -182,12 +181,12 @@ public class RandomPathsInMap {
 		for (int robotID : robotIDs) {
 			
 			String startLocName = "L_"+locationCounter;
-			Pose startLoc = Missions.getLocation(startLocName);
+			Pose startLoc = Missions.getLocationPose(startLocName);
 			startsPoses.put(robotID, startLoc);
 			startsNames.put(robotID, startLocName);
 			
 			String endLocName = "R_"+locationCounter;
-			Pose endLoc = Missions.getLocation(endLocName);
+			Pose endLoc = Missions.getLocationPose(endLocName);
 			endsPoses.put(robotID, endLoc);
 			endsNames.put(robotID, endLocName);		
 			//obstacles.add(startLoc);

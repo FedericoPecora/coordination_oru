@@ -42,6 +42,7 @@ public abstract class AbstractMotionPlanner {
 	protected ArrayList<Geometry> obstacles = new ArrayList<Geometry>();
 	protected Coordinate[] footprintCoords = null;
 	protected boolean verifyPlanning = true;
+	protected double occupiedThreshold = 0.3;
 	
 	protected PoseSteering[] pathPS = null;
 
@@ -81,21 +82,28 @@ public abstract class AbstractMotionPlanner {
 		this.goal = newGoals.toArray(new Pose[newGoals.size()]);
 	}
 	
-	private void setMap(String mapYAMLFile) {
+	public void setOccupiedThreshold(double threshold) {
+		this.occupiedThreshold = threshold;
+	}
+	
+	public void setMap(String mapYAMLFile) {
 		try {
 			File file = new File(mapYAMLFile);
 			BufferedReader br = new BufferedReader(new FileReader(file));
 			String st;
 			while((st=br.readLine()) != null){
-				String key = st.substring(0, st.indexOf(":")).trim();
-				String value = st.substring(st.indexOf(":")+1).trim();
-				if (key.equals("image")) this.setMapFilename(file.getParentFile()+File.separator+value);
-				else if (key.equals("resolution")) this.setMapResolution(Double.parseDouble(value));
-				else if (key.equals("origin")) {
-					String x = value.substring(1, value.indexOf(",")).trim();
-					String y = value.substring(value.indexOf(",")+1, value.indexOf(",", value.indexOf(",")+1)).trim();
-					//FIXME: deal with map origin
-					//this.setMapOrigin(new Coordinate(Double.parseDouble(x),Double.parseDouble(y)));
+				if (!st.trim().startsWith("#") && !st.trim().isEmpty()) {
+					String key = st.substring(0, st.indexOf(":")).trim();
+					String value = st.substring(st.indexOf(":")+1).trim();
+					if (key.equals("image")) this.setMapFilename(file.getParentFile()+File.separator+value);
+					else if (key.equals("resolution")) this.setMapResolution(Double.parseDouble(value));
+					else if (key.equals("occupied_thresh")) this.setOccupiedThreshold(Double.parseDouble(value));
+					else if (key.equals("origin")) {
+						String x = value.substring(1, value.indexOf(",")).trim();
+						String y = value.substring(value.indexOf(",")+1, value.indexOf(",", value.indexOf(",")+1)).trim();
+						//FIXME: deal with map origin
+						//this.setMapOrigin(new Coordinate(Double.parseDouble(x),Double.parseDouble(y)));
+					}
 				}
 			}
 			br.close();

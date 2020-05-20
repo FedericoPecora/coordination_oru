@@ -43,12 +43,26 @@ public class OneRobotPlacement {
 				
 		//You can set a footprint that is specific for each robot
 		Coordinate[] fp1 = new Coordinate[] {
-				new Coordinate(0.0,0.0),
-				new Coordinate(5.0,0.0),
-				new Coordinate(5.0,5.0),
-				new Coordinate(0.0,5.0)
+				new Coordinate(-1.0,0.5),
+				new Coordinate(1.0,0.5),
+				new Coordinate(1.0,-0.5),
+				new Coordinate(-1.0,-0.5)
 		};
-		tec.setFootprint(1,st18footprint);
+		Coordinate[] fp2 = new Coordinate[] {
+				new Coordinate(0.36, 0.0),
+				new Coordinate(0.18, 0.36),
+				new Coordinate(-0.18, 0.36),
+				new Coordinate(-0.36, 0.0),
+				new Coordinate(-0.18, -0.36),
+				new Coordinate(0.18, -0.36)
+		};
+		Coordinate[] fp3 = new Coordinate[] {
+				new Coordinate(-2.0,0.9),
+				new Coordinate(2.0,0.9),
+				new Coordinate(2.0,-0.9),
+				new Coordinate(-2.0,-0.9)
+		};
+		tec.setFootprint(1,fp1);
 
 		//You probably also want to provide a non-trivial forward model
 		//(the default assumes that robots can always stop)
@@ -57,11 +71,14 @@ public class OneRobotPlacement {
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
 
+		String mapYamlFile = "maps/map-partial-2.yaml";
 		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
 		//viz.setSize(1024, 768);
 		BrowserVisualization viz = new BrowserVisualization();
-		viz.setInitialTransform(10, 25, 10);
+		//viz.setInitialTransform(10, 25, 10);
+		viz.setInitialTransform(20.0, 9.0, 2.0);
 		tec.setVisualization(viz);
+		viz.setMap(mapYamlFile);
 		
 		tec.setUseInternalCriticalPoints(false);
 
@@ -73,8 +90,8 @@ public class OneRobotPlacement {
 		rsp.setTurningRadius(4.0);
 		rsp.setDistanceBetweenPathPoints(0.5);
 
-		Pose startPoseRobot1 = new Pose(20.0,20.0,Math.PI/2);
-		Pose goalPoseRobot1 = new Pose(20.0,50.0,0.0);
+		Pose startPoseRobot1 = new Pose(5.0,10.0,0.0);
+		Pose goalPoseRobot1 = new Pose(74.0,10.0,0.0);
 
 		//Place robots in their initial locations (looked up in the data file that was loaded above)
 		// -- creates a trajectory envelope for each location, representing the fact that the robot is parked
@@ -83,8 +100,9 @@ public class OneRobotPlacement {
 		tec.placeRobot(1, startPoseRobot1);
 
 		rsp.setFootprint(fp1);
-//		rsp.setMapFilename("maps/map-empty.png");
-//		rsp.setMapResolution(1);
+		rsp.setMap(mapYamlFile);
+//		rsp.setMapFilename("maps/map-partial-2.png");
+//		rsp.setMapResolution(0.1);
 		
 		rsp.setStart(startPoseRobot1);
 		rsp.setGoals(goalPoseRobot1);
