@@ -22,6 +22,8 @@ import se.oru.coordination.coordination_oru.util.GeometrySmoother;
 import se.oru.coordination.coordination_oru.util.GeometrySmoother.SmootherControl;
 
 public class ReedsSheppCarPlanner extends AbstractMotionPlanner {
+	
+	public static enum PLANNING_ALGORITHM { RRTConnect, RRTstar, TRRT, SST, LBTRRT, PRMstar, SPARS, pRRT, LazyRRT }; 
 
 	private double robotRadius = 1.0;
 	private PointerByReference path = null;
@@ -30,6 +32,7 @@ public class ReedsSheppCarPlanner extends AbstractMotionPlanner {
 	private double turningRadius = 1.0;
 	private double planningTimeInSecs = 30.0;
 	private Coordinate[] collisionCircleCenters = null;
+	private PLANNING_ALGORITHM algo = PLANNING_ALGORITHM.RRTConnect;
 	
 	public static ReedsSheppCarPlannerLib INSTANCE = null;
 	static {
@@ -80,8 +83,11 @@ public class ReedsSheppCarPlanner extends AbstractMotionPlanner {
 	}
 	
 	public ReedsSheppCarPlanner() {
-		deleteDir(new File(TEMP_MAP_DIR));
-		new File(TEMP_MAP_DIR).mkdir();
+		this.algo = PLANNING_ALGORITHM.RRTConnect;
+	}
+	
+	public ReedsSheppCarPlanner(PLANNING_ALGORITHM algo) {
+		this.algo = algo;
 	}
 
 	public void setCirclePositions(Coordinate ... circlePositions) {
@@ -147,10 +153,10 @@ public class ReedsSheppCarPlanner extends AbstractMotionPlanner {
 				double thresh = om.getThreshold();
 				double res = om.getResolution();
 				//double** occupancyMap, int mapWidth, int mapHeight, double occupiedThreshold, double mapResolution, double robotRadius, double* xCoords, double* yCoords, int numCoords, double startX, double startY, double startTheta, double goalX, double goalY, double goalTheta, PathPose** path, int* pathLength, double distanceBetweenPathPoints, double turningRadius, double planningTimeInSecs
-				if (!INSTANCE.plan_multiple_circles(occ, w, h, thresh, res, robotRadius, xCoords, yCoords, numCoords, start_.getX(), start_.getY(), start_.getTheta(), goal_.getX(), goal_.getY(), goal_.getTheta(), path, pathLength, distanceBetweenPathPoints, turningRadius, planningTimeInSecs)) return false;
+				if (!INSTANCE.plan_multiple_circles(occ, w, h, thresh, res, robotRadius, xCoords, yCoords, numCoords, start_.getX(), start_.getY(), start_.getTheta(), goal_.getX(), goal_.getY(), goal_.getTheta(), path, pathLength, distanceBetweenPathPoints, turningRadius, planningTimeInSecs, algo.ordinal())) return false;
 			}
 			else {
-				if (!INSTANCE.plan_multiple_circles_nomap(xCoords, yCoords, numCoords, start_.getX(), start_.getY(), start_.getTheta(), goal_.getX(), goal_.getY(), goal_.getTheta(), path, pathLength, distanceBetweenPathPoints, turningRadius, planningTimeInSecs)) return false;					
+				if (!INSTANCE.plan_multiple_circles_nomap(xCoords, yCoords, numCoords, start_.getX(), start_.getY(), start_.getTheta(), goal_.getX(), goal_.getY(), goal_.getTheta(), path, pathLength, distanceBetweenPathPoints, turningRadius, planningTimeInSecs, algo.ordinal())) return false;					
 			}
 			final Pointer pathVals = path.getValue();
 			final PathPose valsRef = new PathPose(pathVals);

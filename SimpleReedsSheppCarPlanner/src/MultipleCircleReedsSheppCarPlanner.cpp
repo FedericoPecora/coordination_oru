@@ -20,6 +20,8 @@ namespace ob = ompl::base;
 namespace og = ompl::geometric;
 namespace oc = ompl::control;
 
+enum PLANNING_ALGORITHM { RRTConnect, RRTstar, TRRT, SST, LBTRRT, PRMstar, SPARS, pRRT, LazyRRT };
+
 typedef struct PathPose {
   double x;
   double y;
@@ -31,7 +33,7 @@ extern "C" void cleanupPath(PathPose* path) {
   free(path);
 }
 
-extern "C" bool plan_multiple_circles(double* occupancyMap, int mapWidth, int mapHeight, double occupiedThreshold, double mapResolution, double robotRadius, double* xCoords, double* yCoords, int numCoords, double startX, double startY, double startTheta, double goalX, double goalY, double goalTheta, PathPose** path, int* pathLength, double distanceBetweenPathPoints, double turningRadius, double planningTimeInSecs) {
+extern "C" bool plan_multiple_circles(double* occupancyMap, int mapWidth, int mapHeight, double occupiedThreshold, double mapResolution, double robotRadius, double* xCoords, double* yCoords, int numCoords, double startX, double startY, double startTheta, double goalX, double goalY, double goalTheta, PathPose** path, int* pathLength, double distanceBetweenPathPoints, double turningRadius, double planningTimeInSecs, PLANNING_ALGORITHM algo) {
 
   double pLen = 0.0;
   int numInterpolationPoints = 0;
@@ -81,17 +83,43 @@ extern "C" bool plan_multiple_circles(double* occupancyMap, int mapWidth, int ma
     std::cout << "Invalid goal pose (" << goalX << "," << goalY << "," << goalTheta << ") since pixel(s) around (" << goalX/mapResolution << "," << (mapHeight-goalY/mapResolution) << ") are occupied" << std::endl;
     return false;
   }
-
-  ob::PlannerPtr planner(new og::RRTConnect(si));
-  //ob::PlannerPtr planner(new og::RRTstar(si));
-  //ob::PlannerPtr planner(new og::TRRT(si));
-  //ob::PlannerPtr planner(new og::SST(si));
-  //ob::PlannerPtr planner(new og::LBTRRT(si));
-  //ob::PlannerPtr planner(new og::PRMstar(si));
-  //ob::PlannerPtr planner(new og::SPARS(si));
-  //ob::PlannerPtr planner(new og::pRRT(si));
-  //ob::PlannerPtr planner(new og::LazyRRT(si));
-  ss.setPlanner(planner);
+    
+  if (algo == RRTConnect) {
+    ob::PlannerPtr planner(new og::RRTConnect(si));
+    ss.setPlanner(planner);
+  }
+  else if (algo == RRTstar) {
+    ob::PlannerPtr planner(new og::RRTstar(si));
+    ss.setPlanner(planner);
+  }
+  else if (algo == TRRT) {
+    ob::PlannerPtr planner(new og::TRRT(si));
+    ss.setPlanner(planner);
+  }
+  else if (algo == LBTRRT) {
+    ob::PlannerPtr planner(new og::LBTRRT(si));
+    ss.setPlanner(planner);
+  }
+  else if (algo == PRMstar) {
+    ob::PlannerPtr planner(new og::PRMstar(si));
+    ss.setPlanner(planner);
+  }
+  else if (algo == SPARS) {
+    ob::PlannerPtr planner(new og::SPARS(si));
+    ss.setPlanner(planner);
+  }
+  else if (algo == pRRT) {
+    ob::PlannerPtr planner(new og::pRRT(si));
+    ss.setPlanner(planner);
+  }
+  else if (algo == LazyRRT) {
+    ob::PlannerPtr planner(new og::LazyRRT(si));
+    ss.setPlanner(planner);
+  }
+  else {
+    std::cout << "Invalid planner specified, aborting." << std::endl;
+    return false;
+  }
 
   // set the start and goal states
   start[0] = startX;
@@ -139,7 +167,7 @@ extern "C" bool plan_multiple_circles(double* occupancyMap, int mapWidth, int ma
 }
 
 
-extern "C" bool plan_multiple_circles_nomap(double* xCoords, double* yCoords, int numCoords, double startX, double startY, double startTheta, double goalX, double goalY, double goalTheta, PathPose** path, int* pathLength, double distanceBetweenPathPoints, double turningRadius, double planningTimeInSecs) {
+extern "C" bool plan_multiple_circles_nomap(double* xCoords, double* yCoords, int numCoords, double startX, double startY, double startTheta, double goalX, double goalY, double goalTheta, PathPose** path, int* pathLength, double distanceBetweenPathPoints, double turningRadius, double planningTimeInSecs, PLANNING_ALGORITHM algo) {
 
   double pLen = 0.0;
   int numInterpolationPoints = 0;
@@ -164,16 +192,42 @@ extern "C" bool plan_multiple_circles_nomap(double* xCoords, double* yCoords, in
   ob::SpaceInformationPtr si(ss.getSpaceInformation());
   si->setStateValidityChecker(ob::StateValidityCheckerPtr(new MultipleCircleStateValidityChecker(si)));
 
-  ob::PlannerPtr planner(new og::RRTConnect(si));
-  //ob::PlannerPtr planner(new og::RRTstar(si));
-  //ob::PlannerPtr planner(new og::TRRT(si));
-  //ob::PlannerPtr planner(new og::SST(si));
-  //ob::PlannerPtr planner(new og::LBTRRT(si));
-  //ob::PlannerPtr planner(new og::PRMstar(si));
-  //ob::PlannerPtr planner(new og::SPARS(si));
-  //ob::PlannerPtr planner(new og::pRRT(si));
-  //ob::PlannerPtr planner(new og::LazyRRT(si));
-  ss.setPlanner(planner);
+  if (algo == RRTConnect) {
+    ob::PlannerPtr planner(new og::RRTConnect(si));
+    ss.setPlanner(planner);
+  }
+  else if (algo == RRTstar) {
+    ob::PlannerPtr planner(new og::RRTstar(si));
+    ss.setPlanner(planner);
+  }
+  else if (algo == TRRT) {
+    ob::PlannerPtr planner(new og::TRRT(si));
+    ss.setPlanner(planner);
+  }
+  else if (algo == LBTRRT) {
+    ob::PlannerPtr planner(new og::LBTRRT(si));
+    ss.setPlanner(planner);
+  }
+  else if (algo == PRMstar) {
+    ob::PlannerPtr planner(new og::PRMstar(si));
+    ss.setPlanner(planner);
+  }
+  else if (algo == SPARS) {
+    ob::PlannerPtr planner(new og::SPARS(si));
+    ss.setPlanner(planner);
+  }
+  else if (algo == pRRT) {
+    ob::PlannerPtr planner(new og::pRRT(si));
+    ss.setPlanner(planner);
+  }
+  else if (algo == LazyRRT) {
+    ob::PlannerPtr planner(new og::LazyRRT(si));
+    ss.setPlanner(planner);
+  }
+  else {
+    std::cout << "Invalid planner specified, aborting." << std::endl;
+    return false;
+  }
   
   //Return false if the goal is occupied.
   ompl::base::State *statePtr = space->allocState();
