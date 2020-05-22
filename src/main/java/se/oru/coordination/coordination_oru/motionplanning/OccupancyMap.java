@@ -1,8 +1,11 @@
 package se.oru.coordination.coordination_oru.motionplanning;
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Shape;
 import java.awt.image.BufferedImage;
+import java.awt.image.ColorModel;
+import java.awt.image.WritableRaster;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -20,6 +23,27 @@ import com.vividsolutions.jts.geom.util.AffineTransformation;
 
 public class OccupancyMap {
 
+	protected static String TEMP_MAP_DIR = ".tempMaps";
+	protected static int numCalls = 0;
+	
+	public static boolean deleteDir(File dir) {
+	    if (dir.isDirectory()) {
+	        String[] children = dir.list();
+	        for (int i=0; i<children.length; i++) {
+	            boolean success = deleteDir(new File(dir, children[i]));
+	            if (!success) {
+	                return false;
+	            }
+	        }
+	    }
+	    return dir.delete();
+	}
+	
+	static {
+		deleteDir(new File(TEMP_MAP_DIR));
+		new File(TEMP_MAP_DIR).mkdir();
+	}
+	
 	private int mapWidth, mapHeight;
 	private double[][] occupancyMap = null;
 	private double[] occupancyMapLinear = null;
@@ -40,14 +64,25 @@ public class OccupancyMap {
 		g2.dispose();
 		//--
 		this.createOccupancyMap();
-		this.bimg_original = this.bimg;
+		this.bimg_original = deepCopy(this.bimg);
 	}
 	
 	public OccupancyMap(String yamlFile) {
 		this.readMap(yamlFile);
 		//--
 		this.createOccupancyMap();
-		this.bimg_original = this.bimg;
+		this.bimg_original = deepCopy(this.bimg);
+	}
+	
+	public BufferedImage getMapImage() {
+		return this.bimg;
+	}
+	
+	private static BufferedImage deepCopy(BufferedImage bi) {
+		 ColorModel cm = bi.getColorModel();
+		 boolean isAlphaPremultiplied = cm.isAlphaPremultiplied();
+		 WritableRaster raster = bi.copyData(null);
+		 return new BufferedImage(cm, raster, isAlphaPremultiplied, null);
 	}
 
 	public void clearObstacles() {
@@ -76,6 +111,56 @@ public class OccupancyMap {
 		}
 		g2.dispose();
 		this.createOccupancyMap();
+
+	}
+	
+	public void saveDebugObstacleImage(Pose startPose, Pose goalPose, Geometry robotFoot) {
+		BufferedImage copyForDebug = new BufferedImage(bimg.getWidth(), bimg.getHeight(), BufferedImage.TYPE_INT_RGB);
+		Graphics2D g2 = copyForDebug.createGraphics();
+		g2.drawImage(bimg, 0, 0, bimg.getWidth(), bimg.getHeight(), 0, 0, bimg.getWidth(), bimg.getHeight(), null);
+		
+		ShapeWriter writer = new ShapeWriter();
+		float dash1[] = {10.0f};
+	    BasicStroke dashed = new BasicStroke(10.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 10.0f, dash1, 0.0f);
+	    g2.setStroke(dashed);
+		
+		g2.setPaint(Color.red);
+		AffineTransformation atStart = new AffineTransformation();
+		atStart.rotate(startPose.getTheta());
+		atStart.translate(startPose.getX(), startPose.getY());
+		Geometry robotAtStart = atStart.transform(robotFoot);
+		AffineTransformation atStartScale = new AffineTransformation();
+		atStartScale.scale(1.0/mapResolution, -1.0/mapResolution);
+		atStartScale.translate(0, copyForDebug.getHeight());
+		Geometry scaledGeomStart = atStartScale.transform(robotAtStart);
+		Shape shapeAtStart = writer.toShape(scaledGeomStart);
+		g2.draw(shapeAtStart);
+		//g2.fill(shapeAtStart);
+		
+		g2.setPaint(Color.green);
+		AffineTransformation atGoal = new AffineTransformation();
+		atGoal.rotate(goalPose.getTheta());
+		atGoal.translate(goalPose.getX(), goalPose.getY());
+		Geometry robotAtGoal = atGoal.transform(robotFoot);
+		AffineTransformation atGoalScale = new AffineTransformation();
+		atGoalScale.scale(1.0/mapResolution, -1.0/mapResolution);
+		atGoalScale.translate(0, copyForDebug.getHeight());
+		Geometry scaledGeomGoal = atGoalScale.transform(robotAtGoal);
+		Shape shapeAtGoal = writer.toShape(scaledGeomGoal);
+		g2.draw(shapeAtGoal);
+		//g2.fill(shapeAtGoal);
+		
+		g2.dispose();
+		
+		//Save the map for debugging
+		try {
+			String filename = TEMP_MAP_DIR + File.separator + "tempMap_" + (numCalls++) + "_" + System.identityHashCode(this) + ".png";
+			File outputfile = new File(filename);
+			ImageIO.write(copyForDebug, "png", outputfile);
+			System.out.println("WROTE DEBUG IMAGE: " + outputfile.getAbsolutePath());
+		}
+		catch (IOException e) { e.printStackTrace(); }
+
 	}
 	
 	public void addObstacles(Geometry geom, Pose ... poses) {

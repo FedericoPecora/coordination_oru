@@ -1,24 +1,15 @@
 package se.oru.coordination.coordination_oru.motionplanning;
 
 import java.awt.Color;
-import java.awt.Graphics2D;
-import java.awt.Shape;
-import java.awt.image.BufferedImage;
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.logging.Logger;
-
-import javax.imageio.ImageIO;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 import org.metacsp.utility.logging.MetaCSPLogging;
 
-import com.vividsolutions.jts.awt.ShapeWriter;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
@@ -29,9 +20,6 @@ import se.oru.coordination.coordination_oru.util.Missions;
 public abstract class AbstractMotionPlanner {
 
 	protected Logger metaCSPLogger = MetaCSPLogging.getLogger(this.getClass());
-
-	protected static String TEMP_MAP_DIR = ".tempMaps";
-	protected int numCalls = 0;
 	
 	protected Pose start = null;
 	protected Pose[] goal = null;
@@ -115,9 +103,17 @@ public abstract class AbstractMotionPlanner {
 		this.om.addObstacles(geom);
 	}
 	
+	public synchronized void writeDebugImage() {
+		om.saveDebugObstacleImage(this.start, this.goal[this.goal.length-1], getFootprintAsGeometry());
+	}
+	
 	public synchronized void clearObstacles() {
 		if (this.noMap) this.om = null;
 		else this.om.clearObstacles();
+	}
+	
+	public OccupancyMap getOccupancyMap() {
+		return this.om;
 	}
 
 	/**
@@ -126,15 +122,19 @@ public abstract class AbstractMotionPlanner {
 	 */
 	public abstract boolean doPlanning();
 	
-	public synchronized boolean plan() {
-		
+	private Geometry getFootprintAsGeometry() {
 		GeometryFactory gf = new GeometryFactory();
 		Coordinate[] newFoot = new Coordinate[footprintCoords.length+1];
 		for (int j = 0; j < footprintCoords.length; j++) {
 			newFoot[j] = footprintCoords[j];
 		}
 		newFoot[footprintCoords.length] = footprintCoords[0];
-		Geometry goalFoot = gf.createPolygon(newFoot);
+		Geometry foot = gf.createPolygon(newFoot);
+		return foot;
+	}
+	
+	public synchronized boolean plan() {
+		Geometry goalFoot = getFootprintAsGeometry();
 		AffineTransformation at = new AffineTransformation();
 		at.rotate(this.goal[this.goal.length-1].getTheta());
 		at.translate(this.goal[this.goal.length-1].getX(), this.goal[this.goal.length-1].getY());
@@ -160,7 +160,7 @@ public abstract class AbstractMotionPlanner {
 		
 		for (int i = 0; i < path.length; i++) {
 			Pose p = path[i].getPose();
-			Geometry checkFoot = gf.createPolygon(newFoot);
+			Geometry checkFoot = getFootprintAsGeometry();
 			at = new AffineTransformation();
 			at.rotate(p.getTheta());
 			at.translate(p.getX(), p.getY());

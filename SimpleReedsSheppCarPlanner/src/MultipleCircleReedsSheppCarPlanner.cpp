@@ -58,7 +58,7 @@ extern "C" bool plan_multiple_circles(double* occupancyMap, int mapWidth, int ma
   ob::SpaceInformationPtr si(ss.getSpaceInformation());
   si->setStateValidityChecker(ob::StateValidityCheckerPtr(new MultipleCircleStateValidityChecker(si, occupancyMap, mapWidth, mapHeight, occupiedThreshold, mapResolution, robotRadius, xCoords, yCoords, numCoords)));
   
-  //Return false if the start is occupied.
+  //Return false if the start is occupied.  
   ompl::base::State *statePtrS = space->allocState();
   statePtrS->as<ompl::base::SE2StateSpace::StateType>()->setX(startX);
   statePtrS->as<ompl::base::SE2StateSpace::StateType>()->setY(startY);
@@ -70,6 +70,7 @@ extern "C" bool plan_multiple_circles(double* occupancyMap, int mapWidth, int ma
     std::cout << "Invalid start pose (" << startX << "," << startY << "," << startTheta << ") since pixel(s) around (" << startX/mapResolution << "," << (mapHeight-startY/mapResolution) << ") are occupied" << std::endl;
     return false;
   }
+  
 
   //Return false if the goal is occupied.
   ompl::base::State *statePtrG = space->allocState();

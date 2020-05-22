@@ -783,7 +783,10 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			mp.setGoals(toPose);
 			mp.clearObstacles();
 			if (obstaclesToConsider != null && obstaclesToConsider.length > 0) mp.addObstacles(obstaclesToConsider);
-			if (mp.plan()) return mp.getPath();
+			boolean replanningSuccessful = mp.plan();
+			if (!replanningSuccessful) mp.writeDebugImage();
+			if (obstaclesToConsider != null && obstaclesToConsider.length > 0) mp.clearObstacles();
+			if (replanningSuccessful) return mp.getPath();
 			return null;
 		}
 	}

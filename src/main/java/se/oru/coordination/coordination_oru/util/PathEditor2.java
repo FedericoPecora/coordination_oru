@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionListener;
 import java.awt.geom.AffineTransform;
@@ -37,29 +38,34 @@ import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.util.AffineTransformation;
 
+import se.oru.coordination.coordination_oru.motionplanning.AbstractMotionPlanner;
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.util.splines.BezierSplineFactory;
 
-public class PathEditor2 implements MouseMotionListener {
+public class PathEditor2 { //implements MouseMotionListener {
 
 	private static int newLocationCounter = 0;
 	private String selectionsFile = null;
 	private String outputDir = null;
 	private static String NEW_SUFFIX = ".new";
 	private static int EMPTY_MAP_DIM = 10000;
-	private static double MAX_TURNING_RADIUS = 5.0;
-	private static double SPLINE_DISTANCE = 20.0;
-	private static double DISTANCE_BETWEEN_PATH_POINTS = 1.5;
+	
+	private double PP_max_turning_radius = 5.0;
+	private double SP_spline_distance = 20.0;
+	private double PP_SP_distance_between_path_points = 1.5;
+	private double PP_radius = 0.2;
+	private Coordinate[] PP_footprint = null;
+	private Geometry PP_footprintGeom = null;
+	
 	private String locationsAndPathsFilename = null;
 	private String mapFilename = null;
-	private String mapImgFilename = null;
-	private double mapRes = 1.0;
 	private boolean selectionInputListen = false;
 	private ArrayList<String> selectionStringsNames = null;
 	private ArrayList<String> selectionStrings = null;
 	private ArrayList<ArrayList<Integer>> selectedLocationsInts = null;
 	private HashMap<Integer,ArrayList<Integer>> selectionGroupsToSelections = null;
 	private int selectedGroup = -1;
+	private ReedsSheppCarPlanner mp = null;
 	
 	private Point2D mousePositionInMap = null;
 
@@ -76,10 +82,6 @@ public class PathEditor2 implements MouseMotionListener {
 	private double deltaTR = 0.1;
 	private double deltaSD = 0.5;
 	private double deltaD = 0.1;
-	
-	private double radius = 3.0;
-	private Coordinate[] footprint = null;
-	private Geometry footprintGeom = null;
 	
 	private static String TEMP_MAP_DIR = ".tempMapsPathEditor";
 
@@ -104,15 +106,15 @@ public class PathEditor2 implements MouseMotionListener {
 	}
 	
 	public void setSplineDistance(double val) {
-		SPLINE_DISTANCE = val;
+		SP_spline_distance = val;
 	}
 	
 	public void setDistanceBetweenPathPoints(double val) {
-		DISTANCE_BETWEEN_PATH_POINTS = val;
+		PP_SP_distance_between_path_points = val;
 	}
 	
 	public void setMaxTurningRadius(double val) {
-		MAX_TURNING_RADIUS = val;
+		PP_max_turning_radius = val;
 	}
 
 	@Deprecated
@@ -161,16 +163,9 @@ public class PathEditor2 implements MouseMotionListener {
 		this.deltaY = deltaY;
 		this.deltaT = deltaTheta;
 		this.mapFilename = mapFilename;
-		this.footprint = footprint;
+		this.PP_footprint = footprint;
 		this.setPathPlanningFootprint(footprint);
-		if (this.mapFilename != null) {
-			String path = this.mapFilename.substring(0, this.mapFilename.lastIndexOf(File.separator)+1);
-			this.mapImgFilename = path+Missions.getProperty("image", this.mapFilename);
-			this.mapRes = Double.parseDouble(Missions.getProperty("resolution", this.mapFilename));
-			System.out.println("MAP YAML: " + this.mapFilename);
-			System.out.println("MAP IMG : " + this.mapImgFilename);
-			System.out.println("MAP RES : " + this.mapRes);
-		}
+		if (this.mapFilename != null) System.out.println("MAP YAML: " + this.mapFilename);
 		this.setupGUI();
 		if (this.mapFilename != null) {
 			panel.setMap(this.mapFilename);
@@ -228,7 +223,22 @@ public class PathEditor2 implements MouseMotionListener {
 			loadSelectionsFile();
 		}
 		
-		panel.addMouseMotionListener(this);
+		//panel.addMouseMotionListener(this);
+		panel.addMouseMotionListener(new MouseAdapter() {
+			@Override
+			public void mouseDragged(MouseEvent e) {
+				AffineTransform geomToScreen = panel.getMapTransform();
+				try {
+					AffineTransform geomToScreenInv = geomToScreen.createInverse();
+					mousePositionInMap = geomToScreenInv.transform(new Point2D.Double(e.getX(),e.getY()), null);
+					//System.out.println(mousePosition);
+				} catch (NoninvertibleTransformException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+			}
+			
+		});
 
 
 	}
@@ -240,24 +250,24 @@ public class PathEditor2 implements MouseMotionListener {
 			for (int i = 0; i < footprint.length; i++) fn[i] = footprint[i];
 			fn[fn.length-1] = fn[0];
 			//for (int j = 0; j < fn.length; j++) System.out.println(j + "*: " + fn[j]);
-			this.footprint = fn;
-			this.footprintGeom = TrajectoryEnvelope.createFootprintPolygon(fn);
+			this.PP_footprint = fn;
+			this.PP_footprintGeom = TrajectoryEnvelope.createFootprintPolygon(fn);
 		}
 		else {
-			this.footprint = footprint;
-			this.footprintGeom = TrajectoryEnvelope.createFootprintPolygon(footprint);
+			this.PP_footprint = footprint;
+			this.PP_footprintGeom = TrajectoryEnvelope.createFootprintPolygon(footprint);
 		}
 	}
 	
 	public void setPathPlanningRadius(double rad) {
-		this.radius = rad;
+		this.PP_radius = rad;
 	}
 	
 	public Geometry makeFootprint(double x, double y, double theta) {
 		AffineTransformation at = new AffineTransformation();
 		at.rotate(theta);
 		at.translate(x,y);
-		Geometry rect = at.transform(footprintGeom);
+		Geometry rect = at.transform(PP_footprintGeom);
 		return rect;
 	}
 	
@@ -2037,8 +2047,8 @@ public class PathEditor2 implements MouseMotionListener {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				
-				DISTANCE_BETWEEN_PATH_POINTS += deltaD;
-				System.out.println("Minimum distance between path points (>): " + DISTANCE_BETWEEN_PATH_POINTS);
+				PP_SP_distance_between_path_points += deltaD;
+				System.out.println("Minimum distance between path points (>): " + PP_SP_distance_between_path_points);
 				
 				/////
 				Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
@@ -2098,8 +2108,8 @@ public class PathEditor2 implements MouseMotionListener {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 
-				if (DISTANCE_BETWEEN_PATH_POINTS-deltaD >= 0) DISTANCE_BETWEEN_PATH_POINTS -= deltaD;
-				System.out.println("Minimum distance between path points (<): " + DISTANCE_BETWEEN_PATH_POINTS);
+				if (PP_SP_distance_between_path_points-deltaD >= 0) PP_SP_distance_between_path_points -= deltaD;
+				System.out.println("Minimum distance between path points (<): " + PP_SP_distance_between_path_points);
 				
 				/////
 				Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
@@ -2158,8 +2168,8 @@ public class PathEditor2 implements MouseMotionListener {
 			private static final long serialVersionUID = 8414380724212398117L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				MAX_TURNING_RADIUS += deltaTR;
-				System.out.println("Turning radius (>): " + MAX_TURNING_RADIUS);
+				PP_max_turning_radius += deltaTR;
+				System.out.println("Turning radius (>): " + PP_max_turning_radius);
 			}
 		};
 		panel.getActionMap().put("Increase maximum turning radius",actTRPlus);
@@ -2169,8 +2179,8 @@ public class PathEditor2 implements MouseMotionListener {
 			private static final long serialVersionUID = 8414380724212398117L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				if (MAX_TURNING_RADIUS-deltaTR >= 0) MAX_TURNING_RADIUS -= deltaTR;
-				System.out.println("Turning radius (<): " + MAX_TURNING_RADIUS);
+				if (PP_max_turning_radius-deltaTR >= 0) PP_max_turning_radius -= deltaTR;
+				System.out.println("Turning radius (<): " + PP_max_turning_radius);
 			}
 		};
 		panel.getActionMap().put("Decrease maximum turning radius",actTRMinus);
@@ -2181,8 +2191,8 @@ public class PathEditor2 implements MouseMotionListener {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 
-				SPLINE_DISTANCE += deltaSD;
-				System.out.println("Spline distance (>): " + SPLINE_DISTANCE);
+				SP_spline_distance += deltaSD;
+				System.out.println("Spline distance (>): " + SP_spline_distance);
 
 				/////
 				Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
@@ -2242,8 +2252,8 @@ public class PathEditor2 implements MouseMotionListener {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				
-				SPLINE_DISTANCE -= deltaSD;
-				System.out.println("Spline distance (<): " + SPLINE_DISTANCE);
+				SP_spline_distance -= deltaSD;
+				System.out.println("Spline distance (<): " + SP_spline_distance);
 
 				/////
 				Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
@@ -2297,7 +2307,6 @@ public class PathEditor2 implements MouseMotionListener {
 		};
 		panel.getActionMap().put("Decrease spline distance",actSDMinus);
 
-
 		panel.setFocusable(true);
 		panel.setArrowHeadSizeInMeters(1.4);
 		panel.setTextSizeInMeters(20.3);
@@ -2318,57 +2327,44 @@ public class PathEditor2 implements MouseMotionListener {
 	private PoseSteering[] computeSpline(Pose from, Pose to) {
 		Coordinate[] controlPoints = new Coordinate[4];
 		controlPoints[0] = new Coordinate(from.getX(),from.getY(),0.0);
-		controlPoints[1] = new Coordinate(from.getX()+SPLINE_DISTANCE*Math.cos(from.getTheta()), from.getY()+SPLINE_DISTANCE*Math.sin(from.getTheta()), 0.0);
-		controlPoints[2] = new Coordinate(to.getX()-SPLINE_DISTANCE*Math.cos(to.getTheta()), to.getY()-SPLINE_DISTANCE*Math.sin(to.getTheta()), 0.0);
+		controlPoints[1] = new Coordinate(from.getX()+SP_spline_distance*Math.cos(from.getTheta()), from.getY()+SP_spline_distance*Math.sin(from.getTheta()), 0.0);
+		controlPoints[2] = new Coordinate(to.getX()-SP_spline_distance*Math.cos(to.getTheta()), to.getY()-SP_spline_distance*Math.sin(to.getTheta()), 0.0);
 		controlPoints[3] = new Coordinate(to.getX(),to.getY(),0.0);
-		Coordinate[] spline = BezierSplineFactory.createBezierSpline(controlPoints[0], controlPoints[1], controlPoints[2], controlPoints[3], DISTANCE_BETWEEN_PATH_POINTS);
+		Coordinate[] spline = BezierSplineFactory.createBezierSpline(controlPoints[0], controlPoints[1], controlPoints[2], controlPoints[3], PP_SP_distance_between_path_points);
 		return BezierSplineFactory.asPoseSteering(spline);
 		//Spline3D spline1 = SplineFactory.createBezier(controlPoints, DISTANCE_BETWEEN_PATH_POINTS);
 		//return spline1.asPoseSteerings();
 	}
-
+	
 	private PoseSteering[] computePath(Pose from, Pose ... to) {
-		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-		if (this.mapFilename == null) {
-			rsp.setMapFilename(makeEmptyMapMap());
-			rsp.setMapResolution(1.0);
-		}
-		else {
-			rsp.setMapFilename(mapImgFilename);
-			rsp.setMapResolution(mapRes);
-		}
-		rsp.setRadius(this.radius);
-		rsp.setFootprint(this.footprint);
-		rsp.setTurningRadius(MAX_TURNING_RADIUS);
-		rsp.setDistanceBetweenPathPoints(DISTANCE_BETWEEN_PATH_POINTS);
-		rsp.setStart(from);
-		Pose[] goalPoses = new Pose[to.length];
-		for (int i = 0; i < goalPoses.length; i++) goalPoses[i] = to[i];
-		rsp.setGoals(goalPoses);
-//		rsp.addObstacles(obstacles.toArray(new Geometry[obstacles.size()]));
-		if (!rsp.plan()) return null;
-		PoseSteering[] ret = rsp.getPath();
+		if (this.mp == null) this.mp = new ReedsSheppCarPlanner();
+		mp.setFootprint(PP_footprint);
+		mp.setTurningRadius(PP_max_turning_radius);
+		mp.setDistanceBetweenPathPoints(PP_SP_distance_between_path_points);
+		mp.setRadius(PP_radius);
+		mp.setMap(mapFilename);
+		mp.setStart(from);
+		mp.setGoals(to);
+		if (!mp.plan()) return null;
+		PoseSteering[] ret = mp.getPath();
 		return ret;
 	}
 
-	@Override
-	public void mouseDragged(MouseEvent e) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public void mouseMoved(MouseEvent e) {
-		AffineTransform geomToScreen = panel.getMapTransform();
-		try {
-			AffineTransform geomToScreenInv = geomToScreen.createInverse();
-			this.mousePositionInMap = geomToScreenInv.transform(new Point2D.Double(e.getX(),e.getY()), null);
-			//System.out.println(mousePosition);
-		} catch (NoninvertibleTransformException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
-	}
+//	@Override
+//	public void mouseDragged(MouseEvent e) { }
+//
+//	@Override
+//	public void mouseMoved(MouseEvent e) {
+//		AffineTransform geomToScreen = panel.getMapTransform();
+//		try {
+//			AffineTransform geomToScreenInv = geomToScreen.createInverse();
+//			this.mousePositionInMap = geomToScreenInv.transform(new Point2D.Double(e.getX(),e.getY()), null);
+//			//System.out.println(mousePosition);
+//		} catch (NoninvertibleTransformException e1) {
+//			// TODO Auto-generated catch block
+//			e1.printStackTrace();
+//		}
+//	}
 	
 	public static void main(String[] args) {
 		//Robot Footprint

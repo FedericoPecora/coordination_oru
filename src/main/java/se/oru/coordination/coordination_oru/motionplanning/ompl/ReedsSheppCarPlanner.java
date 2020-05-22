@@ -1,12 +1,10 @@
 package se.oru.coordination.coordination_oru.motionplanning.ompl;
 
-import java.io.File;
 import java.util.ArrayList;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 
-import com.sun.jna.Memory;
 import com.sun.jna.Native;
 import com.sun.jna.NativeLibrary;
 import com.sun.jna.Pointer;
@@ -48,8 +46,6 @@ public class ReedsSheppCarPlanner extends AbstractMotionPlanner {
 		ret.setTurningRadius(this.turningRadius);
 		ret.setFootprint(this.footprintCoords);
 		ret.om = this.om;
-//		ret.setMapFilename(mapFilename);
-//		ret.setMapResolution(mapResolution);
 		return ret;
 	}
 	
@@ -67,8 +63,7 @@ public class ReedsSheppCarPlanner extends AbstractMotionPlanner {
 		SmootherControl sc = new SmootherControl() {
 	        public double getMinLength() {
 	            return robotRadius;
-	        }
-	        
+	        }	        
 	        public int getNumVertices(double length) {
 	            return (int)(length/(2*robotRadius))+2;
 	        }
@@ -146,7 +141,6 @@ public class ReedsSheppCarPlanner extends AbstractMotionPlanner {
 			}
 			metaCSPLogger.info("Path planning with " + collisionCircleCenters.length + " circle positions");
 			if (this.om != null) {
-				//if (!INSTANCE.plan_multiple_circles(mapFilename, occupiedThreshold, mapResolution, robotRadius, xCoords, yCoords, numCoords, start_.getX(), start_.getY(), start_.getTheta(), goal_.getX(), goal_.getY(), goal_.getTheta(), path, pathLength, distanceBetweenPathPoints, turningRadius, planningTimeInSecs)) return false;
 				double[] occ = om.as1DArray();
 				int w = om.getPixelWidth();
 				int h = om.getPixelHeight();
