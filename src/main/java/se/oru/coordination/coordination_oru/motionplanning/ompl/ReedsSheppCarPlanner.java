@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 
+import com.sun.jna.Memory;
 import com.sun.jna.Native;
 import com.sun.jna.NativeLibrary;
 import com.sun.jna.Pointer;
@@ -43,8 +44,9 @@ public class ReedsSheppCarPlanner extends AbstractMotionPlanner {
 		ret.setDistanceBetweenPathPoints(this.distanceBetweenPathPoints);
 		ret.setTurningRadius(this.turningRadius);
 		ret.setFootprint(this.footprintCoords);
-		ret.setMapFilename(mapFilename);
-		ret.setMapResolution(mapResolution);
+		ret.om = this.om;
+//		ret.setMapFilename(mapFilename);
+//		ret.setMapResolution(mapResolution);
 		return ret;
 	}
 	
@@ -129,27 +131,26 @@ public class ReedsSheppCarPlanner extends AbstractMotionPlanner {
 			else start_ = this.goal[i-1];
 			path = new PointerByReference();
 			pathLength = new IntByReference();
-			if (collisionCircleCenters == null) {
-				if (!INSTANCE.plan(mapFilename, mapResolution, robotRadius, start_.getX(), start_.getY(), start_.getTheta(), goal_.getX(), goal_.getY(), goal_.getTheta(), path, pathLength, distanceBetweenPathPoints, turningRadius, planningTimeInSecs)) {
-					System.out.println("[ReedsSheppCarPlanner] Path not found.");
-					return false;
-				}
+			double[] xCoords = new double[collisionCircleCenters.length];
+			double[] yCoords = new double[collisionCircleCenters.length];
+			int numCoords = collisionCircleCenters.length;
+			for (int j = 0; j < collisionCircleCenters.length; j++) {
+				xCoords[j] = collisionCircleCenters[j].x;
+				yCoords[j] = collisionCircleCenters[j].y;
+			}
+			metaCSPLogger.info("Path planning with " + collisionCircleCenters.length + " circle positions");
+			if (this.om != null) {
+				//if (!INSTANCE.plan_multiple_circles(mapFilename, occupiedThreshold, mapResolution, robotRadius, xCoords, yCoords, numCoords, start_.getX(), start_.getY(), start_.getTheta(), goal_.getX(), goal_.getY(), goal_.getTheta(), path, pathLength, distanceBetweenPathPoints, turningRadius, planningTimeInSecs)) return false;
+				double[] occ = om.as1DArray();
+				int w = om.getPixelWidth();
+				int h = om.getPixelHeight();
+				double thresh = om.getThreshold();
+				double res = om.getResolution();
+				//double** occupancyMap, int mapWidth, int mapHeight, double occupiedThreshold, double mapResolution, double robotRadius, double* xCoords, double* yCoords, int numCoords, double startX, double startY, double startTheta, double goalX, double goalY, double goalTheta, PathPose** path, int* pathLength, double distanceBetweenPathPoints, double turningRadius, double planningTimeInSecs
+				if (!INSTANCE.plan_multiple_circles(occ, w, h, thresh, res, robotRadius, xCoords, yCoords, numCoords, start_.getX(), start_.getY(), start_.getTheta(), goal_.getX(), goal_.getY(), goal_.getTheta(), path, pathLength, distanceBetweenPathPoints, turningRadius, planningTimeInSecs)) return false;
 			}
 			else {
-				double[] xCoords = new double[collisionCircleCenters.length];
-				double[] yCoords = new double[collisionCircleCenters.length];
-				int numCoords = collisionCircleCenters.length;
-				for (int j = 0; j < collisionCircleCenters.length; j++) {
-					xCoords[j] = collisionCircleCenters[j].x;
-					yCoords[j] = collisionCircleCenters[j].y;
-				}
-				metaCSPLogger.info("Path planning with " + collisionCircleCenters.length + " circle positions");
-				if (this.mapFilename != null) {
-					if (!INSTANCE.plan_multiple_circles(mapFilename, occupiedThreshold, mapResolution, robotRadius, xCoords, yCoords, numCoords, start_.getX(), start_.getY(), start_.getTheta(), goal_.getX(), goal_.getY(), goal_.getTheta(), path, pathLength, distanceBetweenPathPoints, turningRadius, planningTimeInSecs)) return false;					
-				}
-				else {
-					if (!INSTANCE.plan_multiple_circles_nomap(xCoords, yCoords, numCoords, start_.getX(), start_.getY(), start_.getTheta(), goal_.getX(), goal_.getY(), goal_.getTheta(), path, pathLength, distanceBetweenPathPoints, turningRadius, planningTimeInSecs)) return false;					
-				}
+				if (!INSTANCE.plan_multiple_circles_nomap(xCoords, yCoords, numCoords, start_.getX(), start_.getY(), start_.getTheta(), goal_.getX(), goal_.getY(), goal_.getTheta(), path, pathLength, distanceBetweenPathPoints, turningRadius, planningTimeInSecs)) return false;					
 			}
 			final Pointer pathVals = path.getValue();
 			final PathPose valsRef = new PathPose(pathVals);
