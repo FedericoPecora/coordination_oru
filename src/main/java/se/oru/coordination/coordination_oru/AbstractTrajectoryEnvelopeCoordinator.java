@@ -1719,17 +1719,9 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				while (true) {
 					synchronized (solver) {	
 						if (!missionsPool.isEmpty()) {
-							//get the oldest posted mission
-							int oldestMissionRobotID = -1;
-							long oldestMissionTime = Long.MAX_VALUE;
-							for (int robotID : missionsPool.keySet()) {
-								if (missionsPool.get(robotID).getSecond().compareTo(oldestMissionTime) < 0) {
-									oldestMissionTime = missionsPool.get(robotID).getSecond().longValue();
-									oldestMissionRobotID = robotID;
-								}
-							}
-							envelopesToTrack.add(missionsPool.get(oldestMissionRobotID).getFirst());
-							missionsPool.remove(oldestMissionRobotID);
+							for (int robotID : missionsPool.keySet()) 
+								envelopesToTrack.add(missionsPool.get(robotID).getFirst());
+							missionsPool.clear();
 							computeCriticalSections();
 							startTrackingAddedMissions();
 						}
