@@ -226,6 +226,9 @@ public class RandomPathsInMap {
 				}
 				else rsp.setGoals(endLoc);
 				rsp.plan();
+				if (rsp.getPath() == null) {
+					throw new Error("No path found.");
+				}
 				path = rsp.getPath();
 				pathInv = rsp.getPathInv();
 				if (cachePaths) {
