@@ -1730,7 +1730,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 						if (!missionsPool.isEmpty()) {
 							
 							//FIXME critical sections should be computed incrementally/asynchronously
-							if (this.updateAllPostedMissionsOnce) {
+							if (updateAllPostedMissionsOnce) {
 								for (int robotID : missionsPool.keySet()) {
 									envelopesToTrack.add(missionsPool.get(robotID).getFirst());
 								}
