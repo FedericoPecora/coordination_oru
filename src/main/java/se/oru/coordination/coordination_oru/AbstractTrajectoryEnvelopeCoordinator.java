@@ -116,6 +116,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 
 	protected HashSet<Integer> muted = new HashSet<Integer>();
 
+	protected boolean updateAllPostedMissionsOnce = false;
 	protected boolean yieldIfParking = true;
 	protected boolean checkEscapePoses = true;
 
@@ -240,6 +241,11 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 */
 	public void setYieldIfParking(boolean value) {
 		this.yieldIfParking = value;
+	}
+	
+	//FIXME
+	public void setUpdateAllPostedMissionsOnce(boolean value) {
+		this.updateAllPostedMissionsOnce = value;
 	}
 
 	/**
@@ -1722,9 +1728,27 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				while (true) {
 					synchronized (solver) {	
 						if (!missionsPool.isEmpty()) {
-							for (int robotID : missionsPool.keySet()) 
-								envelopesToTrack.add(missionsPool.get(robotID).getFirst());
-							missionsPool.clear();
+							
+							//FIXME critical sections should be computed incrementally/asynchronously
+							if (this.updateAllPostedMissionsOnce) {
+								for (int robotID : missionsPool.keySet()) {
+									envelopesToTrack.add(missionsPool.get(robotID).getFirst());
+								}
+								missionsPool.clear();
+							}
+							else {
+								//get the oldest posted mission (use TreeSet)
+								int oldestMissionRobotID = -1;
+								long oldestMissionTime = Long.MAX_VALUE;
+								for (int robotID : missionsPool.keySet()) {
+									if (missionsPool.get(robotID).getSecond().compareTo(oldestMissionTime) < 0) {
+										oldestMissionTime = missionsPool.get(robotID).getSecond().longValue();
+										oldestMissionRobotID = robotID;
+									}
+								}
+								envelopesToTrack.add(missionsPool.get(oldestMissionRobotID).getFirst());
+								missionsPool.remove(oldestMissionRobotID);
+							}
 							computeCriticalSections();
 							startTrackingAddedMissions();
 						}
