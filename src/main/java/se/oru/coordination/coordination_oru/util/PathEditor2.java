@@ -1,29 +1,25 @@
 package se.oru.coordination.coordination_oru.util;
 
 import java.awt.Color;
-import java.awt.Graphics2D;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.event.MouseMotionListener;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.NoninvertibleTransformException;
 import java.awt.geom.Point2D;
-import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Map.Entry;
 import java.util.Scanner;
 import java.util.Set;
-import java.util.Map.Entry;
 import java.util.TreeMap;
 
-import javax.imageio.ImageIO;
 import javax.swing.AbstractAction;
 import javax.swing.JOptionPane;
 import javax.swing.KeyStroke;
@@ -37,38 +33,40 @@ import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.util.AffineTransformation;
 
+import se.oru.coordination.coordination_oru.motionplanning.OccupancyMap;
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.util.splines.BezierSplineFactory;
 
-public class PathEditor2 implements MouseMotionListener {
+public class PathEditor2 {
 
 	private static int newLocationCounter = 0;
 	private String selectionsFile = null;
 	private String outputDir = null;
-	private static String NEW_SUFFIX = ".new";
-	private static int EMPTY_MAP_DIM = 10000;
-	private static double MAX_TURNING_RADIUS = 5.0;
-	private static double SPLINE_DISTANCE = 20.0;
-	private static double DISTANCE_BETWEEN_PATH_POINTS = 1.5;
+
+	private double PP_max_turning_radius = 5.0;
+	private double SP_spline_distance = 20.0;
+	private double PP_SP_distance_between_path_points = 1.5;
+	private double PP_radius = 0.2;
+	private Coordinate[] PP_footprint = null;
+	private Geometry PP_footprintGeom = null;
+	
 	private String locationsAndPathsFilename = null;
 	private String mapFilename = null;
-	private String mapImgFilename = null;
-	private double mapRes = 1.0;
 	private boolean selectionInputListen = false;
 	private ArrayList<String> selectionStringsNames = null;
 	private ArrayList<String> selectionStrings = null;
 	private ArrayList<ArrayList<Integer>> selectedLocationsInts = null;
 	private HashMap<Integer,ArrayList<Integer>> selectionGroupsToSelections = null;
 	private int selectedGroup = -1;
+	private ReedsSheppCarPlanner mp = null;
 	
-	private Point2D mousePositionInMap = null;
-
+	private OccupancyMap om = null;
+	
 	private String selectionString = "";
 	private ArrayList<Integer> selectedLocationsInt = new ArrayList<Integer>();
 	private ArrayList<String> locationIDs = new ArrayList<String>();
 	private HashMap<String,ArrayList<PoseSteering>> allPaths = null;
 	private HashMap<String,Boolean> isInversePath = null;
-	private HashMap<String,ArrayList<ArrayList<PoseSteering>>> oldPaths = new HashMap<String,ArrayList<ArrayList<PoseSteering>>>(); 
 	private JTSDrawingPanel panel = null;
 	private double deltaX = 0.1;
 	private double deltaY = 0.1;
@@ -76,10 +74,6 @@ public class PathEditor2 implements MouseMotionListener {
 	private double deltaTR = 0.1;
 	private double deltaSD = 0.5;
 	private double deltaD = 0.1;
-	
-	private double radius = 3.0;
-	private Coordinate[] footprint = null;
-	private Geometry footprintGeom = null;
 	
 	private static String TEMP_MAP_DIR = ".tempMapsPathEditor";
 
@@ -104,15 +98,15 @@ public class PathEditor2 implements MouseMotionListener {
 	}
 	
 	public void setSplineDistance(double val) {
-		SPLINE_DISTANCE = val;
+		SP_spline_distance = val;
 	}
 	
 	public void setDistanceBetweenPathPoints(double val) {
-		DISTANCE_BETWEEN_PATH_POINTS = val;
+		PP_SP_distance_between_path_points = val;
 	}
 	
 	public void setMaxTurningRadius(double val) {
-		MAX_TURNING_RADIUS = val;
+		PP_max_turning_radius = val;
 	}
 
 	@Deprecated
@@ -161,15 +155,11 @@ public class PathEditor2 implements MouseMotionListener {
 		this.deltaY = deltaY;
 		this.deltaT = deltaTheta;
 		this.mapFilename = mapFilename;
-		this.footprint = footprint;
+		this.PP_footprint = footprint;
 		this.setPathPlanningFootprint(footprint);
 		if (this.mapFilename != null) {
-			String path = this.mapFilename.substring(0, this.mapFilename.lastIndexOf(File.separator)+1);
-			this.mapImgFilename = path+Missions.getProperty("image", this.mapFilename);
-			this.mapRes = Double.parseDouble(Missions.getProperty("resolution", this.mapFilename));
 			System.out.println("MAP YAML: " + this.mapFilename);
-			System.out.println("MAP IMG : " + this.mapImgFilename);
-			System.out.println("MAP RES : " + this.mapRes);
+			this.om = new OccupancyMap(mapFilename);
 		}
 		this.setupGUI();
 		if (this.mapFilename != null) {
@@ -190,7 +180,7 @@ public class PathEditor2 implements MouseMotionListener {
 			String pathURI = this.locationsAndPathsFilename.substring(0, this.locationsAndPathsFilename.lastIndexOf(File.separator)+1);
 			Missions.loadLocationAndPathData(this.locationsAndPathsFilename);
 			addAllKnownLocations();
-			HashMap<String,Pose> locations = Missions.getLocations();
+			HashMap<String,Pose> locations = Missions.getLocationsAndPoses();
 			for (Entry<String,Pose> entry : locations.entrySet()) {
 				//System.out.println("Added location " + entry.getKey() + ": " + entry.getValue());
 				for (Entry<String,Pose> entry1 : locations.entrySet()) {
@@ -227,9 +217,6 @@ public class PathEditor2 implements MouseMotionListener {
 			this.selectionsFile = selectionsFilename;
 			loadSelectionsFile();
 		}
-		
-		panel.addMouseMotionListener(this);
-
 
 	}
 	
@@ -240,24 +227,24 @@ public class PathEditor2 implements MouseMotionListener {
 			for (int i = 0; i < footprint.length; i++) fn[i] = footprint[i];
 			fn[fn.length-1] = fn[0];
 			//for (int j = 0; j < fn.length; j++) System.out.println(j + "*: " + fn[j]);
-			this.footprint = fn;
-			this.footprintGeom = TrajectoryEnvelope.createFootprintPolygon(fn);
+			this.PP_footprint = fn;
+			this.PP_footprintGeom = TrajectoryEnvelope.createFootprintPolygon(fn);
 		}
 		else {
-			this.footprint = footprint;
-			this.footprintGeom = TrajectoryEnvelope.createFootprintPolygon(footprint);
+			this.PP_footprint = footprint;
+			this.PP_footprintGeom = TrajectoryEnvelope.createFootprintPolygon(footprint);
 		}
 	}
 	
 	public void setPathPlanningRadius(double rad) {
-		this.radius = rad;
+		this.PP_radius = rad;
 	}
 	
 	public Geometry makeFootprint(double x, double y, double theta) {
 		AffineTransformation at = new AffineTransformation();
 		at.rotate(theta);
 		at.translate(x,y);
-		Geometry rect = at.transform(footprintGeom);
+		Geometry rect = at.transform(PP_footprintGeom);
 		return rect;
 	}
 	
@@ -361,8 +348,8 @@ public class PathEditor2 implements MouseMotionListener {
 	public void computeForwardAndInversePathsWithSpline(ArrayList<Integer> selectedLocsInt) {
 		ArrayList<PoseSteering> overallPath = new ArrayList<PoseSteering>();
 		for (int i = 0; i < selectedLocsInt.size()-1; i++) {
-			Pose startPose = Missions.getLocation(locationIDs.get(selectedLocsInt.get(i)));
-			Pose goalPose = Missions.getLocation(locationIDs.get(selectedLocsInt.get(i+1)));
+			Pose startPose = Missions.getLocationPose(locationIDs.get(selectedLocsInt.get(i)));
+			Pose goalPose = Missions.getLocationPose(locationIDs.get(selectedLocsInt.get(i+1)));
 			PoseSteering[] path = computeSpline(startPose, goalPose);
 			if (i == 0) overallPath.add(path[0]);
 			for (int j = 1; j < path.length; j++) overallPath.add(path[j]);
@@ -454,7 +441,7 @@ public class PathEditor2 implements MouseMotionListener {
 	
 	public void addAllKnownLocations() {
 		locationIDs = new ArrayList<String>();
-		for (Entry<String,Pose> entry : Missions.getLocations().entrySet()) {
+		for (Entry<String,Pose> entry : Missions.getLocationsAndPoses().entrySet()) {
 			//if (entry.getKey().startsWith("AUX_")) newLocationCounter++;
 			newLocationCounter++;
 			panel.addArrow("LOC:"+entry.getKey(), entry.getValue(), Color.green);
@@ -527,7 +514,7 @@ public class PathEditor2 implements MouseMotionListener {
 		clearLocations();
 		for (int selectedPathPointOneInt : selectedLocationsInt) {
 			if (selectedPathPointOneInt >= 0 && selectedPathPointOneInt < locationIDs.size()) {
-				panel.addArrow("LOC:"+locationIDs.get(selectedPathPointOneInt), Missions.getLocation(locationIDs.get(selectedPathPointOneInt)), Color.red);
+				panel.addArrow("LOC:"+locationIDs.get(selectedPathPointOneInt), Missions.getLocationPose(locationIDs.get(selectedPathPointOneInt)), Color.red);
 			}
 		}
 		panel.updatePanel();
@@ -535,7 +522,7 @@ public class PathEditor2 implements MouseMotionListener {
 		
 	private void clearLocations() {
 		for (int i = 0; i < locationIDs.size(); i++) {
-			panel.addArrow("LOC:"+locationIDs.get(i), Missions.getLocation(locationIDs.get(i)), Color.green);
+			panel.addArrow("LOC:"+locationIDs.get(i), Missions.getLocationPose(locationIDs.get(i)), Color.green);
 		}
 		panel.updatePanel();
 	}
@@ -545,6 +532,20 @@ public class PathEditor2 implements MouseMotionListener {
 		panel.getActionMap().put(description,aa);
 	}
 		
+	private Point2D getMousePositionInMap() {
+		Point2D mousePositionInMap = null;
+		AffineTransform geomToScreen = panel.getMapTransform();
+		try {
+			AffineTransform geomToScreenInv = geomToScreen.createInverse();
+			mousePositionInMap = geomToScreenInv.transform(new Point2D.Double(panel.getMousePosition().x,panel.getMousePosition().y), null);
+			//System.out.println(mousePosition);
+		} catch (NoninvertibleTransformException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		return mousePositionInMap;
+	}
+	
 	private void setupGUI() {
 		panel = JTSDrawingPanel.makeEmpty("Path Editor");
 
@@ -673,7 +674,7 @@ public class PathEditor2 implements MouseMotionListener {
 			public void actionPerformed(ActionEvent e) {
 				HashMap<String,Pose> locs = new HashMap<String,Pose>();
 				for (String locationName : locationIDs) {
-					locs.put(locationName, Missions.getLocation(locationName));
+					locs.put(locationName, Missions.getLocationPose(locationName));
 				}
 				dumpLocationAndPathData(locs, allPaths);
 			}
@@ -699,7 +700,7 @@ public class PathEditor2 implements MouseMotionListener {
 				int templateCounter = 0;
 				for (int selectedLocationOneInt : selectedLocationsInt) {
 					String oldName = locationIDs.get(selectedLocationOneInt);
-					Pose oldPose = Missions.getLocation(oldName);
+					Pose oldPose = Missions.getLocationPose(oldName);
 					String newName = nameTemplate;
 					if (selectedLocationsInt.size() > 1) newName += (templateCounter++);
 					locationIDs.remove(selectedLocationOneInt);
@@ -877,11 +878,13 @@ public class PathEditor2 implements MouseMotionListener {
 			private static final long serialVersionUID = 3855143731365388356L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				Coordinate mouseCoord = new Coordinate(mousePositionInMap.getX(), mousePositionInMap.getY());
+				//Coordinate mouseCoord = new Coordinate(mousePositionInMap.getX(), mousePositionInMap.getY());
+				
+				Coordinate mouseCoord = new Coordinate(getMousePositionInMap().getX(), getMousePositionInMap().getY());
 				double min = Double.MAX_VALUE;
 				int locID = -1;
 				for (int i = 0; i < locationIDs.size(); i++) {
-					Coordinate locPosition = Missions.getLocation(locationIDs.get(i)).getPosition();
+					Coordinate locPosition = Missions.getLocationPose(locationIDs.get(i)).getPosition();
 					double dist = locPosition.distance(mouseCoord);
 					if (dist < min) {
 						min = dist;
@@ -921,9 +924,9 @@ public class PathEditor2 implements MouseMotionListener {
 				if (!selectedLocationsInt.isEmpty()) {
 					//selectionString = locationIDs.size() + "-" + (locationIDs.size()+selectedLocationsInt.size()-1);
 					int selectedLocationOneInt = selectedLocationsInt.get(selectedLocationsInt.size()-1);
-					Pose pOld = Missions.getLocation(locationIDs.get(selectedLocationOneInt));
-					double theta = Math.atan2(pOld.getY() - mousePositionInMap.getY(), pOld.getX() - mousePositionInMap.getX());
-					Pose pNew = new Pose(mousePositionInMap.getX(), mousePositionInMap.getY(), theta);
+					Pose pOld = Missions.getLocationPose(locationIDs.get(selectedLocationOneInt));
+					double theta = Math.atan2(pOld.getY() - getMousePositionInMap().getY(), pOld.getX() - getMousePositionInMap().getX());
+					Pose pNew = new Pose(getMousePositionInMap().getX(), getMousePositionInMap().getY(), theta);
 					String newPoseName = "AUX_"+newLocationCounter++;
 					Missions.setLocation(newPoseName, pNew);
 					locationIDs.add(newPoseName);
@@ -936,7 +939,7 @@ public class PathEditor2 implements MouseMotionListener {
 				else {
 					ArrayList<Integer> newSelection = new ArrayList<Integer>();
 					//Pose pNew = new Pose(0.0, 0.0, 0.0);
-					Pose pNew = new Pose(mousePositionInMap.getX(), mousePositionInMap.getY(), 0.0);
+					Pose pNew = new Pose(getMousePositionInMap().getX(), getMousePositionInMap().getY(), 0.0);
 					String newPoseName = "AUX_"+newLocationCounter++;
 					Missions.setLocation(newPoseName, pNew);
 					locationIDs.add(newPoseName);
@@ -981,8 +984,8 @@ public class PathEditor2 implements MouseMotionListener {
 						String pathNameInv = locationIDs.get(onePreset.get(onePreset.size()-1))+"->"+locationIDs.get(onePreset.get(0));
 						if (!allPaths.containsKey(pathName)) {
 							for (int i = 0; i < onePreset.size()-1; i++) {
-								Pose startPose = Missions.getLocation(locationIDs.get(onePreset.get(i)));
-								Pose goalPose = Missions.getLocation(locationIDs.get(onePreset.get(i+1)));
+								Pose startPose = Missions.getLocationPose(locationIDs.get(onePreset.get(i)));
+								Pose goalPose = Missions.getLocationPose(locationIDs.get(onePreset.get(i+1)));
 								PoseSteering[] path = computeSpline(startPose, goalPose);
 								if (i == 0) overallPath.add(path[0]);
 								for (int j = 1; j < path.length; j++) overallPath.add(path[j]);
@@ -1041,10 +1044,10 @@ public class PathEditor2 implements MouseMotionListener {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				if (selectedLocationsInt.size() >= 2) {
-					Pose startPose = Missions.getLocation(locationIDs.get(selectedLocationsInt.get(0)));
+					Pose startPose = Missions.getLocationPose(locationIDs.get(selectedLocationsInt.get(0)));
 					Pose[] goalPoses = new Pose[selectedLocationsInt.size()-1];
 					for (int i = 0; i < goalPoses.length; i++) {
-						goalPoses[i] = Missions.getLocation(locationIDs.get(selectedLocationsInt.get(i+1)));
+						goalPoses[i] = Missions.getLocationPose(locationIDs.get(selectedLocationsInt.get(i+1)));
 					}
 					PoseSteering[] newPath = computePath(startPose,goalPoses);
 					if (newPath != null) {
@@ -1078,10 +1081,10 @@ public class PathEditor2 implements MouseMotionListener {
 						String pathName = locationIDs.get(onePreset.get(0))+"->"+locationIDs.get(onePreset.get(onePreset.size()-1));
 						String pathNameInv = locationIDs.get(onePreset.get(onePreset.size()-1))+"->"+locationIDs.get(onePreset.get(0));
 						if (!allPaths.containsKey(pathName)) {
-							Pose startPose = Missions.getLocation(locationIDs.get(onePreset.get(0)));
+							Pose startPose = Missions.getLocationPose(locationIDs.get(onePreset.get(0)));
 							Pose[] goalPoses = new Pose[onePreset.size()-1];
 							for (int i = 0; i < goalPoses.length; i++) {
-								goalPoses[i] = Missions.getLocation(locationIDs.get(onePreset.get(i+1)));
+								goalPoses[i] = Missions.getLocationPose(locationIDs.get(onePreset.get(i+1)));
 							}
 							PoseSteering[] newPath = computePath(startPose,goalPoses);
 							if (newPath != null) {
@@ -1113,9 +1116,9 @@ public class PathEditor2 implements MouseMotionListener {
 				if (!selectedLocationsInt.isEmpty()) {
 					for (int selectedLocationOneInt : selectedLocationsInt) {
 						String locationName = locationIDs.get(selectedLocationOneInt);
-						double x = Missions.getLocation(locationName).getX();
-						double y = Missions.getLocation(locationName).getY();
-						double th = Missions.getLocation(locationName).getTheta();
+						double x = Missions.getLocationPose(locationName).getX();
+						double y = Missions.getLocationPose(locationName).getY();
+						double th = Missions.getLocationPose(locationName).getTheta();
 						x -= deltaX;
 						Pose newPose = new Pose(x,y,th);
 						Missions.setLocation(locationName, newPose);
@@ -1184,9 +1187,9 @@ public class PathEditor2 implements MouseMotionListener {
 				if (!selectedLocationsInt.isEmpty()) {
 					for (int selectedPathPointOneInt : selectedLocationsInt) {
 						String locationName = locationIDs.get(selectedPathPointOneInt);
-						double x = Missions.getLocation(locationName).getX();
-						double y = Missions.getLocation(locationName).getY();
-						double th = Missions.getLocation(locationName).getTheta();
+						double x = Missions.getLocationPose(locationName).getX();
+						double y = Missions.getLocationPose(locationName).getY();
+						double th = Missions.getLocationPose(locationName).getTheta();
 						x -= (10*deltaX);
 						Pose newPose = new Pose(x,y,th);
 						Missions.setLocation(locationName, newPose);
@@ -1254,9 +1257,9 @@ public class PathEditor2 implements MouseMotionListener {
 				if (!selectedLocationsInt.isEmpty()) {
 					for (int selectedPathPointOneInt : selectedLocationsInt) {
 						String locationName = locationIDs.get(selectedPathPointOneInt);
-						double x = Missions.getLocation(locationName).getX();
-						double y = Missions.getLocation(locationName).getY();
-						double th = Missions.getLocation(locationName).getTheta();
+						double x = Missions.getLocationPose(locationName).getX();
+						double y = Missions.getLocationPose(locationName).getY();
+						double th = Missions.getLocationPose(locationName).getTheta();
 						x += deltaX;
 						Pose newPose = new Pose(x,y,th);
 						Missions.setLocation(locationName, newPose);
@@ -1324,9 +1327,9 @@ public class PathEditor2 implements MouseMotionListener {
 				if (!selectedLocationsInt.isEmpty()) {
 					for (int selectedPathPointOneInt : selectedLocationsInt) {
 						String locationName = locationIDs.get(selectedPathPointOneInt);
-						double x = Missions.getLocation(locationName).getX();
-						double y = Missions.getLocation(locationName).getY();
-						double th = Missions.getLocation(locationName).getTheta();
+						double x = Missions.getLocationPose(locationName).getX();
+						double y = Missions.getLocationPose(locationName).getY();
+						double th = Missions.getLocationPose(locationName).getTheta();
 						x += (10*deltaX);
 						Pose newPose = new Pose(x,y,th);
 						Missions.setLocation(locationName, newPose);
@@ -1394,9 +1397,9 @@ public class PathEditor2 implements MouseMotionListener {
 				if (!selectedLocationsInt.isEmpty()) {
 					for (int selectedPathPointOneInt : selectedLocationsInt) {
 						String locationName = locationIDs.get(selectedPathPointOneInt);
-						double x = Missions.getLocation(locationName).getX();
-						double y = Missions.getLocation(locationName).getY();
-						double th = Missions.getLocation(locationName).getTheta();
+						double x = Missions.getLocationPose(locationName).getX();
+						double y = Missions.getLocationPose(locationName).getY();
+						double th = Missions.getLocationPose(locationName).getTheta();
 						y += deltaY;
 						Pose newPose = new Pose(x,y,th);
 						Missions.setLocation(locationName, newPose);
@@ -1465,9 +1468,9 @@ public class PathEditor2 implements MouseMotionListener {
 				if (!selectedLocationsInt.isEmpty()) {
 					for (int selectedPathPointOneInt : selectedLocationsInt) {
 						String locationName = locationIDs.get(selectedPathPointOneInt);
-						double x = Missions.getLocation(locationName).getX();
-						double y = Missions.getLocation(locationName).getY();
-						double th = Missions.getLocation(locationName).getTheta();
+						double x = Missions.getLocationPose(locationName).getX();
+						double y = Missions.getLocationPose(locationName).getY();
+						double th = Missions.getLocationPose(locationName).getTheta();
 						y += (10*deltaY);
 						Pose newPose = new Pose(x,y,th);
 						Missions.setLocation(locationName, newPose);
@@ -1536,7 +1539,7 @@ public class PathEditor2 implements MouseMotionListener {
 				String scaleFactor = JOptionPane.showInputDialog("Enter a scaling factor");
 				try {
 					double scale = Double.parseDouble(scaleFactor);
-					Set<Entry<String,Pose>> allLocations = Missions.getLocations().entrySet(); 
+					Set<Entry<String,Pose>> allLocations = Missions.getLocationsAndPoses().entrySet(); 
 					for (Entry<String,Pose> oneLocation : allLocations) {
 						double newX = oneLocation.getValue().getX()*scale;
 						double newY = oneLocation.getValue().getY()*scale;
@@ -1571,8 +1574,8 @@ public class PathEditor2 implements MouseMotionListener {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				if (!selectedLocationsInt.isEmpty()) {
-					Pose p1 = Missions.getLocation(locationIDs.get(selectedLocationsInt.get(0)));
-					Pose p2 = Missions.getLocation(locationIDs.get(selectedLocationsInt.get(selectedLocationsInt.size()-1)));
+					Pose p1 = Missions.getLocationPose(locationIDs.get(selectedLocationsInt.get(0)));
+					Pose p2 = Missions.getLocationPose(locationIDs.get(selectedLocationsInt.get(selectedLocationsInt.size()-1)));
 					System.out.println(p1.distanceTo(p2));
 				}
 			}
@@ -1601,9 +1604,9 @@ public class PathEditor2 implements MouseMotionListener {
 				if (!selectedLocationsInt.isEmpty()) {
 					for (int selectedPathPointOneInt : selectedLocationsInt) {
 						String locationName = locationIDs.get(selectedPathPointOneInt);
-						double x = Missions.getLocation(locationName).getX();
-						double y = Missions.getLocation(locationName).getY();
-						double th = Missions.getLocation(locationName).getTheta();
+						double x = Missions.getLocationPose(locationName).getX();
+						double y = Missions.getLocationPose(locationName).getY();
+						double th = Missions.getLocationPose(locationName).getTheta();
 						y -= deltaY;
 						Pose newPose = new Pose(x,y,th);
 						Missions.setLocation(locationName, newPose);
@@ -1671,9 +1674,9 @@ public class PathEditor2 implements MouseMotionListener {
 				if (!selectedLocationsInt.isEmpty()) {
 					for (int selectedPathPointOneInt : selectedLocationsInt) {
 						String locationName = locationIDs.get(selectedPathPointOneInt);
-						double x = Missions.getLocation(locationName).getX();
-						double y = Missions.getLocation(locationName).getY();
-						double th = Missions.getLocation(locationName).getTheta();
+						double x = Missions.getLocationPose(locationName).getX();
+						double y = Missions.getLocationPose(locationName).getY();
+						double th = Missions.getLocationPose(locationName).getTheta();
 						y -= (10*deltaY);
 						Pose newPose = new Pose(x,y,th);
 						Missions.setLocation(locationName, newPose);
@@ -1741,9 +1744,9 @@ public class PathEditor2 implements MouseMotionListener {
 				if (!selectedLocationsInt.isEmpty()) {
 					for (int selectedPathPointOneInt : selectedLocationsInt) {
 						String locationName = locationIDs.get(selectedPathPointOneInt);
-						double x = Missions.getLocation(locationName).getX();
-						double y = Missions.getLocation(locationName).getY();
-						double th = Missions.getLocation(locationName).getTheta();
+						double x = Missions.getLocationPose(locationName).getX();
+						double y = Missions.getLocationPose(locationName).getY();
+						double th = Missions.getLocationPose(locationName).getTheta();
 						th -= deltaT;
 						Pose newPose = new Pose(x,y,th);
 						Missions.setLocation(locationName, newPose);
@@ -1811,9 +1814,9 @@ public class PathEditor2 implements MouseMotionListener {
 				if (!selectedLocationsInt.isEmpty()) {
 					for (int selectedPathPointOneInt : selectedLocationsInt) {
 						String locationName = locationIDs.get(selectedPathPointOneInt);
-						double x = Missions.getLocation(locationName).getX();
-						double y = Missions.getLocation(locationName).getY();
-						double th = Missions.getLocation(locationName).getTheta();
+						double x = Missions.getLocationPose(locationName).getX();
+						double y = Missions.getLocationPose(locationName).getY();
+						double th = Missions.getLocationPose(locationName).getTheta();
 						th -= (10*deltaT);
 						Pose newPose = new Pose(x,y,th);
 						Missions.setLocation(locationName, newPose);
@@ -1881,9 +1884,9 @@ public class PathEditor2 implements MouseMotionListener {
 				if (!selectedLocationsInt.isEmpty()) {
 					for (int selectedPathPointOneInt : selectedLocationsInt) {
 						String locationName = locationIDs.get(selectedPathPointOneInt);
-						double x = Missions.getLocation(locationName).getX();
-						double y = Missions.getLocation(locationName).getY();
-						double th = Missions.getLocation(locationName).getTheta();
+						double x = Missions.getLocationPose(locationName).getX();
+						double y = Missions.getLocationPose(locationName).getY();
+						double th = Missions.getLocationPose(locationName).getTheta();
 						th += deltaT;
 						Pose newPose = new Pose(x,y,th);
 						Missions.setLocation(locationName, newPose);
@@ -1951,9 +1954,9 @@ public class PathEditor2 implements MouseMotionListener {
 				if (!selectedLocationsInt.isEmpty()) {
 					for (int selectedPathPointOneInt : selectedLocationsInt) {
 						String locationName = locationIDs.get(selectedPathPointOneInt);
-						double x = Missions.getLocation(locationName).getX();
-						double y = Missions.getLocation(locationName).getY();
-						double th = Missions.getLocation(locationName).getTheta();
+						double x = Missions.getLocationPose(locationName).getX();
+						double y = Missions.getLocationPose(locationName).getY();
+						double th = Missions.getLocationPose(locationName).getTheta();
 						th += (10*deltaT);
 						Pose newPose = new Pose(x,y,th);
 						Missions.setLocation(locationName, newPose);
@@ -2037,8 +2040,8 @@ public class PathEditor2 implements MouseMotionListener {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				
-				DISTANCE_BETWEEN_PATH_POINTS += deltaD;
-				System.out.println("Minimum distance between path points (>): " + DISTANCE_BETWEEN_PATH_POINTS);
+				PP_SP_distance_between_path_points += deltaD;
+				System.out.println("Minimum distance between path points (>): " + PP_SP_distance_between_path_points);
 				
 				/////
 				Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
@@ -2098,8 +2101,8 @@ public class PathEditor2 implements MouseMotionListener {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 
-				if (DISTANCE_BETWEEN_PATH_POINTS-deltaD >= 0) DISTANCE_BETWEEN_PATH_POINTS -= deltaD;
-				System.out.println("Minimum distance between path points (<): " + DISTANCE_BETWEEN_PATH_POINTS);
+				if (PP_SP_distance_between_path_points-deltaD >= 0) PP_SP_distance_between_path_points -= deltaD;
+				System.out.println("Minimum distance between path points (<): " + PP_SP_distance_between_path_points);
 				
 				/////
 				Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
@@ -2158,8 +2161,8 @@ public class PathEditor2 implements MouseMotionListener {
 			private static final long serialVersionUID = 8414380724212398117L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				MAX_TURNING_RADIUS += deltaTR;
-				System.out.println("Turning radius (>): " + MAX_TURNING_RADIUS);
+				PP_max_turning_radius += deltaTR;
+				System.out.println("Turning radius (>): " + PP_max_turning_radius);
 			}
 		};
 		panel.getActionMap().put("Increase maximum turning radius",actTRPlus);
@@ -2169,8 +2172,8 @@ public class PathEditor2 implements MouseMotionListener {
 			private static final long serialVersionUID = 8414380724212398117L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				if (MAX_TURNING_RADIUS-deltaTR >= 0) MAX_TURNING_RADIUS -= deltaTR;
-				System.out.println("Turning radius (<): " + MAX_TURNING_RADIUS);
+				if (PP_max_turning_radius-deltaTR >= 0) PP_max_turning_radius -= deltaTR;
+				System.out.println("Turning radius (<): " + PP_max_turning_radius);
 			}
 		};
 		panel.getActionMap().put("Decrease maximum turning radius",actTRMinus);
@@ -2181,8 +2184,8 @@ public class PathEditor2 implements MouseMotionListener {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 
-				SPLINE_DISTANCE += deltaSD;
-				System.out.println("Spline distance (>): " + SPLINE_DISTANCE);
+				SP_spline_distance += deltaSD;
+				System.out.println("Spline distance (>): " + SP_spline_distance);
 
 				/////
 				Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
@@ -2242,8 +2245,8 @@ public class PathEditor2 implements MouseMotionListener {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				
-				SPLINE_DISTANCE -= deltaSD;
-				System.out.println("Spline distance (<): " + SPLINE_DISTANCE);
+				SP_spline_distance -= deltaSD;
+				System.out.println("Spline distance (<): " + SP_spline_distance);
 
 				/////
 				Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
@@ -2297,78 +2300,52 @@ public class PathEditor2 implements MouseMotionListener {
 		};
 		panel.getActionMap().put("Decrease spline distance",actSDMinus);
 
-
 		panel.setFocusable(true);
 		panel.setArrowHeadSizeInMeters(1.4);
 		panel.setTextSizeInMeters(20.3);
-	}
-	
-		
-	private String makeEmptyMapMap() {
-		BufferedImage img = new BufferedImage(EMPTY_MAP_DIM, EMPTY_MAP_DIM, BufferedImage.TYPE_INT_RGB);
-		Graphics2D g2 = img.createGraphics();
-		g2.setColor(Color.white);
-		g2.fillRect(0, 0, EMPTY_MAP_DIM, EMPTY_MAP_DIM);
-		File outputfile = new File(TEMP_MAP_DIR+File.separator+"tempMapEmpty.png");
-		try { ImageIO.write(img, "png", outputfile); }
-		catch (IOException e) { e.printStackTrace(); }
-		return outputfile.getAbsolutePath();
 	}
 
 	private PoseSteering[] computeSpline(Pose from, Pose to) {
 		Coordinate[] controlPoints = new Coordinate[4];
 		controlPoints[0] = new Coordinate(from.getX(),from.getY(),0.0);
-		controlPoints[1] = new Coordinate(from.getX()+SPLINE_DISTANCE*Math.cos(from.getTheta()), from.getY()+SPLINE_DISTANCE*Math.sin(from.getTheta()), 0.0);
-		controlPoints[2] = new Coordinate(to.getX()-SPLINE_DISTANCE*Math.cos(to.getTheta()), to.getY()-SPLINE_DISTANCE*Math.sin(to.getTheta()), 0.0);
+		controlPoints[1] = new Coordinate(from.getX()+SP_spline_distance*Math.cos(from.getTheta()), from.getY()+SP_spline_distance*Math.sin(from.getTheta()), 0.0);
+		controlPoints[2] = new Coordinate(to.getX()-SP_spline_distance*Math.cos(to.getTheta()), to.getY()-SP_spline_distance*Math.sin(to.getTheta()), 0.0);
 		controlPoints[3] = new Coordinate(to.getX(),to.getY(),0.0);
-		Coordinate[] spline = BezierSplineFactory.createBezierSpline(controlPoints[0], controlPoints[1], controlPoints[2], controlPoints[3], DISTANCE_BETWEEN_PATH_POINTS);
+		Coordinate[] spline = BezierSplineFactory.createBezierSpline(controlPoints[0], controlPoints[1], controlPoints[2], controlPoints[3], PP_SP_distance_between_path_points);
 		return BezierSplineFactory.asPoseSteering(spline);
 		//Spline3D spline1 = SplineFactory.createBezier(controlPoints, DISTANCE_BETWEEN_PATH_POINTS);
 		//return spline1.asPoseSteerings();
 	}
-
+	
 	private PoseSteering[] computePath(Pose from, Pose ... to) {
-		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-		if (this.mapFilename == null) {
-			rsp.setMapFilename(makeEmptyMapMap());
-			rsp.setMapResolution(1.0);
-		}
-		else {
-			rsp.setMapFilename(mapImgFilename);
-			rsp.setMapResolution(mapRes);
-		}
-		rsp.setRadius(this.radius);
-		rsp.setFootprint(this.footprint);
-		rsp.setTurningRadius(MAX_TURNING_RADIUS);
-		rsp.setDistanceBetweenPathPoints(DISTANCE_BETWEEN_PATH_POINTS);
-		rsp.setStart(from);
-		Pose[] goalPoses = new Pose[to.length];
-		for (int i = 0; i < goalPoses.length; i++) goalPoses[i] = to[i];
-		rsp.setGoals(goalPoses);
-//		rsp.addObstacles(obstacles.toArray(new Geometry[obstacles.size()]));
-		if (!rsp.plan()) return null;
-		PoseSteering[] ret = rsp.getPath();
+		if (this.mp == null) this.mp = new ReedsSheppCarPlanner();
+		mp.setFootprint(PP_footprint);
+		mp.setTurningRadius(PP_max_turning_radius);
+		mp.setDistanceBetweenPathPoints(PP_SP_distance_between_path_points);
+		mp.setRadius(PP_radius);
+		mp.setMap(mapFilename);
+		mp.setStart(from);
+		mp.setGoals(to);
+		if (!mp.plan()) return null;
+		PoseSteering[] ret = mp.getPath();
 		return ret;
 	}
 
-	@Override
-	public void mouseDragged(MouseEvent e) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public void mouseMoved(MouseEvent e) {
-		AffineTransform geomToScreen = panel.getMapTransform();
-		try {
-			AffineTransform geomToScreenInv = geomToScreen.createInverse();
-			this.mousePositionInMap = geomToScreenInv.transform(new Point2D.Double(e.getX(),e.getY()), null);
-			//System.out.println(mousePosition);
-		} catch (NoninvertibleTransformException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
-	}
+//	@Override
+//	public void mouseDragged(MouseEvent e) { }
+//
+//	@Override
+//	public void mouseMoved(MouseEvent e) {
+//		AffineTransform geomToScreen = panel.getMapTransform();
+//		try {
+//			AffineTransform geomToScreenInv = geomToScreen.createInverse();
+//			this.mousePositionInMap = geomToScreenInv.transform(new Point2D.Double(e.getX(),e.getY()), null);
+//			//System.out.println(mousePosition);
+//		} catch (NoninvertibleTransformException e1) {
+//			// TODO Auto-generated catch block
+//			e1.printStackTrace();
+//		}
+//	}
 	
 	public static void main(String[] args) {
 		//Robot Footprint

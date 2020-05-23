@@ -14,6 +14,7 @@ import se.oru.coordination.coordination_oru.RobotAtCriticalSection;
 import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
+import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner.PLANNING_ALGORITHM;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
 import se.oru.coordination.coordination_oru.util.BrowserVisualization;
 import se.oru.coordination.coordination_oru.util.JTSDrawingPanelVisualization;
@@ -85,7 +86,8 @@ public class OneRobotPlacement {
 		//MetaCSPLogging.setLevel(tec.getClass().getSuperclass(), Level.FINEST);
 
 		//Instantiate a simple motion planner (no map given here, otherwise provide yaml file)
-		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
+		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner(PLANNING_ALGORITHM.PRMstar);
+		rsp.setPlanningTimeInSecs(5);
 		rsp.setRadius(0.2);
 		rsp.setTurningRadius(4.0);
 		rsp.setDistanceBetweenPathPoints(0.5);
