@@ -126,7 +126,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 
 	public static double computeDistance(Trajectory traj, int startIndex, int endIndex) {
 		double ret = 0.0;
-		for (int i = startIndex; i < endIndex; i++) {
+		for (int i = startIndex; i < Math.min(endIndex,traj.getPoseSteering().length-1); i++) {
 			ret += traj.getPose()[i].distanceTo(traj.getPose()[i+1]);
 		}
 		return ret;

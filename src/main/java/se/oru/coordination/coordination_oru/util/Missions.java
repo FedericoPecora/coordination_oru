@@ -71,12 +71,22 @@ public class Missions {
 	protected static double minPathDistance = -1;
 	
 	/**
-	 * Set the minimum acceptable distance between path poses. This is used to resample paths
-	 * when they are loaded from file.
+	 * Set the minimum acceptable distance between path poses. This is used to re-sample paths
+	 * when they are loaded from file or when the method {@link #filterPathsInRoadMap()} is called.
 	 * @param minPathDist The minimum acceptable distance between path poses.
 	 */
 	public static void setMinPathDistance(double minPathDist) {
 		minPathDistance = minPathDist;
+	}
+	
+	/**
+	 * Re-sample all paths so that the minimum distance between path poses is the value
+	 * set by {@link #setMinPathDistance(double)}.
+	 */
+	public static void filterPathsInRoadMap() {
+		for (String pathname : paths.keySet()) {
+			paths.put(pathname, filterPath(paths.get(pathname)));
+		}
 	}
 	
 	private static PoseSteering[] filterPath(PoseSteering[] path) {
