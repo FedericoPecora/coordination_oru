@@ -1,6 +1,5 @@
 package se.oru.coordination.coordination_oru.motionplanning;
 
-import java.awt.Color;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -47,6 +46,15 @@ public abstract class AbstractMotionPlanner {
 	@Deprecated
 	public void setGoal(Pose p) {
 		this.setGoals(p);
+	}
+	
+	public void addGoals(Pose ... p) {
+		ArrayList<Pose> newGoals = new ArrayList<Pose>();
+		if (this.goal != null && this.goal.length > 0) {
+			for (Pose g : this.goal) newGoals.add(g);
+		}
+		for (Pose ng : p) newGoals.add(ng);
+		this.setGoals(newGoals.toArray(new Pose[newGoals.size()]));
 	}
 	
 	public void setGoals(Pose ... p) {

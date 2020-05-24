@@ -15,6 +15,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.Scanner;
 import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
@@ -59,7 +60,7 @@ public class Missions {
 	protected static HashMap<Integer,Boolean> missionDispatcherFlags = new HashMap<Integer,Boolean>();
 	protected static HashMap<Integer,MissionDispatchingCallback> mdcs = new HashMap<Integer, MissionDispatchingCallback>();
 	protected static HashMap<Mission,ArrayList<Mission>> concatenatedMissions = new HashMap<Mission, ArrayList<Mission>>();
-	protected static String pathPrefix = "";
+	//protected static String pathPrefix = "";
 	protected static SimpleDirectedWeightedGraph<String, DefaultWeightedEdge> graph = new SimpleDirectedWeightedGraph<String, DefaultWeightedEdge>(DefaultWeightedEdge.class); 
 	protected static String mapYAML = null;
 	protected static String mapImageFilename = null;
@@ -400,6 +401,7 @@ public class Missions {
 	 * @param locationName The name of the location.
 	 * @param p The pose of the location.
 	 */
+	@Deprecated
 	public static void setLocation(String locationName, Pose p) {
 		locations.put(locationName, p);
 	}
@@ -572,22 +574,45 @@ public class Missions {
 		return locations;
 	}
 
+	
 	/**
-	 * Load location and path data from a file
-	 * @param fileName The file to load the data from
+	 * Load location and path data from a file.
+	 * @param fileName The file to load the data from.
 	 */
+	@Deprecated
 	public static void loadLocationAndPathData(String fileName) {
+		Missions.loadRoadMap(fileName);
+	}
+	
+	/**
+	 * Load a roadmap stored in a give directory or file.
+	 * @param fileName The directory or file to load the roadmap from.
+	 * If a directory is given, the filename is assumed to he "roadmap.txt"
+	 * (the same convention used in saving, see {@link #saveRoadMap(String)}).
+	 */
+	public static void loadRoadMap(String path) {
 		try {
-			Scanner in = new Scanner(new FileReader(fileName));
-			File f = new File(fileName);
-			pathPrefix = f.getAbsolutePath().substring(0,f.getAbsolutePath().lastIndexOf(File.separator))+File.separator;
+			String fileOnly;
+			String pathOnly;
+			File f = new File(path);
+			if (f.isDirectory()) {
+				pathOnly = path;
+				if (!pathOnly.endsWith(File.separator)) pathOnly += File.separator;
+				fileOnly = "roadmap.txt";
+			}
+			else {
+				pathOnly = f.getAbsolutePath().substring(0,f.getAbsolutePath().lastIndexOf(File.separator))+File.separator;
+				fileOnly = f.getAbsolutePath().substring(f.getAbsolutePath().lastIndexOf(File.separator)+1);
+			}
+			Scanner in = new Scanner(new FileReader(pathOnly+fileOnly));
+			
 			while (in.hasNextLine()) {
 				String line = in.nextLine().trim();
 				if (line.length() != 0 && !line.startsWith("#")) {
 					String[] oneline = line.split(" |\t");
 					Pose ps = null;
 					if (line.contains("->")) {
-						PoseSteering[] knownPath = loadPathFromFile(pathPrefix+oneline[3]);
+						PoseSteering[] knownPath = loadPathFromFile(pathOnly+oneline[3]);
 						paths.put(oneline[0]+oneline[1]+oneline[2], knownPath);
 						//paths.put(oneline[0]+oneline[1]+oneline[2], oneline[3]);
 						//metaCSPLogger.info("Loaded path: " + oneline[0]+oneline[1]+oneline[2] + " --> " + oneline[3]);
@@ -613,12 +638,64 @@ public class Missions {
 	}
 	
 	/**
+	 * Save all locations and paths into a given directory.
+	 * @param pathname The name of a directory in which to store the data.
+	 */
+	@Deprecated
+	public static void saveLocationAndPathData(String pathname) {
+		Missions.saveRoadMap(pathname);
+	}
+	
+	/**
+	 * Save the current roadmap into a given directory. All known paths referred to
+	 * in the roadmap are saved in the given directory. The roadmap itself is saved
+	 * in a file named "roadmap.txt" within the given directory.
+	 * @param pathname The name of a directory in which to store the roadmap data.
+	 */
+	public static void saveRoadMap(String pathname) {
+		if (new File(pathname).exists()) throw new Error("Directory \"" + pathname + "\" exists, will abort saving");
+		if (!new File(pathname).mkdir()) throw new Error("Could not make path \"" + pathname + "\"");
+		if (!pathname.endsWith(File.separator)) pathname += File.separator;
+		String st = "#Locations\n";
+		for (Entry<String,Pose> entry : locations.entrySet()) {
+			st += entry.getKey() + "\t" + entry.getValue().getX() + "\t" + entry.getValue().getY() + "\t" + entry.getValue().getTheta() + "\n";
+		}
+		st+="\n#Paths\n";
+		for (Entry<String,PoseSteering[]> entry : paths.entrySet()) {
+			String pathFilename = entry.getKey().replaceAll("->", "-")+".path";
+			st += entry.getKey().replaceAll("->", " -> ") + "\t" + pathFilename + "\n";
+			writePath(pathname+pathFilename, entry.getValue());
+		}
+        try {
+        	String newFilename = pathname+"roadmap.txt";
+            File file = new File(newFilename);
+            PrintWriter writer = new PrintWriter(file);
+            writer.write(st);
+            writer.close();
+            System.out.println("Saved roadmap " + newFilename);
+        }
+        catch (Exception ex) { ex.printStackTrace(); }
+	}
+	
+
+	/**
 	 * Add a path to the set of known paths.
 	 * @param start The starting location of the path.
 	 * @param goal The goal location of the path.
 	 * @param path The path to add.
 	 */
+	@Deprecated
 	public static void addKnownPath(String start, String goal, PoseSteering[] path) {
+		Missions.addPathToRoadMap(start, goal, path);
+	}
+		
+	/**
+	 * Add a path to the current roadmap.
+	 * @param start The starting location of the path.
+	 * @param goal The goal location of the path.
+	 * @param path The path to add.
+	 */
+	public static void addPathToRoadMap(String start, String goal, PoseSteering[] path) {
 		if (!locations.containsKey(start) || !locations.containsKey(goal) || path == null || path.length == 0) throw new Error("Locations unknown or path is invalid!");
 		paths.put(start+"->"+goal, path);
 		Missions.buildGraph();
@@ -628,7 +705,16 @@ public class Missions {
 	 * Remove a named location.
 	 * @param locationName The name of the location to remove.
 	 */
+	@Deprecated
 	public static void removeLocation(String locationName) {
+		Missions.removeLocationFromRoadMap(locationName);
+	}
+	
+	/**
+	 * Remove a named location from the roadmap.
+	 * @param locationName The name of the location to remove.
+	 */
+	public static void removeLocationFromRoadMap(String locationName) {
 		locations.remove(locationName);
 		ArrayList<String> toRemove = new ArrayList<String>();
 		for (String key : paths.keySet()) {
@@ -637,6 +723,15 @@ public class Missions {
 		}
 		for (String key : toRemove) paths.remove(key);
 		if (graph != null) graph.removeVertex(locationName);
+	}
+	
+	/**
+	 * Add a location to the roadmap.
+	 * @param locationName The name of the location.
+	 * @param pose The pose of the location.
+	 */
+	public static void addLocationToRoadMap(String locationName, Pose pose) {
+		locations.put(locationName, pose);
 	}
 	
 	/**
@@ -652,7 +747,7 @@ public class Missions {
 	}
 	
 	/**
-	 * Get the pose of a given named location.
+	 * Get the pose of a given named location in the roadmap.
 	 * @param name The name of the location to get the pose of.
 	 * @return The {@link Pose} of the location
 	 */
@@ -696,9 +791,10 @@ public class Missions {
 	 * @param toLocation The name of the destination location.
 	 * @return The name of the file where the path is stored. 
 	 */
+	@Deprecated
 	public static String getPathFile(String fromLocation, String toLocation) {
 		//String ret = paths.get(fromLocation+"->"+toLocation);
-		String ret = pathPrefix+fromLocation+"->"+toLocation;
+		String ret = fromLocation+"->"+toLocation;
 		if (!locations.containsKey(fromLocation)) throw new Error("Unknown location " + fromLocation);
 		if (!locations.containsKey(toLocation)) throw new Error("Unknown location " + toLocation);
 		File f = new File(ret);
@@ -791,7 +887,7 @@ public class Missions {
 	public static void writePath(String fileName, PoseSteering[] path) {
         try {
             File file = new File(fileName);
-            System.out.println("Saved path file: " + file.getAbsolutePath());
+            System.out.println("Saved path file " + file.getAbsolutePath());
             PrintWriter writer = new PrintWriter(file);
             for (PoseSteering ps : path) {
             	writer.println(ps.getPose().getX() + "\t" + ps.getPose().getY() + "\t" + ps.getPose().getTheta() + "\t" + ps.getSteering());

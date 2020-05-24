@@ -1037,11 +1037,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			AbstractMotionPlanner mp = null;
 			if (this.motionPlanners.containsKey(robotID)) mp = this.motionPlanners.get(robotID);
 			else {
-				mp = this.defaultMotionPlanner;
-				if (mp == null) {
-					metaCSPLogger.severe("Default motion planner is not initialized.");
-					continue;
-				}
+				metaCSPLogger.severe("Motion planner is not initialized for Robot" + robotID + ", cannot replan");
+				continue;
 			}
 			synchronized (mp) {
 				PoseSteering[] newPath = doReplanning(mp, currentWaitingPose, currentWaitingGoal, obstacles);
@@ -1311,16 +1308,21 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	}
 
 	/**
-	 * Reverse the {@link TrajectoryEnvelope} of a given robot at the closest dynamically-feasible path point. This path point is computed via the robot's {@link ForwardModel}.
+	 * Reverse the {@link TrajectoryEnvelope} of a given robot at the closest dynamically-feasible path point.
+	 * This path point is computed via the robot's {@link ForwardModel}.
 	 * @param robotID The ID of the robot whose {@link TrajectoryEnvelope} should be reversed.
 	 * @return true if the envelope is successfully reversed.
 	 */
 	public boolean reverseEnvelope(int robotID) {
 
-		if(!this.motionPlanners.containsKey(robotID) && this.getDefaultMotionPlanner() == null) {
-			metaCSPLogger.severe("Motion planner not initialized (neither specific for Robot" + robotID + ", nor a default one).");
+		//TODO: figure out why someone thought we need a motion planner to reverse!
+		//if(!this.motionPlanners.containsKey(robotID) && this.getDefaultMotionPlanner() == null) {
+		/*
+		if(!this.motionPlanners.containsKey(robotID)) {
+			metaCSPLogger.severe("Motion planner not initialized for Robot" + robotID + ", cannot reverse envelope");
 			return false;
 		}
+		*/
 
 		synchronized (solver) {
 
