@@ -923,9 +923,9 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			
 				//Update the coordinator view
 				HashMap<Integer,RobotReport> currentReports = new HashMap<Integer,RobotReport>();
-				for (int robotID : trackers.keySet()) {
+				for (int robotID : trackers.keySet()) 
 					currentReports.put(robotID, this.getRobotReport(robotID));
-				}
+				
 				//metaCSPLogger.info("Current reports: " + currentReports.toString());
 	
 				//Collect all driving envelopes and current pose indices
@@ -1004,8 +1004,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			numberOfCriticalSections = this.allCriticalSections.size();
 			metaCSPLogger.info("There are now " + numberOfCriticalSections + " critical sections");
 			
-		}
-		
+		}		
 		onCriticalSectionUpdate();
 	}
 	
@@ -1086,24 +1085,14 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 					}
 				}
 			}
-			for (CriticalSection cs : toRemove) {
-				this.allCriticalSections.remove(cs);
-				//metaCSPLogger.info("filterCriticalSection(): remove (1) " + cs);
-//				this.CSToDepsOrder.remove(cs);
-			}
-			for (CriticalSection cs : toAdd) {
-				this.allCriticalSections.add(cs);
-				//metaCSPLogger.info("filterCriticalSection(): add (1) " + cs);
-				//this.CSToDepsOrder.put(cs, new HashSet<Dependency>());
-			}
+			this.allCriticalSections.removeAll(toRemove);
+			this.allCriticalSections.addAll(toAdd);
 		}
 		while (!toAdd.isEmpty() || !toRemove.isEmpty());
 		
 		toRemove.clear();
 		ArrayList<CriticalSection> allCriticalSectionsList = new ArrayList<CriticalSection>();
-		for (CriticalSection cs : this.allCriticalSections) {
-			allCriticalSectionsList.add(cs);
-		}
+		allCriticalSectionsList.addAll(this.allCriticalSections);
 		
 		for (int i = 0; i < allCriticalSectionsList.size(); i++) {
 			for (int j = i+1; j < allCriticalSectionsList.size(); j++) {
@@ -1114,18 +1103,13 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 					//CS1 and CS2 are identical
 					toRemove.add(cs1);
 					metaCSPLogger.finest("(Pass " + passNum + ") Removed one of " + cs1 + " and " + cs2);
-
 				}
 			}
 		}
-		for (CriticalSection cs : toRemove) {
-			this.allCriticalSections.remove(cs);
-			//metaCSPLogger.info("filterCriticalSection(): remove (2) " + cs);
-//			this.CSToDepsOrder.remove(cs);
-		}
+		this.allCriticalSections.removeAll(toRemove);
 
 	}
-		
+	
 	public static CriticalSection[] getCriticalSections(SpatialEnvelope se1, SpatialEnvelope se2, TrajectoryEnvelope te1, int minStart1, TrajectoryEnvelope te2, int minStart2, boolean checkEscapePoses, double maxDimensionOfSmallestRobot) {
 
 		ArrayList<CriticalSection> css = new ArrayList<CriticalSection>();
@@ -1341,6 +1325,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 							this.criticalSectionCounter.incrementAndGet();
 				}
 			}
+			
 			for (CriticalSection cs : toRemove) {
 				CSToDepsOrder.remove(cs);
 				allCriticalSections.remove(cs);
