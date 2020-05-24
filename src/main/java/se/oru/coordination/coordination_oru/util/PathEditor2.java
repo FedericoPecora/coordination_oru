@@ -35,6 +35,7 @@ import com.vividsolutions.jts.geom.util.AffineTransformation;
 
 import se.oru.coordination.coordination_oru.motionplanning.OccupancyMap;
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
+import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner.PLANNING_ALGORITHM;
 import se.oru.coordination.coordination_oru.util.splines.BezierSplineFactory;
 
 public class PathEditor2 {
@@ -49,7 +50,7 @@ public class PathEditor2 {
 	private double PP_radius = 0.2;
 	private Coordinate[] PP_footprint = null;
 	private Geometry PP_footprintGeom = null;
-	
+
 	private String locationsAndPathsFilename = null;
 	private String mapFilename = null;
 	private boolean selectionInputListen = false;
@@ -59,9 +60,9 @@ public class PathEditor2 {
 	private HashMap<Integer,ArrayList<Integer>> selectionGroupsToSelections = null;
 	private int selectedGroup = -1;
 	private ReedsSheppCarPlanner mp = null;
-	
+
 	private OccupancyMap om = null;
-	
+
 	private String selectionString = "";
 	private ArrayList<Integer> selectedLocationsInt = new ArrayList<Integer>();
 	private ArrayList<String> locationIDs = new ArrayList<String>();
@@ -74,17 +75,17 @@ public class PathEditor2 {
 	private double deltaTR = 0.1;
 	private double deltaSD = 0.5;
 	private double deltaD = 0.1;
-	
+
 	private static String TEMP_MAP_DIR = ".tempMapsPathEditor";
 
 	public void setPanAcceleration(double accel) {
 		this.panel.setPanAcceleration(accel);
 	}
-	
+
 	public void setZoomIntensity(double intens) {
 		this.panel.setZoomIntensity(intens);
 	}
-	
+
 	public void setDeltaX(double dx) {
 		this.deltaX = dx;
 	}
@@ -96,15 +97,15 @@ public class PathEditor2 {
 	public void setDeltaTheta(double dt) {
 		this.deltaT = dt;
 	}
-	
+
 	public void setSplineDistance(double val) {
 		SP_spline_distance = val;
 	}
-	
+
 	public void setDistanceBetweenPathPoints(double val) {
 		PP_SP_distance_between_path_points = val;
 	}
-	
+
 	public void setMaxTurningRadius(double val) {
 		PP_max_turning_radius = val;
 	}
@@ -113,7 +114,7 @@ public class PathEditor2 {
 	public PathEditor2() {
 		this(null, null, null, 0.1, 0.1, 0.01, (Coordinate[])null);
 	}
-	
+
 	@Deprecated
 	public PathEditor2(String posesAndPaths) {
 		this(posesAndPaths, null, null, 0.1, 0.1, 0.01, (Coordinate[])null);
@@ -123,7 +124,7 @@ public class PathEditor2 {
 	public PathEditor2(String posesAndPaths, String mapFilename) {
 		this(posesAndPaths, mapFilename, null, 0.1, 0.1, 0.01, (Coordinate[])null);
 	}
-	
+
 	@Deprecated
 	public PathEditor2(String posesAndPaths, String mapFilename, String selectionsFile) {
 		this(posesAndPaths, mapFilename, selectionsFile, 0.1, 0.1, 0.01, (Coordinate[])null);
@@ -169,8 +170,6 @@ public class PathEditor2 {
 		new File(TEMP_MAP_DIR).mkdir();
 
 		this.outputDir = "output";
-		this.deleteDir(new File(this.outputDir));
-		new File(outputDir).mkdir();
 
 		this.allPaths = new HashMap<String, ArrayList<PoseSteering>>();
 		this.isInversePath = new HashMap<String, Boolean>();
@@ -178,48 +177,40 @@ public class PathEditor2 {
 		if (posesAndPaths != null) {
 			this.locationsAndPathsFilename = posesAndPaths;
 			String pathURI = this.locationsAndPathsFilename.substring(0, this.locationsAndPathsFilename.lastIndexOf(File.separator)+1);
-			Missions.loadLocationAndPathData(this.locationsAndPathsFilename);
+			Missions.loadRoadMap(this.locationsAndPathsFilename);
 			addAllKnownLocations();
 			HashMap<String,Pose> locations = Missions.getLocationsAndPoses();
 			for (Entry<String,Pose> entry : locations.entrySet()) {
 				//System.out.println("Added location " + entry.getKey() + ": " + entry.getValue());
 				for (Entry<String,Pose> entry1 : locations.entrySet()) {
 					if (!entry1.equals(entry)) {
-						try {
-							String pathFile = Missions.getPathFile(entry.getKey(), entry1.getKey());
-							PoseSteering[] path = Missions.loadPathFromFile(pathURI+pathFile);
+						if (Missions.isKnownPath(entry.getKey(), entry1.getKey())) {
+							PoseSteering[] path = Missions.getShortestPath(entry.getKey(),entry1.getKey());								
 							ArrayList<PoseSteering> pathAL = new ArrayList<PoseSteering>();
 							for (PoseSteering ps : path) pathAL.add(ps);
 							allPaths.put(entry.getKey()+"->"+entry1.getKey(), pathAL);
 							isInversePath.put(entry.getKey()+"->"+entry1.getKey(), false);
 						}
-						catch(Error e) {
-							//System.out.println("No path for " + entry.getKey()+"->"+entry1.getKey());
-						}
-						try {
-							String pathFile = Missions.getPathFile(entry1.getKey(), entry.getKey());
-							PoseSteering[] path = Missions.loadPathFromFile(pathURI+pathFile);
+						if (Missions.isKnownPath(entry1.getKey(), entry.getKey())) {
+							PoseSteering[] path = Missions.getShortestPath(entry1.getKey(),entry.getKey());								
 							ArrayList<PoseSteering> pathAL = new ArrayList<PoseSteering>();
 							for (PoseSteering ps : path) pathAL.add(ps);
 							allPaths.put(entry1.getKey()+"->"+entry.getKey(), pathAL);
 							isInversePath.put(entry1.getKey()+"->"+entry.getKey(), false);
-						}
-						catch(Error e) {
-							//System.out.println("No path for " + entry1.getKey()+"->"+entry.getKey());
 						}
 					}
 				}
 			}
 			updatePaths2();
 		}
-		
+
 		if (selectionsFilename != null) {
 			this.selectionsFile = selectionsFilename;
 			loadSelectionsFile();
 		}
 
 	}
-	
+
 	public void setPathPlanningFootprint(Coordinate ... footprint) {
 		//for (int i = 0; i < footprint.length; i++) System.out.println(i + ": " + footprint[i]);
 		if (!footprint[0].equals(footprint[footprint.length-1])) {
@@ -235,11 +226,11 @@ public class PathEditor2 {
 			this.PP_footprintGeom = TrajectoryEnvelope.createFootprintPolygon(footprint);
 		}
 	}
-	
+
 	public void setPathPlanningRadius(double rad) {
 		this.PP_radius = rad;
 	}
-	
+
 	public Geometry makeFootprint(double x, double y, double theta) {
 		AffineTransformation at = new AffineTransformation();
 		at.rotate(theta);
@@ -247,7 +238,7 @@ public class PathEditor2 {
 		Geometry rect = at.transform(PP_footprintGeom);
 		return rect;
 	}
-	
+
 	public Geometry createEnvelope(ArrayList<PoseSteering> path) {
 		Geometry onePoly = null;
 		Geometry prevPoly = null;
@@ -266,9 +257,9 @@ public class PathEditor2 {
 		return onePoly;
 		//return onePoly.getCoordinates();
 	}
-	
+
 	public void updatePaths2() {
-		
+
 		//Remove all envelopes, add all edges
 		for (Entry<String,ArrayList<PoseSteering>> onePath : allPaths.entrySet()) {
 			String pathName = onePath.getKey();
@@ -276,7 +267,7 @@ public class PathEditor2 {
 			panel.removeGeometry("_"+pathName+".env");
 			panel.addArrow(pathName+".all", path.get(0).getPose(), path.get(path.size()-1).getPose(), Color.lightGray);
 		}
-		
+
 		//Add envelopes of path connected to selected points
 		if (selectedLocationsInt.size() > 0) {
 			Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
@@ -308,7 +299,7 @@ public class PathEditor2 {
 		}
 		panel.updatePanel();
 	}
-	
+
 	public void deleteForwardAndInversePaths(ArrayList<Integer> selectedLocsInt) {
 		if (selectedLocsInt.size() > 0) {
 			ArrayList<String> toRemove = new ArrayList<String>();
@@ -344,7 +335,7 @@ public class PathEditor2 {
 			}			
 		}
 	}
-	
+
 	public void computeForwardAndInversePathsWithSpline(ArrayList<Integer> selectedLocsInt) {
 		ArrayList<PoseSteering> overallPath = new ArrayList<PoseSteering>();
 		for (int i = 0; i < selectedLocsInt.size()-1; i++) {
@@ -365,7 +356,7 @@ public class PathEditor2 {
 		isInversePath.put(pathNameInv, true);
 		updatePaths2();
 	}
-	
+
 	public void loadSelectionsFile() {
 		try {
 			Scanner in = new Scanner(new FileReader(selectionsFile));
@@ -391,7 +382,7 @@ public class PathEditor2 {
 								break;
 							}
 						}
-						
+
 					}
 					if (selectedLocationsInts == null) selectedLocationsInts = new ArrayList<ArrayList<Integer>>();
 					if (selectionStrings == null) selectionStrings = new ArrayList<String>();
@@ -408,18 +399,18 @@ public class PathEditor2 {
 		}
 		catch (FileNotFoundException e) { e.printStackTrace(); }
 	}
-	
-//	public void updatePaths() {
-//		for (Entry<String,ArrayList<PoseSteering>> onePath : allPaths.entrySet()) {
-//			String pathName = onePath.getKey();
-//			ArrayList<PoseSteering> path = onePath.getValue();
-//			for (int i = 0; i < path.size(); i++) {
-//				panel.addArrow("_"+pathName+"."+i, path.get(i).getPose(), Color.blue);
-//			}
-//			panel.addArrow(pathName+".all", path.get(0).getPose(), path.get(path.size()-1).getPose(), Color.lightGray);
-//		}
-//		panel.updatePanel();
-//	}
+
+	//	public void updatePaths() {
+	//		for (Entry<String,ArrayList<PoseSteering>> onePath : allPaths.entrySet()) {
+	//			String pathName = onePath.getKey();
+	//			ArrayList<PoseSteering> path = onePath.getValue();
+	//			for (int i = 0; i < path.size(); i++) {
+	//				panel.addArrow("_"+pathName+"."+i, path.get(i).getPose(), Color.blue);
+	//			}
+	//			panel.addArrow(pathName+".all", path.get(0).getPose(), path.get(path.size()-1).getPose(), Color.lightGray);
+	//		}
+	//		panel.updatePanel();
+	//	}
 
 	public void removeKnownLocation(String locationName) {
 		int toRemove = -1;
@@ -432,13 +423,13 @@ public class PathEditor2 {
 		}
 		locationIDs.remove(toRemove);
 	}
-	
+
 	public void removeAllKnownLocations() {
 		for (int i = 0; i < locationIDs.size(); i++) {
 			panel.removeGeometry("LOC:"+locationIDs.get(i));
 		}
 	}
-	
+
 	public void addAllKnownLocations() {
 		locationIDs = new ArrayList<String>();
 		for (Entry<String,Pose> entry : Missions.getLocationsAndPoses().entrySet()) {
@@ -448,42 +439,32 @@ public class PathEditor2 {
 			locationIDs.add(entry.getKey());
 		}
 	}
-	
+
 	public boolean deleteDir(File dir) {
-	    if (dir.isDirectory()) {
-	        String[] children = dir.list();
-	        for (int i=0; i<children.length; i++) {
-	            boolean success = deleteDir(new File(dir, children[i]));
-	            if (!success) {
-	                return false;
-	            }
-	        }
-	    }
-	    return dir.delete();
+		if (dir.isDirectory()) {
+			String[] children = dir.list();
+			for (int i=0; i<children.length; i++) {
+				boolean success = deleteDir(new File(dir, children[i]));
+				if (!success) {
+					return false;
+				}
+			}
+		}
+		return dir.delete();
 	}
-	
+
 	protected void dumpLocationAndPathData(HashMap<String,Pose> locs, HashMap<String,ArrayList<PoseSteering>> pths) {
-		String st = "#Locations\n";
 		for (Entry<String,Pose> entry : locs.entrySet()) {
-			st += entry.getKey() + "\t" + entry.getValue().getX() + "\t" + entry.getValue().getY() + "\t" + entry.getValue().getTheta() + "\n";
+			Missions.addLocationToRoadMap(entry.getKey(), entry.getValue());
 		}
-		st+="\n#Paths\n";
 		for (Entry<String,ArrayList<PoseSteering>> entry : pths.entrySet()) {
-			String pathFilename = entry.getKey().replaceAll("->", "-")+".path";
-			st += entry.getKey().replaceAll("->", " -> ") + "\t" + pathFilename + "\n";
-			Missions.writePath(outputDir+File.separator+pathFilename, entry.getValue());
+			Missions.addPathToRoadMap(entry.getKey().substring(0,entry.getKey().indexOf("->")), entry.getKey().substring(entry.getKey().indexOf("->")+2), entry.getValue().toArray(new PoseSteering[entry.getValue().size()]));
 		}
-        try {
-        	String newFilename = outputDir+File.separator+"locations_and_paths.txt";
-            File file = new File(newFilename);
-            PrintWriter writer = new PrintWriter(file);
-            writer.write(st);
-            writer.close();
-            System.out.println("Saved locations and paths file: " + newFilename);
-        }
-        catch (Exception ex) { ex.printStackTrace(); }
+		this.deleteDir(new File(this.outputDir));
+		//new File(outputDir).mkdir();
+		Missions.saveRoadMap(outputDir);
 	}
-	
+
 	private String getHelp() {
 		String ret = "";
 		TreeMap<String,String> helpText = new TreeMap<String, String>();
@@ -509,7 +490,7 @@ public class PathEditor2 {
 		}
 		return ret;
 	}
-	
+
 	private void highlightSelectedLocations() {
 		clearLocations();
 		for (int selectedPathPointOneInt : selectedLocationsInt) {
@@ -519,19 +500,19 @@ public class PathEditor2 {
 		}
 		panel.updatePanel();
 	}
-		
+
 	private void clearLocations() {
 		for (int i = 0; i < locationIDs.size(); i++) {
 			panel.addArrow("LOC:"+locationIDs.get(i), Missions.getLocationPose(locationIDs.get(i)), Color.green);
 		}
 		panel.updatePanel();
 	}
-		
+
 	public void addAbstractAction(AbstractAction aa, int keyEvent, int modifiers, String description) {
 		panel.getInputMap().put(KeyStroke.getKeyStroke(keyEvent,modifiers),description);
 		panel.getActionMap().put(description,aa);
 	}
-		
+
 	private Point2D getMousePositionInMap() {
 		Point2D mousePositionInMap = null;
 		AffineTransform geomToScreen = panel.getMapTransform();
@@ -545,7 +526,7 @@ public class PathEditor2 {
 		}
 		return mousePositionInMap;
 	}
-	
+
 	private void setupGUI() {
 		panel = JTSDrawingPanel.makeEmpty("Path Editor");
 
@@ -602,21 +583,25 @@ public class PathEditor2 {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				if (!selectionInputListen) {
-					selectedLocationsInt = new ArrayList<Integer>();
-					selectionString = "";
-					selectedGroup = -1;
-					clearLocations();
-					System.out.println("Input one path index in [0.." + (selectionStrings.size()-1) + "]: " + selectionString);
+					if (selectionStrings != null) {
+						selectedLocationsInt = new ArrayList<Integer>();
+						selectionString = "";
+						selectedGroup = -1;
+						clearLocations();
+						System.out.println("Input one path index in [0.." + (selectionStrings.size()-1) + "]: " + selectionString);
+					}
 				}
 				else if (selectionInputListen) {
 					clearLocations();
 					try {
-						int ssNumber = Integer.parseInt(selectionString);
-						selectionString = selectionStrings.get(ssNumber);
-						selectedLocationsInt = selectedLocationsInts.get(ssNumber);
-						highlightSelectedLocations();
-						updatePaths2();
-						System.out.println("Current selection (locations): " + selectedLocationsInt);
+						if (selectionStrings != null) {
+							int ssNumber = Integer.parseInt(selectionString);
+							selectionString = selectionStrings.get(ssNumber);
+							selectedLocationsInt = selectedLocationsInts.get(ssNumber);
+							highlightSelectedLocations();
+							updatePaths2();
+							System.out.println("Current selection (locations): " + selectedLocationsInt);
+						}
 					}
 					catch(NumberFormatException ex) { }
 					catch(IndexOutOfBoundsException ex) { }
@@ -625,7 +610,7 @@ public class PathEditor2 {
 			}
 		};
 		panel.getActionMap().put("Select a selection preset",actSelectSS);
-		
+
 		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_P,0),"Select path");
 		AbstractAction actSelectPath = new AbstractAction() {
 			private static final long serialVersionUID = -8804517791543118334L;
@@ -805,7 +790,7 @@ public class PathEditor2 {
 			}
 		};
 		panel.getActionMap().put("Delete path between selected locations",actDelete);
-		
+
 		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_C,0),"Concatenate paths traversing selection");
 		AbstractAction actMergePaths = new AbstractAction() {
 			private static final long serialVersionUID = 4455371118322388356L;
@@ -835,7 +820,7 @@ public class PathEditor2 {
 			}
 		};
 		panel.getActionMap().put("Concatenate paths traversing selection",actMergePaths);
-		
+
 
 		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE,KeyEvent.SHIFT_DOWN_MASK),"Delete path between all locations");
 		AbstractAction actDeleteAll = new AbstractAction() {
@@ -879,7 +864,7 @@ public class PathEditor2 {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				//Coordinate mouseCoord = new Coordinate(mousePositionInMap.getX(), mousePositionInMap.getY());
-				
+
 				Coordinate mouseCoord = new Coordinate(getMousePositionInMap().getX(), getMousePositionInMap().getY());
 				double min = Double.MAX_VALUE;
 				int locID = -1;
@@ -901,7 +886,7 @@ public class PathEditor2 {
 			}
 		};
 		panel.getActionMap().put("Add location nearest to mouse pointer to current selection",actAddNearest);
-		
+
 		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_Z,0),"Deselect last added element of the selection stack");
 		AbstractAction actRemoveLastAdded = new AbstractAction() {
 			private static final long serialVersionUID = 3855143731335358356L;
@@ -915,7 +900,7 @@ public class PathEditor2 {
 			}
 		};
 		panel.getActionMap().put("Deselect last added element of the selection stack",actRemoveLastAdded);
-		
+
 		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_INSERT,0),"Add locations(s)");
 		AbstractAction actInsert = new AbstractAction() {
 			private static final long serialVersionUID = -8804517791543118334L;
@@ -963,7 +948,7 @@ public class PathEditor2 {
 			}
 		};
 		panel.getActionMap().put("Compute spline between selected locations",actSpline);
-		
+
 		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_S,KeyEvent.ALT_DOWN_MASK|KeyEvent.SHIFT_DOWN_MASK),"Compute spline for all preset selections");
 		AbstractAction actSplineAll = new AbstractAction() {
 			private static final long serialVersionUID = -3238585469762752293L;
@@ -1014,12 +999,12 @@ public class PathEditor2 {
 					clearLocations();
 					System.out.println("Reversed selection: " + selectedLocationsInt);
 					highlightSelectedLocations();
-					
+
 				}
 			}
 		};
 		panel.getActionMap().put("Reverse order of selection",reverseSelection);
-		
+
 		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_U,0),"Delete last element of selection");
 		AbstractAction removeLastInSelection = new AbstractAction() {
 			private static final long serialVersionUID = -3348585469762733293L;
@@ -1070,7 +1055,7 @@ public class PathEditor2 {
 			}
 		};
 		panel.getActionMap().put("Plan path between selected locations",actPlan);
-		
+
 		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_P,KeyEvent.ALT_DOWN_MASK|KeyEvent.SHIFT_DOWN_MASK),"Plan path for all selection presets");
 		AbstractAction actPlanAll = new AbstractAction() {
 			private static final long serialVersionUID = -3238585469762752293L;
@@ -1125,7 +1110,7 @@ public class PathEditor2 {
 						panel.addArrow("LOC:"+locationName, newPose, Color.green);
 						highlightSelectedLocations();
 					}
-					
+
 					/////
 					Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
 					//
@@ -1178,7 +1163,7 @@ public class PathEditor2 {
 			}
 		};
 		panel.getActionMap().put("Decrease X of selected location(s)",actXMinus);
-		
+
 		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT,KeyEvent.SHIFT_DOWN_MASK),"Speed decrease X of selected location(s)");
 		AbstractAction actXMinusFast = new AbstractAction() {
 			private static final long serialVersionUID = 1767256680448690970L;
@@ -1196,7 +1181,7 @@ public class PathEditor2 {
 						panel.addArrow("LOC:"+locationName, newPose, Color.green);
 						highlightSelectedLocations();
 					}
-					
+
 					/////
 					Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
 					//
@@ -1266,7 +1251,7 @@ public class PathEditor2 {
 						panel.addArrow("LOC:"+locationName, newPose, Color.green);
 						highlightSelectedLocations();
 					}
-					
+
 					/////
 					Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
 					//
@@ -1336,7 +1321,7 @@ public class PathEditor2 {
 						panel.addArrow("LOC:"+locationName, newPose, Color.green);
 						highlightSelectedLocations();
 					}
-					
+
 					/////
 					Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
 					//
@@ -1406,7 +1391,7 @@ public class PathEditor2 {
 						panel.addArrow("LOC:"+locationName, newPose, Color.green);
 						highlightSelectedLocations();
 					}
-					
+
 					/////
 					Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
 					//
@@ -1454,12 +1439,12 @@ public class PathEditor2 {
 						}
 					}
 					/////
-					
+
 				}
 			}
 		};
 		panel.getActionMap().put("Increase Y of selected location(s)",actYPlus);
-		
+
 		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_UP,KeyEvent.SHIFT_DOWN_MASK),"Speed increase Y of selected location(s)");
 		AbstractAction actYPlusFast = new AbstractAction() {
 			private static final long serialVersionUID = 2627197997139919525L;
@@ -1477,7 +1462,7 @@ public class PathEditor2 {
 						panel.addArrow("LOC:"+locationName, newPose, Color.green);
 						highlightSelectedLocations();
 					}
-					
+
 					/////
 					Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
 					//
@@ -1530,7 +1515,7 @@ public class PathEditor2 {
 		};
 		panel.getActionMap().put("Speed increase Y of selected location(s)",actYPlusFast);
 
-		
+
 		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_X,0),"Scale all poses (locations and paths) by a factor");
 		AbstractAction actScale = new AbstractAction() {
 			private static final long serialVersionUID = 6487332455015786029L;
@@ -1546,7 +1531,7 @@ public class PathEditor2 {
 						Pose newPose = new Pose(newX,newY,oneLocation.getValue().getTheta());
 						Missions.setLocation(oneLocation.getKey(), newPose);
 					}
-					
+
 					Set<Entry<String,ArrayList<PoseSteering>>> paths = allPaths.entrySet();
 					for (Entry<String,ArrayList<PoseSteering>> onePath : paths) {
 						ArrayList<PoseSteering> newPath = new ArrayList<PoseSteering>();
@@ -1567,7 +1552,7 @@ public class PathEditor2 {
 			}
 		};
 		panel.getActionMap().put("Scale all poses (locations and paths) by a factor",actScale);
-		
+
 		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_D,0),"Measure distance between selected points");
 		AbstractAction actMeasure = new AbstractAction() {
 			private static final long serialVersionUID = 6487332455015786029L;
@@ -1613,7 +1598,7 @@ public class PathEditor2 {
 						panel.addArrow("LOC:"+locationName, newPose, Color.green);
 						highlightSelectedLocations();
 					}
-					
+
 					/////
 					Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
 					//
@@ -1665,7 +1650,7 @@ public class PathEditor2 {
 			}
 		};
 		panel.getActionMap().put("Decrease Y of selected location(s)",actYMinus);
-		
+
 		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_DOWN,KeyEvent.SHIFT_DOWN_MASK),"Speed decrease Y of selected location(s)");
 		AbstractAction actYMinusFast = new AbstractAction() {
 			private static final long serialVersionUID = 6487878415015786029L;
@@ -1683,7 +1668,7 @@ public class PathEditor2 {
 						panel.addArrow("LOC:"+locationName, newPose, Color.green);
 						highlightSelectedLocations();
 					}
-					
+
 					/////
 					Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
 					//
@@ -1735,7 +1720,7 @@ public class PathEditor2 {
 			}
 		};
 		panel.getActionMap().put("Speed decrease Y of selected location(s)",actYMinusFast);
-		
+
 		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_PAGE_DOWN,0),"Decrease theta of selected location(s)");
 		AbstractAction actTMinus = new AbstractAction() {
 			private static final long serialVersionUID = -7391970411254721019L;
@@ -1753,7 +1738,7 @@ public class PathEditor2 {
 						panel.addArrow("LOC:"+locationName, newPose, Color.green);
 						highlightSelectedLocations();
 					}
-					
+
 					/////
 					Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
 					//
@@ -1823,7 +1808,7 @@ public class PathEditor2 {
 						panel.addArrow("LOC:"+locationName, newPose, Color.green);
 						highlightSelectedLocations();
 					}
-					
+
 					/////
 					Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
 					//
@@ -1893,7 +1878,7 @@ public class PathEditor2 {
 						panel.addArrow("LOC:"+locationName, newPose, Color.green);
 						highlightSelectedLocations();
 					}
-					
+
 					/////
 					Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
 					//
@@ -1963,7 +1948,7 @@ public class PathEditor2 {
 						panel.addArrow("LOC:"+locationName, newPose, Color.green);
 						highlightSelectedLocations();
 					}
-					
+
 					/////
 					Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
 					//
@@ -2039,10 +2024,10 @@ public class PathEditor2 {
 			private static final long serialVersionUID = 8414380724212398117L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				
+
 				PP_SP_distance_between_path_points += deltaD;
 				System.out.println("Minimum distance between path points (>): " + PP_SP_distance_between_path_points);
-				
+
 				/////
 				Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
 				//
@@ -2090,7 +2075,7 @@ public class PathEditor2 {
 					}
 				}
 				/////
-				
+
 			}
 		};
 		panel.getActionMap().put("Increase minimum distance between path points for path planning",actMDPlus);
@@ -2103,7 +2088,7 @@ public class PathEditor2 {
 
 				if (PP_SP_distance_between_path_points-deltaD >= 0) PP_SP_distance_between_path_points -= deltaD;
 				System.out.println("Minimum distance between path points (<): " + PP_SP_distance_between_path_points);
-				
+
 				/////
 				Set<Entry<String,ArrayList<PoseSteering>>> allEntries = allPaths.entrySet();
 				//
@@ -2155,7 +2140,7 @@ public class PathEditor2 {
 			}
 		};
 		panel.getActionMap().put("Decrease minimum distance between path points for path planning",actMDMinus);
-		
+
 		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_LESS,KeyEvent.SHIFT_DOWN_MASK),"Increase maximum turning radius");
 		AbstractAction actTRPlus = new AbstractAction() {
 			private static final long serialVersionUID = 8414380724212398117L;
@@ -2177,7 +2162,7 @@ public class PathEditor2 {
 			}
 		};
 		panel.getActionMap().put("Decrease maximum turning radius",actTRMinus);
-		
+
 		panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_PLUS,0),"Increase spline distance");
 		AbstractAction actSDPlus = new AbstractAction() {
 			private static final long serialVersionUID = 8414380724212398117L;
@@ -2234,7 +2219,7 @@ public class PathEditor2 {
 					}
 				}
 				/////
-				
+
 			}
 		};
 		panel.getActionMap().put("Increase spline distance",actSDPlus);
@@ -2244,7 +2229,7 @@ public class PathEditor2 {
 			private static final long serialVersionUID = 8414380724212398117L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				
+
 				SP_spline_distance -= deltaSD;
 				System.out.println("Spline distance (<): " + SP_spline_distance);
 
@@ -2295,7 +2280,7 @@ public class PathEditor2 {
 					}
 				}
 				/////			
-				
+
 			}
 		};
 		panel.getActionMap().put("Decrease spline distance",actSDMinus);
@@ -2316,9 +2301,10 @@ public class PathEditor2 {
 		//Spline3D spline1 = SplineFactory.createBezier(controlPoints, DISTANCE_BETWEEN_PATH_POINTS);
 		//return spline1.asPoseSteerings();
 	}
-	
+
 	private PoseSteering[] computePath(Pose from, Pose ... to) {
-		if (this.mp == null) this.mp = new ReedsSheppCarPlanner();
+		if (this.mp == null) this.mp = new ReedsSheppCarPlanner(PLANNING_ALGORITHM.PRMstar);
+		mp.setPlanningTimeInSecs(5);
 		mp.setFootprint(PP_footprint);
 		mp.setTurningRadius(PP_max_turning_radius);
 		mp.setDistanceBetweenPathPoints(PP_SP_distance_between_path_points);
@@ -2331,29 +2317,29 @@ public class PathEditor2 {
 		return ret;
 	}
 
-//	@Override
-//	public void mouseDragged(MouseEvent e) { }
-//
-//	@Override
-//	public void mouseMoved(MouseEvent e) {
-//		AffineTransform geomToScreen = panel.getMapTransform();
-//		try {
-//			AffineTransform geomToScreenInv = geomToScreen.createInverse();
-//			this.mousePositionInMap = geomToScreenInv.transform(new Point2D.Double(e.getX(),e.getY()), null);
-//			//System.out.println(mousePosition);
-//		} catch (NoninvertibleTransformException e1) {
-//			// TODO Auto-generated catch block
-//			e1.printStackTrace();
-//		}
-//	}
-	
+	//	@Override
+	//	public void mouseDragged(MouseEvent e) { }
+	//
+	//	@Override
+	//	public void mouseMoved(MouseEvent e) {
+	//		AffineTransform geomToScreen = panel.getMapTransform();
+	//		try {
+	//			AffineTransform geomToScreenInv = geomToScreen.createInverse();
+	//			this.mousePositionInMap = geomToScreenInv.transform(new Point2D.Double(e.getX(),e.getY()), null);
+	//			//System.out.println(mousePosition);
+	//		} catch (NoninvertibleTransformException e1) {
+	//			// TODO Auto-generated catch block
+	//			e1.printStackTrace();
+	//		}
+	//	}
+
 	public static void main(String[] args) {
 		//Robot Footprint
 		Coordinate[] footprint = new Coordinate[] {
-			new Coordinate(-1.0,0.5),
-			new Coordinate(1.0,0.5),
-			new Coordinate(1.0,-0.5),
-			new Coordinate(-1.0,-0.5),
+				new Coordinate(-1.0,0.5),
+				new Coordinate(1.0,0.5),
+				new Coordinate(1.0,-0.5),
+				new Coordinate(-1.0,-0.5),
 		};
 
 		PathEditor2 pe = new PathEditor2(footprint);

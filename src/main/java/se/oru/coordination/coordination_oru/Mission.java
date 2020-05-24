@@ -30,7 +30,6 @@ public class Mission implements Comparable<Mission> {
 	protected ArrayList<Integer> stoppingPointDurations = new ArrayList<Integer>();
 	//protected HashMap<Pose,Integer> stoppingPoints = new HashMap<Pose, Integer>();
 	
-	
 	/**
 	 * Instantiates a {@link Mission} for a given robot to navigate between two locations, but where the path
 	 * is not given and should be computed subsequently (before adding the mission to the {@link TrajectoryEnvelopeCoordinator}).

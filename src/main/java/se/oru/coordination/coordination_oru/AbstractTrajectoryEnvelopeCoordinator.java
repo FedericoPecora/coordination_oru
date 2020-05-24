@@ -122,7 +122,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	protected HashMap<Integer,TrackingCallback> trackingCallbacks = new HashMap<Integer, TrackingCallback>();	
 	protected Callback inferenceCallback = null;
 	
-	protected AbstractMotionPlanner defaultMotionPlanner = null;
+	//protected AbstractMotionPlanner defaultMotionPlanner = null;
 	protected HashMap<Integer,AbstractMotionPlanner> motionPlanners = new HashMap<Integer, AbstractMotionPlanner>();
 	
 	//Network knowledge
@@ -207,12 +207,12 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 * Then, compute the number of messages numberOfReplicas required for each send to be effective
 	 * (the probability of receiving a message after numberOfReplicas trials is assumed to have a geometric distribution).
 	 * @param packetLossProbability The probability for a message to be lost.
-	 * @param MAX_TX_DELAY The maximum transmission delay.
+	 * @param max_tx_delay The maximum transmission delay.
 	 * @param maxFaultsProbability The maximum admitted probability for an information to be lost.
 	 */
-	public void setNetworkParameters(double packetLossProbability, int MAX_TX_DELAY, double maxFaultsProbability) {
+	public void setNetworkParameters(double packetLossProbability, int max_tx_delay, double maxFaultsProbability) {
 		this.packetLossProbability = packetLossProbability;
-		this.MAX_TX_DELAY = MAX_TX_DELAY;
+		MAX_TX_DELAY = max_tx_delay;
 		this.maxFaultsProbability = maxFaultsProbability;	
 		this.numberOfReplicas =  (packetLossProbability > 0 && maxFaultsProbability > 0) ? (int)Math.ceil(Math.log(1-Math.sqrt(1-maxFaultsProbability))/Math.log(packetLossProbability)) : 1;
 		metaCSPLogger.info("Number of replicas for each send: " + numberOfReplicas);
@@ -736,17 +736,26 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				if (robotID == waitingID) {
 					Pose waitingPose = dep.getWaitingPose();
 					int waitingPoint = dep.getWaitingPoint();
-					Geometry currentFP = makeObstacles(waitingID, waitingPose)[0]; 
+					//Geometry currentFP = makeObstacles(waitingID, waitingPose)[0]; 
 
-					//In case the robot has stopped a little beyond the critical point
 					int currentPoint = this.getRobotReport(robotID).getPathIndex();
-					if (currentPoint != -1 && currentPoint > waitingPoint) {
-						Pose currentPose = dep.getWaitingTrajectoryEnvelope().getTrajectory().getPose()[currentPoint];
-						currentFP = makeObstacles(waitingID, currentPose)[0];
-						System.out.println("Oops: " + waitingPoint + " < " + currentPoint);
+					if (currentPoint == -1 || currentPoint <= waitingPoint+2) {
+						Geometry currentFP = makeObstacles(waitingID, waitingPose)[0]; 
+						ret.add(currentFP);						
 					}
 					
-					ret.add(currentFP);
+//					//In case the robot has stopped a little beyond the critical point
+//					int currentPoint = this.getRobotReport(robotID).getPathIndex();
+//					if (currentPoint != -1 && currentPoint > waitingPoint) {
+//						Pose currentPose = dep.getWaitingTrajectoryEnvelope().getTrajectory().getPose()[currentPoint];
+//						currentFP = makeObstacles(waitingID, currentPose)[0];
+//						System.out.println("Oops: " + waitingPoint + " < " + currentPoint);
+//					}
+//					
+//					ret.add(currentFP);
+					
+					//No need to look at other deps, go on to next robot...
+					break;
 				}
 			}
 		}
@@ -781,7 +790,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		synchronized (mp) {
 			mp.setStart(fromPose);
 			mp.setGoals(toPose);
-			mp.clearObstacles();
+			//mp.clearObstacles();
 			if (obstaclesToConsider != null && obstaclesToConsider.length > 0) mp.addObstacles(obstaclesToConsider);
 			boolean replanningSuccessful = mp.plan();
 			if (!replanningSuccessful) mp.writeDebugImage();
@@ -846,7 +855,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 */
 	@Deprecated
 	public void setMotionPlanner(AbstractMotionPlanner mp) {
-		this.defaultMotionPlanner = mp;
+		//this.defaultMotionPlanner = mp;
 	}
 	
 
@@ -856,8 +865,9 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 * @param mp The motion planner that will be called for re-planning for any
 	 * robot for which a motion planner has not been specified. 
 	 */
+	@Deprecated
 	public void setDefaultMotionPlanner(AbstractMotionPlanner mp) {
-		this.defaultMotionPlanner = mp;
+		//this.defaultMotionPlanner = mp;
 	}
 	
 
@@ -878,8 +888,10 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 * @return The motion planner used for re-planning for all robots that do not
 	 * have a dedicated motion planner.
 	 */
+	@Deprecated
 	public AbstractMotionPlanner getDefaultMotionPlanner() {
-		return this.defaultMotionPlanner;
+		//return this.defaultMotionPlanner;
+		return null;
 	}
 	
 
