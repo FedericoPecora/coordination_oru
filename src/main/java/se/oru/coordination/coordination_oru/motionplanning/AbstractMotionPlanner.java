@@ -95,6 +95,7 @@ public abstract class AbstractMotionPlanner {
 	}
 	
 	public PoseSteering[] getPathInv() {
+		if (this.pathPS == null) return this.pathPS;
 		ArrayList<PoseSteering> inv = new ArrayList<PoseSteering>();
 		for (PoseSteering ps : this.pathPS) inv.add(ps);
 		Collections.reverse(inv);
