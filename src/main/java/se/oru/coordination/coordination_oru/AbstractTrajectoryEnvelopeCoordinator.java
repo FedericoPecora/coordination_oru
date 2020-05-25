@@ -205,11 +205,12 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	
 	/**
 	 * Set the network parameters (packet loss probability, max delay and max faults probability).
-	 * Then, compute the number of messages numberOfReplicas required for each send to be effective
-	 * (the probability of receiving a message after numberOfReplicas trials is assumed to have a geometric distribution).
-	 * @param packetLossProbability The probability for a message to be lost.
-	 * @param max_tx_delay The maximum transmission delay.
-	 * @param maxFaultsProbability The maximum admitted probability for an information to be lost.
+	 * This allows to compute the number of messages <code>numberOfReplicas</code> required for each send to be effective
+	 * (the probability of receiving a message after <code>numberOfReplicas</code> trials is assumed to have a geometric distribution).
+	 * @param packetLossProbability The probability of a message being lost.
+	 * @param max_tx_delay The maximum transmission delay in milliseconds.
+	 * @param maxFaultsProbability The maximum probability of a piece of information (e.g., a precedence constraint)
+	 * being lost that the coordinator should tolerate. This is assumed to be zero if <code>packetLossProbability</code> is zero.
 	 */
 	public void setNetworkParameters(double packetLossProbability, int max_tx_delay, double maxFaultsProbability) {
 		this.packetLossProbability = packetLossProbability;
@@ -742,23 +743,23 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				if (robotID == waitingID) {
 					Pose waitingPose = dep.getWaitingPose();
 					int waitingPoint = dep.getWaitingPoint();
-					//Geometry currentFP = makeObstacles(waitingID, waitingPose)[0]; 
+					Geometry currentFP = makeObstacles(waitingID, waitingPose)[0]; 
 
+//					int currentPoint = this.getRobotReport(robotID).getPathIndex();
+//					if (currentPoint == -1 || currentPoint <= waitingPoint+2) {
+//						Geometry currentFP = makeObstacles(waitingID, waitingPose)[0]; 
+//						ret.add(currentFP);						
+//					}
+					
+					//In case the robot has stopped a little beyond the critical point
 					int currentPoint = this.getRobotReport(robotID).getPathIndex();
-					if (currentPoint == -1 || currentPoint <= waitingPoint+2) {
-						Geometry currentFP = makeObstacles(waitingID, waitingPose)[0]; 
-						ret.add(currentFP);						
+					if (currentPoint != -1 && currentPoint > waitingPoint) {
+						Pose currentPose = dep.getWaitingTrajectoryEnvelope().getTrajectory().getPose()[currentPoint];
+						currentFP = makeObstacles(waitingID, currentPose)[0];
+						System.out.println("Oops: " + waitingPoint + " < " + currentPoint);
 					}
 					
-//					//In case the robot has stopped a little beyond the critical point
-//					int currentPoint = this.getRobotReport(robotID).getPathIndex();
-//					if (currentPoint != -1 && currentPoint > waitingPoint) {
-//						Pose currentPose = dep.getWaitingTrajectoryEnvelope().getTrajectory().getPose()[currentPoint];
-//						currentFP = makeObstacles(waitingID, currentPose)[0];
-//						System.out.println("Oops: " + waitingPoint + " < " + currentPoint);
-//					}
-//					
-//					ret.add(currentFP);
+					ret.add(currentFP);
 					
 					//No need to look at other deps, go on to next robot...
 					break;
