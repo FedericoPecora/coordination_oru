@@ -1090,7 +1090,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						this.criticalSectionCounter.incrementAndGet();
 				}
 			}
-			
+
 			for (CriticalSection cs : toRemove) {
 				if (this.avoidDeadlockGlobally) {
 					if (CSToDepsOrder.containsKey(cs)) {
