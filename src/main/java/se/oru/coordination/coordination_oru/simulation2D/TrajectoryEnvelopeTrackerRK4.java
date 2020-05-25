@@ -31,7 +31,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 	protected State state = null;
 	protected double[] curvatureDampening = null;
 	private ArrayList<Integer> internalCriticalPoints = new ArrayList<Integer>();
-	private int maxDelayInMilis = 0;
+	private int maxDelayInMillis = 0;
 	private Random rand = new Random(Calendar.getInstance().getTimeInMillis()); 
 	private TreeMap<Double,Double> slowDownProfile = null;
 	private boolean slowingDown = false;
@@ -521,7 +521,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 	}
 
 	public void delayIntegrationThread(int maxDelayInmillis) {
-		this.maxDelayInMilis = maxDelayInmillis;
+		this.maxDelayInMillis = maxDelayInmillis;
 	}
 	
 	@Override
@@ -531,9 +531,10 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 		boolean atCP = false;
 		int myRobotID = te.getRobotID();
 		int myTEID = te.getID();
+		long monitoringTimerStart = Calendar.getInstance().getTimeInMillis();
 		
 		while (true) {
-						
+									
 			//End condition: passed the middle AND velocity < 0 AND no criticalPoint 			
 			boolean skipIntegration = false;
 			//if (state.getPosition() >= totalDistance/2.0 && state.getVelocity() < 0.0) {
@@ -553,8 +554,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 					atCP = true;
 				}
 				
-				skipIntegration = true;
-				
+				skipIntegration = true;				
 			}
 
 			//Compute deltaTime
@@ -579,7 +579,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 						
 			//Sleep for tracking period
 			int delay = trackingPeriodInMillis;
-			if (maxDelayInMilis > 0) delay += rand.nextInt(maxDelayInMilis);
+			if (maxDelayInMillis > 0) delay += rand.nextInt(maxDelayInMillis);
 			try { Thread.sleep(delay); }
 			catch (InterruptedException e) { e.printStackTrace(); }
 			
@@ -587,18 +587,28 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 			long deltaTimeInMillis = Calendar.getInstance().getTimeInMillis()-timeStart;
 			deltaTime = deltaTimeInMillis/this.temporalResolution;
 			elapsedTrackingTime += deltaTime;
+			
+			if (getCurrentTimeInMillis()-monitoringTimerStart > 1000)  {
+				System.out.println("Monitoring of TE " + this.getTrajectoryEnvelope().getID() +": state " + state.getPosition() + ", position to slow down " + positionToSlowDown + ", velocity " + state.getVelocity() + ", critical point " + criticalPoint + ".");
+				System.out.println(">>>>> TE " + this.getTrajectoryEnvelope().getID() +": deltaTime " + deltaTime + ", skipIntegration " + skipIntegration + ".");
+				monitoringTimerStart = getCurrentTimeInMillis();
+			}
 		}
 		
 		//continue transmitting until the coordinator will be informed of having reached the last position.
-		while (tec.getRobotReport(te.getRobotID()).getPathIndex() != -1)
-		{
+		long timerStart = getCurrentTimeInMillis();
+		while (tec.getRobotReport(te.getRobotID()).getPathIndex() != -1) {
+			if (getCurrentTimeInMillis()-timerStart > 1000)  {
+				System.out.println("Continue transmitting until the coordinator will be informed of having reached the last position of TE " + this.getTrajectoryEnvelope().getID() +".");
+				timerStart = getCurrentTimeInMillis();
+			}
 			enqueueOneReport();
 			try { Thread.sleep(trackingPeriodInMillis); }
 			catch (InterruptedException e) { e.printStackTrace(); }
 		}
 		
 		//persevere with last path point in case listeners didn't catch it!
-		long timerStart = getCurrentTimeInMillis();
+		timerStart = getCurrentTimeInMillis();
 		while (getCurrentTimeInMillis()-timerStart < WAIT_AMOUNT_AT_END) {
 			//System.out.println("Waiting " + te.getComponent());
 			try { Thread.sleep(trackingPeriodInMillis); }

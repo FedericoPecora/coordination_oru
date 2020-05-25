@@ -314,6 +314,7 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 	}
 
 	protected void fixDeadline(TrajectoryEnvelope trajEnv, long delta) {
+		System.out.println("Fixing deadline TE " + this.getTrajectoryEnvelope().getID() + ".");
 		synchronized(tec.getSolver()) {
 			long time = getCurrentTimeInMillis()+delta;
 			if (time > trajEnv.getTemporalVariable().getEET()) {
@@ -333,6 +334,7 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 				else deadlines.put(trajEnv, deadline);
 			}
 		}
+		System.out.println("Fixed deadline TE " + this.getTrajectoryEnvelope().getID() + ".");
 	}
 
 	protected void setRelease(TrajectoryEnvelope trajEnv) {
@@ -423,6 +425,8 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 						//Get current sequence number from robot report...
 						int currentSeqNumber = rr.getPathIndex();
 	
+						//FIXME
+						
 						//Get all ground envelopes of this super-envelope that are not finished (except the last one)...
 						for (TrajectoryEnvelope subEnv : getAllSubEnvelopes()) {
 							if (subEnv.hasSuperEnvelope()) {
@@ -472,7 +476,7 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 				
 			}
 		};
-		
+		monitorSubEnvelopes.setPriority(Thread.MAX_PRIORITY);
 		monitorSubEnvelopes.start();
 	}
 	
