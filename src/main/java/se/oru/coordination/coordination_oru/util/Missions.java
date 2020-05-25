@@ -302,22 +302,28 @@ public class Missions {
 	}
 	
 	/**
-	 * Get the names of the initial locations of each robot's first {@link Mission}.
-	 * The poses corresponding to each location name can be looked up via the method {@link Missions#getLocation(String)}.
-	 * @return
+	 * Get the name of the initial location of each robot's first {@link Mission}.
+	 * The pose corresponding to each location name can be looked up via the method {@link Missions#getLocation(String)}.
+	 * @return The name of the initial location of each robot's first {@link Mission}.
 	 */
 	public static HashMap<Integer,String> getInitialLocations() {
 		HashMap<Integer,String> ret = new HashMap<Integer, String>();
 		for (Integer robotID : missions.keySet()) {
-			ret.put(robotID, Missions.peekMission(robotID).getFromLocation());
+			Mission m = Missions.peekMission(robotID);
+			if (m != null) ret.put(robotID, m.getFromLocation());
 		}
 		return ret;
 	}
 	
+	/**
+	 * Get the pose of the initial location of each robot's first {@link Mission}.
+	 * @return The pose of the initial location of each robot's first {@link Mission}.
+	 */
 	public static HashMap<Integer,Pose> getInitialPoses() {
 		HashMap<Integer,Pose> ret = new HashMap<Integer, Pose>();
 		for (Integer robotID : missions.keySet()) {
-			ret.put(robotID, Missions.peekMission(robotID).getFromPose());
+			Mission m = Missions.peekMission(robotID);
+			if (m != null) ret.put(robotID, m.getFromPose());
 		}
 		return ret;
 	}
