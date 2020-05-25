@@ -1018,6 +1018,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					if (dep.getWaitingRobotID() == robotID) {
 						currentWaitingIndex = dep.getWaitingPoint();
 						currentWaitingPose = dep.getWaitingPose();
+						if (currentWaitingPose == null) throw new Error("Waiting pose should not be null in dep: " + dep);
 						Trajectory traj = dep.getWaitingTrajectoryEnvelope().getTrajectory();
 						oldPath = traj.getPoseSteering();
 						currentWaitingGoal = oldPath[oldPath.length-1].getPose();
