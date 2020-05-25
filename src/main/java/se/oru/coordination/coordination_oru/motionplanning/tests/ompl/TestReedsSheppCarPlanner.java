@@ -4,15 +4,26 @@ package se.oru.coordination.coordination_oru.motionplanning.tests.ompl;
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 
+import com.vividsolutions.jts.geom.Coordinate;
+
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
 
 public class TestReedsSheppCarPlanner {
 	
 	public static void main(String[] args) {
+		
+		//Define the robot footprint
+		double xl = .5;
+		double yl = .5;
+		Coordinate footprint1 = new Coordinate(-xl,yl);
+		Coordinate footprint2 = new Coordinate(xl,yl);
+		Coordinate footprint3 = new Coordinate(xl,-yl);
+		Coordinate footprint4 = new Coordinate(-xl,-yl);
+		
 		double distanceBetweenPathPoints = 0.4;
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-		rsp.setMapFilename("maps/map-partial.png");
-		rsp.setMapResolution(0.1);
+		rsp.setFootprint(footprint1,footprint2,footprint3,footprint4);
+		rsp.setMap("maps/map-partial.yaml");
 		rsp.setRadius(0.5);
 		rsp.setStart(new Pose(2.0,2.0,0.0));
 		rsp.setGoals(new Pose(2.0,38.0,0.0));

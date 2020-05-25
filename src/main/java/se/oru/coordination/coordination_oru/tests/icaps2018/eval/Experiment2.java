@@ -119,17 +119,14 @@ public class Experiment2 {
 
 		//Instantiate a simple motion planner
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-		rsp.setMapFilename("maps"+File.separator+Missions.getProperty("image", yamlFile));
-		double res = Double.parseDouble(Missions.getProperty("resolution", yamlFile));
-		rsp.setMapResolution(res);
+		rsp.setMap(yamlFile);
 		rsp.setRadius(0.1);
 		rsp.setFootprint(tec.getDefaultFootprint());
 		rsp.setTurningRadius(4.0);
 		rsp.setDistanceBetweenPathPoints(0.3);
 		
 		//In case deadlocks occur, we make the coordinator capable of re-planning on the fly (experimental, not working properly yet)
-		tec.setMotionPlanner(rsp);
-		
+				
 		boolean cachePaths = false;
 		String outputDir = "paths";
 		boolean clearOutput = false;
@@ -142,6 +139,7 @@ public class Experiment2 {
 		int locationCounter = 0;
 		//int[] robotIDs = new int[] {1,2};
 		for (int robotID : robotIDs) {
+			tec.setMotionPlanner(robotID, rsp.getCopy());
 			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));;
 			String startLocName = "L_"+locationCounter;
 			Pose startLoc = Missions.getLocation(startLocName);

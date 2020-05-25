@@ -986,29 +986,14 @@ public class PathEditor {
 		}
 		panel.updatePanel();
 	}
-	
-	private String makeEmptyMapMap() {
-		BufferedImage img = new BufferedImage(EMPTY_MAP_DIM, EMPTY_MAP_DIM, BufferedImage.TYPE_INT_RGB);
-		Graphics2D g2 = img.createGraphics();
-		g2.setColor(Color.white);
-		g2.fillRect(0, 0, EMPTY_MAP_DIM, EMPTY_MAP_DIM);
-		File outputfile = new File(TEMP_MAP_DIR+File.separator+"tempMapEmpty.png");
-		try { ImageIO.write(img, "png", outputfile); }
-		catch (IOException e) { e.printStackTrace(); }
-		return outputfile.getAbsolutePath();
-	}
-	
+		
 	private PoseSteering[] computePath(PoseSteering from, PoseSteering ... to) {
 		if (USE_MP) {
 			ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-			if (this.mapFileName == null) {
-				rsp.setMapFilename(makeEmptyMapMap());
-				rsp.setMapResolution(1.0);
+			if (this.mapFileName != null && new File(mapImgFileName.substring(0,mapImgFileName.lastIndexOf("."))+".yaml").exists()) {
+				rsp.setMap(mapImgFileName.substring(0,mapImgFileName.lastIndexOf("."))+".yaml");
 			}
-			else {
-				rsp.setMapFilename(mapImgFileName);
-				rsp.setMapResolution(mapRes);
-			}
+			else rsp.setMap("maps/map-empty.yaml");
 			rsp.setRadius(3.0);
 			rsp.setTurningRadius(MAX_TURNING_RADIUS);
 			rsp.setDistanceBetweenPathPoints(MIN_DISTANCE_BETWEEN_PATH_POINTS);

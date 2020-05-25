@@ -3,14 +3,10 @@ package se.oru.coordination.coordination_oru.tests.safetyAndLiveness;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.PrintWriter;
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Comparator;
 import java.util.HashMap;
-
 import org.metacsp.multi.spatioTemporal.paths.Pose;
-import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
-
 import com.vividsolutions.jts.geom.Coordinate;
 
 import se.oru.coordination.coordination_oru.ConstantAccelerationForwardModel;
@@ -19,8 +15,6 @@ import se.oru.coordination.coordination_oru.RobotAtCriticalSection;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
-import se.oru.coordination.coordination_oru.util.BrowserVisualization;
-import se.oru.coordination.coordination_oru.util.JTSDrawingPanelVisualization;
 import se.oru.coordination.coordination_oru.util.Missions;
 import se.oru.coordination.coordination_oru.util.RVizVisualization;
 
@@ -47,7 +41,7 @@ public class nRobotsDeadlock {
         catch (Exception e) { e.printStackTrace(); }
 	}
 		
-	protected static final int NUMBER_ROBOTS = 40;
+	protected static final int NUMBER_ROBOTS = 20;
 
 	public static void main(String[] args) throws InterruptedException {
 		
@@ -113,7 +107,6 @@ public class nRobotsDeadlock {
 		rsp.setFootprint(tec.getDefaultFootprint());
 		rsp.setTurningRadius(4.0);
 		rsp.setDistanceBetweenPathPoints(0.5);
-		tec.setDefaultMotionPlanner(rsp);
 			
 		//Place robots in their initial locations (looked up in the data file that was loaded above)
 		// -- creates a trajectory envelope for each location, representing the fact that the robot is parked
@@ -121,10 +114,12 @@ public class nRobotsDeadlock {
 		// -- each trajectory envelope is the footprint of the corresponding robot in that pose
 		HashMap<Integer,Pose> startPoses = new HashMap<Integer,Pose>();
 		HashMap<Integer,Pose> goalPoses = new HashMap<Integer,Pose>();
-		ArrayList<PoseSteering[]> paths = new ArrayList<PoseSteering[]>();
 		
 		double theta = 0.0;
 		for (int i = 0; i < NUMBER_ROBOTS; i++) {
+			//In case deadlocks occur, we make the coordinator capable of re-planning on the fly (experimental, not working properly yet)
+			tec.setMotionPlanner(robotIDs[i], rsp.getCopy());
+			//Place robots.
 			double alpha = theta + i*Math.PI/NUMBER_ROBOTS;
 			startPoses.put(robotIDs[i], new Pose(radius*Math.cos(alpha), radius*Math.sin(alpha), alpha));
 			goalPoses.put(robotIDs[i], new Pose(radius*Math.cos(alpha+Math.PI), radius*Math.sin(alpha+Math.PI), alpha));
@@ -146,8 +141,8 @@ public class nRobotsDeadlock {
 		
 		//Start a mission dispatching thread for each robot, which will run forever
 		for (final int robotID : robotIDs) {
-			//For each robot, create a thread that dispatches the "next" mission when the robot is free
 			
+			//For each robot, create a thread that dispatches the "next" mission when the robot is free
 			Thread t = new Thread() {
 				@Override
 				public void run() {

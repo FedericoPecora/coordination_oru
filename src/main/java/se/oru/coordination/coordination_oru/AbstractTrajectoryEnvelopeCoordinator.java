@@ -123,7 +123,6 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	protected HashMap<Integer,TrackingCallback> trackingCallbacks = new HashMap<Integer, TrackingCallback>();	
 	protected Callback inferenceCallback = null;
 	
-	//protected AbstractMotionPlanner defaultMotionPlanner = null;
 	protected HashMap<Integer,AbstractMotionPlanner> motionPlanners = new HashMap<Integer, AbstractMotionPlanner>();
 	
 	//Network knowledge
@@ -855,28 +854,6 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		return true;
 	}
 	
-	
-	/**
-	 * Set a motion planner to be used for re-planning.
-	 * @param mp The motion planner that will be called for re-planning. 
-	 */
-	@Deprecated
-	public void setMotionPlanner(AbstractMotionPlanner mp) {
-		//this.defaultMotionPlanner = mp;
-	}
-	
-
-	/**
-	 * Set a motion planner to be used for re-planning for all robots
-	 * (unless a specific motion planner is specified for an individual robot).
-	 * @param mp The motion planner that will be called for re-planning for any
-	 * robot for which a motion planner has not been specified. 
-	 */
-	@Deprecated
-	public void setDefaultMotionPlanner(AbstractMotionPlanner mp) {
-		//this.defaultMotionPlanner = mp;
-	}
-	
 
 	/**
 	 * Set a motion planner to be used for re-planning for a specific
@@ -886,19 +863,6 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 */
 	public void setMotionPlanner(int robotID, AbstractMotionPlanner mp) {
 		this.motionPlanners.put(robotID, mp);
-	}
-	
-	
-	/**
-	 * Get the motion planner to be used for re-planning for all robots that do not
-	 * have a dedicated motion planner.
-	 * @return The motion planner used for re-planning for all robots that do not
-	 * have a dedicated motion planner.
-	 */
-	@Deprecated
-	public AbstractMotionPlanner getDefaultMotionPlanner() {
-		//return this.defaultMotionPlanner;
-		return null;
 	}
 	
 

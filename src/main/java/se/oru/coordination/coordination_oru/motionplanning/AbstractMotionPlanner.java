@@ -78,18 +78,7 @@ public abstract class AbstractMotionPlanner {
 		this.noMap = false;
 		this.om = new OccupancyMap(mapYAMLFile);
 	}
-	
-	@Deprecated
-	public void setMapFilename(String filename) {
-//		this.mapFilename = filename;
-//		this.mapFilenameBAK = filename;
-	}
-
-	@Deprecated
-	public void setMapResolution(double res) {
-//		this.mapResolution = res;
-	}
-	
+		
 	public PoseSteering[] getPath() {
 		return this.pathPS;
 	}

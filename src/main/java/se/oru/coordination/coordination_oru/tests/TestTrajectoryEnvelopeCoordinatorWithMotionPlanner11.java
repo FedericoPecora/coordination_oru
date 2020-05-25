@@ -68,9 +68,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner11 {
 
 		String yamlFile = "maps/map-empty.yaml";
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-		rsp.setMapFilename("maps"+File.separator+Missions.getProperty("image", yamlFile));
-		double res = 0.2;// Double.parseDouble(getProperty("resolution", yamlFile));
-		rsp.setMapResolution(res);
+		rsp.setMap(yamlFile);
 		rsp.setRadius(0.2);
 		rsp.setFootprint(tec.getDefaultFootprint());
 		rsp.setTurningRadius(4.0);
@@ -99,6 +97,9 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner11 {
 		//Start a mission dispatching thread for each robot, which will run forever
 		for (int i = 1; i <= 3; i++) {
 			final int robotID = i;
+			//Set each robot motion planner
+			tec.setMotionPlanner(robotID, rsp.getCopy());
+			
 			//For each robot, create a thread that dispatches the "next" mission when the robot is free 
 			Thread t = new Thread() {
 				int iteration = 0;

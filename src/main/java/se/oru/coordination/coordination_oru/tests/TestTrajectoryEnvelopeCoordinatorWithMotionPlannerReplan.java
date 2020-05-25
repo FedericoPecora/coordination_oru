@@ -28,18 +28,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlannerReplan {
 		Coordinate footprint2 = new Coordinate(-0.5,-0.5);
 		Coordinate footprint3 = new Coordinate(0.7,-0.5);
 		Coordinate footprint4 = new Coordinate(0.7,0.5);
-		
-		//Set up path planner (using empty map)
-		final ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-		String yamlFile = "maps/map-empty.yaml";
-		rsp.setMapFilename("maps"+File.separator+Missions.getProperty("image", yamlFile));
-		double res = 0.2;// Double.parseDouble(getProperty("resolution", yamlFile));
-		rsp.setMapResolution(res);
-		rsp.setRadius(0.2);
-		rsp.setFootprint(footprint1, footprint2, footprint3, footprint4);
-		rsp.setTurningRadius(4.0);
-		rsp.setDistanceBetweenPathPoints(0.1);
-				
+						
 		double MAX_ACCEL = 2.0;
 		double MAX_VEL = 3.0;
 		//Instantiate a trajectory envelope coordinator.
@@ -48,7 +37,6 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlannerReplan {
 		// -- the getCurrentTimeInMillis() method, which is used by the coordinator to keep time
 		//You still need to add one or more comparators to determine robot orderings thru critical sections (comparators are evaluated in the order in which they are added)
 		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(MAX_VEL,MAX_ACCEL);
-		tec.setMotionPlanner(rsp);
 		
 		tec.addComparator(new Comparator<RobotAtCriticalSection> () {
 			@Override
@@ -94,17 +82,32 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlannerReplan {
 		// -- each trajectory envelope is the footprint of the corresponding robot in that pose
 		tec.placeRobot(1, startRobot1);
 		tec.placeRobot(2, startRobot2);
-
-
+		
+		//Set up private motion planners (using empty map)
+		
+		//For robot 1 ...
+		final ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
+		String yamlFile = "maps/map-empty.yaml";
+		rsp.setMap(yamlFile);
+		rsp.setRadius(0.1);
+		rsp.setFootprint(footprint1, footprint2, footprint3, footprint4);
+		rsp.setTurningRadius(4.0);
+		rsp.setDistanceBetweenPathPoints(0.1);
+		tec.setMotionPlanner(1, rsp);
+		
 		rsp.setStart(startRobot1);
 		rsp.setGoals(goalRobot13);
 		rsp.plan();
 		Missions.enqueueMission(new Mission(1,rsp.getPath()));
 
-		rsp.setStart(startRobot2);
-		rsp.setGoals(goalRobot23);
-		rsp.plan();
-		Missions.enqueueMission(new Mission(2,rsp.getPath()));
+		//and for robot 2
+		final ReedsSheppCarPlanner rsp2 = (ReedsSheppCarPlanner) rsp.getCopy();
+		tec.setMotionPlanner(2, rsp2);
+		
+		rsp2.setStart(startRobot2);
+		rsp2.setGoals(goalRobot23);
+		rsp2.plan();
+		Missions.enqueueMission(new Mission(2,rsp2.getPath()));
 		
 		System.out.println("Added missions " + Missions.getMissions());
 
