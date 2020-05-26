@@ -1229,11 +1229,11 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 									int end21 = cs2.getTe1().getRobotID() == robotID ? cs2.getTe1End() : cs2.getTe2End();
 									int end22 = cs2.getTe1().getRobotID() == robotID ? cs2.getTe2End() : cs2.getTe1End();
 									
-									//FIXME: The condition is not covering all the cases. The critical point was correctly saver, but is not correctly restored.
-									//Here we should consider all 13 the possible situations of overlapping critical sections.
-									if ((start21 <= start11 && start11 <= end21) 
+									//FIXME (To be tested more)
+									//Here we should consider all the possible overlapping critical sections.
+									if ((start21 <= start11 && start11 <= end21) && !(end22 <= start12 || end12 <= start22)) {
 											//entry point of the other robot in the new CS between start and end of the ones in the old CS
-											&& (start22 <= start12 && start12 <= end22 || start22 <= end12 && end12 <= end22)) {
+											//&& (start22 <= start12 && start12 <= end22 || start22 <= end12 && end12 <= end22)) {
 										metaCSPLogger.info("Restoring  " + holdingCS.get(cs2).toString());
 										CSToDepsOrder.put(cs1, holdingCS.get(cs2));
 
