@@ -45,7 +45,7 @@ public class OccupancyMap {
 	}
 	
 	private int mapWidth, mapHeight;
-	private double[][] occupancyMap = null;
+	//private double[][] occupancyMap = null;
 	private double[] occupancyMapLinear = null;
 	private double threshold = 0.3;
 	private double mapResolution = 0.1;
@@ -184,7 +184,14 @@ public class OccupancyMap {
 	}
 
 	public double[][] as2DArray() {
-		return this.occupancyMap;
+		//return this.occupancyMap;
+		double[][] ret = new double[this.mapHeight][this.mapWidth];
+		for (int y = 0; y < this.mapHeight; y++) {
+			for (int x = 0; x < this.mapWidth; x++) {
+				ret[y][x] = getOccupancyValue(x, y);
+			}
+		}
+		return ret;
 	}
 
 	public double[] as1DArray() {
@@ -223,9 +230,14 @@ public class OccupancyMap {
 		return this.mapHeight*mapResolution;
 	}
 
+	public double getOccupancyValue(int pixelX, int pixelY) {
+		if (this.occupancyMapLinear == null) throw new Error("No occupancy map!");
+		return this.occupancyMapLinear[this.mapWidth*pixelY+pixelX];
+	}
+	
 	public boolean isOccupied(int pixelX, int pixelY) {
-		if (this.occupancyMap == null) return false;
-		return this.occupancyMap[pixelY][pixelX] < this.threshold;
+		if (this.occupancyMapLinear == null) return false;
+		return this.getOccupancyValue(pixelX, pixelY) < this.threshold;
 	}
 
 	public boolean isOccupied(Coordinate coord) {
@@ -235,14 +247,14 @@ public class OccupancyMap {
 
 	private void createOccupancyMap() {
 		oimg = new BufferedImage(bimg.getWidth(), bimg.getHeight(), BufferedImage.TYPE_INT_RGB);
-		this.occupancyMap = new double[this.mapHeight][this.mapWidth];
+		//this.occupancyMap = new double[this.mapHeight][this.mapWidth];
 		this.occupancyMapLinear = new double[bimg.getHeight()*bimg.getWidth()];
 		for(int y=0; y < bimg.getHeight(); y++){
 			for(int x=0; x < bimg.getWidth(); x++){
 				Color c = new Color(bimg.getRGB(x,y));
-				this.occupancyMap[y][x] = c.getRed()/255.0;
-				this.occupancyMapLinear[y*mapWidth+x] = this.occupancyMap[y][x];
-				if (this.occupancyMap[y][x] <= threshold) oimg.setRGB(x, y, new Color(0,0,0).getRGB());
+				//this.occupancyMap[y][x] = c.getRed()/255.0;
+				this.occupancyMapLinear[y*mapWidth+x] = c.getRed()/255.0;
+				if (this.isOccupied(x, y)) oimg.setRGB(x, y, new Color(0,0,0).getRGB());
 				else oimg.setRGB(x, y, new Color(255,255,255).getRGB());
 			}
 		}
