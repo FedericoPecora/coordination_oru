@@ -1129,7 +1129,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 				//------------------ (dynamic re-plan) --------------------
 				//store the order of precedence (and waiting points) for every 
-				//critical section involving the robot which is replanning
+				//critical section involving the robot which is re-planning
 				HashMap<CriticalSection,Pair<Integer,Integer>> holdingCS = new HashMap<CriticalSection,Pair<Integer,Integer>>();
 				if (!useStaticReplan) {
 					for (CriticalSection cs : CSToDepsOrder.keySet()) {
@@ -1206,7 +1206,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							for (CriticalSection cs2 : holdingCS.keySet()) {
 								if (cs1.getTe1().getRobotID() == cs2.getTe1().getRobotID() && cs1.getTe2().getRobotID() == cs2.getTe2().getRobotID() ||
 										cs1.getTe1().getRobotID() == cs2.getTe2().getRobotID() && cs1.getTe2().getRobotID() == cs2.getTe1().getRobotID()) {
-									//the same set of robots, same antry point for the robot that is re-planning and same entry point, or same ending point or the oldest contained in the newest for the other robot.
+									//the same set of robots, same entry point for the robot that is re-planning and same entry point, or same ending point or the oldest contained in the newest for the other robot.
 									/*if ((cs1.getTe1().getRobotID() == robotID && cs2.getTe1().getRobotID() == robotID && cs1.getTe1Start() == cs2.getTe1Start() &&
 											(cs1.getTe2Start() == cs2.getTe2Start() || cs1.getTe2End() == cs2.getTe2End() || cs1.getTe2Start() <= cs2.getTe2Start() && cs1.getTe2End() >= cs2.getTe2End())) ||
 											(cs1.getTe1().getRobotID() == robotID && cs2.getTe2().getRobotID() == robotID && cs1.getTe1Start() == cs2.getTe2Start() &&
@@ -1215,15 +1215,25 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 											(cs1.getTe1Start() == cs2.getTe2Start() || cs1.getTe1End() == cs2.getTe2End() || cs1.getTe1Start() <= cs2.getTe2Start() && cs1.getTe1End() >= cs2.getTe2End())) ||
 											(cs1.getTe2().getRobotID() == robotID && cs2.getTe2().getRobotID() == robotID && cs1.getTe2Start() == cs2.getTe2Start() &&
 											(cs1.getTe1Start() == cs2.getTe1Start() || cs1.getTe1End() == cs2.getTe1End() || cs1.getTe1Start() <= cs2.getTe1Start() && cs1.getTe1End() >= cs2.getTe1End()))) */
+									
+									//entry point of the robot that is re-planning in the new CS
 									int start11 = cs1.getTe1().getRobotID() == robotID ? cs1.getTe1Start() : cs1.getTe2Start();
+									//entry point of the other robot in the new CS
 									int start12 = cs1.getTe1().getRobotID() == robotID ? cs1.getTe2Start() : cs1.getTe1Start();
+									//entry point of the robot that is re-planning in the old CS
 									int start21 = cs2.getTe1().getRobotID() == robotID ? cs2.getTe1Start() : cs2.getTe2Start();
+									//entry point of the other robot in the old CS
 									int start22 = cs2.getTe1().getRobotID() == robotID ? cs2.getTe2Start() : cs2.getTe1Start();
 									int end11 = cs1.getTe1().getRobotID() == robotID ? cs1.getTe1End() : cs1.getTe2End();
 									int end12 = cs1.getTe1().getRobotID() == robotID ? cs1.getTe2End() : cs1.getTe1End();
 									int end21 = cs2.getTe1().getRobotID() == robotID ? cs2.getTe1End() : cs2.getTe2End();
 									int end22 = cs2.getTe1().getRobotID() == robotID ? cs2.getTe2End() : cs2.getTe1End();
-									if (start21 <= start11 && start11 <= end21 && (start22 <= start12 && start12 <= end22 || start22 <= end12 && end12 <= end22)) {
+									
+									//FIXME: The condition is not covering all the cases. The critical point was correctly saver, but is not correctly restored.
+									//Here we should consider all 13 the possible situations of overlapping critical sections.
+									if ((start21 <= start11 && start11 <= end21) 
+											//entry point of the other robot in the new CS between start and end of the ones in the old CS
+											&& (start22 <= start12 && start12 <= end22 || start22 <= end12 && end12 <= end22)) {
 										metaCSPLogger.info("Restoring  " + holdingCS.get(cs2).toString());
 										CSToDepsOrder.put(cs1, holdingCS.get(cs2));
 
