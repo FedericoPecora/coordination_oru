@@ -118,8 +118,8 @@ public class RandomPathsInMap {
 		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0;
 		tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, NetworkConfiguration.getMaximumTxDelay(), 1e-2);
 
-		double xl = .5; //1.0
-		double yl = .5; //.5
+		double xl = 1.0;
+		double yl = .5;
 		Coordinate footprint1 = new Coordinate(-xl,yl);
 		Coordinate footprint2 = new Coordinate(xl,yl);
 		Coordinate footprint3 = new Coordinate(xl,-yl);
@@ -144,21 +144,10 @@ public class RandomPathsInMap {
 		viz.setInitialTransform(20.0, 9.0, 2.0);
 		tec.setVisualization(viz);
 		
-		Missions.loadLocationAndPathData("missions/icaps_locations_and_paths_4.txt");
+		Missions.loadRoadMap("missions/icaps_locations_and_paths_4.txt");
 
 		//MetaCSPLogging.setLevel(tec.getClass().getSuperclass(), Level.FINEST);
-
-		//Instantiate a simple motion planner
-		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-		rsp.setMap(yamlFile);
-		rsp.setRadius(0.1);
-		rsp.setFootprint(tec.getDefaultFootprint());
-		rsp.setTurningRadius(4.0);
-		rsp.setDistanceBetweenPathPoints(0.3);
-		
-		//In case deadlocks occur, we make the coordinator capable of re-planning on the fly (experimental, not working properly yet)
-		tec.setDefaultMotionPlanner(rsp);
-		
+	
 		boolean cachePaths = false;
 		String outputDir = "paths";
 		boolean clearOutput = false;
@@ -197,6 +186,17 @@ public class RandomPathsInMap {
 		
 		//int[] robotIDs = new int[] {1,2};
 		for (int robotID : robotIDs) {
+			//Instantiate a simple motion planner
+			ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
+			rsp.setMap(yamlFile);
+			rsp.setRadius(0.1);
+			rsp.setFootprint(tec.getDefaultFootprint());
+			rsp.setTurningRadius(4.0);
+			rsp.setDistanceBetweenPathPoints(0.3);
+			
+			//In case deadlocks occur, we make the coordinator capable of re-planning on the fly (experimental, not working properly yet)
+			tec.setMotionPlanner(robotID, rsp);
+			
 			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
 			String startLocName = startsNames.get(robotID);
 			Pose startLoc = startsPoses.get(robotID);

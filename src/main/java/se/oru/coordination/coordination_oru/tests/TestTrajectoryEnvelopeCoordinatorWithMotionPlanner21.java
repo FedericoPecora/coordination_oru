@@ -80,9 +80,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner21 {
 
 		String yamlFile = "maps/map-empty.yaml";
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-		rsp.setMapFilename("maps"+File.separator+Missions.getProperty("image", yamlFile));
-		double res = 0.2;// Double.parseDouble(getProperty("resolution", yamlFile));
-		rsp.setMapResolution(res);
+		rsp.setMap(yamlFile);
 		rsp.setRadius(0.2);
 		rsp.setFootprint(footprint1, footprint2, footprint3, footprint4);
 		rsp.setTurningRadius(4.0);

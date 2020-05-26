@@ -75,9 +75,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner9 {
 
 		//Instantiate a simple motion planner
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-		rsp.setMapFilename("maps"+File.separator+Missions.getProperty("image", yamlFile));
-		double res = Double.parseDouble(Missions.getProperty("resolution", yamlFile));
-		rsp.setMapResolution(res);
+		rsp.setMap(yamlFile);
 		rsp.setRadius(0.2);
 		rsp.setFootprint(footprint1,footprint2,footprint3,footprint4);
 		rsp.setTurningRadius(4.0);
@@ -91,6 +89,10 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner9 {
 		Pose goalPoseRobot15 = new Pose(13.0,15.0,Math.PI*3/4);
 		Pose startPoseRobot2 = new Pose(3.0,3.0,0.0);
 		Pose goalPoseRobot2 = new Pose(20.0,15.0,Math.PI/4);
+		
+		//Set private motion planners for each robot
+		tec.setMotionPlanner(1, rsp);
+		tec.setMotionPlanner(2, rsp.getCopy());
 
 		//Place robots in their initial locations (looked up in the data file that was loaded above)
 		// -- creates a trajectory envelope for each location, representing the fact that the robot is parked

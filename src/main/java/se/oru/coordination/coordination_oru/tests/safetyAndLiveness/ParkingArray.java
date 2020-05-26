@@ -119,17 +119,12 @@ public class ParkingArray {
 		
 		//Set up motion planner
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-		rsp.setMapFilename("maps"+File.separator+Missions.getProperty("image", yamlFile));
-		double res = Double.parseDouble(Missions.getProperty("resolution", yamlFile));
-		rsp.setMapResolution(res);
+		rsp.setMap(yamlFile);
 		rsp.setRadius(0.1);
 		rsp.setFootprint(tec.getDefaultFootprint());
 		rsp.setTurningRadius(4.0);
 		rsp.setDistanceBetweenPathPoints(0.1);
-		
-		//In case deadlocks occur, we make the coordinator capable of re-planning on the fly (experimental, not working properly yet)
-		tec.setMotionPlanner(rsp);
-		
+			
 		for (String loc1 : Missions.getLocations().keySet()) {
 			for (String loc2 : Missions.getLocations().keySet()) {
 				if (loc1.contains("locUp") && loc2.contains("locDown")) {
@@ -181,6 +176,9 @@ public class ParkingArray {
 
 		//Set the goals such that two paths cannot overlap
 		for (int i = 0; i < initialLocations.length; i++) {
+			//In case deadlocks occur, we make the coordinator capable of re-planning on the fly (experimental, not working properly yet)
+			tec.setMotionPlanner(robotIDs[i], rsp.getCopy());
+			
 			tec.placeRobot(robotIDs[i], Missions.getLocation(initialLocations[i]));
 			Mission mFW = new Mission(robotIDs[i], Missions.getShortestPath(initialLocations[i],finalLocations[i]));
 			Mission mBW = new Mission(robotIDs[i], Missions.getShortestPath(finalLocations[i],initialLocations[i]));

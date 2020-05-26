@@ -80,29 +80,30 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner14 {
 		tec.placeRobot(2, startRobot2);
 
 		String yamlFile = "maps/map-empty.yaml";
-		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-		rsp.setMapFilename("maps"+File.separator+Missions.getProperty("image", yamlFile));
-		double res = 0.2;// Double.parseDouble(getProperty("resolution", yamlFile));
-		rsp.setMapResolution(res);
-		rsp.setRadius(0.2);
-		rsp.setFootprint(footprint1, footprint2, footprint3, footprint4);
-		rsp.setTurningRadius(4.0);
-		rsp.setDistanceBetweenPathPoints(0.1);
+		final ReedsSheppCarPlanner rsp1 = new ReedsSheppCarPlanner();
+		tec.setMotionPlanner(1, rsp1);
+		rsp1.setMap(yamlFile);
+		rsp1.setRadius(0.2);
+		rsp1.setFootprint(footprint1, footprint2, footprint3, footprint4);
+		rsp1.setTurningRadius(4.0);
+		rsp1.setDistanceBetweenPathPoints(0.1);
 		
-		rsp.setStart(startRobot1);
-		rsp.setGoals(goalRobot1);
-		rsp.plan();
-		Missions.enqueueMission(new Mission(1,rsp.getPath()));
+		rsp1.setStart(startRobot1);
+		rsp1.setGoals(goalRobot1);
+		if (!rsp1.plan()) throw new Error("No path found!");
+		Missions.enqueueMission(new Mission(1,rsp1.getPath()));
 		
-		rsp.setStart(startRobot2);
-		rsp.setGoals(goalRobot2);
-		rsp.plan();
-		Missions.enqueueMission(new Mission(2,rsp.getPath()));
-		Missions.enqueueMission(new Mission(2,rsp.getPathInv()));
-		rsp.setStart(startRobot2);
-		rsp.setGoals(goalRobot2Next);
-		rsp.plan();
-		Missions.enqueueMission(new Mission(2,rsp.getPath()));
+		final ReedsSheppCarPlanner rsp2 = (ReedsSheppCarPlanner)rsp1.getCopy();
+		tec.setMotionPlanner(2, rsp2);
+		rsp2.setStart(startRobot2);
+		rsp2.setGoals(goalRobot2);
+		if (!rsp2.plan()) throw new Error("No path found!");
+		Missions.enqueueMission(new Mission(2,rsp2.getPath()));
+		Missions.enqueueMission(new Mission(2,rsp2.getPathInv()));
+		rsp2.setStart(startRobot2);
+		rsp2.setGoals(goalRobot2Next);
+		if (!rsp2.plan()) throw new Error("No path found!");
+		Missions.enqueueMission(new Mission(2,rsp2.getPath()));
 		
 		System.out.println("Added missions " + Missions.getMissions());
 

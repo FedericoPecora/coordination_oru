@@ -95,16 +95,11 @@ public class Circle {
 		
 		//Set up motion planner
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-		rsp.setMapFilename("maps"+File.separator+Missions.getProperty("image", yamlFile));
-		double res = Double.parseDouble(Missions.getProperty("resolution", yamlFile));
-		rsp.setMapResolution(res);
+		rsp.setMap(yamlFile);
 		rsp.setRadius(0.1);
 		rsp.setFootprint(tec.getDefaultFootprint());
 		rsp.setTurningRadius(4.0);
 		rsp.setDistanceBetweenPathPoints(0.1);
-		
-		//In case deadlocks occur, we make the coordinator capable of re-planning on the fly (experimental, not working properly yet)
-		tec.setMotionPlanner(rsp);
 		
 		for (String loc1 : Missions.getLocations().keySet()) {
 			for (String loc2 : Missions.getLocations().keySet()) {
@@ -137,6 +132,9 @@ public class Circle {
 		//Set the goals such that two paths cannot overlap
 		for (int i = 0; i < initialLocations.length; i++) {
 			int robotID = robotIDs[i];
+			//In case deadlocks occur, we make the coordinator capable of re-planning on the fly (experimental, not working properly yet)
+			tec.setMotionPlanner(robotID, rsp.getCopy());
+			
 			String initialLocation = initialLocations[i];
 			tec.placeRobot(robotID, Missions.getLocation(initialLocation));
 			String goalLocation = "loc_"+rand.nextInt(numLocations);

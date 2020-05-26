@@ -59,7 +59,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner8 {
 		Coordinate footprint3 = new Coordinate(1.0,-0.5);
 		Coordinate footprint4 = new Coordinate(-1.0,-0.5);
 		tec.setDefaultFootprint(footprint1, footprint2, footprint3, footprint4);
-
+		
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
 		
@@ -75,14 +75,16 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner8 {
 
 		//Instantiate a simple motion planner
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-		String mapFile = "maps"+File.separator+Missions.getProperty("image", yamlFile);
-		rsp.setMapFilename(mapFile);
-		double res = Double.parseDouble(Missions.getProperty("resolution", yamlFile));
-		rsp.setMapResolution(res);
+		rsp.setMap(yamlFile);
 		rsp.setRadius(0.2);
 		rsp.setFootprint(footprint1,footprint2,footprint3,footprint4);
 		rsp.setTurningRadius(4.0);
 		rsp.setDistanceBetweenPathPoints(0.5);
+		
+		//Set private motion planners for each robot
+		tec.setMotionPlanner(1, rsp);
+		tec.setMotionPlanner(2, rsp.getCopy());
+		tec.setMotionPlanner(3, rsp.getCopy());
 	
 		Pose startPoseRobot1 = new Pose(4.0,6.0,0.0);
 		Pose goalPoseRobot1 = new Pose(16.0,15.0,Math.PI/4);

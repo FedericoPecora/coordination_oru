@@ -86,8 +86,6 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner17 {
 
 		//Set up path planner (using empty map)
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-		double res = 0.2;// Double.parseDouble(getProperty("resolution", yamlFile));
-		rsp.setMapResolution(res);
 		rsp.setRadius(0.2);
 		rsp.setFootprint(footprint1, footprint2, footprint3, footprint4);
 		rsp.setTurningRadius(4.0);
