@@ -113,8 +113,8 @@ public class ParkingArrayNew {
 		RVizVisualization viz = new RVizVisualization();
 		//RVizVisualization.writeRVizConfigFile(robotIDs);
 		//BrowserVisualization viz = new BrowserVisualization();
-		//viz.setMap(yamlFile);
-		//viz.setInitialTransform(60, 33.58, 13.49);
+		viz.setMap(yamlFile);
+		//viz.setInitialTransform(41, -20, -25);
 		tec.setVisualization(viz);
 				
 		//Determine locations around the circle, with random orientation
@@ -136,7 +136,7 @@ public class ParkingArrayNew {
 		
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
 		rsp.setMap(yamlFile);
-		rsp.setRadius(0.5);
+		rsp.setRadius(0.05);
 		rsp.setFootprint(footprint);
 		rsp.setTurningRadius(4.0);
 		rsp.setDistanceBetweenPathPoints(0.1);

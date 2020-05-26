@@ -287,7 +287,7 @@ class Visualization {
 			//	//textSize = Math.sqrt(area)/2;
 			//	textSize = 1.3*Math.sqrt(area);
 			//}
-			var textSize = 0.7*Math.sqrt(maxArea);
+			var textSize = 1.3*Math.sqrt(maxArea);
 			if (!key.startsWith("_")) {
 				var text = key;
 				if (viz.geometryExtraData[key] != null) {

@@ -120,8 +120,8 @@ public class OccupancyMap {
 		g2.drawImage(bimg, 0, 0, bimg.getWidth(), bimg.getHeight(), 0, 0, bimg.getWidth(), bimg.getHeight(), null);
 		
 		ShapeWriter writer = new ShapeWriter();
-		float dash1[] = {10.0f};
-	    BasicStroke dashed = new BasicStroke(10.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 10.0f, dash1, 0.0f);
+		float dash1[] = {2.0f};
+	    BasicStroke dashed = new BasicStroke(2.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 10.0f, dash1, 0.0f);
 	    g2.setStroke(dashed);
 		
 		g2.setPaint(Color.red);
