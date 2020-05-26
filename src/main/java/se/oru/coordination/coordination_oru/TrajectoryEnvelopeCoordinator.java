@@ -969,7 +969,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			}
 		}
 
-		//You should lock the robots if you want to start replaning. 
+		//You should lock the robots if you want to start re-planning. 
 		//In this way, the last critical point communicated when the re-plan is started is forced not to be updated
 		synchronized (lockedRobots) {
 			boolean tryLocking = true;
@@ -982,7 +982,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			if (tryReplanning && tryLocking) {
 				final HashSet<Integer> allRobots = allConnectedRobots;
 				for (Dependency dep : deadlockedDeps) {
-					lockedRobots.put(dep.getWaitingRobotID(), dep);
+					lockedRobots.put(dep.getWaitingRobotID(), new Dependency(dep.getWaitingTrajectoryEnvelope(), null, dep.getWaitingPoint(), 0));
 				}
 				metaCSPLogger.finest("Locking robots: " + deadlockedRobots.toString());
 				metaCSPLogger.info("Will re-plan for one of the following deadlocked robots: " + deadlockedRobots + " (" + allRobots + ")...");
