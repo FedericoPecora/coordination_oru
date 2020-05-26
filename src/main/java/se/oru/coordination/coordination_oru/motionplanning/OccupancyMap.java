@@ -11,10 +11,12 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.logging.Logger;
 
 import javax.imageio.ImageIO;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
+import org.metacsp.utility.logging.MetaCSPLogging;
 
 import com.vividsolutions.jts.awt.ShapeWriter;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -25,6 +27,8 @@ public class OccupancyMap {
 
 	protected static String TEMP_MAP_DIR = ".tempMaps";
 	protected static int numCalls = 0;
+	
+	protected Logger metaCSPLogger = MetaCSPLogging.getLogger(this.getClass());
 	
 	public static boolean deleteDir(File dir) {
 	    if (dir.isDirectory()) {
@@ -157,7 +161,7 @@ public class OccupancyMap {
 			String filename = TEMP_MAP_DIR + File.separator + "tempMap_" + (numCalls++) + "_" + System.identityHashCode(this) + ".png";
 			File outputfile = new File(filename);
 			ImageIO.write(copyForDebug, "png", outputfile);
-			System.out.println("WROTE DEBUG IMAGE: " + outputfile.getAbsolutePath());
+			metaCSPLogger.info("See image " + outputfile.getAbsolutePath() + " for more info on recent planning failure.");
 		}
 		catch (IOException e) { e.printStackTrace(); }
 
