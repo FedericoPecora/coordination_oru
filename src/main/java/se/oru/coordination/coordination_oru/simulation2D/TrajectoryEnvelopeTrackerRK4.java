@@ -31,7 +31,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 	protected State state = null;
 	protected double[] curvatureDampening = null;
 	private ArrayList<Integer> internalCriticalPoints = new ArrayList<Integer>();
-	private int maxDelayInMilis = 0;
+	private int maxDelayInMillis = 0;
 	private Random rand = new Random(Calendar.getInstance().getTimeInMillis()); 
 	private TreeMap<Double,Double> slowDownProfile = null;
 	private boolean slowingDown = false;
@@ -520,8 +520,8 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 		return new RobotReport(te.getRobotID(), pose, currentPathIndex, auxState.getVelocity(), auxState.getPosition(), -1);
 	}
 
-	public void delayIntegrationThread(int maxDelayInmillis) {
-		this.maxDelayInMilis = maxDelayInmillis;
+	public void delayIntegrationThread(int maxDelayInMillis) {
+		this.maxDelayInMillis = maxDelayInMillis;
 	}
 	
 	@Override
@@ -531,6 +531,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 		boolean atCP = false;
 		int myRobotID = te.getRobotID();
 		int myTEID = te.getID();
+		
 		
 		while (true) {
 						
@@ -579,7 +580,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 						
 			//Sleep for tracking period
 			int delay = trackingPeriodInMillis;
-			if (maxDelayInMilis > 0) delay += rand.nextInt(maxDelayInMilis);
+			if (maxDelayInMillis > 0) delay += rand.nextInt(maxDelayInMillis);
 			try { Thread.sleep(delay); }
 			catch (InterruptedException e) { e.printStackTrace(); }
 			
