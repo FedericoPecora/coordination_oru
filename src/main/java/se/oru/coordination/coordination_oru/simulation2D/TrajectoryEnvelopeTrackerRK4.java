@@ -290,11 +290,12 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 		//Compute where to slow down (can do forward here, we have the slowdown profile...)
 		while (tempStateFW.getPosition() < this.totalDistance) {
 			double prevSpeed = -1.0;
+			boolean firstTime = true;
 			for (Double speed : this.slowDownProfile.keySet()) {
 				//Find your speed in the table (table is ordered w/ highest speed first)...
 				if (tempStateFW.getVelocity() > speed) {
 					//If this speed lands you after total dist you are OK (you've checked at lower speeds and either returned or breaked...) 
-					double landingPosition = tempStateFW.getPosition()+slowDownProfile.get(prevSpeed);
+					double landingPosition = tempStateFW.getPosition() + (firstTime ? 0.0 : slowDownProfile.get(prevSpeed));
 					if (landingPosition > totalDistance) {
 						//System.out.println("Found: speed = " + tempStateFW.getVelocity() + " space needed = " + slowDownProfile.get(prevSpeed) + " (delta = " + Math.abs(totalDistance-landingPosition) + ")");
 						//System.out.println("Position to slow down = " + tempStateFW.getPosition());
@@ -303,6 +304,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 					//System.out.println("Found: speed = " + tempStateFW.getVelocity() + " space needed = " + slowDownProfile.get(speed) + " (undershoot by " + (totalDistance-tempStateFW.getPosition()+slowDownProfile.get(speed)) + ")");
 					break;
 				}
+				firstTime = false;
 				prevSpeed = speed;
 			}
 			
