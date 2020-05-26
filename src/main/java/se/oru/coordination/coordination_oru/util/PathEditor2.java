@@ -265,7 +265,7 @@ public class PathEditor2 {
 			String pathName = onePath.getKey();
 			ArrayList<PoseSteering> path = onePath.getValue();
 			panel.removeGeometry("_"+pathName+".env");
-			panel.addArrow(pathName+".all", path.get(0).getPose(), path.get(path.size()-1).getPose(), Color.lightGray);
+			//panel.addArrow(pathName+".all", path.get(0).getPose(), path.get(path.size()-1).getPose(), Color.lightGray);
 		}
 
 		//Add envelopes of path connected to selected points
@@ -526,6 +526,14 @@ public class PathEditor2 {
 		}
 		return mousePositionInMap;
 	}
+	
+	private void clearESCAPE() {
+		selectionInputListen = false;
+		selectedLocationsInt = new ArrayList<Integer>();
+		selectionString = "";
+		clearLocations();
+		updatePaths2();
+	}
 
 	private void setupGUI() {
 		panel = JTSDrawingPanel.makeEmpty("Path Editor");
@@ -568,11 +576,14 @@ public class PathEditor2 {
 			private static final long serialVersionUID = -1398168416006978350L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
+				clearESCAPE();
+				/*
 				selectionInputListen = false;
 				selectedLocationsInt = new ArrayList<Integer>();
 				selectionString = "";
 				clearLocations();
 				updatePaths2();
+				*/
 			}
 		};
 		panel.getActionMap().put("Cancel selection",actCancel);
@@ -696,7 +707,7 @@ public class PathEditor2 {
 					panel.removeGeometry("LOC:"+oldName);
 					ArrayList<String> pathNamesToChange = new ArrayList<String>();
 					for (String pathName : allPaths.keySet()) {
-						if (pathName.contains(oldName)) {
+						if (pathName.contains(oldName+"->") || pathName.contains("->"+oldName)) {
 							pathNamesToChange.add(pathName);
 						}
 					}
@@ -704,8 +715,10 @@ public class PathEditor2 {
 						ArrayList<PoseSteering> path = allPaths.get(pathNameToChange);
 						String newPathName = pathNameToChange.replace(oldName, newName);
 						allPaths.remove(pathNameToChange);
+						panel.removeGeometry("_"+pathNameToChange+".env");
 						allPaths.put(newPathName, path);
-					}					
+						System.out.println("Renamed path " + pathNameToChange + " to " + newPathName);
+					}	
 					clearLocations();
 					highlightSelectedLocations();
 				}

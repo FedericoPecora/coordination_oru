@@ -712,7 +712,7 @@ public class Missions {
 	 * @param path The path to add.
 	 */
 	public static void addPathToRoadMap(String start, String goal, PoseSteering[] path) {
-		if (!locations.containsKey(start) || !locations.containsKey(goal) || path == null || path.length == 0) throw new Error("Locations unknown or path is invalid!");
+		if (!locations.containsKey(start) || !locations.containsKey(goal) || path == null || path.length == 0) throw new Error("Locations unknown or path is invalid (" + (start+"->"+goal) + ")!");
 		paths.put(start+"->"+goal, path);
 		Missions.buildGraph();
 	}

@@ -86,7 +86,7 @@ public class OccupancyMap {
 	}
 
 	public void clearObstacles() {
-		this.bimg = this.bimg_original;
+		this.bimg = deepCopy(this.bimg_original);
 		this.obstacles.clear();
 	}
 	
