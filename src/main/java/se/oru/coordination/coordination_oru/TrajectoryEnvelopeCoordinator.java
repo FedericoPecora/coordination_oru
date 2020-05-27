@@ -1996,11 +1996,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 							//update the global graph and treeset
 							depsGraph.removeEdge(depOld);
-							if (!depsGraph.containsEdge(depNew)) {
-								depsGraph.addVertex(depNew.getWaitingRobotID());
-								depsGraph.addVertex(depNew.getDrivingRobotID());
-								depsGraph.addEdge(depNew.getWaitingRobotID(), depNew.getDrivingRobotID(), depNew);
-							}
+							depsGraph.addVertex(depNew.getWaitingRobotID());
+							depsGraph.addVertex(depNew.getDrivingRobotID());
+							depsGraph.addEdge(depNew.getWaitingRobotID(), depNew.getDrivingRobotID(), depNew);
 
 							//check if safe (continue here) 
 							boolean safe = true;
@@ -2078,12 +2076,14 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 								depsGraph = backupDepsGraph;
 
 								//fill without changing the container (not sure they are synchronized)
-								HashSet<String> edgesToRemove = new HashSet<String>(currentOrdersGraph.edgeSet());
+								/*HashSet<String> edgesToRemove = new HashSet<String>(currentOrdersGraph.edgeSet());
 								HashSet<Integer> verticesToRemove = new HashSet<Integer>(currentOrdersGraph.vertexSet());
 								currentOrdersGraph.removeAllEdges(edgesToRemove);
 								currentOrdersGraph.removeAllVertices(verticesToRemove);
 								for (int v : backupGraph.vertexSet()) currentOrdersGraph.addVertex(v);
-								for (String e : backupGraph.edgeSet()) currentOrdersGraph.addEdge(backupGraph.getEdgeSource(e), backupGraph.getEdgeTarget(e), e);
+								for (String e : backupGraph.edgeSet()) currentOrdersGraph.addEdge(backupGraph.getEdgeSource(e), backupGraph.getEdgeTarget(e), e);*/
+								//FIXME
+								currentOrdersGraph = backupGraph;
 
 								//FIXME The HashMap is a synchronized structure so probably it is ok to do 
 								currentCyclesList = backupcurrentCyclesList;
