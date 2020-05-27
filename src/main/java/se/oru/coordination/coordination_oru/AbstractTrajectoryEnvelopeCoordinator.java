@@ -900,9 +900,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			
 				//Update the coordinator view
 				HashMap<Integer,RobotReport> currentReports = new HashMap<Integer,RobotReport>();
-				for (int robotID : trackers.keySet()) {
-					currentReports.put(robotID, this.getRobotReport(robotID));
-				}
+				for (int robotID : trackers.keySet()) currentReports.put(robotID, this.getRobotReport(robotID));
 				//metaCSPLogger.info("Current reports: " + currentReports.toString());
 	
 				//Collect all driving envelopes and current pose indices
@@ -1311,6 +1309,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			//... and all the critical sections which are currently alive.
 			for (CriticalSection cs : allCriticalSections) {
 				if ((cs.getTe1().getRobotID() == robotID || cs.getTe2().getRobotID() == robotID) && !toRemove.contains(cs)) {
+					metaCSPLogger.severe("<<<<<<<< WARNING: Cleaning up a critical section which was not associated to a dependency: " + cs + ".");
 					toRemove.add(cs);
 					//increment the counter
 					if (cs.getTe1().getRobotID() == robotID && (cs.getTe1Start() <= lastWaitingPoint || lastWaitingPoint == -1) || 

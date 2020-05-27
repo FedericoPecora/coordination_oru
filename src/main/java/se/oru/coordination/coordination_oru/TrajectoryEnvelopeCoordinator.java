@@ -1081,7 +1081,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			for (CriticalSection cs : allCriticalSections) {
 				if ((cs.getTe1().getRobotID() == robotID || cs.getTe2().getRobotID() == robotID) && !toRemove.contains(cs)) {
 					toRemove.add(cs);
-					metaCSPLogger.info("WARNING: removing critical section which was not associated to a dependency.");
+					metaCSPLogger.severe("<<<<<<<< WARNING: Cleaning up a critical section which was not associated to a dependency: " + cs + ".");
 					//increment the counter
 					if (cs.getTe1().getRobotID() == robotID && (cs.getTe1Start() <= lastWaitingPoint || lastWaitingPoint == -1) || 
 							cs.getTe2().getRobotID() == robotID && (cs.getTe2Start() <= lastWaitingPoint || lastWaitingPoint == -1))
@@ -1137,7 +1137,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 								cs.getTe2().getRobotID() == robotID && cs.getTe2Start() <= breakingPathIndex) {
 							Pair<Integer,Integer> order = new Pair<Integer,Integer>(CSToDepsOrder.get(cs).getFirst(), CSToDepsOrder.get(cs).getSecond());
 							holdingCS.put(cs, order);
-							metaCSPLogger.info("Saving " + order.toString());
+							metaCSPLogger.info("Saving " + order.toString() + " for critical section " + cs + ".");
 						}
 					}
 				}
@@ -1234,7 +1234,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 									if ((start21 <= start11 && start11 <= end21) && !(end22 <= start12 || end12 <= start22)) {
 											//entry point of the other robot in the new CS between start and end of the ones in the old CS
 											//&& (start22 <= start12 && start12 <= end22 || start22 <= end12 && end12 <= end22)) {
-										metaCSPLogger.info("Restoring  " + holdingCS.get(cs2).toString());
+										metaCSPLogger.info("Restoring  the order of critical section " + cs2 + "(" + holdingCS.get(cs2).toString() + ") for critical section " + cs1 + ".");
 										CSToDepsOrder.put(cs1, holdingCS.get(cs2));
 
 										if (this.avoidDeadlockGlobally) {
