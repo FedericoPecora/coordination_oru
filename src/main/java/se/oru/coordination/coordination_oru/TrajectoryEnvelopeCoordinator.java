@@ -808,7 +808,16 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 								}
 								else {
 									metaCSPLogger.severe("Both cannot stop but lost critical section to dep. CS: " + cs + ", TE: " + cs.getTe1().getID() + ", " + cs.getTe2().getID() + ".");
+									
+									//We may reconstruct the correct order if at least one is inside the critical section order by looking to their poses.
 									int ahead = isAhead(cs,robotReport1,robotReport2);
+									
+									//Otherwise, only the leading robot may be already commanded to go beyond the critical section end.
+									if (ahead == 0)
+										if (communicatedCPs.containsKey(robotTracker1) && (communicatedCPs.get(robotTracker1).getFirst() == -1 || communicatedCPs.get(robotTracker1).getFirst() > cs.getTe1End())) ahead = 1;
+										else if (communicatedCPs.containsKey(robotTracker2) && (communicatedCPs.get(robotTracker2).getFirst() == -1 || communicatedCPs.get(robotTracker2).getFirst() > cs.getTe2End())) ahead = -1;
+									
+									//Otherwise, the dependency is lost. Try an error. FIXME
 									if (ahead == 0) {
 										if (!this.CSToDepsOrder.containsKey(cs)) throw new Error("FIXME! Lost dependency and order cannot be restored! Key value not found. RobotReport1: " + robotReport1.toString() + ", RobotReport2: " + robotReport2.toString()
 										+", last communicated CPs: (" + (communicatedCPs.containsKey(robotTracker1) ? communicatedCPs.get(robotTracker1).getFirst() : "null") + "," + (communicatedCPs.containsKey(robotTracker2) ? communicatedCPs.get(robotTracker2).getFirst() : "null),") + 
@@ -818,7 +827,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 									else {
 										drivingRobotID = ahead == 1 ? robotReport1.getRobotID() : robotReport2.getRobotID();
 										waitingRobotID = drivingRobotID == robotReport1.getRobotID() ? robotReport2.getRobotID() : robotReport1.getRobotID();
-										metaCSPLogger.info("<<<<<<<<< Restoring the previous order with the isAhead function: Robot" + drivingRobotID);
+										metaCSPLogger.info("<<<<<<<<< Restoring the lost order via estimation for Robot" + drivingRobotID);
 									}					
 								}			
 							}
