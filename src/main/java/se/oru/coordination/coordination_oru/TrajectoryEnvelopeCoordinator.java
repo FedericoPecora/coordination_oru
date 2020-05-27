@@ -276,8 +276,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	private SimpleDirectedGraph<Integer,Dependency> depsToGraph(HashSet<Dependency> deps) {
 		SimpleDirectedGraph<Integer,Dependency> g = new SimpleDirectedGraph<Integer,Dependency>(Dependency.class);
 		for (Dependency dep : deps) {
-			if (!g.containsVertex(dep.getWaitingRobotID())) g.addVertex(dep.getWaitingRobotID());
-			if (!g.containsVertex(dep.getDrivingRobotID())) g.addVertex(dep.getDrivingRobotID());
+			g.addVertex(dep.getWaitingRobotID());
+			g.addVertex(dep.getDrivingRobotID());
 			g.addEdge(dep.getWaitingRobotID(), dep.getDrivingRobotID(), dep);
 		}
 		return g;
@@ -1395,8 +1395,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				currentOrdersGraph.removeEdge(edge.getFirst(), edge.getSecond());
 				//metaCSPLogger.finest("deleting one edge " + edge.toString() + "updating the counter from " + numEdge);
 				if (numEdge > 1) {
-					if (!currentOrdersGraph.containsVertex(edge.getFirst())) currentOrdersGraph.addVertex(edge.getFirst());
-					if (!currentOrdersGraph.containsVertex(edge.getSecond())) currentOrdersGraph.addVertex(edge.getSecond());
+					currentOrdersGraph.addVertex(edge.getFirst());
+					currentOrdersGraph.addVertex(edge.getSecond());
 					String newHashCode = new String(hashCode.substring(0,cmark+1).concat(String.valueOf(numEdge-1)));
 					currentOrdersGraph.addEdge(edge.getFirst(), edge.getSecond(), newHashCode);
 				}
@@ -1437,8 +1437,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			for (Pair<Integer,Integer> edge : edgesToAdd) {
 				if (!currentOrdersGraph.containsEdge(edge.getFirst(), edge.getSecond())) {
 					toAdd.add(edge);
-					if (!currentOrdersGraph.containsVertex(edge.getFirst())) currentOrdersGraph.addVertex(edge.getFirst());
-					if (!currentOrdersGraph.containsVertex(edge.getSecond())) currentOrdersGraph.addVertex(edge.getSecond());
+					currentOrdersGraph.addVertex(edge.getFirst());
+					currentOrdersGraph.addVertex(edge.getSecond());
 					String hashCode = new String("s"+ String.valueOf(edge.getFirst()) + "t" + String.valueOf(edge.getSecond()) + "c" + String.valueOf(1));
 					currentOrdersGraph.addEdge(edge.getFirst(), edge.getSecond(), hashCode);
 					metaCSPLogger.finest("Add edge:" + edge.toString());
@@ -1448,8 +1448,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					int cmark = hashCode.indexOf("c");
 					int numEdge = Integer.valueOf(hashCode.substring(cmark+1, hashCode.length()));
 					currentOrdersGraph.removeEdge(edge.getFirst(), edge.getSecond());
-					if (!currentOrdersGraph.containsVertex(edge.getFirst())) currentOrdersGraph.addVertex(edge.getFirst());
-					if (!currentOrdersGraph.containsVertex(edge.getSecond())) currentOrdersGraph.addVertex(edge.getSecond());
+					currentOrdersGraph.addVertex(edge.getFirst());
+					currentOrdersGraph.addVertex(edge.getSecond());
 					String newHashCode = new String(hashCode.substring(0,cmark+1).concat(String.valueOf(numEdge+1)));
 					currentOrdersGraph.addEdge(edge.getFirst(), edge.getSecond(), newHashCode);
 				}
@@ -1796,8 +1796,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 										//update the global graph
 										if (!depsGraph.containsEdge(dep)) {
-											if (!depsGraph.containsVertex(dep.getWaitingRobotID())) depsGraph.addVertex(dep.getWaitingRobotID());
-											if (!depsGraph.containsVertex(dep.getDrivingRobotID())) depsGraph.addVertex(dep.getDrivingRobotID());
+											depsGraph.addVertex(dep.getWaitingRobotID());
+											depsGraph.addVertex(dep.getDrivingRobotID());
 											depsGraph.addEdge(dep.getWaitingRobotID(), dep.getDrivingRobotID(), dep);
 										}
 
@@ -1844,8 +1844,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 							//update the global graph
 							if (!depsGraph.containsEdge(dep)) {
-								if (!depsGraph.containsVertex(dep.getWaitingRobotID())) depsGraph.addVertex(dep.getWaitingRobotID());
-								if (!depsGraph.containsVertex(dep.getDrivingRobotID())) depsGraph.addVertex(dep.getDrivingRobotID());
+								depsGraph.addVertex(dep.getWaitingRobotID());
+								depsGraph.addVertex(dep.getDrivingRobotID());
 								depsGraph.addEdge(dep.getWaitingRobotID(), dep.getDrivingRobotID(), dep);
 							}
 							CSToDepsOrder.put(cs, new Pair<Integer,Integer>(dep.getWaitingRobotID(),dep.getWaitingPoint()));
@@ -1932,8 +1932,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 						//update the global graph
 						if (!depsGraph.containsEdge(dep)) {
-							if (!depsGraph.containsVertex(dep.getWaitingRobotID())) depsGraph.addVertex(dep.getWaitingRobotID());
-							if (!depsGraph.containsVertex(dep.getDrivingRobotID())) depsGraph.addVertex(dep.getDrivingRobotID());
+							depsGraph.addVertex(dep.getWaitingRobotID());
+							depsGraph.addVertex(dep.getDrivingRobotID());
 							depsGraph.addEdge(dep.getWaitingRobotID(), dep.getDrivingRobotID(), dep);
 						}
 						CSToDepsOrder.put(cs, new Pair<Integer,Integer>(dep.getWaitingRobotID(), dep.getWaitingPoint()));
@@ -2009,8 +2009,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							//update the global graph and treeset
 							depsGraph.removeEdge(depOld);
 							if (!depsGraph.containsEdge(depNew)) {
-								if (!depsGraph.containsVertex(depNew.getWaitingRobotID())) depsGraph.addVertex(depNew.getWaitingRobotID());
-								if (!depsGraph.containsVertex(depNew.getDrivingRobotID())) depsGraph.addVertex(depNew.getDrivingRobotID());
+								depsGraph.addVertex(depNew.getWaitingRobotID());
+								depsGraph.addVertex(depNew.getDrivingRobotID());
 								depsGraph.addEdge(depNew.getWaitingRobotID(), depNew.getDrivingRobotID(), depNew);
 							}
 
