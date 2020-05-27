@@ -412,12 +412,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 						Dependency revDep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd);
 
-						HashMap<Integer,HashSet<Dependency>> allDepsTmp = new HashMap<Integer,HashSet<Dependency>>();
-						for (int robotID : allDeps.keySet()) {
-							HashSet<Dependency> set = new HashSet<Dependency>();
-							set.addAll(allDeps.get(robotID));
-							allDepsTmp.put(robotID, set);
-						} //map of TreeSets --> cannot use putAll. We want to create a copy of each TreeSet 
+						HashMap<Integer,HashSet<Dependency>> allDepsTmp = new HashMap<Integer,HashSet<Dependency>>(allDeps);
 
 						//and add the reversed dependency to the new waiting one
 						if (!allDepsTmp.containsKey(waitingRobotID)) allDepsTmp.put(waitingRobotID, new HashSet<Dependency>());
@@ -428,13 +423,11 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						if (allDepsTmp.get(dep.getWaitingRobotID()).isEmpty()) allDepsTmp.remove(dep.getWaitingRobotID());
 
 						//update a temporary map between critical sections and orders
-						HashMap<CriticalSection, Pair<Integer,Integer>> CSToDepsOrderTmp = new HashMap<CriticalSection, Pair<Integer,Integer>>();
-						CSToDepsOrderTmp.putAll(CSToDepsOrder);
+						HashMap<CriticalSection, Pair<Integer,Integer>> CSToDepsOrderTmp = new HashMap<CriticalSection, Pair<Integer,Integer>>(CSToDepsOrder);
 						CSToDepsOrderTmp.put(cs, new Pair<Integer,Integer>(revDep.getWaitingRobotID(), revDep.getWaitingPoint()));
 
 						//create a temporary map between dependencies and critical sections
-						HashMap<Dependency,CriticalSection> depsToCSTmp = new HashMap<Dependency, CriticalSection>();
-						depsToCSTmp.putAll(depsToCS); //simple map --> ok
+						HashMap<Dependency,CriticalSection> depsToCSTmp = new HashMap<Dependency, CriticalSection>(depsToCS);
 						depsToCSTmp.remove(dep);
 						depsToCSTmp.put(revDep, cs);
 
@@ -1987,12 +1980,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							for (int v : currentOrdersGraph.vertexSet()) backupGraph.addVertex(v);
 							for (String edge : currentOrdersGraph.edgeSet()) backupGraph.addEdge(currentOrdersGraph.getEdgeSource(edge), currentOrdersGraph.getEdgeTarget(edge), edge);
 
-							HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>> backupcurrentCyclesList = new HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>>();
-							//backupcurrentCyclesList.putAll(currentCyclesList);
-							for (Pair<Integer,Integer> edge : currentCyclesList.keySet()) {
-								backupcurrentCyclesList.put(edge, new HashSet<ArrayList<Integer>>());
-								backupcurrentCyclesList.get(edge).addAll(currentCyclesList.get(edge));
-							}
+							HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>> backupcurrentCyclesList = new HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>>(currentCyclesList);
 
 							edgesToDelete.add(new Pair<Integer,Integer>(drivingRobotID, waitingRobotID));
 							Pair<Integer,Integer> newEdge = new Pair<Integer,Integer>(waitingRobotID, drivingRobotID);
@@ -2069,7 +2057,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 										for (int i = 0; i < depList.size(); i++) {
 											safe = true;
 											Dependency dep1 = depList.get(i);
-											Dependency dep2 = depList.get(i<depList.size()-1 ? i+1 : 0);
+											Dependency dep2 = depList.get(i < depList.size()-1 ? i+1 : 0);
 											if (unsafePair(dep1,dep2)) safe = false;
 											if (safe) break; //if one pair in the cycle is safe, then the cycle is safe
 										}
@@ -2090,20 +2078,17 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 								depsGraph = backupDepsGraph;
 
 								//fill without changing the container (not sure they are synchronized)
-								HashSet<String> edgesToRemove = new HashSet<String>();
-								edgesToRemove.addAll(currentOrdersGraph.edgeSet());
-								currentOrdersGraph.removeAllEdges(edgesToRemove);
-								HashSet<Integer> verticesToRemove = new HashSet<Integer>();
-								verticesToRemove.addAll(currentOrdersGraph.vertexSet());
+								HashSet<String> edgesToRemove = new HashSet<String>(currentOrdersGraph.edgeSet());
+								HashSet<Integer> verticesToRemove = new HashSet<Integer>(currentOrdersGraph.vertexSet());
 								currentOrdersGraph.removeAllEdges(edgesToRemove);
 								currentOrdersGraph.removeAllVertices(verticesToRemove);
 								for (int v : backupGraph.vertexSet()) currentOrdersGraph.addVertex(v);
 								for (String e : backupGraph.edgeSet()) currentOrdersGraph.addEdge(backupGraph.getEdgeSource(e), backupGraph.getEdgeTarget(e), e);
 
-								//FIXME HashMAps are synchronized so probably it is ok to do 
-								//currentCyclesList = backupcurrentCyclesList;
-								currentCyclesList.clear();
-								currentCyclesList.putAll(backupcurrentCyclesList);
+								//FIXME The HashMap is a synchronized structure so probably it is ok to do 
+								currentCyclesList = backupcurrentCyclesList;
+								//currentCyclesList.clear();
+								//currentCyclesList.putAll(backupcurrentCyclesList);
 
 								metaCSPLogger.finest("Restore previous precedence " + depOld + ".");
 								unaliveStatesAvoided.incrementAndGet();
