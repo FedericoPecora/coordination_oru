@@ -1206,34 +1206,25 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							for (CriticalSection cs2 : holdingCS.keySet()) {
 								if (cs1.getTe1().getRobotID() == cs2.getTe1().getRobotID() && cs1.getTe2().getRobotID() == cs2.getTe2().getRobotID() ||
 										cs1.getTe1().getRobotID() == cs2.getTe2().getRobotID() && cs1.getTe2().getRobotID() == cs2.getTe1().getRobotID()) {
-									//the same set of robots, same entry point for the robot that is re-planning and same entry point, or same ending point or the oldest contained in the newest for the other robot.
-									/*if ((cs1.getTe1().getRobotID() == robotID && cs2.getTe1().getRobotID() == robotID && cs1.getTe1Start() == cs2.getTe1Start() &&
-											(cs1.getTe2Start() == cs2.getTe2Start() || cs1.getTe2End() == cs2.getTe2End() || cs1.getTe2Start() <= cs2.getTe2Start() && cs1.getTe2End() >= cs2.getTe2End())) ||
-											(cs1.getTe1().getRobotID() == robotID && cs2.getTe2().getRobotID() == robotID && cs1.getTe1Start() == cs2.getTe2Start() &&
-											(cs1.getTe2Start() == cs2.getTe1Start() || cs1.getTe2End() == cs2.getTe1End() || cs1.getTe2Start() <= cs2.getTe1Start() && cs1.getTe2End() >= cs2.getTe1End())) ||
-											(cs1.getTe2().getRobotID() == robotID && cs2.getTe1().getRobotID() == robotID && cs1.getTe2Start() == cs2.getTe1Start() &&
-											(cs1.getTe1Start() == cs2.getTe2Start() || cs1.getTe1End() == cs2.getTe2End() || cs1.getTe1Start() <= cs2.getTe2Start() && cs1.getTe1End() >= cs2.getTe2End())) ||
-											(cs1.getTe2().getRobotID() == robotID && cs2.getTe2().getRobotID() == robotID && cs1.getTe2Start() == cs2.getTe2Start() &&
-											(cs1.getTe1Start() == cs2.getTe1Start() || cs1.getTe1End() == cs2.getTe1End() || cs1.getTe1Start() <= cs2.getTe1Start() && cs1.getTe1End() >= cs2.getTe1End()))) */
-									
-									//entry point of the robot that is re-planning in the new CS
+
+									//We should restore all the dependency order which cannot be safely reverted.
+									//Each new critical section (cs1 = [start11,end11], [start12,end12]) containing the breaking point 
+									//can be matched to its related old one (one cs2 = [start21,end21], [start22,end22]) by reasoning about the spatial overlaps between TEs' intervals. 
+									//Note that start and end of each critical sections are both included (i.e., still overlapping configurations) 
+									//-- see {@link CriticalSection}, {@link AbstractTrajectoryEnvelopeCoordinaror}, function: getCriticalSections).
+
 									int start11 = cs1.getTe1().getRobotID() == robotID ? cs1.getTe1Start() : cs1.getTe2Start();
-									//entry point of the other robot in the new CS
 									int start12 = cs1.getTe1().getRobotID() == robotID ? cs1.getTe2Start() : cs1.getTe1Start();
-									//entry point of the robot that is re-planning in the old CS
 									int start21 = cs2.getTe1().getRobotID() == robotID ? cs2.getTe1Start() : cs2.getTe2Start();
-									//entry point of the other robot in the old CS
 									int start22 = cs2.getTe1().getRobotID() == robotID ? cs2.getTe2Start() : cs2.getTe1Start();
 									int end11 = cs1.getTe1().getRobotID() == robotID ? cs1.getTe1End() : cs1.getTe2End();
 									int end12 = cs1.getTe1().getRobotID() == robotID ? cs1.getTe2End() : cs1.getTe1End();
 									int end21 = cs2.getTe1().getRobotID() == robotID ? cs2.getTe1End() : cs2.getTe2End();
 									int end22 = cs2.getTe1().getRobotID() == robotID ? cs2.getTe2End() : cs2.getTe1End();
 									
-									//FIXME (To be tested more)
-									//Here we should consider all the possible overlapping critical sections.
-									if ((start21 <= start11 && start11 <= end21) && !(end22 <= start12 || end12 <= start22)) {
-											//entry point of the other robot in the new CS between start and end of the ones in the old CS
-											//&& (start22 <= start12 && start12 <= end22 || start22 <= end12 && end12 <= end22)) {
+									//Here we should consider all the cases of spatial overlap between the new critical section (cs1 = [start11,end11], [start12,end12]) and the old 
+									//critical section (cs2 = [start21,end21], [start22,end22]). Note that start and end are still overlapping configurations (see {@link CriticalSection}, {@link AbstractTrajectoryEnvelopeCoordinaror}, function: getCriticalSections).
+									if ((start21 <= start11 && start11 <= end21) && !(end22 < start12 || end12 < start22)) {
 										metaCSPLogger.info("Restoring  the order of critical section " + cs2 + "(" + holdingCS.get(cs2).toString() + ") for critical section " + cs1 + ".");
 										CSToDepsOrder.put(cs1, holdingCS.get(cs2));
 
