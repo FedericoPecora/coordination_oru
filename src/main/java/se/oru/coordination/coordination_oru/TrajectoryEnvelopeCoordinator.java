@@ -619,6 +619,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			//Make deps from critical sections, and remove obsolete critical sections
 			synchronized(allCriticalSections) {
 				
+				//FIXME Add a CriticalSectionManager class
 				if (allCriticalSections.size() > 0) 
 					for (int robotID : robotIDs) 
 						earliestStoppingPoints.put(robotID, getForwardModel(robotID).getEarliestStoppingPathIndex(trackers.get(robotID).getTrajectoryEnvelope(), currentReports.get(robotID)));
@@ -805,14 +806,15 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 								else {
 									metaCSPLogger.severe("Both cannot stop but lost critical section to dep. CS: " + cs + ", TE: " + cs.getTe1().getID() + ", " + cs.getTe2().getID() + ".");
 									
-									//We may reconstruct the correct order if at least one is inside the critical section order by looking to their poses.
-									int ahead = isAhead(cs,robotReport1,robotReport2);
-									
-									//Otherwise, only the leading robot may be already commanded to go beyond the critical section end.
-									if (ahead == 0)
-										if (communicatedCPs.containsKey(robotTracker1) && (communicatedCPs.get(robotTracker1).getFirst() == -1 || communicatedCPs.get(robotTracker1).getFirst() > cs.getTe1End())) ahead = 1;
-										else if (communicatedCPs.containsKey(robotTracker2) && (communicatedCPs.get(robotTracker2).getFirst() == -1 || communicatedCPs.get(robotTracker2).getFirst() > cs.getTe2End())) ahead = -1;
-									
+									//Try to recover the lost order.
+									int ahead = 0;
+									//Only the leading robot may be already commanded to go beyond the critical section end.
+									if (communicatedCPs.containsKey(robotTracker1) && (communicatedCPs.get(robotTracker1).getFirst() == -1 || communicatedCPs.get(robotTracker1).getFirst() > cs.getTe1End())) ahead = 1;
+									else if (communicatedCPs.containsKey(robotTracker2) && (communicatedCPs.get(robotTracker2).getFirst() == -1 || communicatedCPs.get(robotTracker2).getFirst() > cs.getTe2End())) ahead = -1;
+
+									//Otherwise, if both the robots are inside the critical section check their poses.
+									if (ahead == 0) ahead = isAhead(cs, robotReport1, robotReport2);
+																		
 									//Otherwise, the dependency is lost. Try an error. FIXME
 									if (ahead == 0) {
 										if (!this.CSToDepsOrder.containsKey(cs)) throw new Error("FIXME! Lost dependency and order cannot be restored! Key value not found. RobotReport1: " + robotReport1.toString() + ", RobotReport2: " + robotReport2.toString()
@@ -1565,17 +1567,16 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 			//Make deps from critical sections, and remove obsolete critical sections
 			synchronized(allCriticalSections) {
-				
+								
+				//FIXME Add a CriticalSectionManager class
 				if (allCriticalSections.size() > 0) 
 					for (int robotID : robotIDs) 
 						earliestStoppingPoints.put(robotID, getForwardModel(robotID).getEarliestStoppingPathIndex(trackers.get(robotID).getTrajectoryEnvelope(), currentReports.get(robotID)));
 
-				depsToCS.clear();
-
-				HashSet<CriticalSection> toRemove = new HashSet<CriticalSection>();
-
+				depsToCS.clear();			
 				this.isBlocked = false;
 
+				HashSet<CriticalSection> toRemove = new HashSet<CriticalSection>();
 				for (CriticalSection cs : this.allCriticalSections) {
 
 					//Will be assigned depending on current situation of robot reports...
@@ -1742,13 +1743,14 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 								else {
 									metaCSPLogger.severe("Both cannot stop but lost critical section to dep. CS: " + cs + ", TE: " + cs.getTe1().getID() + ", " + cs.getTe2().getID() + ".");
 									
-									//We may reconstruct the correct order if at least one is inside the critical section order by looking to their poses.
-									int ahead = isAhead(cs,robotReport1,robotReport2);
-									
-									//Otherwise, only the leading robot may be already commanded to go beyond the critical section end.
-									if (ahead == 0)
-										if (communicatedCPs.containsKey(robotTracker1) && (communicatedCPs.get(robotTracker1).getFirst() == -1 || communicatedCPs.get(robotTracker1).getFirst() > cs.getTe1End())) ahead = 1;
-										else if (communicatedCPs.containsKey(robotTracker2) && (communicatedCPs.get(robotTracker2).getFirst() == -1 || communicatedCPs.get(robotTracker2).getFirst() > cs.getTe2End())) ahead = -1;
+									//Try to recover the lost order.
+									int ahead = 0;
+									//Only the leading robot may be already commanded to go beyond the critical section end.
+									if (communicatedCPs.containsKey(robotTracker1) && (communicatedCPs.get(robotTracker1).getFirst() == -1 || communicatedCPs.get(robotTracker1).getFirst() > cs.getTe1End())) ahead = 1;
+									else if (communicatedCPs.containsKey(robotTracker2) && (communicatedCPs.get(robotTracker2).getFirst() == -1 || communicatedCPs.get(robotTracker2).getFirst() > cs.getTe2End())) ahead = -1;
+
+									//Otherwise, if both the robots are inside the critical section check their poses.
+									if (ahead == 0) ahead = isAhead(cs, robotReport1, robotReport2);
 									
 									//Otherwise, the dependency is lost. Try an error. FIXME
 									if (ahead == 0) {

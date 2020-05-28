@@ -1755,7 +1755,8 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	
 	/**
 	 * Try to restore the order of traversing each active critical section.
-	 * In case of network delays, if both the robots are outside the critical section, then the order cannot be reconstructed.
+	 * If both the current reports assert that the robots should still enter the critical section, 
+	 * then the order cannot be reconstructed by looking to reciprocal positions in case of network delays.
 	 * @param cs The active critical section for which we are trying to restore the order.
 	 * @param rr1 Last report of the first robot.
 	 * @param rr2 Last report of the second robot.
@@ -1763,6 +1764,9 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 * Returning -2 if the critical section is no more active.
 	 */
 	protected int isAhead(CriticalSection cs, RobotReport rr1, RobotReport rr2) {
+		//FIXME 
+		//1) add code for the checking the network delay.
+		//2) check the correctness of the function with asymmetric intersections.
 		if (!allCriticalSections.contains(cs) || rr1.getPathIndex() > cs.getTe1End() || rr2.getPathIndex() > cs.getTe2End()) {
 			metaCSPLogger.info("isAhead: the critical sections is no more active.");
 			return -2;
