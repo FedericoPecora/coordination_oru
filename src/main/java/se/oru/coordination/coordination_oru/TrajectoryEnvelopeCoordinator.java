@@ -577,6 +577,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			HashMap<Integer,HashSet<Dependency>> currentDeps = new HashMap<Integer,HashSet<Dependency>>();
 			HashMap<Integer,HashSet<Dependency>> artificialDependencies = new HashMap<Integer,HashSet<Dependency>>(); 
 			HashSet<Dependency> currentReversibleDependencies = new HashSet<Dependency>();
+			HashMap<Integer,Integer> earliestStoppingPoints = new HashMap<Integer,Integer>();
 
 			//Make deps from un-reached stopping points
 			Set<Integer> robotIDs = trackers.keySet();
@@ -617,6 +618,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 			//Make deps from critical sections, and remove obsolete critical sections
 			synchronized(allCriticalSections) {
+				
+				if (allCriticalSections.size() > 0) 
+					for (int robotID : robotIDs) 
+						earliestStoppingPoints.put(robotID, getForwardModel(robotID).getEarliestStoppingPathIndex(trackers.get(robotID).getTrajectoryEnvelope(), currentReports.get(robotID)));
 
 				depsToCS.clear();			
 				this.isBlocked = false;
@@ -700,8 +705,6 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 
 						//Check if the robots can stop while changing the current order of accessing the critical section.
-						ForwardModel fm1 = getForwardModel(robotReport1.getRobotID());
-						ForwardModel fm2 = getForwardModel(robotReport2.getRobotID());
 						boolean canStopRobot1 = false;
 						boolean canStopRobot2 = false;
 						boolean wakeUpinCSRobot1 = false;
@@ -715,12 +718,12 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							canStopRobot1 = true;
 						else
 							//Due to temporal delays we cannot trust the velocity.
-							canStopRobot1 = fm1.canStop(robotTracker1.getTrajectoryEnvelope(), robotReport1, cs.getTe1Start(), false);			
+							canStopRobot1 =  earliestStoppingPoints.get(robotReport1.getRobotID()) < cs.getTe1Start();
 
 						if ((communicatedCPs.containsKey(robotTracker2) && communicatedCPs.get(robotTracker2).getFirst() != -1 && communicatedCPs.get(robotTracker2).getFirst() < cs.getTe2Start())
 								|| !communicatedCPs.containsKey(robotTracker2) && Math.max(0, robotReport2.getPathIndex()) < cs.getTe2Start())
 							canStopRobot2 = true;
-						else canStopRobot2 = fm2.canStop(robotTracker2.getTrajectoryEnvelope(), robotReport2, cs.getTe2Start(), false);
+						else canStopRobot2 = earliestStoppingPoints.get(robotReport2.getRobotID()) < cs.getTe2Start();
 
 
 						//Both the robots can stop before accessing the critical section --> follow ordering heuristic if FW model allows it
@@ -1515,6 +1518,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			HashMap<Integer,HashSet<Dependency>> artificialDependencies = new HashMap<Integer,HashSet<Dependency>>(); 
 			DirectedMultigraph<Integer,Dependency> depsGraph = new DirectedMultigraph<Integer, Dependency>(Dependency.class);
 			HashSet<Integer> askForReplan = new HashSet<Integer>();			
+			HashMap<Integer, Integer> earliestStoppingPoints = new HashMap<Integer,Integer>();
 
 			HashSet<Pair<Integer,Integer>> edgesToDelete = new HashSet<Pair<Integer,Integer>>();
 			HashSet<Pair<Integer,Integer>> edgesToAdd = new HashSet<Pair<Integer,Integer>>();
@@ -1561,6 +1565,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 			//Make deps from critical sections, and remove obsolete critical sections
 			synchronized(allCriticalSections) {
+				
+				if (allCriticalSections.size() > 0) 
+					for (int robotID : robotIDs) 
+						earliestStoppingPoints.put(robotID, getForwardModel(robotID).getEarliestStoppingPathIndex(trackers.get(robotID).getTrajectoryEnvelope(), currentReports.get(robotID)));
 
 				depsToCS.clear();
 
@@ -1655,8 +1663,6 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					else { //both the robots are driving. Check if the precedence is reversible.
 
 						//Check if the robots can stop while changing the current order of accessing the critical section.
-						ForwardModel fm1 = getForwardModel(robotReport1.getRobotID());
-						ForwardModel fm2 = getForwardModel(robotReport2.getRobotID());
 						boolean canStopRobot1 = false;
 						boolean canStopRobot2 = false;
 						boolean wakeUpinCSRobot1 = false;
@@ -1670,12 +1676,11 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							canStopRobot1 = true;
 						else
 							//Due to temporal delays we cannot trust the velocity.
-							canStopRobot1 = fm1.canStop(robotTracker1.getTrajectoryEnvelope(), robotReport1, cs.getTe1Start(), false);			
-
+							canStopRobot1 = earliestStoppingPoints.get(robotReport1.getRobotID()) < cs.getTe1Start();
 						if ((communicatedCPs.containsKey(robotTracker2) && communicatedCPs.get(robotTracker2).getFirst() != -1 && communicatedCPs.get(robotTracker2).getFirst() < cs.getTe2Start())
 								|| !communicatedCPs.containsKey(robotTracker2) && Math.max(0, robotReport2.getPathIndex()) < cs.getTe2Start())
 							canStopRobot2 = true;
-						else canStopRobot2 = fm2.canStop(robotTracker2.getTrajectoryEnvelope(), robotReport2, cs.getTe2Start(), false);
+						else canStopRobot2 = earliestStoppingPoints.get(robotReport2.getRobotID()) < cs.getTe2Start();
 
 
 						//If the precedence IS REVERSIBLE, continue ...
@@ -2002,7 +2007,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 							//check if safe (continue here) 
 							boolean safe = true;
-							//metaCSPLogger.info("currentCyclesList: " + currentCyclesList.toString());
+							metaCSPLogger.info("currentCyclesList: " + currentCyclesList.toString());
 							if (currentCyclesList.get(newEdge) != null) {
 								//for each cycle involving the new edge
 								for (List<Integer> cycle : currentCyclesList.get(newEdge)) {
