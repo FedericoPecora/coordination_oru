@@ -1,7 +1,9 @@
 package se.oru.coordination.coordination_oru;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -370,6 +372,27 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		File dir = new File(logDirName);
 		dir.mkdir();
 		MetaCSPLogging.setLogDir(logDirName);
+	
+	}
+	
+	protected void writeStat(String fileName, String stat) {
+        try {
+        	//Append to file
+            PrintWriter writer = new PrintWriter(new FileOutputStream(new File(fileName), true)); 
+            writer.println(stat);
+            writer.close();
+        }
+        catch (Exception e) { e.printStackTrace(); }
+	}
+	
+	protected void initStat(String fileName, String stat) {
+        try {
+        	//Append to file
+            PrintWriter writer = new PrintWriter(new FileOutputStream(new File(fileName), false)); 
+            writer.println(stat);
+            writer.close();
+        }
+        catch (Exception e) { e.printStackTrace(); }
 	}
 
 	/**
@@ -1701,7 +1724,17 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			private long threadLastUpdate = Calendar.getInstance().getTimeInMillis();
 			@Override
 			public void run() {
+				String fileName = new String(System.getProperty("user.home")+File.separator+"coordinator_stat.txt");
+				initStat(fileName, "Init statistics: @"+Calendar.getInstance().getTimeInMillis() + "\n");
+				String stat = new String("elapsedTimeComputeCriticalSections\t elapsedTimeUpdateDependencies\t numberNewCriticalSections\t numberAllCriticalSections\t numberDrivingRobots\t effectiveTc\n");
+				writeStat(fileName, stat);
+				
 				while (true) {
+					long elapsedTimeComputeCriticalSections = -1;
+					long elapsedTimeUpdateDependencies = -1;
+					int numberNewCriticalSections = -1;
+					int numberAllCriticalSections = -1;
+					int numberDrivingRobots = 0;
 					synchronized (solver) {	
 						if (!missionsPool.isEmpty()) {
 							
@@ -1725,26 +1758,40 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 								envelopesToTrack.add(missionsPool.get(oldestMissionRobotID).getFirst());
 								missionsPool.remove(oldestMissionRobotID);
 							}
+							numberNewCriticalSections = allCriticalSections.size();
+							elapsedTimeComputeCriticalSections = Calendar.getInstance().getTimeInMillis();
 							computeCriticalSections();
+							elapsedTimeComputeCriticalSections = Calendar.getInstance().getTimeInMillis()-elapsedTimeComputeCriticalSections;
+							numberAllCriticalSections = allCriticalSections.size();
+							numberNewCriticalSections = numberAllCriticalSections-numberNewCriticalSections;
+							
 							startTrackingAddedMissions();
 						}
+						elapsedTimeUpdateDependencies = Calendar.getInstance().getTimeInMillis();
 						updateDependencies();
+						elapsedTimeUpdateDependencies = Calendar.getInstance().getTimeInMillis()-elapsedTimeUpdateDependencies;
 						
 						if (!quiet) printStatistics();
 						if (overlay) overlayStatistics();
 					}
+					
+					for (Integer robotID : trackers.keySet()) 
+						if (!(trackers.get(robotID) instanceof TrajectoryEnvelopeTrackerDummy)) numberDrivingRobots++;
 
 					//Sleep a little...
 					if (CONTROL_PERIOD > 0) {
 						try { Thread.sleep(CONTROL_PERIOD); } //Thread.sleep(Math.max(0, CONTROL_PERIOD-Calendar.getInstance().getTimeInMillis()+threadLastUpdate)); }
 						catch (InterruptedException e) { e.printStackTrace(); }
 					}
-
+					
+					if (inferenceCallback != null) inferenceCallback.performOperation();
+					
 					long threadCurrentUpdate = Calendar.getInstance().getTimeInMillis();
 					EFFECTIVE_CONTROL_PERIOD = (int)(threadCurrentUpdate-threadLastUpdate);
 					threadLastUpdate = threadCurrentUpdate;
 					
-					if (inferenceCallback != null) inferenceCallback.performOperation();
+					stat = new String(elapsedTimeComputeCriticalSections + "\t" + elapsedTimeUpdateDependencies + "\t" + numberNewCriticalSections + "\t" + numberAllCriticalSections + "\t" + numberDrivingRobots + "\t" + EFFECTIVE_CONTROL_PERIOD + "\n");
+					writeStat(fileName, stat);
 
 				}
 			}
