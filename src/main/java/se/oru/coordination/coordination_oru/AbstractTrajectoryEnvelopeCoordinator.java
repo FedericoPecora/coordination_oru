@@ -118,7 +118,6 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 
 	protected HashSet<Integer> muted = new HashSet<Integer>();
 
-	protected boolean updateAllPostedMissionsOnce = false;
 	protected boolean yieldIfParking = true;
 	protected boolean checkEscapePoses = true;
 
@@ -245,11 +244,6 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		this.yieldIfParking = value;
 	}
 	
-	//FIXME
-	public void setUpdateAllPostedMissionsOnce(boolean value) {
-		this.updateAllPostedMissionsOnce = value;
-	}
-
 	/**
 	 * Set whether completely overlapping paths should lead to a warning.
 	 * @param value <code>true</code> if completely overlapping paths should lead to a warning.
@@ -1735,13 +1729,18 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 					int numberNewCriticalSections = -1;
 					int numberAllCriticalSections = -1;
 					int numberDrivingRobots = 0;
+					
 					synchronized (solver) {	
+						for (Integer robotID : trackers.keySet()) 
+							if (!(trackers.get(robotID) instanceof TrajectoryEnvelopeTrackerDummy)) numberDrivingRobots++;
+						
 						if (!missionsPool.isEmpty()) {
 							
 							//FIXME critical sections should be computed incrementally/asynchronously
-							if (updateAllPostedMissionsOnce) {
+							if (numberDrivingRobots == 0) {
 								for (int robotID : missionsPool.keySet()) {
 									envelopesToTrack.add(missionsPool.get(robotID).getFirst());
+									System.out.println("Add first mission to Robot" + robotID);
 								}
 								missionsPool.clear();
 							}
@@ -1775,9 +1774,6 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 						if (overlay) overlayStatistics();
 					}
 					
-					for (Integer robotID : trackers.keySet()) 
-						if (!(trackers.get(robotID) instanceof TrajectoryEnvelopeTrackerDummy)) numberDrivingRobots++;
-
 					//Sleep a little...
 					if (CONTROL_PERIOD > 0) {
 						try { Thread.sleep(CONTROL_PERIOD); } //Thread.sleep(Math.max(0, CONTROL_PERIOD-Calendar.getInstance().getTimeInMillis()+threadLastUpdate)); }

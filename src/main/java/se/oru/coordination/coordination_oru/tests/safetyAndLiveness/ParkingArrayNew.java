@@ -76,10 +76,10 @@ public class ParkingArrayNew {
 		tec.setUseInternalCriticalPoints(false);
 		tec.setCheckEscapePoses(true);
 		tec.setYieldIfParking(false);
-		tec.setBreakDeadlocksByReordering(true);
-		tec.setBreakDeadlocksByReplanning(true);
+		//tec.setBreakDeadlocksByReordering(true);
+		//tec.setBreakDeadlocksByReplanning(true);
+		tec.setAvoidDeadlocksGlobally(true);
 		tec.setCheckCollisions(true);
-		tec.setUpdateAllPostedMissionsOnce(true);
 		//MetaCSPLogging.setLevel(TrajectoryEnvelopeCoordinator.class, Level.FINEST);
 		
 		//Setup the network parameters
