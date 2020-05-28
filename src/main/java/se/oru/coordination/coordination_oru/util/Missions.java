@@ -649,7 +649,10 @@ public class Missions {
 			}
 			in.close();
 		}
-		catch (FileNotFoundException e) { e.printStackTrace(); }
+		catch (FileNotFoundException e) { 
+			e.printStackTrace(); 
+			throw new Error("Unable to load the required scenario: " + e.toString());
+		}
 		Missions.buildGraph();
 	}
 	
