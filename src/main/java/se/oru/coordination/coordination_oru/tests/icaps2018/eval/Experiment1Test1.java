@@ -72,6 +72,8 @@ public class Experiment1Test1 {
 
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
+		//Start the thread that checks and enforces dependencies at every clock tick
+		tec.startInference();
 		tec.setUseInternalCriticalPoints(false);
 		tec.setYieldIfParking(false);
 		tec.setBreakDeadlocks(false);

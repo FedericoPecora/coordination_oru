@@ -52,6 +52,8 @@ public class ThreeRobotsFast {
 
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
+		//Start the thread that checks and enforces dependencies at every clock tick
+		tec.startInference();
 
 		//Instantiate a simple motion planner (no map given here, otherwise provide yaml file)
 		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();

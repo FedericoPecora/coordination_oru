@@ -50,6 +50,8 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner11 {
 		tec.setForwardModel(3, new ConstantAccelerationForwardModel(MAX_ACCEL*0.9, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
+		//Start the thread that checks and enforces dependencies at every clock tick
+		tec.startInference();
 
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();

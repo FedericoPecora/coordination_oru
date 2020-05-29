@@ -87,6 +87,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	protected AtomicInteger criticalSectionCounter =  new AtomicInteger(0);
 																			
 	protected TrajectoryEnvelopeSolver solver = null;
+	protected Thread inference = null;
 
 	//protected JTSDrawingPanel panel = null;
 	protected FleetVisualization viz = null;
@@ -501,10 +502,20 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 
 		//Create meta solver and solver
 		solver = new TrajectoryEnvelopeSolver(origin, horizon);
+	}
+	
+	/**
+	 * Call this method to start the thread that checks and enforces dependencies at every clock tick
+	 */
+	public void startInference() {
+		
+		if (solver == null) {
+			metaCSPLogger.severe("Solver not initialized, please call method setupSolver() first!");
+			throw new Error("Solver not initialized, please call method setupSolver() first!");
+		}
 
-		//Start a thread that checks and enforces dependencies at every clock tick
+		//Start the thread that checks and enforces dependencies at every clock tick
 		this.setupInferenceCallback();
-
 	}
 
 	/**
@@ -1714,8 +1725,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 
 	protected void setupInferenceCallback() {
 
-		Thread inference = new Thread("Coordinator inference") {
-			private long threadLastUpdate = Calendar.getInstance().getTimeInMillis();
+		this.inference = new Thread("Coordinator inference") {
 			@Override
 			public void run() {
 				String fileName = new String(System.getProperty("user.home")+File.separator+"coordinator_stat.txt");
