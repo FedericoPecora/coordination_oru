@@ -141,13 +141,11 @@ public class ReedsSheppCarPlanner extends AbstractMotionPlanner {
 			}
 			metaCSPLogger.info("Path planning with " + collisionCircleCenters.length + " circle positions");
 			if (this.om != null) {
-				double[] occ = om.as1DArray();
+				byte[] occ = om.asByteArray();
 				int w = om.getPixelWidth();
 				int h = om.getPixelHeight();
-				double thresh = om.getThreshold();
-				double res = om.getResolution();
-				//double** occupancyMap, int mapWidth, int mapHeight, double occupiedThreshold, double mapResolution, double robotRadius, double* xCoords, double* yCoords, int numCoords, double startX, double startY, double startTheta, double goalX, double goalY, double goalTheta, PathPose** path, int* pathLength, double distanceBetweenPathPoints, double turningRadius, double planningTimeInSecs
-				if (!INSTANCE.plan_multiple_circles(occ, w, h, thresh, res, robotRadius, xCoords, yCoords, numCoords, start_.getX(), start_.getY(), start_.getTheta(), goal_.getX(), goal_.getY(), goal_.getTheta(), path, pathLength, distanceBetweenPathPoints, turningRadius, planningTimeInSecs, algo.ordinal())) return false;
+				double res = om.getResolution();				
+				if (!INSTANCE.plan_multiple_circles(occ, w, h, res, robotRadius, xCoords, yCoords, numCoords, start_.getX(), start_.getY(), start_.getTheta(), goal_.getX(), goal_.getY(), goal_.getTheta(), path, pathLength, distanceBetweenPathPoints, turningRadius, planningTimeInSecs, algo.ordinal())) return false;
 			}
 			else {
 				if (!INSTANCE.plan_multiple_circles_nomap(xCoords, yCoords, numCoords, start_.getX(), start_.getY(), start_.getTheta(), goal_.getX(), goal_.getY(), goal_.getTheta(), path, pathLength, distanceBetweenPathPoints, turningRadius, planningTimeInSecs, algo.ordinal())) return false;					

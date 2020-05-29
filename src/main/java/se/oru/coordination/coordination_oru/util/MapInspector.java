@@ -61,7 +61,9 @@ public class MapInspector extends JPanel implements MouseListener, MouseMotionLi
 	}
 
 	@Override
-	public void mouseMoved(MouseEvent e) { }
+	public void mouseMoved(MouseEvent e) {
+		p = new Point(e.getX(),e.getY());
+	}
 
 	@Override
 	public void mouseClicked(MouseEvent arg0) { }
@@ -94,11 +96,13 @@ public class MapInspector extends JPanel implements MouseListener, MouseMotionLi
 				System.out.println("Pixel (x,y) = (" + p.x + "," + p.y + ")");
 				System.out.println("Position (x,y) = (" + position.x + "," + position.y + ")");
 				System.out.println("Color (r,g,b,a) = (" + color.getRed() + "," + color.getGreen() + "," + color.getBlue() + "," + color.getAlpha() + ")");
-				System.out.println("Occupancy value (2D): " + om.as2DArray()[p.y][p.x]);
-				System.out.println("Occupancy value (1D): " + om.as1DArray()[(p.y)*om.getPixelWidth()+(p.x)]);
+				//System.out.println("Occupancy value (2D): " + om.as2DArray()[p.y][p.x]);
+				//System.out.println("Occupancy value (1D): " + om.as1DArray()[(p.y)*om.getPixelWidth()+(p.x)]);
+				System.out.println("Occupancy map bit: " + om.asByteArray()[(p.y)*om.getPixelWidth()/8+(p.x)/8]);
+				System.out.println("Occupancy value: " + om.getOccupancyValue(p.x, p.y));
 				System.out.println("State: " + (om.isOccupied(p.x,p.y) ? "occupied" : "free") + " (threshold is " + om.getThreshold() + ")");
 			}
-			catch (java.lang.ArrayIndexOutOfBoundsException e) { }
+			catch (java.lang.ArrayIndexOutOfBoundsException e) { e.printStackTrace(); }
 		}
 		else if(arg0.getKeyChar() == 'o') {
 			occ = !occ;

@@ -11,6 +11,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.logging.Logger;
 
 import javax.imageio.ImageIO;
@@ -49,12 +50,10 @@ public class OccupancyMap {
 	}
 	
 	private int mapWidth, mapHeight;
-	//private double[][] occupancyMap = null;
-	private double[] occupancyMapLinear = null;
+	private BitSet occupancyMapLinearBits = null;
 	private double threshold = 0.3;
 	private double mapResolution = 0.1;
 	private BufferedImage bimg = null;
-	private BufferedImage oimg = null;
 	private BufferedImage bimg_original = null;
 	private ArrayList<Geometry> obstacles = new ArrayList<Geometry>();
 
@@ -186,20 +185,9 @@ public class OccupancyMap {
 	public double getThreshold() {
 		return this.threshold;
 	}
-
-	public double[][] as2DArray() {
-		//return this.occupancyMap;
-		double[][] ret = new double[this.mapHeight][this.mapWidth];
-		for (int y = 0; y < this.mapHeight; y++) {
-			for (int x = 0; x < this.mapWidth; x++) {
-				ret[y][x] = getOccupancyValue(x, y);
-			}
-		}
-		return ret;
-	}
-
-	public double[] as1DArray() {
-		return this.occupancyMapLinear;
+	
+	public byte[] asByteArray() {
+		return this.occupancyMapLinearBits.toByteArray();
 	}
 
 	public BufferedImage asBufferedImage() {
@@ -207,7 +195,14 @@ public class OccupancyMap {
 	}
 
 	public BufferedImage asThresholdedBufferedImage() {
-		return this.oimg;
+		BufferedImage oimg = new BufferedImage(bimg.getWidth(), bimg.getHeight(), BufferedImage.TYPE_INT_RGB);
+		for (int y = 0; y < this.mapHeight; y++) {
+			for (int x = 0; x < this.mapWidth; x++) {
+				if (this.isOccupied(x, y)) oimg.setRGB(x, y, new Color(0,0,0).getRGB());
+				else oimg.setRGB(x, y, new Color(255,255,255).getRGB());
+			}
+		}
+		return oimg;
 	}
 
 	public int[] toPixels(Coordinate coord) {
@@ -235,13 +230,13 @@ public class OccupancyMap {
 	}
 
 	public double getOccupancyValue(int pixelX, int pixelY) {
-		if (this.occupancyMapLinear == null) throw new Error("No occupancy map!");
-		return this.occupancyMapLinear[this.mapWidth*pixelY+pixelX];
+		if (this.bimg == null) throw new Error("No occupancy map!");
+		return new Color(bimg.getRGB(pixelX,pixelY)).getRed()/255.0;
 	}
 	
 	public boolean isOccupied(int pixelX, int pixelY) {
-		if (this.occupancyMapLinear == null) return false;
-		return this.getOccupancyValue(pixelX, pixelY) < this.threshold;
+		if (this.occupancyMapLinearBits == null) return false;
+		return this.occupancyMapLinearBits.get(this.mapWidth*pixelY+pixelX);
 	}
 
 	public boolean isOccupied(Coordinate coord) {
@@ -250,16 +245,11 @@ public class OccupancyMap {
 	}
 
 	private void createOccupancyMap() {
-		oimg = new BufferedImage(bimg.getWidth(), bimg.getHeight(), BufferedImage.TYPE_INT_RGB);
-		//this.occupancyMap = new double[this.mapHeight][this.mapWidth];
-		this.occupancyMapLinear = new double[bimg.getHeight()*bimg.getWidth()];
+		this.occupancyMapLinearBits = new BitSet();
 		for(int y=0; y < bimg.getHeight(); y++){
 			for(int x=0; x < bimg.getWidth(); x++){
 				Color c = new Color(bimg.getRGB(x,y));
-				//this.occupancyMap[y][x] = c.getRed()/255.0;
-				this.occupancyMapLinear[y*mapWidth+x] = c.getRed()/255.0;
-				if (this.isOccupied(x, y)) oimg.setRGB(x, y, new Color(0,0,0).getRGB());
-				else oimg.setRGB(x, y, new Color(255,255,255).getRGB());
+				this.occupancyMapLinearBits.set(y*mapWidth+x, c.getRed()/255.0 < this.threshold ? true : false);
 			}
 		}
 	}

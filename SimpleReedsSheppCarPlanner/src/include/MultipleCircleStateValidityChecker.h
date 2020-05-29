@@ -10,7 +10,8 @@ namespace og = ompl::geometric;
 
 class MultipleCircleStateValidityChecker : public ob::StateValidityChecker {
  public:
-  double* occupancyMap;
+  //double* occupancyMap;
+  char* occupancyMap;
   double mapResolution;
   int mapWidth;
   int mapHeight;
@@ -19,10 +20,8 @@ class MultipleCircleStateValidityChecker : public ob::StateValidityChecker {
   double* yCoords;
   int numCoords;
   bool noMap;
-  //Values less than this are occupied
-  double occupiedThreshold;
   
-  MultipleCircleStateValidityChecker(const ob::SpaceInformationPtr &si, double* _occupancyMap, int _mapWidth, int _mapHeight, double _occupiedThreshold, double _mapResolution, double _radius, double* _xCoords, double* _yCoords, int _numCoords) : ob::StateValidityChecker(si) {
+  MultipleCircleStateValidityChecker(const ob::SpaceInformationPtr &si, char* _occupancyMap, int _mapWidth, int _mapHeight, double _mapResolution, double _radius, double* _xCoords, double* _yCoords, int _numCoords) : ob::StateValidityChecker(si) {
     noMap = false;
     radius = (float)_radius;
     xCoords = _xCoords;
@@ -32,7 +31,6 @@ class MultipleCircleStateValidityChecker : public ob::StateValidityChecker {
     mapResolution = _mapResolution;
     mapWidth = _mapWidth;
     mapHeight = _mapHeight;
-    occupiedThreshold = _occupiedThreshold;
   }
   
   MultipleCircleStateValidityChecker(const ob::SpaceInformationPtr &si) : ob::StateValidityChecker(si) {
