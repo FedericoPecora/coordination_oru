@@ -60,6 +60,8 @@ public class ThreeRobotsGoalPosting {
 
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
+		//Start the thread that checks and enforces dependencies at every clock tick
+		tec.startInference();
 		
 		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
 		BrowserVisualization viz = new BrowserVisualization();

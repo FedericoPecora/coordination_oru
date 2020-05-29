@@ -63,6 +63,8 @@ public class FourRobotsCircle {
 
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
+		//Start the thread that checks and enforces dependencies at every clock tick
+		tec.startInference();
 
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();

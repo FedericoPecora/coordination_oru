@@ -15,6 +15,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Random;
+import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
@@ -87,10 +88,16 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	protected AtomicInteger criticalSectionCounter =  new AtomicInteger(0);
 																			
 	protected TrajectoryEnvelopeSolver solver = null;
+	protected Thread inference = null;
 
 	//protected JTSDrawingPanel panel = null;
 	protected FleetVisualization viz = null;
-	protected HashMap<Integer,Pair<TrajectoryEnvelope,Long>> missionsPool = new HashMap<Integer,Pair<TrajectoryEnvelope,Long>>();
+	protected TreeSet<Pair<TrajectoryEnvelope,Long>> missionsPool = new TreeSet<Pair<TrajectoryEnvelope,Long>>(new Comparator<Pair<TrajectoryEnvelope,Long>>() {
+        @Override
+        public int compare(Pair<TrajectoryEnvelope,Long> te1, Pair<TrajectoryEnvelope,Long> te2) {
+            return te1.getSecond() < te2.getSecond() ? 1 : -1; 
+        }
+	});
 	protected ArrayList<TrajectoryEnvelope> envelopesToTrack = new ArrayList<TrajectoryEnvelope>();
 	protected ArrayList<TrajectoryEnvelope> currentParkingEnvelopes = new ArrayList<TrajectoryEnvelope>();
 	protected HashSet<CriticalSection> allCriticalSections = new HashSet<CriticalSection>();
@@ -501,10 +508,20 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 
 		//Create meta solver and solver
 		solver = new TrajectoryEnvelopeSolver(origin, horizon);
+	}
+	
+	/**
+	 * Call this method to start the thread that checks and enforces dependencies at every clock tick
+	 */
+	public void startInference() {
+		
+		if (solver == null) {
+			metaCSPLogger.severe("Solver not initialized, please call method setupSolver() first!");
+			throw new Error("Solver not initialized, please call method setupSolver() first!");
+		}
 
-		//Start a thread that checks and enforces dependencies at every clock tick
+		//Start the thread that checks and enforces dependencies at every clock tick
 		this.setupInferenceCallback();
-
 	}
 
 	/**
@@ -1621,7 +1638,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 					throw new Error("Could not add constraints " + consToAdd);						
 				}
 
-				missionsPool.put(robotID, new Pair<TrajectoryEnvelope,Long>(te, Calendar.getInstance().getTimeInMillis()));
+				missionsPool.add(new Pair<TrajectoryEnvelope,Long>(te, Calendar.getInstance().getTimeInMillis()));
 			}
 		}
 		
@@ -1714,21 +1731,34 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 
 	protected void setupInferenceCallback() {
 
-		Thread inference = new Thread("Coordinator inference") {
-			private long threadLastUpdate = Calendar.getInstance().getTimeInMillis();
+		this.inference = new Thread("Coordinator inference") {
 			@Override
 			public void run() {
 				String fileName = new String(System.getProperty("user.home")+File.separator+"coordinator_stat.txt");
 				initStat(fileName, "Init statistics: @"+Calendar.getInstance().getTimeInMillis() + "\n");
-				String stat = new String("elapsedTimeComputeCriticalSections\t elapsedTimeUpdateDependencies\t numberNewCriticalSections\t numberAllCriticalSections\t numberDrivingRobots\t effectiveTc\n");
+				String stat = new String(//"Legend: at each control period\n\t 1. elapsed time to compute critical sections\n\t 2.elapsed time to update dependencies\n\t 3. number of new critical sections\n\t"
+						"elapsedTimeComputeCriticalSections\t elapsedTimeUpdateDependencies\t numberNewCriticalSections\t numberAllCriticalSections\t numberNewAddedMissions \t numberDrivingRobots\t expectedSleepingTime\t effectiveSleepingTime\t printStatisticsTime\t effectiveTc\n");
 				writeStat(fileName, stat);
 				
+				long threadLastUpdate = Calendar.getInstance().getTimeInMillis();
+				long elapsedTimeComputeCriticalSections = -1;
+				long elapsedTimeUpdateDependencies = -1;
+				int numberNewCriticalSections = -1;
+				int numberAllCriticalSections = -1;
+				int numberNewAddedMissions = 0;
+				int numberDrivingRobots = 0;
+				int MAX_ADDED_MISSIONS = 3;
+				long expectedSleepingTime = -1;
+				long effectiveSleepingTime = -1;
+				long printStatisticsTime = -1;
+				
 				while (true) {
-					long elapsedTimeComputeCriticalSections = -1;
-					long elapsedTimeUpdateDependencies = -1;
-					int numberNewCriticalSections = -1;
-					int numberAllCriticalSections = -1;
-					int numberDrivingRobots = 0;
+					elapsedTimeComputeCriticalSections = -1;
+					elapsedTimeUpdateDependencies = -1;
+					numberNewCriticalSections = -1;
+					numberAllCriticalSections = -1;
+					numberNewAddedMissions = 0;
+					numberDrivingRobots = 0;
 					
 					synchronized (solver) {	
 						for (Integer robotID : trackers.keySet()) 
@@ -1737,25 +1767,10 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 						if (!missionsPool.isEmpty()) {
 							
 							//FIXME critical sections should be computed incrementally/asynchronously
-							if (numberDrivingRobots == 0) {
-								for (int robotID : missionsPool.keySet()) {
-									envelopesToTrack.add(missionsPool.get(robotID).getFirst());
-									System.out.println("Add first mission to Robot" + robotID);
-								}
-								missionsPool.clear();
-							}
-							else {
-								//get the oldest posted mission (use TreeSet)
-								int oldestMissionRobotID = -1;
-								long oldestMissionTime = Long.MAX_VALUE;
-								for (int robotID : missionsPool.keySet()) {
-									if (missionsPool.get(robotID).getSecond().compareTo(oldestMissionTime) < 0) {
-										oldestMissionTime = missionsPool.get(robotID).getSecond().longValue();
-										oldestMissionRobotID = robotID;
-									}
-								}
-								envelopesToTrack.add(missionsPool.get(oldestMissionRobotID).getFirst());
-								missionsPool.remove(oldestMissionRobotID);
+							while (!missionsPool.isEmpty() && (numberDrivingRobots == 0 ? true : numberNewAddedMissions < MAX_ADDED_MISSIONS)) {
+								Pair<TrajectoryEnvelope,Long> te = missionsPool.pollFirst();
+								envelopesToTrack.add(te.getFirst());
+								numberNewAddedMissions++;
 							}
 							numberNewCriticalSections = allCriticalSections.size();
 							elapsedTimeComputeCriticalSections = Calendar.getInstance().getTimeInMillis();
@@ -1770,26 +1785,33 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 						updateDependencies();
 						elapsedTimeUpdateDependencies = Calendar.getInstance().getTimeInMillis()-elapsedTimeUpdateDependencies;
 						
-						if (!quiet) printStatistics();
+						if (!quiet) {
+							printStatisticsTime = Calendar.getInstance().getTimeInMillis();
+							printStatistics();
+							printStatisticsTime = Calendar.getInstance().getTimeInMillis()-printStatisticsTime;
+						}
 						if (overlay) overlayStatistics();
 					}
 					
 					//Sleep a little...
+					expectedSleepingTime = Math.max(100,CONTROL_PERIOD-Calendar.getInstance().getTimeInMillis()+threadLastUpdate);
+					effectiveSleepingTime = Calendar.getInstance().getTimeInMillis();
 					if (CONTROL_PERIOD > 0) {
-						try { Thread.sleep(CONTROL_PERIOD); } //Thread.sleep(Math.max(0, CONTROL_PERIOD-Calendar.getInstance().getTimeInMillis()+threadLastUpdate)); }
+						try { Thread.sleep(expectedSleepingTime); }
 						catch (InterruptedException e) { e.printStackTrace(); }
 					}
+					effectiveSleepingTime = Calendar.getInstance().getTimeInMillis()-effectiveSleepingTime;
+					
+					EFFECTIVE_CONTROL_PERIOD = (int)(Calendar.getInstance().getTimeInMillis()-threadLastUpdate);
+					threadLastUpdate = Calendar.getInstance().getTimeInMillis();
 					
 					if (inferenceCallback != null) inferenceCallback.performOperation();
-					
-					long threadCurrentUpdate = Calendar.getInstance().getTimeInMillis();
-					EFFECTIVE_CONTROL_PERIOD = (int)(threadCurrentUpdate-threadLastUpdate);
-					threadLastUpdate = threadCurrentUpdate;
-					
-					stat = new String(elapsedTimeComputeCriticalSections + "\t" + elapsedTimeUpdateDependencies + "\t" + numberNewCriticalSections + "\t" + numberAllCriticalSections + "\t" + numberDrivingRobots + "\t" + EFFECTIVE_CONTROL_PERIOD + "\n");
+										
+					stat = new String(elapsedTimeComputeCriticalSections + "\t" + elapsedTimeUpdateDependencies + "\t" + numberNewCriticalSections + "\t" + numberAllCriticalSections + "\t" + numberNewAddedMissions + "\t" + numberDrivingRobots
+							+ "\t" + expectedSleepingTime + "\t" + effectiveSleepingTime + "\t" + printStatisticsTime + "\t" + EFFECTIVE_CONTROL_PERIOD + "\n");
 					writeStat(fileName, stat);
-
 				}
+				
 			}
 		};
 		inference.setPriority(Thread.MAX_PRIORITY);
@@ -1849,8 +1871,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	public boolean isFree(int robotID) {
 		synchronized (solver) {
 			if (muted.contains(robotID)) return false;
-			//for (TrajectoryEnvelope te : envelopesToTrack) if (te.getRobotID() == robotID) return false;
-			if (missionsPool.containsKey(robotID)) return false;
+			for (Pair<TrajectoryEnvelope,Long> te : missionsPool) if (te.getFirst().getRobotID() == robotID) return false;
 			synchronized (trackers) {
 				AbstractTrajectoryEnvelopeTracker tracker = trackers.get(robotID);
 				if (!(tracker instanceof TrajectoryEnvelopeTrackerDummy)) return false;

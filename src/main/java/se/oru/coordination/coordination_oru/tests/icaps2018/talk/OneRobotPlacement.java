@@ -71,6 +71,8 @@ public class OneRobotPlacement {
 
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
+		//Start the thread that checks and enforces dependencies at every clock tick
+		tec.startInference();
 
 		String mapYamlFile = "maps/map-partial-2.yaml";
 		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
