@@ -1,7 +1,9 @@
 package se.oru.coordination.coordination_oru;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -116,7 +118,6 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 
 	protected HashSet<Integer> muted = new HashSet<Integer>();
 
-	protected boolean updateAllPostedMissionsOnce = false;
 	protected boolean yieldIfParking = true;
 	protected boolean checkEscapePoses = true;
 
@@ -243,11 +244,6 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		this.yieldIfParking = value;
 	}
 	
-	//FIXME
-	public void setUpdateAllPostedMissionsOnce(boolean value) {
-		this.updateAllPostedMissionsOnce = value;
-	}
-
 	/**
 	 * Set whether completely overlapping paths should lead to a warning.
 	 * @param value <code>true</code> if completely overlapping paths should lead to a warning.
@@ -370,6 +366,27 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		File dir = new File(logDirName);
 		dir.mkdir();
 		MetaCSPLogging.setLogDir(logDirName);
+	
+	}
+	
+	protected void writeStat(String fileName, String stat) {
+        try {
+        	//Append to file
+            PrintWriter writer = new PrintWriter(new FileOutputStream(new File(fileName), true)); 
+            writer.println(stat);
+            writer.close();
+        }
+        catch (Exception e) { e.printStackTrace(); }
+	}
+	
+	protected void initStat(String fileName, String stat) {
+        try {
+        	//Append to file
+            PrintWriter writer = new PrintWriter(new FileOutputStream(new File(fileName), false)); 
+            writer.println(stat);
+            writer.close();
+        }
+        catch (Exception e) { e.printStackTrace(); }
 	}
 
 	/**
@@ -900,9 +917,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			
 				//Update the coordinator view
 				HashMap<Integer,RobotReport> currentReports = new HashMap<Integer,RobotReport>();
-				for (int robotID : trackers.keySet()) {
-					currentReports.put(robotID, this.getRobotReport(robotID));
-				}
+				for (int robotID : trackers.keySet()) currentReports.put(robotID, this.getRobotReport(robotID));
 				//metaCSPLogger.info("Current reports: " + currentReports.toString());
 	
 				//Collect all driving envelopes and current pose indices
@@ -1311,6 +1326,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			//... and all the critical sections which are currently alive.
 			for (CriticalSection cs : allCriticalSections) {
 				if ((cs.getTe1().getRobotID() == robotID || cs.getTe2().getRobotID() == robotID) && !toRemove.contains(cs)) {
+					metaCSPLogger.severe("<<<<<<<< WARNING: Cleaning up a critical section which was not associated to a dependency: " + cs + ".");
 					toRemove.add(cs);
 					//increment the counter
 					if (cs.getTe1().getRobotID() == robotID && (cs.getTe1Start() <= lastWaitingPoint || lastWaitingPoint == -1) || 
@@ -1702,14 +1718,29 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			private long threadLastUpdate = Calendar.getInstance().getTimeInMillis();
 			@Override
 			public void run() {
+				String fileName = new String(System.getProperty("user.home")+File.separator+"coordinator_stat.txt");
+				initStat(fileName, "Init statistics: @"+Calendar.getInstance().getTimeInMillis() + "\n");
+				String stat = new String("elapsedTimeComputeCriticalSections\t elapsedTimeUpdateDependencies\t numberNewCriticalSections\t numberAllCriticalSections\t numberDrivingRobots\t effectiveTc\n");
+				writeStat(fileName, stat);
+				
 				while (true) {
+					long elapsedTimeComputeCriticalSections = -1;
+					long elapsedTimeUpdateDependencies = -1;
+					int numberNewCriticalSections = -1;
+					int numberAllCriticalSections = -1;
+					int numberDrivingRobots = 0;
+					
 					synchronized (solver) {	
+						for (Integer robotID : trackers.keySet()) 
+							if (!(trackers.get(robotID) instanceof TrajectoryEnvelopeTrackerDummy)) numberDrivingRobots++;
+						
 						if (!missionsPool.isEmpty()) {
 							
 							//FIXME critical sections should be computed incrementally/asynchronously
-							if (updateAllPostedMissionsOnce) {
+							if (numberDrivingRobots == 0) {
 								for (int robotID : missionsPool.keySet()) {
 									envelopesToTrack.add(missionsPool.get(robotID).getFirst());
+									System.out.println("Add first mission to Robot" + robotID);
 								}
 								missionsPool.clear();
 							}
@@ -1726,26 +1757,37 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 								envelopesToTrack.add(missionsPool.get(oldestMissionRobotID).getFirst());
 								missionsPool.remove(oldestMissionRobotID);
 							}
+							numberNewCriticalSections = allCriticalSections.size();
+							elapsedTimeComputeCriticalSections = Calendar.getInstance().getTimeInMillis();
 							computeCriticalSections();
+							elapsedTimeComputeCriticalSections = Calendar.getInstance().getTimeInMillis()-elapsedTimeComputeCriticalSections;
+							numberAllCriticalSections = allCriticalSections.size();
+							numberNewCriticalSections = numberAllCriticalSections-numberNewCriticalSections;
+							
 							startTrackingAddedMissions();
 						}
+						elapsedTimeUpdateDependencies = Calendar.getInstance().getTimeInMillis();
 						updateDependencies();
+						elapsedTimeUpdateDependencies = Calendar.getInstance().getTimeInMillis()-elapsedTimeUpdateDependencies;
 						
 						if (!quiet) printStatistics();
 						if (overlay) overlayStatistics();
 					}
-
+					
 					//Sleep a little...
 					if (CONTROL_PERIOD > 0) {
 						try { Thread.sleep(CONTROL_PERIOD); } //Thread.sleep(Math.max(0, CONTROL_PERIOD-Calendar.getInstance().getTimeInMillis()+threadLastUpdate)); }
 						catch (InterruptedException e) { e.printStackTrace(); }
 					}
-
+					
+					if (inferenceCallback != null) inferenceCallback.performOperation();
+					
 					long threadCurrentUpdate = Calendar.getInstance().getTimeInMillis();
 					EFFECTIVE_CONTROL_PERIOD = (int)(threadCurrentUpdate-threadLastUpdate);
 					threadLastUpdate = threadCurrentUpdate;
 					
-					if (inferenceCallback != null) inferenceCallback.performOperation();
+					stat = new String(elapsedTimeComputeCriticalSections + "\t" + elapsedTimeUpdateDependencies + "\t" + numberNewCriticalSections + "\t" + numberAllCriticalSections + "\t" + numberDrivingRobots + "\t" + EFFECTIVE_CONTROL_PERIOD + "\n");
+					writeStat(fileName, stat);
 
 				}
 			}
@@ -1756,7 +1798,8 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	
 	/**
 	 * Try to restore the order of traversing each active critical section.
-	 * In case of network delays, if both the robots are outside the critical section, then the order cannot be reconstructed.
+	 * If both the current reports assert that the robots should still enter the critical section, 
+	 * then the order cannot be reconstructed by looking to reciprocal positions in case of network delays.
 	 * @param cs The active critical section for which we are trying to restore the order.
 	 * @param rr1 Last report of the first robot.
 	 * @param rr2 Last report of the second robot.
@@ -1764,6 +1807,9 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 * Returning -2 if the critical section is no more active.
 	 */
 	protected int isAhead(CriticalSection cs, RobotReport rr1, RobotReport rr2) {
+		//FIXME 
+		//1) add code for the checking the network delay.
+		//2) check the correctness of the function with asymmetric intersections.
 		if (!allCriticalSections.contains(cs) || rr1.getPathIndex() > cs.getTe1End() || rr2.getPathIndex() > cs.getTe2End()) {
 			metaCSPLogger.info("isAhead: the critical sections is no more active.");
 			return -2;
