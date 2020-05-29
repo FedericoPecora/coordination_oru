@@ -28,9 +28,10 @@ bool MultipleCircleStateValidityChecker::isValid(const ob::State *state) const {
     /*
     std::cout << "(" << x << "," << y << ") -> (" << xPx << "," << yPx << ") with radius in pixels of " << radiusPx << std::endl;
     if (xPx >= 0 && yPx >= 0 && xPx < mapWidth && yPx < mapHeight) {
-      std::cout << "Occupancy map value: " << occupancyMap[(yPx)*mapWidth+(xPx)] << " Threshold: " << occupiedThreshold << std::endl;
+      std::cout << "Occupancy map value: " << (int)occupancyMap[(yPx)*mapWidth/8+(xPx)/8] << " (value < 0 occupied)" << std::endl;
     }
     */
+    
       
     for (int dx = 0; dx <= radiusPx; dx++) {
       for (int dy = 0; dy <= radiusPx; dy++) {
@@ -40,10 +41,10 @@ bool MultipleCircleStateValidityChecker::isValid(const ob::State *state) const {
 	if (xPx+dx >= mapWidth) { return false; }
 	if (yPx+dy >= mapHeight) { return false; }
 
-	if (occupancyMap[(yPx+dy)*mapWidth+(xPx+dx)] < occupiedThreshold) { return false; }
-	if (occupancyMap[(yPx+dy)*mapWidth+(xPx-dx)] < occupiedThreshold) { return false; }
-	if (occupancyMap[(yPx-dy)*mapWidth+(xPx+dx)] < occupiedThreshold) { return false; }
-	if (occupancyMap[(yPx-dy)*mapWidth+(xPx-dx)] < occupiedThreshold) { return false; }
+	if ((int)occupancyMap[(yPx+dy)*mapWidth/8+(xPx+dx)/8] < 0) { return false; }
+	if ((int)occupancyMap[(yPx+dy)*mapWidth/8+(xPx-dx)/8] < 0) { return false; }
+	if ((int)occupancyMap[(yPx-dy)*mapWidth/8+(xPx+dx)/8] < 0) { return false; }
+	if ((int)occupancyMap[(yPx-dy)*mapWidth/8+(xPx-dx)/8] < 0) { return false; }
 		
       }
     }

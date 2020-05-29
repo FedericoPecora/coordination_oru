@@ -33,13 +33,13 @@ extern "C" void cleanupPath(PathPose* path) {
   free(path);
 }
 
-extern "C" bool plan_multiple_circles(double* occupancyMap, int mapWidth, int mapHeight, double occupiedThreshold, double mapResolution, double robotRadius, double* xCoords, double* yCoords, int numCoords, double startX, double startY, double startTheta, double goalX, double goalY, double goalTheta, PathPose** path, int* pathLength, double distanceBetweenPathPoints, double turningRadius, double planningTimeInSecs, PLANNING_ALGORITHM algo) {
+extern "C" bool plan_multiple_circles(char* occupancyMap, int mapWidth, int mapHeight, double mapResolution, double robotRadius, double* xCoords, double* yCoords, int numCoords, double startX, double startY, double startTheta, double goalX, double goalY, double goalTheta, PathPose** path, int* pathLength, double distanceBetweenPathPoints, double turningRadius, double planningTimeInSecs, PLANNING_ALGORITHM algo) {
 
   double pLen = 0.0;
   int numInterpolationPoints = 0;
   ob::StateSpacePtr space(new ob::ReedsSheppStateSpace(turningRadius));
 
-  std::cout << "Using " << mapWidth << "x" << mapHeight << " occupancy map for validity checking (values < " << occupiedThreshold << " are not free)" << std::endl;
+  std::cout << "Using " << mapWidth << "x" << mapHeight << " occupancy map for validity checking (values < 0 are not free)" << std::endl;
   
   ob::ScopedState<> start(space), goal(space);
   ob::RealVectorBounds bounds(2);
@@ -56,7 +56,7 @@ extern "C" bool plan_multiple_circles(double* occupancyMap, int mapWidth, int ma
 
   // set state validity checking for this space
   ob::SpaceInformationPtr si(ss.getSpaceInformation());
-  si->setStateValidityChecker(ob::StateValidityCheckerPtr(new MultipleCircleStateValidityChecker(si, occupancyMap, mapWidth, mapHeight, occupiedThreshold, mapResolution, robotRadius, xCoords, yCoords, numCoords)));
+  si->setStateValidityChecker(ob::StateValidityCheckerPtr(new MultipleCircleStateValidityChecker(si, occupancyMap, mapWidth, mapHeight, mapResolution, robotRadius, xCoords, yCoords, numCoords)));
   
   //Return false if the start is occupied.  
   ompl::base::State *statePtrS = space->allocState();
