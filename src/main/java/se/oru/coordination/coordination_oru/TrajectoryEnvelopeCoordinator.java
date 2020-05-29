@@ -1144,7 +1144,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 								cs.getTe2().getRobotID() == robotID && cs.getTe2Start() <= breakingPathIndex) {
 							Pair<Integer,Integer> order = new Pair<Integer,Integer>(CSToDepsOrder.get(cs).getFirst(), CSToDepsOrder.get(cs).getSecond());
 							holdingCS.put(cs, order);
-							metaCSPLogger.info("Saving " + order.toString() + " for critical section " + cs + ".");
+							metaCSPLogger.finest("Saving " + order.toString() + " for critical section " + cs + ".");
 						}
 					}
 				}
@@ -1232,7 +1232,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 									//Here we should consider all the cases of spatial overlap between the new critical section (cs1 = [start11,end11], [start12,end12]) and the old 
 									//critical section (cs2 = [start21,end21], [start22,end22]). Note that start and end are still overlapping configurations (see {@link CriticalSection}, {@link AbstractTrajectoryEnvelopeCoordinaror}, function: getCriticalSections).
 									if ((start21 <= start11 && start11 <= end21) && !(end22 < start12 || end12 < start22)) {
-										metaCSPLogger.info("Restoring  the order of critical section " + cs2 + "(" + holdingCS.get(cs2).toString() + ") for critical section " + cs1 + ".");
+										metaCSPLogger.finest("Restoring  the order of critical section " + cs2 + "(" + holdingCS.get(cs2).toString() + ") for critical section " + cs1 + ".");
 										CSToDepsOrder.put(cs1, holdingCS.get(cs2));
 
 										if (this.avoidDeadlockGlobally) {
@@ -2009,7 +2009,6 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 							//check if safe (continue here) 
 							boolean safe = true;
-							metaCSPLogger.info("currentCyclesList: " + currentCyclesList.toString());
 							if (currentCyclesList.get(newEdge) != null) {
 								//for each cycle involving the new edge
 								for (List<Integer> cycle : currentCyclesList.get(newEdge)) {
@@ -2102,7 +2101,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							}
 							else {
 								//update the maps
-								if (!currentDeps.get(depOld.getWaitingRobotID()).remove(depOld)) metaCSPLogger.info("<<<<<<<< Error in removing dep: " + depOld);
+								if (!currentDeps.get(depOld.getWaitingRobotID()).remove(depOld)) metaCSPLogger.severe("<<<<<<<< Error in removing dep: " + depOld);
 								if (currentDeps.get(depOld.getWaitingRobotID()).isEmpty()) currentDeps.remove(depOld.getWaitingRobotID());
 								if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new HashSet<Dependency>());
 								if (!currentDeps.get(waitingRobotID).add(depNew)) {
