@@ -172,7 +172,10 @@ public class Missions {
 	        zis.closeEntry();
 	        zis.close();
 		}
-		catch (IOException e) { e.printStackTrace(); }
+		catch (IOException e) { 
+			e.printStackTrace(); 
+			throw new Error("Unable to estract the ZIP file: " + e.toString());
+		}
         return json;
 	}
 	
@@ -231,7 +234,10 @@ public class Missions {
             if (Missions.mapImageFilename != null) makeZipFile(Missions.mapImageFilename,jsonFilename,zipFilename);
             else makeZipFile(jsonFilename,zipFilename);
         }
-        catch (IOException e) { e.printStackTrace(); }		
+        catch (IOException e) { 
+        	e.printStackTrace(); 
+        	throw new Error("Unable to save the scenario: " + e.toString()); 
+        }		
 	}
 	
 	/**
