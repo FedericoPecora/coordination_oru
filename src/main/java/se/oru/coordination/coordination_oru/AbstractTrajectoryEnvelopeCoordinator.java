@@ -89,6 +89,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 																			
 	protected TrajectoryEnvelopeSolver solver = null;
 	protected Thread inference = null;
+	protected volatile Boolean stopInference = new Boolean(true);
 
 	//protected JTSDrawingPanel panel = null;
 	protected FleetVisualization viz = null;
@@ -511,7 +512,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	}
 	
 	/**
-	 * Call this method to start the thread that checks and enforces dependencies at every clock tick
+	 * Call this method to start the thread that checks and enforces dependencies at every clock tick.
 	 */
 	public void startInference() {
 		
@@ -519,11 +520,38 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			metaCSPLogger.severe("Solver not initialized, please call method setupSolver() first!");
 			throw new Error("Solver not initialized, please call method setupSolver() first!");
 		}
+		
+		if (!stopInference) {
+			metaCSPLogger.info("Inference is already started.");
+			return;
+		}
 
 		//Start the thread that checks and enforces dependencies at every clock tick
 		this.setupInferenceCallback();
 	}
+	
+	/**
+	 * Call this method to stop the thread that checks and enforces dependencies at every clock tick.
+	 */
+	public void stopInference() {
+		
+		if (solver == null) {
+			metaCSPLogger.severe("Solver not initialized, please call method setupSolver() first!");
+			throw new Error("Solver not initialized, please call method setupSolver() first!");
+		}
 
+		//Stop the thread that checks and enforces dependencies at every clock tick
+		if (stopInference) metaCSPLogger.severe("Inference thread is not alive.");
+		stopInference = true;
+	}
+
+	/**
+	 * Call this method to check if the thread that checks and enforces dependencies at every clock tick is alive.
+	 */
+	public boolean isStartedInference() {
+		return !stopInference;
+	}
+	
 	/**
 	 * Get the current time of the system, in milliseconds.
 	 * @return The current time of the system, in milliseconds.
@@ -1730,10 +1758,14 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	}
 
 	protected void setupInferenceCallback() {
-
+		
+		this.stopInference = false;
 		this.inference = new Thread("Coordinator inference") {
+			private volatile boolean exit = false;
+			
 			@Override
 			public void run() {
+
 				String fileName = new String(System.getProperty("user.home")+File.separator+"coordinator_stat.txt");
 				initStat(fileName, "Init statistics: @"+Calendar.getInstance().getTimeInMillis() + "\n");
 				String stat = new String(//"Legend: at each control period\n\t 1. elapsed time to compute critical sections\n\t 2.elapsed time to update dependencies\n\t 3. number of new critical sections\n\t"
@@ -1752,7 +1784,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				long effectiveSleepingTime = -1;
 				long printStatisticsTime = -1;
 				
-				while (true) {
+				while (!stopInference) {
 					elapsedTimeComputeCriticalSections = -1;
 					elapsedTimeUpdateDependencies = -1;
 					numberNewCriticalSections = -1;
@@ -1794,7 +1826,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 					}
 					
 					//Sleep a little...
-					expectedSleepingTime = Math.max(100,CONTROL_PERIOD-Calendar.getInstance().getTimeInMillis()+threadLastUpdate);
+					expectedSleepingTime = Math.max(500,CONTROL_PERIOD-Calendar.getInstance().getTimeInMillis()+threadLastUpdate);
 					effectiveSleepingTime = Calendar.getInstance().getTimeInMillis();
 					if (CONTROL_PERIOD > 0) {
 						try { Thread.sleep(expectedSleepingTime); }
