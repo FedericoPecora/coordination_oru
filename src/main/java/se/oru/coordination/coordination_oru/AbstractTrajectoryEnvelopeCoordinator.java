@@ -512,7 +512,8 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	}
 	
 	/**
-	 * Call this method to start the thread that checks and enforces dependencies at every clock tick.
+	 * Call this method to start the thread that dispatches trajectories and critical points to robots,
+	 * checking and enforcing dependencies at every clock tick.
 	 */
 	public void startInference() {
 		
@@ -532,6 +533,8 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	
 	/**
 	 * Call this method to stop the thread that checks and enforces dependencies at every clock tick.
+	 * This will also cause the robots to no longer receive new trajectories or updates of critical points,
+	 * so the fleet will come to a (safe) stop once this method is called.
 	 */
 	public void stopInference() {
 		
