@@ -318,10 +318,12 @@ public class SimpleRoadMapPlanner extends AbstractMotionPlanner {
 	@Override
 	public synchronized void addObstacles(Geometry geom, Pose ... poses) {
 		if (this.footprintCoords.length == 0) throw new Error("Robot footprint is not set!");
+		
+		//Add the obstacles to the occupancy grid
 		if (this.om == null) this.om = new OccupancyMap(1000, 1000, 0.01);
 		ArrayList<Geometry> obstacles = this.om.addObstacles(geom, poses);
 		
-		//Find and remove vertices and edges which are not collision free.
+		//Find and remove all vertices which are not collision free.
 		for (String loc : locations.keySet()) {
 			Geometry robotInPose = makeObstacle(locations.get(loc));
 			for (Geometry obstacle : obstacles) {
@@ -330,7 +332,24 @@ public class SimpleRoadMapPlanner extends AbstractMotionPlanner {
 		}
 		this.graph.removeAllVertices(removedVertices);
 		
-		//TODO Do the same also for the remaining edges
+		//Find and remove all edges which are not collision free.
+		for (String pathName : paths.keySet()) {
+			String startLoc = pathName.substring(0,pathName.indexOf("-"));
+			String targetLoc = pathName.substring(pathName.indexOf(">")+1,pathName.length());
+			if (this.graph.containsVertex(startLoc) && this.graph.containsVertex(targetLoc)) {
+				PoseSteering[] path = paths.get(pathName);
+				for (PoseSteering pose : path) {
+					Geometry robotInPose = makeObstacle(new Pose(pose.getX(),pose.getY(),pose.getTheta()));
+					for (Geometry obstacle : obstacles) {
+						if (robotInPose.intersects(obstacle)) {
+							removedEdges.addAll(graph.getAllEdges(startLoc, targetLoc));
+							break;
+						}
+					}
+				}
+			}
+		}
+		this.graph.removeAllEdges(removedEdges);
 		
 	}
 	
@@ -354,14 +373,9 @@ public class SimpleRoadMapPlanner extends AbstractMotionPlanner {
 		if (this.noMap) this.om = null;
 		else this.om.clearObstacles();
 		
-		//Restore the original graph (FIXME: it may be improved by tracking changes -- see after)
-		if (graph.vertexSet().equals(graph_original.vertexSet()) && graph.edgeSet().equals(graph_original.edgeSet())) return;
+		//Restore the original graph
+		if (removedVertices.isEmpty() && removedEdges.isEmpty()) return;
 		this.graph = new SimpleDirectedWeightedGraph<String, DefaultWeightedEdge>(DefaultWeightedEdge.class);
-		/*for (String v : this.graph_original.vertexSet()) this.graph.addVertex(v);
-		for (DefaultWeightedEdge e : this.graph_original.edgeSet()) {
-			DefaultWeightedEdge e1 = this.graph.addEdge(this.graph_original.getEdgeSource(e),this.graph_original.getEdgeTarget(e));
-			this.graph.setEdgeWeight(e1, this.graph_original.getEdgeWeight(e));
-		}*/
 		
 		//Tracking changes
 		for (String v : removedVertices) this.graph.addVertex(v);
