@@ -210,7 +210,7 @@ public class SimpleRoadMapPlanner extends AbstractMotionPlanner {
 	public AbstractMotionPlanner getCopy() {
 		//FIXME
 		SimpleRoadMapPlanner ret = new SimpleRoadMapPlanner();
-		ret.setLocationsPathsAndGraphs(this.locations,this.paths);
+		ret.setLocationsPathsAndBuildGraphs(this.locations,this.paths);
 		ret.setFootprint(this.footprintCoords);
 		ret.om = this.om;
 		return ret;
