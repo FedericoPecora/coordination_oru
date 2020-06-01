@@ -89,11 +89,6 @@ public class ReedsSheppCarPlanner extends AbstractMotionPlanner {
 		this.collisionCircleCenters = circlePositions;
 	}
 
-	@Deprecated
-	public void setRobotRadius(double rad) {
-		this.robotRadius = rad;
-	}
-
 	public void setRadius(double rad) {
 		this.robotRadius = rad;
 	}
