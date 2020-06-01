@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Scanner;
 
@@ -21,28 +20,26 @@ import se.oru.coordination.coordination_oru.motionplanning.OccupancyMap;
 import se.oru.coordination.coordination_oru.util.Missions;
 
 public class SimpleRoadMapPlanner extends AbstractMotionPlanner {
-	protected SimpleDirectedWeightedGraph<String, DefaultWeightedEdge> graph_original = new SimpleDirectedWeightedGraph<String, DefaultWeightedEdge>(DefaultWeightedEdge.class); 
-	protected SimpleDirectedWeightedGraph<String, DefaultWeightedEdge> graph = new SimpleDirectedWeightedGraph<String, DefaultWeightedEdge>(DefaultWeightedEdge.class);
-	protected HashMap<String,Pose> locations = new HashMap<String,Pose>();
-	protected HashMap<String,PoseSteering[]> paths = new HashMap<String, PoseSteering[]>();
-	private double distanceBetweenPathPoints = 0.5;
+	private SimpleDirectedWeightedGraph<String, DefaultWeightedEdge> graph_original = new SimpleDirectedWeightedGraph<String, DefaultWeightedEdge>(DefaultWeightedEdge.class); 
+	private SimpleDirectedWeightedGraph<String, DefaultWeightedEdge> graph = new SimpleDirectedWeightedGraph<String, DefaultWeightedEdge>(DefaultWeightedEdge.class);
+	private HashMap<String,Pose> locations = new HashMap<String,Pose>();
+	private HashMap<String,PoseSteering[]> paths = new HashMap<String, PoseSteering[]>();
 	
-	SimpleRoadMapPlanner(String filename, double distanceBetweenPathPoints, Coordinate ... footprint) {
-		if (footprint == null) throw new Error("Provide the robot footprint");
-		setFootprint(footprint);
-		this.distanceBetweenPathPoints = distanceBetweenPathPoints; 
-		loadRoadMap(filename);
-		//FIXME resample();
-	}
-		
-	//FIXME: the function is equal to the loadRoadMap in the Missions class.
-	protected void loadRoadMap(String path) {
+	/**
+	 * Load a roadmap stored in a give directory or file, eventually re-sampling paths at a given step).
+	 * @param fileName The directory or file to load the roadmap from.
+	 * @param distanceBetweenPathPoints The minimum acceptable distance between path poses or -1 if any value is ok 
+	 * 									(re-sampling is not performed in this case).
+	 * If a directory is given, the filename is assumed to he "roadmap.txt"
+	 * (the same convention used in saving, see {@link #saveRoadMap(String)}).
+	 */
+	public void loadRoadMap(String fileName, double distanceBetweenPathPoints) {
 		try {
 			String fileOnly;
 			String pathOnly;
-			File f = new File(path);
+			File f = new File(fileName);
 			if (f.isDirectory()) {
-				pathOnly = path;
+				pathOnly = fileName;
 				if (!pathOnly.endsWith(File.separator)) pathOnly += File.separator;
 				fileOnly = "roadmap.txt";
 			}
@@ -59,6 +56,7 @@ public class SimpleRoadMapPlanner extends AbstractMotionPlanner {
 					Pose ps = null;
 					if (line.contains("->")) {
 						PoseSteering[] knownPath = Missions.loadPathFromFile(pathOnly+oneline[3]);
+						if (distanceBetweenPathPoints > 0) knownPath = resamplePath(knownPath,distanceBetweenPathPoints);
 						paths.put(oneline[0]+oneline[1]+oneline[2], knownPath);
 					}
 					else {
@@ -84,9 +82,9 @@ public class SimpleRoadMapPlanner extends AbstractMotionPlanner {
 		//Build the graph
 		buildGraphs();
 	}
-	
-	//FIXME: the function is equal to the buildGraphs in the Missions class.
-	public void buildGraphs() {
+		
+	//Build the graph
+	private void buildGraphs() {
 		this.graph = new SimpleDirectedWeightedGraph<String, DefaultWeightedEdge>(DefaultWeightedEdge.class);
 		this.graph_original = new SimpleDirectedWeightedGraph<String, DefaultWeightedEdge>(DefaultWeightedEdge.class);
 		
@@ -112,34 +110,23 @@ public class SimpleRoadMapPlanner extends AbstractMotionPlanner {
 		}
 	}
 		
-	public void setLocationsPathsAndGraphs(HashMap<String, Pose> locations, HashMap<String,PoseSteering[]> paths) {
+	public void setLocationsPathsAndBuildGraphs(HashMap<String, Pose> locations, HashMap<String,PoseSteering[]> paths) {
 		this.locations.putAll(locations);
 		this.paths.putAll(paths);
 		buildGraphs();
 	}
-	
+		
 	/**
-	 * Set the minimum acceptable distance between path poses. This is used to re-sample paths
-	 * when they are loaded from file or when the method {@link #resamplePathsInRoadMap()} is called.
+	 * Re-sample all paths so that the minimum distance between path poses is the given value.
 	 * @param distanceBetweenPathPoints The minimum acceptable distance between path poses.
 	 */
-	public void setDistanceBetweenPathPoints(double distanceBetweenPathPoints) {
-		this.distanceBetweenPathPoints = distanceBetweenPathPoints;
-	}
-	
-	//////////// fixme //////////
-	
-	/**
-	 * Re-sample all paths so that the minimum distance between path poses is the value
-	 * set by {@link #setMinPathDistance(double)}.
-	 */
-	public void resamplePathsInRoadMap() {
+	public void resamplePathsInRoadMap(double distanceBetweenPathPoints) {
 		for (String pathname : paths.keySet()) {
-			paths.put(pathname, resamplePath(paths.get(pathname)));
+			paths.put(pathname, resamplePath(paths.get(pathname),distanceBetweenPathPoints));
 		}
 	}
 	
-	private PoseSteering[] resamplePath(PoseSteering[] path) {
+	private PoseSteering[] resamplePath(PoseSteering[] path, double distanceBetweenPathPoints) {
 		if (distanceBetweenPathPoints < 0) return path;
 		ArrayList<PoseSteering> ret = new ArrayList<PoseSteering>();
 		PoseSteering lastAdded = path[0];
@@ -155,15 +142,13 @@ public class SimpleRoadMapPlanner extends AbstractMotionPlanner {
 		return ret.toArray(new PoseSteering[ret.size()]);
 	}
 	
-	protected DefaultWeightedEdge addEdge(SimpleDirectedWeightedGraph<String, DefaultWeightedEdge> graph, String source, String target, double weight) {
+	private DefaultWeightedEdge addEdge(SimpleDirectedWeightedGraph<String, DefaultWeightedEdge> graph, String source, String target, double weight) {
 		graph.addVertex(source);
 		graph.addVertex(target);
 		DefaultWeightedEdge e = graph.addEdge(source,target);
 		graph.setEdgeWeight(e, weight);
 		return e;
 	}
-	
-	/////////////////////////////
 		
 	/**
 	 * Add a path to the current roadmap.
