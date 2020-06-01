@@ -5,6 +5,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Scanner;
 
@@ -17,6 +18,8 @@ import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.util.AffineTransformation;
 
 import se.oru.coordination.coordination_oru.motionplanning.AbstractMotionPlanner;
 import se.oru.coordination.coordination_oru.motionplanning.OccupancyMap;
@@ -30,13 +33,33 @@ public class SimpleRoadMapPlanner extends AbstractMotionPlanner {
 	private HashMap<String,Pose> locations = new HashMap<String,Pose>();
 	private HashMap<String,PoseSteering[]> paths = new HashMap<String, PoseSteering[]>();
 	
+	//Sets of removed vertices and edges from the original graph after calling  {@link #addObstacles(Geometry geom, Pose ... poses)}. 
+	private HashSet<String> removedVertices = new HashSet<String>();
+	private HashSet<DefaultWeightedEdge> removedEdges = new HashSet<DefaultWeightedEdge>();
+	
+	SimpleRoadMapPlanner(){
+		super();
+	};
+	
+	/**
+	 * Class constructor.
+	 * @param fileName The directory or file to load the roadmap from (see {@link #loadRoadMap}).
+	 * @param distanceBetweenPathPoints distanceBetweenPathPoints The minimum acceptable distance between path poses or -1 if any value is ok 
+	 * 									(re-sampling is not performed in this case); see {@link #loadRoadMap}.
+	 * @param footprint The robot footprint.
+	 */
+	SimpleRoadMapPlanner(String fileName, double distanceBetweenPathPoints, Coordinate ... footprint) {
+		if (footprint == null) throw new Error("Provide the robot footprint!!"); //FIXME inscribed/circunscribed radius
+		this.footprintCoords = footprint;
+		loadRoadMap(fileName, distanceBetweenPathPoints);
+	}
+	
 	/**
 	 * Load a roadmap stored in a give directory or file, eventually re-sampling paths at a given step).
 	 * @param fileName The directory or file to load the roadmap from.
 	 * @param distanceBetweenPathPoints The minimum acceptable distance between path poses or -1 if any value is ok 
 	 * 									(re-sampling is not performed in this case).
-	 * If a directory is given, the filename is assumed to he "roadmap.txt"
-	 * (the same convention used in saving, see {@link #saveRoadMap(String)}).
+	 * If a directory is given, the filename is assumed to he "roadmap.txt".
 	 */
 	public void loadRoadMap(String fileName, double distanceBetweenPathPoints) {
 		try {
@@ -294,22 +317,60 @@ public class SimpleRoadMapPlanner extends AbstractMotionPlanner {
 	
 	@Override
 	public synchronized void addObstacles(Geometry geom, Pose ... poses) {
+		if (this.footprintCoords.length == 0) throw new Error("Robot footprint is not set!");
 		if (this.om == null) this.om = new OccupancyMap(1000, 1000, 0.01);
-		this.om.addObstacles(geom, poses);
+		ArrayList<Geometry> obstacles = this.om.addObstacles(geom, poses);
 		
-		//Find and remove the edges which are not collision free.
-		//TODO
+		//Find and remove vertices and edges which are not collision free.
+		for (String loc : locations.keySet()) {
+			Geometry robotInPose = makeObstacle(locations.get(loc));
+			for (Geometry obstacle : obstacles) {
+				if (robotInPose.intersects(obstacle)) removedVertices.add(loc);
+			}
+		}
+		this.graph.removeAllVertices(removedVertices);
+		
+		//TODO Do the same also for the remaining edges
+		
+	}
+	
+	public Geometry makeObstacle(Pose pose) {
+		GeometryFactory gf = new GeometryFactory();
+		Coordinate[] newFoot = new Coordinate[this.footprintCoords.length+1];
+		for (int j = 0; j < this.footprintCoords.length; j++) {
+			newFoot[j] = this.footprintCoords[j];
+		}
+		newFoot[this.footprintCoords.length] = this.footprintCoords[0];
+		Geometry obstacle = gf.createPolygon(newFoot);
+		AffineTransformation at = new AffineTransformation();
+		at.rotate(pose.getTheta());
+		at.translate(pose.getX(), pose.getY());
+		return at.transform(obstacle);
 	}
 	
 	@Override
 	public synchronized void clearObstacles() {
-		if (!graph.vertexSet().equals(graph_original.vertexSet())) {
-			//restore the original vertex set. TODO
-		}
 		
-		if (!graph.edgeSet().equals(graph_original.edgeSet())) {
-			//restore the original edge set. TODO
+		if (this.noMap) this.om = null;
+		else this.om.clearObstacles();
+		
+		//Restore the original graph (FIXME: it may be improved by tracking changes -- see after)
+		if (graph.vertexSet().equals(graph_original.vertexSet()) && graph.edgeSet().equals(graph_original.edgeSet())) return;
+		this.graph = new SimpleDirectedWeightedGraph<String, DefaultWeightedEdge>(DefaultWeightedEdge.class);
+		/*for (String v : this.graph_original.vertexSet()) this.graph.addVertex(v);
+		for (DefaultWeightedEdge e : this.graph_original.edgeSet()) {
+			DefaultWeightedEdge e1 = this.graph.addEdge(this.graph_original.getEdgeSource(e),this.graph_original.getEdgeTarget(e));
+			this.graph.setEdgeWeight(e1, this.graph_original.getEdgeWeight(e));
+		}*/
+		
+		//Tracking changes
+		for (String v : removedVertices) this.graph.addVertex(v);
+		for (DefaultWeightedEdge e : removedEdges) {
+			DefaultWeightedEdge e1 = this.graph.addEdge(this.graph_original.getEdgeSource(e),this.graph_original.getEdgeTarget(e));
+			this.graph.setEdgeWeight(e1, this.graph_original.getEdgeWeight(e));
 		}
+		removedVertices.clear();
+		removedEdges.clear();
 	}
 
 }
