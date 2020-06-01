@@ -4,15 +4,16 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Scanner;
 
-import org.jgrapht.graph.DefaultDirectedWeightedGraph;
 import org.jgrapht.graph.DefaultWeightedEdge;
 import org.jgrapht.graph.SimpleDirectedWeightedGraph;
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 
+import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 
 import se.oru.coordination.coordination_oru.motionplanning.AbstractMotionPlanner;
@@ -25,12 +26,17 @@ public class SimpleRoadMapPlanner extends AbstractMotionPlanner {
 	protected HashMap<String,Pose> locations = new HashMap<String,Pose>();
 	protected HashMap<String,PoseSteering[]> paths = new HashMap<String, PoseSteering[]>();
 	private double distanceBetweenPathPoints = 0.5;
-	//private double planningTimeInSecs = 30.0;
-	//private Coordinate[] collisionCircleCenters = null;
-	//private PLANNING_ALGORITHM algo = PLANNING_ALGORITHM.RRTConnect;
 	
+	SimpleRoadMapPlanner(String filename, double distanceBetweenPathPoints, Coordinate ... footprint) {
+		if (footprint == null) throw new Error("Provide the robot footprint");
+		setFootprint(footprint);
+		this.distanceBetweenPathPoints = distanceBetweenPathPoints; 
+		loadRoadMap(filename);
+		//FIXME resample();
+	}
+		
 	//FIXME: the function is equal to the loadRoadMap in the Missions class.
-	public void loadRoadMap(String path) {
+	protected void loadRoadMap(String path) {
 		try {
 			String fileOnly;
 			String pathOnly;
@@ -112,17 +118,52 @@ public class SimpleRoadMapPlanner extends AbstractMotionPlanner {
 		buildGraphs();
 	}
 	
+	/**
+	 * Set the minimum acceptable distance between path poses. This is used to re-sample paths
+	 * when they are loaded from file or when the method {@link #resamplePathsInRoadMap()} is called.
+	 * @param distanceBetweenPathPoints The minimum acceptable distance between path poses.
+	 */
 	public void setDistanceBetweenPathPoints(double distanceBetweenPathPoints) {
 		this.distanceBetweenPathPoints = distanceBetweenPathPoints;
 	}
 	
-	protected DefaultWeightedEdge addEdge(SimpleDirectedWeightedGraph<String, DefaultWeightedEdge> graph2, String source, String target, double weight) {
-		graph2.addVertex(source);
-		graph2.addVertex(target);
-		DefaultWeightedEdge e = graph2.addEdge(source,target);
-		graph2.setEdgeWeight(e, weight);
+	//////////// fixme //////////
+	
+	/**
+	 * Re-sample all paths so that the minimum distance between path poses is the value
+	 * set by {@link #setMinPathDistance(double)}.
+	 */
+	public void resamplePathsInRoadMap() {
+		for (String pathname : paths.keySet()) {
+			paths.put(pathname, resamplePath(paths.get(pathname)));
+		}
+	}
+	
+	private PoseSteering[] resamplePath(PoseSteering[] path) {
+		if (distanceBetweenPathPoints < 0) return path;
+		ArrayList<PoseSteering> ret = new ArrayList<PoseSteering>();
+		PoseSteering lastAdded = path[0];
+		ret.add(lastAdded);
+		for (int i = 1; i < path.length; i++) {
+			Coordinate p1 = lastAdded.getPose().getPosition();
+			Coordinate p2 = path[i].getPose().getPosition();
+			if (p2.distance(p1) > distanceBetweenPathPoints) {
+				lastAdded = path[i];
+				ret.add(path[i]);
+			}
+		}
+		return ret.toArray(new PoseSteering[ret.size()]);
+	}
+	
+	protected DefaultWeightedEdge addEdge(SimpleDirectedWeightedGraph<String, DefaultWeightedEdge> graph, String source, String target, double weight) {
+		graph.addVertex(source);
+		graph.addVertex(target);
+		DefaultWeightedEdge e = graph.addEdge(source,target);
+		graph.setEdgeWeight(e, weight);
 		return e;
 	}
+	
+	/////////////////////////////
 		
 	/**
 	 * Add a path to the current roadmap.
