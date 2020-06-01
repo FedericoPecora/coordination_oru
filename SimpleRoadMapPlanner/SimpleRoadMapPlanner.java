@@ -5,8 +5,11 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Scanner;
 
+import org.jgrapht.GraphPath;
+import org.jgrapht.alg.shortestpath.DijkstraShortestPath;
 import org.jgrapht.graph.DefaultWeightedEdge;
 import org.jgrapht.graph.SimpleDirectedWeightedGraph;
 import org.metacsp.multi.spatioTemporal.paths.Pose;
@@ -20,7 +23,9 @@ import se.oru.coordination.coordination_oru.motionplanning.OccupancyMap;
 import se.oru.coordination.coordination_oru.util.Missions;
 
 public class SimpleRoadMapPlanner extends AbstractMotionPlanner {
+	//The graph which is not changed by obstacles.
 	private SimpleDirectedWeightedGraph<String, DefaultWeightedEdge> graph_original = new SimpleDirectedWeightedGraph<String, DefaultWeightedEdge>(DefaultWeightedEdge.class); 
+	//Graph that is updated according to obstacles.
 	private SimpleDirectedWeightedGraph<String, DefaultWeightedEdge> graph = new SimpleDirectedWeightedGraph<String, DefaultWeightedEdge>(DefaultWeightedEdge.class);
 	private HashMap<String,Pose> locations = new HashMap<String,Pose>();
 	private HashMap<String,PoseSteering[]> paths = new HashMap<String, PoseSteering[]>();
@@ -201,9 +206,80 @@ public class SimpleRoadMapPlanner extends AbstractMotionPlanner {
 		return ret;
 	}
 	
-	//TODO
+	//FIXME this is the simplest but the silliest way to do planning.
 	public boolean doPlanning() {
-		return false;
+		//Check that at least one start and one goal have been provided
+		if (this.start == null) throw new Error("Start is not specified!");
+		if (this.goal.length == 0) throw new Error("Goal is not specified!");
+		
+		//Compute the shortest path between start and goals.
+		String[] locations = new String[1+this.goal.length];
+		locations[0] = computeLocationOnRoadmap(this.start);
+		for (int i = 0; i < this.goal.length; i++) locations[i] = computeLocationOnRoadmap(this.goal[i]);
+		this.pathPS = getShortestPath(locations);
+		return this.pathPS != null;
+	}
+	
+	/**
+	 * Return the name of the location in the roadmap which is closest to the given pose.
+	 * @param pose The pose of interest.
+	 */
+	public String computeLocationOnRoadmap(Pose pose) {
+		//FIXME The closest location should be accessible. Add a check.
+		String closestLocation = null;
+		double minDistance = Double.MAX_VALUE;
+		for (String location : locations.keySet()) {
+			double distance = pose.distanceTo(locations.get(location));
+			if (distance < minDistance) {
+				minDistance = distance;
+				closestLocation = location;
+			}
+		}
+		return closestLocation;
+	}
+	
+	
+	/**
+	 * Return the name of the locations in the roadmap which is closest to the given poses.
+	 * @param poses The interesting poses.
+	 */
+	public String[] computeLocationsOnRoadmap(Pose ... poses) {
+		String[] ret = new String[poses.length];
+		for (int i = 0; i < poses.length; i++) ret[i] = computeLocationOnRoadmap(poses[i]);
+		return ret;
+	}
+	
+	
+	/**
+	 * Get the shortest path connecting given locations (two or more). The path between successive pairs of locations
+	 * is computed with Dijkstra's algorithm, where edge weights are path lengths.
+	 * @param locations At least two location names.
+	 * @return The shortest path connecting given locations.
+	 */
+	public PoseSteering[] getShortestPath(String[] locations) {
+		if (locations.length < 2) throw new Error("Please provide at least two locations for path extraction!");
+		DijkstraShortestPath<String, DefaultWeightedEdge> dijkstraShortestPath = new DijkstraShortestPath<String, DefaultWeightedEdge>(graph);
+		ArrayList<PoseSteering> overallShortestPath = new ArrayList<PoseSteering>();
+		for (int k = 0; k < locations.length-1; k++) {
+		    GraphPath<String, DefaultWeightedEdge> gp = dijkstraShortestPath.getPath(locations[k], locations[k+1]);			
+		    if (gp == null) return null;
+		    List<String> oneShortestPath = gp.getVertexList();
+		    ArrayList<PoseSteering> allPoses = new ArrayList<PoseSteering>();
+		    for (int i = 0; i < oneShortestPath.size()-1; i++) {
+		    	//PoseSteering[] onePath = loadKnownPath(oneShortestPath.get(i),oneShortestPath.get(i+1));
+		    	PoseSteering[] onePath = paths.get(oneShortestPath.get(i)+"->"+oneShortestPath.get(i+1));
+		    	if (i == 0) allPoses.add(onePath[0]);
+		    	for (int j = 1; j < onePath.length-1; j++) {
+		    		allPoses.add(onePath[j]);
+		    	}
+		    	if (i == oneShortestPath.size()-2) allPoses.add(onePath[onePath.length-1]);
+		    }
+		    if (k == 0) overallShortestPath.add(allPoses.get(0));
+		    for (int i = 1; i < allPoses.size(); i++) {
+		    	overallShortestPath.add(allPoses.get(i));
+		    }
+		}
+		return overallShortestPath.toArray(new PoseSteering[overallShortestPath.size()]);
 	}
 
 	@Override
@@ -218,9 +294,22 @@ public class SimpleRoadMapPlanner extends AbstractMotionPlanner {
 	
 	@Override
 	public synchronized void addObstacles(Geometry geom, Pose ... poses) {
-		//TODO
 		if (this.om == null) this.om = new OccupancyMap(1000, 1000, 0.01);
 		this.om.addObstacles(geom, poses);
+		
+		//Find and remove the edges which are not collision free.
+		//TODO
+	}
+	
+	@Override
+	public synchronized void clearObstacles() {
+		if (!graph.vertexSet().equals(graph_original.vertexSet())) {
+			//restore the original vertex set. TODO
+		}
+		
+		if (!graph.edgeSet().equals(graph_original.edgeSet())) {
+			//restore the original edge set. TODO
+		}
 	}
 
 }
