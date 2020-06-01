@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Scanner;
+import java.util.Set;
 import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -72,7 +73,7 @@ public class Missions {
 	
 	/**
 	 * Set the minimum acceptable distance between path poses. This is used to re-sample paths
-	 * when they are loaded from file or when the method {@link #filterPathsInRoadMap()} is called.
+	 * when they are loaded from file or when the method {@link #resamplePathsInRoadMap()} is called.
 	 * @param minPathDist The minimum acceptable distance between path poses.
 	 */
 	public static void setMinPathDistance(double minPathDist) {
@@ -83,13 +84,13 @@ public class Missions {
 	 * Re-sample all paths so that the minimum distance between path poses is the value
 	 * set by {@link #setMinPathDistance(double)}.
 	 */
-	public static void filterPathsInRoadMap() {
+	public static void resamplePathsInRoadMap() {
 		for (String pathname : paths.keySet()) {
-			paths.put(pathname, filterPath(paths.get(pathname)));
+			paths.put(pathname, resamplePath(paths.get(pathname)));
 		}
 	}
 	
-	private static PoseSteering[] filterPath(PoseSteering[] path) {
+	private static PoseSteering[] resamplePath(PoseSteering[] path) {
 		if (minPathDistance < 0) return path;
 		ArrayList<PoseSteering> ret = new ArrayList<PoseSteering>();
 		PoseSteering lastAdded = path[0];
@@ -1066,7 +1067,7 @@ public class Missions {
 		}
 		catch (FileNotFoundException e) { e.printStackTrace(); }
 		PoseSteering[] retArray = ret.toArray(new PoseSteering[ret.size()]);
-		return filterPath(retArray);
+		return resamplePath(retArray);
 	}
 	
 
@@ -1099,6 +1100,14 @@ public class Missions {
 		}
 		Mission followerMission = new Mission(followerID, followerPath);
 		return followerMission;
+	}
+	
+	public static Set<String> getAllGraphVertices() {
+		return graph.vertexSet();
+	}
+	
+	public static Set<DefaultWeightedEdge> getAllGraphEdges() {
+		return graph.edgeSet();
 	}
 
 }
