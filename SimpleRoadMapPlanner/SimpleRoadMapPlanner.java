@@ -37,7 +37,7 @@ public class SimpleRoadMapPlanner extends AbstractMotionPlanner {
 	private HashSet<String> removedVertices = new HashSet<String>();
 	private HashSet<DefaultWeightedEdge> removedEdges = new HashSet<DefaultWeightedEdge>();
 	
-	SimpleRoadMapPlanner(){
+	public SimpleRoadMapPlanner(){
 		super();
 	};
 	
@@ -48,7 +48,7 @@ public class SimpleRoadMapPlanner extends AbstractMotionPlanner {
 	 * 									(re-sampling is not performed in this case); see {@link #loadRoadMap}.
 	 * @param footprint The robot footprint.
 	 */
-	SimpleRoadMapPlanner(String fileName, double distanceBetweenPathPoints, Coordinate ... footprint) {
+	public SimpleRoadMapPlanner(String fileName, double distanceBetweenPathPoints, Coordinate ... footprint) {
 		if (footprint == null) throw new Error("Provide the robot footprint!!"); //FIXME inscribed/circunscribed radius
 		this.footprintCoords = footprint;
 		loadRoadMap(fileName, distanceBetweenPathPoints);
