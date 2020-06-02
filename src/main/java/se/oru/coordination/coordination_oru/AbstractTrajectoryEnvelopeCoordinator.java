@@ -1820,6 +1820,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 						elapsedTimeUpdateDependencies = Calendar.getInstance().getTimeInMillis();
 						updateDependencies();
 						elapsedTimeUpdateDependencies = Calendar.getInstance().getTimeInMillis()-elapsedTimeUpdateDependencies;
+						numberAllCriticalSections = allCriticalSections.size();
 						
 						if (!quiet) {
 							printStatisticsTime = Calendar.getInstance().getTimeInMillis();
