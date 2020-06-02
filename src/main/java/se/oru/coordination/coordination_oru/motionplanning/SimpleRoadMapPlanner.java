@@ -271,14 +271,14 @@ public class SimpleRoadMapPlanner extends AbstractMotionPlanner {
 		////// RE-PLAN /////
 		
 		//Check that the specified start and paths are contained in the given roadmap.
-		String oldPathKey = null;
+		/*String oldPathKey = null;
 		for (String key : paths.keySet()) {
 			if (paths.get(key).equals(this.oldPathPS)) {
 				oldPathKey = key;
 				break;
 			}
 		}
-		if (oldPathKey == null) throw new Error("The given old path is not in the current roadmap");
+		if (oldPathKey == null) throw new Error("The given old path is not in the current roadmap");*/
 		
 		//We have found the path, so we can search for the start. TODO
 		
