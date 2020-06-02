@@ -1012,7 +1012,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		for (int robotID : robotsToReplan) {
 			int currentWaitingIndex = -1;
 			Pose currentWaitingPose = null;
-			ArrayList<Pose> currentWaitingGoal = new ArrayList<Pose>();
+			Pose currentWaitingGoal = null;
 			PoseSteering[] oldPath = null;
 
 			//FIXME not synchronized on current dependencies
@@ -1026,7 +1026,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						if (currentWaitingPose == null) throw new Error("Waiting pose should not be null in dep: " + dep);
 						Trajectory traj = dep.getWaitingTrajectoryEnvelope().getTrajectory();
 						oldPath = traj.getPoseSteering();
-						currentWaitingGoal.add(oldPath[oldPath.length-1].getPose());
+						currentWaitingGoal = oldPath[oldPath.length-1].getPose();
 						break;
 					}
 				}
@@ -1047,8 +1047,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				continue;
 			}
 			synchronized (mp) {
-				//FIXME We are loosing the intermediate waypoints!!
-				PoseSteering[] newPath = doReplanning(mp, currentWaitingPose, (Pose[])currentWaitingGoal.toArray(), oldPath, obstacles);
+				PoseSteering[] newPath = doReplanning(mp, currentWaitingPose, currentWaitingGoal, obstacles);
 				replanningTrialsCounter.incrementAndGet();
 				if (newPath != null && newPath.length > 0) {
 					PoseSteering[] newCompletePath = new PoseSteering[newPath.length+currentWaitingIndex];
