@@ -1,4 +1,4 @@
-package SimpleRoadMapPlanner;
+package se.oru.coordination.coordination_oru.motionplanning;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -11,6 +11,7 @@ import java.util.Scanner;
 
 import org.jgrapht.GraphPath;
 import org.jgrapht.alg.shortestpath.DijkstraShortestPath;
+import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.DefaultWeightedEdge;
 import org.jgrapht.graph.SimpleDirectedWeightedGraph;
 import org.metacsp.multi.spatioTemporal.paths.Pose;
@@ -21,22 +22,43 @@ import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.util.AffineTransformation;
 
-import se.oru.coordination.coordination_oru.motionplanning.AbstractMotionPlanner;
-import se.oru.coordination.coordination_oru.motionplanning.OccupancyMap;
 import se.oru.coordination.coordination_oru.util.Missions;
 
 public class SimpleRoadMapPlanner extends AbstractMotionPlanner {
-	//The graph which is not changed by obstacles.
-	private SimpleDirectedWeightedGraph<String, DefaultWeightedEdge> graph_original = new SimpleDirectedWeightedGraph<String, DefaultWeightedEdge>(DefaultWeightedEdge.class); 
-	//Graph that is updated according to obstacles.
+	
+	//FIXME: constructor more generic
+	class ScopedDefaultWeightedEdge {
+		private String source = null;
+		private String target = null;
+		private double weight = -1;
+		
+		public ScopedDefaultWeightedEdge(String source, String target, double weight) {
+			this.source = source;
+			this.target = target;
+			this.weight = weight;
+		}
+		
+		public String getSource() {
+			return this.source;
+		}
+		
+		public String getTarget() {
+			return this.target;
+		}
+		
+		public double getWeight() {
+			return this.weight;
+		}
+	}
+	
 	private SimpleDirectedWeightedGraph<String, DefaultWeightedEdge> graph = new SimpleDirectedWeightedGraph<String, DefaultWeightedEdge>(DefaultWeightedEdge.class);
 	private HashMap<String,Pose> locations = new HashMap<String,Pose>();
 	private HashMap<String,PoseSteering[]> paths = new HashMap<String, PoseSteering[]>();
 	
 	//Sets of removed vertices and edges from the original graph after calling  {@link #addObstacles(Geometry geom, Pose ... poses)}. 
 	private HashSet<String> removedVertices = new HashSet<String>();
-	private HashSet<DefaultWeightedEdge> removedEdges = new HashSet<DefaultWeightedEdge>();
-	
+	private HashMap<DefaultWeightedEdge, ScopedDefaultWeightedEdge> removedEdges = new HashMap<DefaultWeightedEdge, ScopedDefaultWeightedEdge>();
+
 	public SimpleRoadMapPlanner(){
 		super();
 	};
@@ -114,13 +136,11 @@ public class SimpleRoadMapPlanner extends AbstractMotionPlanner {
 	//Build the graph
 	private void buildGraphs() {
 		this.graph = new SimpleDirectedWeightedGraph<String, DefaultWeightedEdge>(DefaultWeightedEdge.class);
-		this.graph_original = new SimpleDirectedWeightedGraph<String, DefaultWeightedEdge>(DefaultWeightedEdge.class);
 		
 		metaCSPLogger.info("Updating the roadmap with the given graph ...");
 		
 		for (String v : locations.keySet()) {
 			this.graph.addVertex(v);
-			this.graph_original.addVertex(v);
 			metaCSPLogger.info("Added vertex " + v + ".");
 		}
 		
@@ -130,18 +150,11 @@ public class SimpleRoadMapPlanner extends AbstractMotionPlanner {
 					if (paths.containsKey(from+"->"+to)) {
 						PoseSteering[] path = paths.get(from+"->"+to);
 						DefaultWeightedEdge e = addEdge(graph, from, to, (double)path.length);
-						addEdge(graph_original, from, to, (double)path.length);
 						metaCSPLogger.info("Added edge " + e);
 					}
 				}
 			}	
 		}
-	}
-		
-	public void setLocationsPathsAndBuildGraphs(HashMap<String, Pose> locations, HashMap<String,PoseSteering[]> paths) {
-		this.locations.putAll(locations);
-		this.paths.putAll(paths);
-		buildGraphs();
 	}
 		
 	/**
@@ -162,14 +175,17 @@ public class SimpleRoadMapPlanner extends AbstractMotionPlanner {
 		for (int i = 1; i < path.length; i++) {
 			Coordinate p1 = lastAdded.getPose().getPosition();
 			Coordinate p2 = path[i].getPose().getPosition();
+			//FIXME The function does not consider the rotation!!
 			if (p2.distance(p1) > distanceBetweenPathPoints) {
 				lastAdded = path[i];
 				ret.add(path[i]);
 			}
 		}
+		//Add the goal if not already added
+		if (!ret.get(ret.size()-1).equals(path[path.length-1])) ret.add(path[path.length-1]);
 		return ret.toArray(new PoseSteering[ret.size()]);
 	}
-	
+		
 	private DefaultWeightedEdge addEdge(SimpleDirectedWeightedGraph<String, DefaultWeightedEdge> graph, String source, String target, double weight) {
 		graph.addVertex(source);
 		graph.addVertex(target);
@@ -188,7 +204,6 @@ public class SimpleRoadMapPlanner extends AbstractMotionPlanner {
 		if (!locations.containsKey(source) || !locations.containsKey(target) || path == null || path.length == 0) throw new Error("Locations unknown or path is invalid (" + (source+"->"+target) + ")!");
 		paths.put(source+"->"+goal, path);
 		addEdge(graph, source, target, (double)path.length);
-		addEdge(graph_original, source, target, (double)path.length);
 	}
 	
 	/**
@@ -204,7 +219,6 @@ public class SimpleRoadMapPlanner extends AbstractMotionPlanner {
 		}
 		for (String key : toRemove) paths.remove(key);
 		if (graph != null) graph.removeVertex(locationName);
-		if (graph_original != null) graph_original.removeVertex(locationName);
 	}
 	
 	/**
@@ -215,7 +229,6 @@ public class SimpleRoadMapPlanner extends AbstractMotionPlanner {
 	public void addLocationToRoadMap(String locationName, Pose pose) {
 		locations.put(locationName, pose);
 		graph.addVertex(locationName);
-		graph_original.addVertex(locationName);
 	}
 		
 	/**
@@ -237,7 +250,9 @@ public class SimpleRoadMapPlanner extends AbstractMotionPlanner {
 		
 		//Compute the shortest path between start and goals.
 		String[] locations = new String[1+this.goal.length];
-		locations[0] = computeLocationOnRoadmap(this.start);
+		locations[0] = computeLocationOnRoadmap(this.start); //FIXME here we should do rewiring
+		//FIXME at least the last goal should be already a location in the roadmap (under the assubption that robot follows the path).
+		//However, it may be that the coordinator does not keep track of intermediate goals (CHECK AND EVENTUALLY ADD!!).
 		for (int i = 0; i < this.goal.length; i++) locations[i] = computeLocationOnRoadmap(this.goal[i]);
 		this.pathPS = getShortestPath(locations);
 		return this.pathPS != null;
@@ -307,11 +322,19 @@ public class SimpleRoadMapPlanner extends AbstractMotionPlanner {
 
 	@Override
 	public AbstractMotionPlanner getCopy() {
-		//FIXME
 		SimpleRoadMapPlanner ret = new SimpleRoadMapPlanner();
-		ret.setLocationsPathsAndBuildGraphs(this.locations,this.paths);
 		ret.setFootprint(this.footprintCoords);
 		ret.om = this.om;
+		ret.locations.putAll(this.locations);
+		ret.paths.putAll(this.paths);
+		ret.removedVertices.addAll(this.removedVertices);
+		ret.removedEdges.putAll(this.removedEdges);
+		ret.graph = new SimpleDirectedWeightedGraph<String, DefaultWeightedEdge>(DefaultWeightedEdge.class);
+		for (String v : this.graph.vertexSet()) ret.graph.addVertex(v);
+		for (DefaultWeightedEdge e : this.graph.edgeSet()) {
+			DefaultWeightedEdge e1 = ret.graph.addEdge(this.graph.getEdgeSource(e),this.graph.getEdgeTarget(e));
+			ret.graph.setEdgeWeight(e1, this.graph.getEdgeWeight(e));
+		}
 		return ret;
 	}
 	
@@ -342,14 +365,15 @@ public class SimpleRoadMapPlanner extends AbstractMotionPlanner {
 					Geometry robotInPose = makeObstacle(new Pose(pose.getX(),pose.getY(),pose.getTheta()));
 					for (Geometry obstacle : obstacles) {
 						if (robotInPose.intersects(obstacle)) {
-							removedEdges.addAll(graph.getAllEdges(startLoc, targetLoc));
+							for (DefaultWeightedEdge e : graph.getAllEdges(startLoc, targetLoc))
+								removedEdges.put(e, new ScopedDefaultWeightedEdge(startLoc, targetLoc, graph.getEdgeWeight(e)));
 							break;
 						}
 					}
 				}
 			}
 		}
-		this.graph.removeAllEdges(removedEdges);
+		this.graph.removeAllEdges(removedEdges.keySet());
 		
 	}
 	
@@ -379,9 +403,9 @@ public class SimpleRoadMapPlanner extends AbstractMotionPlanner {
 		
 		//Tracking changes
 		for (String v : removedVertices) this.graph.addVertex(v);
-		for (DefaultWeightedEdge e : removedEdges) {
-			DefaultWeightedEdge e1 = this.graph.addEdge(this.graph_original.getEdgeSource(e),this.graph_original.getEdgeTarget(e));
-			this.graph.setEdgeWeight(e1, this.graph_original.getEdgeWeight(e));
+		for (DefaultWeightedEdge e : removedEdges.keySet()) {
+			DefaultWeightedEdge e1 = this.graph.addEdge(removedEdges.get(e).getSource(),removedEdges.get(e).getTarget());
+			this.graph.setEdgeWeight(e1, removedEdges.get(e).getWeight());
 		}
 		removedVertices.clear();
 		removedEdges.clear();
