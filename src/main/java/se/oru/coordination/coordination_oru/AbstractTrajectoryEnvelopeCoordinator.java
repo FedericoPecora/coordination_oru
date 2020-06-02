@@ -852,16 +852,17 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 * The given set of obstacles is added to the map used for planning.
 	 * @param mp The motion planner to use.
 	 * @param fromPose Starting pose.
-	 * @param toPose Target pose.
+	 * @param currentWaitingGoal Target poses.
+	 * @param oldPath The complete old path
 	 * @param obstaclesToConsider Obstacles to be added to the map used for planning.
 	 * @return
 	 */
-	protected PoseSteering[] doReplanning(AbstractMotionPlanner mp, Pose fromPose, Pose toPose, Geometry... obstaclesToConsider) {
+	protected PoseSteering[] doReplanning(AbstractMotionPlanner mp, Pose fromPose, Pose[] currentWaitingGoal, PoseSteering[] oldPath, Geometry... obstaclesToConsider) {
 		if (mp == null) return null;
 		synchronized (mp) {
 			mp.setStart(fromPose);
-			mp.setGoals(toPose);
-			//mp.clearObstacles();
+			mp.setGoals(currentWaitingGoal);
+			mp.setOldPath(oldPath);
 			if (obstaclesToConsider != null && obstaclesToConsider.length > 0) mp.addObstacles(obstaclesToConsider);
 			boolean replanningSuccessful = mp.plan();
 			if (!replanningSuccessful) mp.writeDebugImage();
