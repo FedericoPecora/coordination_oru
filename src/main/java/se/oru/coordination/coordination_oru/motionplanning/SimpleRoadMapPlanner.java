@@ -259,17 +259,36 @@ public class SimpleRoadMapPlanner extends AbstractMotionPlanner {
 		if (this.start == null) throw new Error("Start is not specified!");
 		if (this.goal.length == 0) throw new Error("Goal is not specified!");
 		
-		//Compute the shortest path between start and goals.
 		String[] locations = new String[1+this.goal.length];
 		
-		//FIXME More then one path may contain the given starting location, so it should be given also the old path name.
-		locations[0] = computeLocationOnRoadmap(this.start); //FIXME here we should do rewiring
-		
-		//FIXME at least the last goal should be already a location in the roadmap (under the assubption that robot follows the path).
-		//However, it may be that the coordinator does not keep track of intermediate goals (CHECK AND EVENTUALLY ADD!!).
+		//check the goals to be contained in the current roadmap. 
+		//FIXMR The coordinator does not keep track of intermediate goals (ADD!!).
+		//If not, return/get the closest vertex?
 		for (int i = 0; i < this.goal.length; i++) locations[i] = computeLocationOnRoadmap(this.goal[i]);
 		
+		//Split between the case of computing a new path or do a re-plan.
+		
+		////// RE-PLAN /////
+		
+		//Check that the specified start and paths are contained in the given roadmap.
+		String oldPathKey = null;
+		for (String key : paths.keySet()) {
+			if (paths.get(key).equals(this.oldPathPS)) {
+				oldPathKey = key;
+				break;
+			}
+		}
+		if (oldPathKey == null) throw new Error("The given old path is not in the current roadmap");
+		
+		//We have found the path, so we can search for the start. TODO
+		
+		//Copy the graph to modify it via re-wiring
+		
+		//Rewire the graph
+		
+		//Compute the shortest path between start and goals.		
 		this.pathPS = getShortestPath(locations);
+		
 		return this.pathPS != null;
 	}
 	
