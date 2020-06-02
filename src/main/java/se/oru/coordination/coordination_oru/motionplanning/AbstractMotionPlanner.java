@@ -28,7 +28,6 @@ public abstract class AbstractMotionPlanner {
 	protected boolean noMap = true;
 	
 	protected PoseSteering[] pathPS = null;
-	protected PoseSteering[] oldPathPS = null;
 
 	public abstract AbstractMotionPlanner getCopy();
 	
@@ -78,13 +77,6 @@ public abstract class AbstractMotionPlanner {
 	public void setMap(String mapYAMLFile) {
 		this.noMap = false;
 		this.om = new OccupancyMap(mapYAMLFile);
-	}
-	/**
-	 * Set the old path (may be useful for re-planning).
-	 * @param oldPath
-	 */
-	public void setOldPath(PoseSteering[] oldPath) {
-		this.oldPathPS = oldPath;
 	}
 		
 	public PoseSteering[] getPath() {
