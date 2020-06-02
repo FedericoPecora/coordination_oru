@@ -51,6 +51,7 @@ public class SimpleRoadMapPlanner extends AbstractMotionPlanner {
 		}
 	}
 	
+	//Graph which vertex set corresponds to the set of locations.
 	private SimpleDirectedWeightedGraph<String, DefaultWeightedEdge> graph = new SimpleDirectedWeightedGraph<String, DefaultWeightedEdge>(DefaultWeightedEdge.class);
 	private HashMap<String,Pose> locations = new HashMap<String,Pose>();
 	private HashMap<String,PoseSteering[]> paths = new HashMap<String, PoseSteering[]>();
@@ -64,16 +65,26 @@ public class SimpleRoadMapPlanner extends AbstractMotionPlanner {
 	};
 	
 	/**
-	 * Class constructor.
+	 * Class constructor with path re-sampling.
 	 * @param fileName The directory or file to load the roadmap from (see {@link #loadRoadMap}).
-	 * @param distanceBetweenPathPoints distanceBetweenPathPoints The minimum acceptable distance between path poses or -1 if any value is ok 
+	 * @param distanceBetweenPathPoints The minimum acceptable distance between path poses or -1 if any value is ok 
 	 * 									(re-sampling is not performed in this case); see {@link #loadRoadMap}.
+	 * FIXME: Maximum accettable distance?
 	 * @param footprint The robot footprint.
 	 */
 	public SimpleRoadMapPlanner(String fileName, double distanceBetweenPathPoints, Coordinate ... footprint) {
 		if (footprint == null) throw new Error("Provide the robot footprint!!"); //FIXME inscribed/circunscribed radius
 		this.footprintCoords = footprint;
 		loadRoadMap(fileName, distanceBetweenPathPoints);
+	}
+	
+	/**
+	 * Class constructor without path re-sampling.
+	 * @param fileName The directory or file to load the roadmap from (see {@link #loadRoadMap}).
+	 * @param footprint The robot footprint.
+	 */
+	public SimpleRoadMapPlanner(String fileName, Coordinate ... footprint) {
+		this(fileName,-1,footprint);
 	}
 	
 	/**
@@ -250,10 +261,14 @@ public class SimpleRoadMapPlanner extends AbstractMotionPlanner {
 		
 		//Compute the shortest path between start and goals.
 		String[] locations = new String[1+this.goal.length];
+		
+		//FIXME More then one path may contain the given starting location, so it should be given also the old path name.
 		locations[0] = computeLocationOnRoadmap(this.start); //FIXME here we should do rewiring
+		
 		//FIXME at least the last goal should be already a location in the roadmap (under the assubption that robot follows the path).
 		//However, it may be that the coordinator does not keep track of intermediate goals (CHECK AND EVENTUALLY ADD!!).
 		for (int i = 0; i < this.goal.length; i++) locations[i] = computeLocationOnRoadmap(this.goal[i]);
+		
 		this.pathPS = getShortestPath(locations);
 		return this.pathPS != null;
 	}
@@ -377,7 +392,7 @@ public class SimpleRoadMapPlanner extends AbstractMotionPlanner {
 		
 	}
 	
-	public Geometry makeObstacle(Pose pose) {
+	private Geometry makeObstacle(Pose pose) {
 		GeometryFactory gf = new GeometryFactory();
 		Coordinate[] newFoot = new Coordinate[this.footprintCoords.length+1];
 		for (int j = 0; j < this.footprintCoords.length; j++) {
