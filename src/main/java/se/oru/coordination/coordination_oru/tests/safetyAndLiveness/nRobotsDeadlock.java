@@ -42,14 +42,14 @@ public class nRobotsDeadlock {
         catch (Exception e) { e.printStackTrace(); }
 	}
 		
-	protected static final int NUMBER_ROBOTS = 20;
+	protected static final int NUMBER_ROBOTS = 40;
 	protected static final int NUMBER_MISSIONS = 10;
 
 	public static void main(String[] args) throws InterruptedException {
 		
 		double MAX_ACCEL = 1.0;
 		double MAX_VEL = 4.0;
-		double radius = 20;
+		double radius = 40;
 		
 		//Instantiate a trajectory envelope coordinator.
 		//The TrajectoryEnvelopeCoordinatorSimulation implementation provides
@@ -144,6 +144,7 @@ public class nRobotsDeadlock {
 		for (int robotID : robotIDs) header += (robotID + "\t");
 		initStat(statFilename, header);
 
+		Thread.sleep(5000);
 		
 		//Start a mission dispatching thread for each robot, which will run forever
 		for (final int robotID : robotIDs) {
@@ -171,7 +172,7 @@ public class nRobotsDeadlock {
 							}
 						}
 						//Sleep for a little
-						try { Thread.sleep(2000); }
+						try { Thread.sleep(tec.getControlPeriod()); }
 						catch (InterruptedException e) { e.printStackTrace(); }
 					}
 					System.out.println("Robot" + robotID + " is done!");
@@ -192,6 +193,10 @@ public class nRobotsDeadlock {
 			
 			//Start the thread!
 			t.start();
+			
+			//Sleep for a little
+			try { Thread.sleep(tec.getControlPeriod()); }
+			catch (InterruptedException e) { e.printStackTrace(); }
 		}
 
 	}
