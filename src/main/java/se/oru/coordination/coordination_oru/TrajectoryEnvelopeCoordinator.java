@@ -2079,17 +2079,6 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						//Update graphs
 						if (waitingPoint >= 0) {		
 
-							//Store previous graph
-							DirectedMultigraph<Integer,Dependency> backupDepsGraph = new DirectedMultigraph<Integer, Dependency>(Dependency.class);
-							for (int v : depsGraph.vertexSet()) backupDepsGraph.addVertex(v);
-							for (Dependency dep : depsGraph.edgeSet()) backupDepsGraph.addEdge(dep.getWaitingRobotID(), dep.getDrivingRobotID(), dep);
-
-							SimpleDirectedGraph<Integer,String> backupGraph = new SimpleDirectedGraph<Integer, String>(String.class);
-							for (int v : currentOrdersGraph.vertexSet()) backupGraph.addVertex(v);
-							for (String edge : currentOrdersGraph.edgeSet()) backupGraph.addEdge(currentOrdersGraph.getEdgeSource(edge), currentOrdersGraph.getEdgeTarget(edge), edge);
-
-							HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>> backupcurrentCyclesList = new HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>>(currentCyclesList);
-
 							edgesToDelete.add(new Pair<Integer,Integer>(drivingRobotID, waitingRobotID));
 							Pair<Integer,Integer> newEdge = new Pair<Integer,Integer>(waitingRobotID, drivingRobotID);
 							edgesToAdd.add(newEdge);
@@ -2179,25 +2168,18 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 									}
 								}
 							}
-							if (!safe) {
-								depsGraph = backupDepsGraph;
 
-								//fill without changing the container (not sure they are synchronized)
-								/*HashSet<String> edgesToRemove = new HashSet<String>(currentOrdersGraph.edgeSet());
-								HashSet<Integer> verticesToRemove = new HashSet<Integer>(currentOrdersGraph.vertexSet());
-								currentOrdersGraph.removeAllEdges(edgesToRemove);
-								currentOrdersGraph.removeAllVertices(verticesToRemove);
-								for (int v : backupGraph.vertexSet()) currentOrdersGraph.addVertex(v);
-								for (String e : backupGraph.edgeSet()) currentOrdersGraph.addEdge(backupGraph.getEdgeSource(e), backupGraph.getEdgeTarget(e), e);*/
-								//FIXME
-								currentOrdersGraph = backupGraph;
-
-								//FIXME The HashMap is a synchronized structure so probably it is ok to do 
-								currentCyclesList = backupcurrentCyclesList;
-								//currentCyclesList.clear();
-								//currentCyclesList.putAll(backupcurrentCyclesList);
-
+							if (!safe) {								
 								metaCSPLogger.finest("Restore previous precedence " + depOld + ".");
+								
+								monitorTime = Calendar.getInstance().getTimeInMillis();
+								updateGraph(edgesToAdd, edgesToDelete);
+								depsGraph.removeEdge(depNew);
+								depsGraph.addVertex(depOld.getWaitingRobotID());
+								depsGraph.addVertex(depOld.getDrivingRobotID());
+								depsGraph.addEdge(depOld.getWaitingRobotID(), depOld.getDrivingRobotID(), depOld);
+								stat = stat + new String("Restore one: " + Long.toString(Calendar.getInstance().getTimeInMillis()-monitorTime) + ", ");
+
 								unaliveStatesAvoided.incrementAndGet();
 							}
 							else {
