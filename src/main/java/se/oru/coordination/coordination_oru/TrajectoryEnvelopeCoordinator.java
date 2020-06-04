@@ -1596,14 +1596,23 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 			HashSet<Pair<Integer,Integer>> toDelete = null;
 			if (edgesToDelete != null) {
-				toDelete = new HashSet<Pair<Integer,Integer>>(edgesToDelete);
-				if (edgesToAdd != null) toDelete.removeAll(edgesToAdd);
+				//toDelete = new HashSet<Pair<Integer,Integer>>(edgesToDelete);
+				//if (edgesToAdd != null) toDelete.removeAll(edgesToAdd);
+				//
+				toDelete = new HashSet<Pair<Integer,Integer>>();
+				for (Pair<Integer,Integer> e : edgesToDelete) {
+					if (!edgesToAdd.contains(e)) toDelete.add(e);
+				}
 			}
 
 			HashSet<Pair<Integer,Integer>> toAdd = null;
 			if (edgesToAdd != null) {
-				toAdd = new HashSet<Pair<Integer,Integer>>(edgesToAdd);
-				if (edgesToDelete != null) toAdd.removeAll(edgesToDelete);
+				//toAdd = new HashSet<Pair<Integer,Integer>>(edgesToAdd);
+				//if (edgesToDelete != null) toAdd.removeAll(edgesToDelete);
+				toAdd = new HashSet<Pair<Integer,Integer>>();
+				for (Pair<Integer,Integer> e : edgesToAdd) {
+					if (!edgesToDelete.contains(e)) toAdd.add(e);
+				}
 			}
 
 			deleteEdges(toDelete);			
