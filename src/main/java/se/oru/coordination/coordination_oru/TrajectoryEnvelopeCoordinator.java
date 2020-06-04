@@ -17,6 +17,7 @@ import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
@@ -79,7 +80,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 	protected boolean breakDeadlocksByReordering = true;
 	protected boolean breakDeadlocksByReplanning = true;
-	protected boolean avoidDeadlockGlobally = false;
+	protected AtomicBoolean avoidDeadlockGlobally = new AtomicBoolean(false);
 	protected AtomicInteger unaliveStatesDetected = new AtomicInteger(0);
 	protected AtomicInteger unaliveStatesAvoided = new AtomicInteger(0);
 	protected AtomicInteger reversedPrecedenceOrderCounter = new AtomicInteger(0);
@@ -109,7 +110,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 */
 	public void setBreakDeadlocksByReplanning(boolean value) {
 		this.breakDeadlocksByReplanning = value;
-		this.avoidDeadlockGlobally = false;
+		this.avoidDeadlockGlobally.getAndSet(false);
 	}
 
 	/**
@@ -119,7 +120,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 */
 	public void setBreakDeadlocksByReordering(boolean value) {
 		this.breakDeadlocksByReordering = value;
-		this.avoidDeadlockGlobally = false;
+		this.avoidDeadlockGlobally.getAndSet(false);
 	}
 
 	/**
@@ -127,7 +128,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 * @param value <code>true</code> if deadlocks should be broken.
 	 */
 	public void setAvoidDeadlocksGlobally(boolean value) {
-		this.avoidDeadlockGlobally = value;
+		this.avoidDeadlockGlobally.getAndSet(true);
 		if (value) {
 			this.breakDeadlocksByReordering = false;
 			this.breakDeadlocksByReplanning = false;
@@ -141,7 +142,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 */
 	@Deprecated
 	public void setBreakDeadlocks(boolean value) {
-		this.avoidDeadlockGlobally = false;
+		this.avoidDeadlockGlobally.getAndSet(false);
 		this.setBreakDeadlocksByReordering(value);
 		this.setBreakDeadlocksByReplanning(value);
 	}
@@ -565,7 +566,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	@Override
 	protected void updateDependencies() {
 		synchronized(solver) {
-			if (this.avoidDeadlockGlobally) globalCheckAndRevise();
+			if (this.avoidDeadlockGlobally.get()) globalCheckAndRevise();
 			else localCheckAndRevise();
 		}
 	}
@@ -1084,8 +1085,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				String fileName = new String(System.getProperty("user.home")+File.separator+"coordinator_stat.txt");
 				initStat(fileName, "Init statistics: @"+Calendar.getInstance().getTimeInMillis() + "\n");
 				String stat = new String(//"Legend: at each control period\n\t 1. elapsed time to compute critical sections\n\t 2.elapsed time to update dependencies\n\t 3. number of new critical sections\n\t"
-						"elapsedTimeComputeCriticalSections\t elapsedTimeUpdateDependencies\t numberNewCriticalSections\t numberAllCriticalSections\t numberNewAddedMissions \t numberDrivingRobots\t expectedSleepingTime\t effectiveSleepingTime\t printStatisticsTime\t effectiveTc \n");
-				if (avoidDeadlockGlobally)  stat.concat("\t numberReversedPrecedenceOrder\t numberCurrentCycles");
+						"elapsedTimeComputeCriticalSections\t elapsedTimeUpdateDependencies\t numberNewCriticalSections\t numberAllCriticalSections\t numberNewAddedMissions \t numberDrivingRobots\t expectedSleepingTime\t effectiveSleepingTime\t printStatisticsTime\t effectiveTc");
+				if (avoidDeadlockGlobally.get()) stat = stat + new String("\t numberReversedPrecedenceOrder\t numberCurrentCycles");
 				stat.concat("\n");				
 				writeStat(fileName, stat);
 				
@@ -1159,7 +1160,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 										
 					stat = new String(elapsedTimeComputeCriticalSections + "\t" + elapsedTimeUpdateDependencies + "\t" + numberNewCriticalSections + "\t" + numberAllCriticalSections + "\t" + numberNewAddedMissions + "\t" + numberDrivingRobots
 							+ "\t" + expectedSleepingTime + "\t" + effectiveSleepingTime + "\t" + printStatisticsTime + "\t" + EFFECTIVE_CONTROL_PERIOD);
-					if (avoidDeadlockGlobally)  stat.concat("\t" + reversedPrecedenceOrderCounter.get() + "\t" + currentCyclesList.size());
+					if (avoidDeadlockGlobally.get()) stat = stat + new String("\t" + reversedPrecedenceOrderCounter.get() + "\t" + currentCyclesList.size());
 					stat.concat("\n");
 					writeStat(fileName, stat);
 				}
@@ -1196,7 +1197,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			}
 
 			for (CriticalSection cs : toRemove) {
-				if (this.avoidDeadlockGlobally) {
+				if (this.avoidDeadlockGlobally.get()) {
 					if (CSToDepsOrder.containsKey(cs)) {
 						int waitingRobID = CSToDepsOrder.get(cs).getFirst();
 						int drivingRobID = cs.getTe1().getRobotID() == waitingRobID ? cs.getTe2().getRobotID() : cs.getTe1().getRobotID(); 
@@ -1334,7 +1335,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 										metaCSPLogger.finest("Restoring  the order of critical section " + cs2 + "(" + holdingCS.get(cs2).toString() + ") for critical section " + cs1 + ".");
 										CSToDepsOrder.put(cs1, holdingCS.get(cs2));
 
-										if (this.avoidDeadlockGlobally) {
+										if (this.avoidDeadlockGlobally.get()) {
 											//re-add dependency to cyclesList and currentOrdersGraph
 											HashSet<Pair<Integer,Integer>> edgesToAdd = new HashSet<Pair<Integer,Integer>>();
 											int waitingRobotID = holdingCS.get(cs2).getFirst();
