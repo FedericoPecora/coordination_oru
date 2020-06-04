@@ -2211,9 +2211,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 								CSToDepsOrder.put(cs, new Pair<Integer,Integer>(depNew.getWaitingRobotID(), depNew.getWaitingPoint()));
 								depsToCS.put(depNew, cs);
 								metaCSPLogger.finest("Update precedences " + depNew + " according to heuristic.");
+								currentOrdersHeurusticallyDecided.incrementAndGet();
 							}
 							metaCSPLogger.finest("Final graph: " + currentOrdersGraph.toString() + ".");	
-							currentOrdersHeurusticallyDecided.incrementAndGet();
+
 						}
 					}
 				}//end for reversibleCS
