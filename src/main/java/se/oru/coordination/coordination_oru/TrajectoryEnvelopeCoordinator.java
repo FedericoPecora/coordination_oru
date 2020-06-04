@@ -1073,11 +1073,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	}
 
 	@Override
-protected void setupInferenceCallback() {
+	protected void setupInferenceCallback() {
 		
 		this.stopInference = false;
 		this.inference = new Thread("Coordinator inference") {
-			private volatile boolean exit = false;
 			
 			@Override
 			public void run() {
