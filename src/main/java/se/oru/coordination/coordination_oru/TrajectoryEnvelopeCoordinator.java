@@ -83,7 +83,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	protected AtomicBoolean avoidDeadlockGlobally = new AtomicBoolean(false);
 	protected AtomicInteger unaliveStatesDetected = new AtomicInteger(0);
 	protected AtomicInteger unaliveStatesAvoided = new AtomicInteger(0);
-	protected AtomicInteger reversedPrecedenceOrderCounter = new AtomicInteger(0);
+	protected AtomicInteger currentOrdersHeurusticallyDecided = new AtomicInteger(0);
 	protected List<List<Integer>> unsafeCyclesOld = new ArrayList<List<Integer>>();
 	protected AtomicInteger replanningTrialsCounter = new AtomicInteger(0);
 	protected AtomicInteger successfulReplanningTrialsCounter = new AtomicInteger(0);
@@ -1160,7 +1160,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 										
 					stat = new String(elapsedTimeComputeCriticalSections + "\t" + elapsedTimeUpdateDependencies + "\t" + numberNewCriticalSections + "\t" + numberAllCriticalSections + "\t" + numberNewAddedMissions + "\t" + numberDrivingRobots
 							+ "\t" + expectedSleepingTime + "\t" + effectiveSleepingTime + "\t" + printStatisticsTime + "\t" + EFFECTIVE_CONTROL_PERIOD);
-					if (avoidDeadlockGlobally.get()) stat = stat + new String("\t" + reversedPrecedenceOrderCounter.get() + "\t" + currentCyclesList.size());
+					if (avoidDeadlockGlobally.get()) stat = stat + new String("\t" + currentOrdersHeurusticallyDecided.get() + "\t" + currentCyclesList.size());
 					stat.concat("\n");
 					writeStat(fileName, stat);
 				}
@@ -1625,6 +1625,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			HashSet<Pair<Integer,Integer>> edgesToDelete = new HashSet<Pair<Integer,Integer>>();
 			HashSet<Pair<Integer,Integer>> edgesToAdd = new HashSet<Pair<Integer,Integer>>();
 			HashSet<CriticalSection> reversibleCS = new HashSet<CriticalSection>();
+			currentOrdersHeurusticallyDecided.set(0);
 
 			//Make deps from un-reached stopping points
 			Set<Integer> robotIDs = trackers.keySet();
@@ -2212,7 +2213,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 								metaCSPLogger.finest("Update precedences " + depNew + " according to heuristic.");
 							}
 							metaCSPLogger.finest("Final graph: " + currentOrdersGraph.toString() + ".");	
-							reversedPrecedenceOrderCounter.incrementAndGet();
+							currentOrdersHeurusticallyDecided.incrementAndGet();
 						}
 					}
 				}//end for reversibleCS
