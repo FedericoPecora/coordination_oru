@@ -2066,8 +2066,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 							HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>> backupcurrentCyclesList = new HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>>(currentCyclesList);
 							
+							edgesToDelete.clear();
 							edgesToDelete.add(new Pair<Integer,Integer>(drivingRobotID, waitingRobotID));
 							Pair<Integer,Integer> newEdge = new Pair<Integer,Integer>(waitingRobotID, drivingRobotID);
+							edgesToAdd.clear();
 							edgesToAdd.add(newEdge);
 							updateGraph(edgesToDelete, edgesToAdd);
 							metaCSPLogger.finest("Graph after revising according to the heuristic: " + currentOrdersGraph.toString() + ".");		
@@ -2086,7 +2088,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 							//check if safe (continue here) 
 							boolean safe = true;
-							if (currentCyclesList.get(newEdge) != null) {
+							if (currentCyclesList.containsKey(newEdge)) {
 								//for each cycle involving the new edge
 								for (List<Integer> cycle : currentCyclesList.get(newEdge)) {
 
