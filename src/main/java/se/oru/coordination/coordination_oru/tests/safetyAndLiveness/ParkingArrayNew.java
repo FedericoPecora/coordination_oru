@@ -128,7 +128,7 @@ public class ParkingArrayNew {
 		
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
 		rsp.setMap(yamlFile);
-		rsp.setRadius(0.05);
+		rsp.setRadius(0.1);
 		rsp.setFootprint(footprint);
 		rsp.setTurningRadius(4.0);
 		rsp.setDistanceBetweenPathPoints(0.5);
@@ -205,7 +205,13 @@ public class ParkingArrayNew {
 			if (inactiveRobots.contains(robotID)) continue;
 			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
 			//In case deadlocks occur, we make the coordinator capable of re-planning on the fly (experimental, not working properly yet)
-			tec.setMotionPlanner(robotID, rsp.getCopy());
+			ReedsSheppCarPlanner rsp_ = new ReedsSheppCarPlanner();
+			rsp_.setMap(yamlFile);
+			rsp_.setRadius(0.1);
+			rsp_.setFootprint(footprint);
+			rsp_.setTurningRadius(4.0);
+			rsp_.setDistanceBetweenPathPoints(0.5);
+			tec.setMotionPlanner(robotID, rsp_);
 			tec.placeRobot(robotID, Missions.getInitialPoses().get(robotID));
 		}
 		
