@@ -1,63 +1,38 @@
 package se.oru.coordination.coordination_oru;
 
 import java.io.File;
-import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.nio.file.Files;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map.Entry;
-import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.Logger;
 
-import javax.swing.SwingUtilities;
-
-import org.apache.commons.collections.comparators.ComparatorChain;
-import org.jgrapht.DirectedGraph;
 import org.jgrapht.alg.ConnectivityInspector;
 import org.jgrapht.alg.KosarajuStrongConnectivityInspector;
 import org.jgrapht.alg.cycle.JohnsonSimpleCycles;
-import org.jgrapht.graph.ClassBasedEdgeFactory;
-import org.jgrapht.graph.DefaultDirectedGraph;
-import org.jgrapht.graph.DefaultEdge;
+import org.jgrapht.graph.DefaultWeightedEdge;
 import org.jgrapht.graph.DirectedMultigraph;
 import org.jgrapht.graph.DirectedSubgraph;
 import org.jgrapht.graph.SimpleDirectedGraph;
+import org.jgrapht.graph.SimpleDirectedWeightedGraph;
 import org.metacsp.framework.Constraint;
-import org.metacsp.meta.spatioTemporal.paths.Map;
 import org.metacsp.multi.allenInterval.AllenIntervalConstraint;
-import org.metacsp.multi.spatial.DE9IM.GeometricShapeDomain;
-import org.metacsp.multi.spatial.DE9IM.GeometricShapeVariable;
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 import org.metacsp.multi.spatioTemporal.paths.Trajectory;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
-import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelopeSolver;
-import org.metacsp.time.Bounds;
 import org.metacsp.utility.PermutationsWithRepetition;
-import org.metacsp.utility.UI.Callback;
-import org.metacsp.utility.logging.MetaCSPLogging;
 
-import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.GeometryFactory;
-import com.vividsolutions.jts.geom.util.AffineTransformation;
 
 import aima.core.util.datastructure.Pair;
 import se.oru.coordination.coordination_oru.motionplanning.AbstractMotionPlanner;
-import se.oru.coordination.coordination_oru.util.FleetVisualization;
-import se.oru.coordination.coordination_oru.util.StringUtils;
 
 
 /**
@@ -71,7 +46,7 @@ import se.oru.coordination.coordination_oru.util.StringUtils;
 public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEnvelopeCoordinator {
 
 	//@note: currentOrdersGraph and currentCyclesList should be synchronized with allCriticalSection variable.
-	protected SimpleDirectedGraph<Integer,String> currentOrdersGraph = new SimpleDirectedGraph<Integer,String>(String.class);
+	protected SimpleDirectedWeightedGraph<Integer,DefaultWeightedEdge> currentOrdersGraph = new SimpleDirectedWeightedGraph<Integer,DefaultWeightedEdge>(DefaultWeightedEdge.class);
 	protected HashMap<Pair<Integer,Integer>, HashSet<ArrayList<Integer>>> currentCyclesList = new HashMap<Pair<Integer,Integer>, HashSet<ArrayList<Integer>>>();
 	
 	//Robots currently involved in a re-plan which critical point cannot increase beyond the one used for re-plan
@@ -1472,9 +1447,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 			metaCSPLogger.finest("Deleting edges " + edgesToDelete.toString() +".");
 			//metaCSPLogger.finest("Graph before deletion: " + currentOrdersGraph.toString());
-			for (Pair<Integer,Integer> edge : edgesToDelete) {
-				deleteEdge(edge);
-			}	
+			for (Pair<Integer,Integer> edge : edgesToDelete) deleteEdge(edge);
 			//metaCSPLogger.info("... after deletion: " + currentOrdersGraph.toString());
 		}
 	}
@@ -1485,21 +1458,13 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 			if (edge == null) return;
 
-			if (currentOrdersGraph.getEdge(edge.getFirst(), edge.getSecond()) != null) {
-				//hashcode: "s" + startVertex + "t" + targetVertex + "c" + number of edges from startVertex to targetVertex
-				String hashCode = currentOrdersGraph.getEdge(edge.getFirst(), edge.getSecond());
-				int cmark = hashCode.indexOf("c");
-				int numEdge = Integer.valueOf(hashCode.substring(cmark+1, hashCode.length()));
-				currentOrdersGraph.removeEdge(edge.getFirst(), edge.getSecond());
-				//metaCSPLogger.finest("deleting one edge " + edge.toString() + "updating the counter from " + numEdge);
-				if (numEdge > 1) {
-					currentOrdersGraph.addVertex(edge.getFirst());
-					currentOrdersGraph.addVertex(edge.getSecond());
-					String newHashCode = new String(hashCode.substring(0,cmark+1).concat(String.valueOf(numEdge-1)));
-					currentOrdersGraph.addEdge(edge.getFirst(), edge.getSecond(), newHashCode);
-				}
-				else
-				{
+			DefaultWeightedEdge e = currentOrdersGraph.getEdge(edge.getFirst(), edge.getSecond());
+			if (e != null) {
+				int numEdge = (int) currentOrdersGraph.getEdgeWeight(e);
+				if (numEdge > 1) currentOrdersGraph.setEdgeWeight(e, numEdge-1);
+				else {
+					//FIXME Waste of time is probably here
+					currentOrdersGraph.removeEdge(edge.getFirst(), edge.getSecond());
 					if (currentCyclesList.containsKey(edge)) {
 						HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>> toRemove = new HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>>();
 						for (ArrayList<Integer> cycle : currentCyclesList.get(edge)) {
@@ -1533,40 +1498,32 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 			//add the edges if not already in the graph
 			for (Pair<Integer,Integer> edge : edgesToAdd) {
-				if (!currentOrdersGraph.containsEdge(edge.getFirst(), edge.getSecond())) {
+				DefaultWeightedEdge e = currentOrdersGraph.getEdge(edge.getFirst(),edge.getSecond());
+				if (e == null) {
 					toAdd.add(edge);
 					currentOrdersGraph.addVertex(edge.getFirst());
 					currentOrdersGraph.addVertex(edge.getSecond());
-					String hashCode = new String("s"+ String.valueOf(edge.getFirst()) + "t" + String.valueOf(edge.getSecond()) + "c" + String.valueOf(1));
-					currentOrdersGraph.addEdge(edge.getFirst(), edge.getSecond(), hashCode);
+					e = currentOrdersGraph.addEdge(edge.getFirst(),edge.getSecond());
+					currentOrdersGraph.setEdgeWeight(e,1);
 					metaCSPLogger.finest("Add edge:" + edge.toString());
 				}
-				else {
-					String hashCode = currentOrdersGraph.getEdge(edge.getFirst(), edge.getSecond());
-					int cmark = hashCode.indexOf("c");
-					int numEdge = Integer.valueOf(hashCode.substring(cmark+1, hashCode.length()));
-					currentOrdersGraph.removeEdge(edge.getFirst(), edge.getSecond());
-					currentOrdersGraph.addVertex(edge.getFirst());
-					currentOrdersGraph.addVertex(edge.getSecond());
-					String newHashCode = new String(hashCode.substring(0,cmark+1).concat(String.valueOf(numEdge+1)));
-					currentOrdersGraph.addEdge(edge.getFirst(), edge.getSecond(), newHashCode);
-				}
+				else currentOrdersGraph.setEdgeWeight(e,currentOrdersGraph.getEdgeWeight(e)+1);
 			}
 			if (toAdd.isEmpty()) return;
 
 			//compute strongly connected components
-			KosarajuStrongConnectivityInspector<Integer,String> ksccFinder = new KosarajuStrongConnectivityInspector<Integer,String>(currentOrdersGraph);
-			List<DirectedSubgraph<Integer,String>> sccs = ksccFinder.stronglyConnectedSubgraphs();
+			KosarajuStrongConnectivityInspector<Integer,DefaultWeightedEdge> ksccFinder = new KosarajuStrongConnectivityInspector<Integer,DefaultWeightedEdge>(currentOrdersGraph);
+			List<DirectedSubgraph<Integer,DefaultWeightedEdge>> sccs = ksccFinder.stronglyConnectedSubgraphs();
 			metaCSPLogger.finest("Connected components: " + sccs.toString());
 
 			//update the cycle list
 			for (Pair<Integer,Integer> pair : toAdd) {
 				//search the strongly connected components containing the two vertices
-				for (DirectedSubgraph<Integer,String> ssc : sccs) {
+				for (DirectedSubgraph<Integer,DefaultWeightedEdge> ssc : sccs) {
 					if (ssc.containsVertex(pair.getFirst()) || ssc.containsVertex(pair.getSecond())) {
 						if (ssc.containsVertex(pair.getFirst()) && ssc.containsVertex(pair.getSecond())) {
 							//get cycles in this strongly connected components
-							JohnsonSimpleCycles<Integer,String> cycleFinder = new JohnsonSimpleCycles<Integer,String>(ssc);
+							JohnsonSimpleCycles<Integer,DefaultWeightedEdge> cycleFinder = new JohnsonSimpleCycles<Integer,DefaultWeightedEdge>(ssc);
 							List<List<Integer>> cycles = cycleFinder.findSimpleCycles();
 							metaCSPLogger.finest("Reversed cycles: " + cycles);
 							if (!cycles.isEmpty()) {
