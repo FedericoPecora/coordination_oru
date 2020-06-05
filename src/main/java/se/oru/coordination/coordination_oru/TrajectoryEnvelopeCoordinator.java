@@ -1516,31 +1516,37 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			List<DirectedSubgraph<Integer,DefaultWeightedEdge>> sccs = ksccFinder.stronglyConnectedSubgraphs();
 			metaCSPLogger.finest("Connected components: " + sccs.toString());
 
-			//update the cycle list
+			//update the cycle list. Use a map to avoid recomputing cycles of each connected component.
+			HashMap<DirectedSubgraph<Integer,DefaultWeightedEdge>, List<List<Integer>>> sccToCycles = new HashMap<DirectedSubgraph<Integer,DefaultWeightedEdge>, List<List<Integer>>>();
 			for (Pair<Integer,Integer> pair : toAdd) {
 				//search the strongly connected components containing the two vertices
-				for (DirectedSubgraph<Integer,DefaultWeightedEdge> ssc : sccs) {
-					if (ssc.containsVertex(pair.getFirst()) || ssc.containsVertex(pair.getSecond())) {
-						if (ssc.containsVertex(pair.getFirst()) && ssc.containsVertex(pair.getSecond())) {
+				for (DirectedSubgraph<Integer,DefaultWeightedEdge> scc : sccs) {
+					if (scc.containsVertex(pair.getFirst()) && !scc.containsVertex(pair.getSecond()) ||	!scc.containsVertex(pair.getFirst()) && scc.containsVertex(pair.getSecond())) 
+						break; // Vertices are in different connected components. No cycle exists!
+					if (scc.containsVertex(pair.getFirst()) && scc.containsVertex(pair.getSecond())) {
+						List<List<Integer>> cycles = null;
+						if (sccToCycles.containsKey(scc)) cycles = sccToCycles.get(scc);
+						else {
 							//get cycles in this strongly connected components
-							JohnsonSimpleCycles<Integer,DefaultWeightedEdge> cycleFinder = new JohnsonSimpleCycles<Integer,DefaultWeightedEdge>(ssc);
-							List<List<Integer>> cycles = cycleFinder.findSimpleCycles();
-							metaCSPLogger.finest("Reversed cycles: " + cycles);
-							if (!cycles.isEmpty()) {
-								for(List<Integer> cycle : cycles) {
-									Collections.reverse(cycle);
-									//update the list of cycles for each edge
-									for (int i = 0; i < cycle.size(); i++) {
-										int j = i < cycle.size()-1 ? i+1 : 0;
-										Pair<Integer,Integer> edge = new Pair<Integer,Integer>(cycle.get(i), cycle.get(j));
-										if (!currentCyclesList.containsKey(edge)) currentCyclesList.put(edge, new HashSet<ArrayList<Integer>>());
-										currentCyclesList.get(edge).add((ArrayList<Integer>)cycle);
-										//metaCSPLogger.info("edge: " + edge.toString() + "currentCyclesList:" + currentCyclesList.get(edge));
-									}
+							JohnsonSimpleCycles<Integer,DefaultWeightedEdge> cycleFinder = new JohnsonSimpleCycles<Integer,DefaultWeightedEdge>(scc);
+							cycles = cycleFinder.findSimpleCycles();
+							sccToCycles.put(scc, cycles);
+						}
+						metaCSPLogger.finest("Reversed cycles: " + cycles);
+						if (!cycles.isEmpty()) {
+							for(List<Integer> cycle : cycles) {
+								Collections.reverse(cycle);
+								//update the list of cycles for each edge
+								for (int i = 0; i < cycle.size(); i++) {
+									int j = i < cycle.size()-1 ? i+1 : 0;
+									Pair<Integer,Integer> edge = new Pair<Integer,Integer>(cycle.get(i), cycle.get(j));
+									if (!currentCyclesList.containsKey(edge)) currentCyclesList.put(edge, new HashSet<ArrayList<Integer>>());
+									currentCyclesList.get(edge).add((ArrayList<Integer>)cycle);
+									//metaCSPLogger.info("edge: " + edge.toString() + "currentCyclesList:" + currentCyclesList.get(edge));
 								}
 							}
 						}
-						break; //move to next pair
+						break;
 					}
 				}
 			}
