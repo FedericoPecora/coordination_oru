@@ -8,6 +8,7 @@ import java.util.Random;
 import java.util.TreeMap;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
+import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 import org.metacsp.multi.spatioTemporal.paths.Trajectory;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 
@@ -16,6 +17,7 @@ import se.oru.coordination.coordination_oru.NetworkConfiguration;
 import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.TrackingCallback;
 import se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator;
+import se.oru.coordination.coordination_oru.util.Missions;
 
 public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnvelopeTracker implements Runnable {
 
@@ -66,7 +68,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 			this.curvatureDampening[i+1] = 1.0;
 		}
 	}
-			
+	
 	public void setCurvatureDampening(int index, double dampening) {
 		this.curvatureDampening[index] = dampening;
 	}
@@ -81,6 +83,20 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 	
 	public double[] getCurvatureDampening() {
 		return this.curvatureDampening;
+	}private void computeCurvatureDampening() {
+		PoseSteering[] path = this.traj.getPoseSteering();
+		double deltaSinTheta = 0;
+		double sinThetaPrev = Math.sin(Missions.wrapAngle180b(path[0].getTheta()));
+		for (int i = 1; i < path.length; i++) {
+			double sinTheta = Math.sin(Missions.wrapAngle180b(path[i].getTheta()));
+			double deltaSinThetaNew = sinTheta-sinThetaPrev;
+			if (deltaSinThetaNew*deltaSinTheta < 0 && i != 1) {
+				System.out.println("Direction change for Robot" + this.te.getRobotID() + " in " + i);
+				this.curvatureDampening[i] = 0.2;
+			}
+			deltaSinTheta = deltaSinThetaNew;
+			sinThetaPrev = deltaSinThetaNew;
+		}
 	}
 
 	public double getCurvatureDampening(int index, boolean backwards) {

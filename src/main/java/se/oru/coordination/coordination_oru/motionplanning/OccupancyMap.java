@@ -253,6 +253,7 @@ public class OccupancyMap {
 				this.occupancyMapLinearBits.set(y*mapWidth+x, c.getRed()/255.0 < this.threshold ? true : false);
 			}
 		}
+		this.occupancyMapLinearBits.set(bimg.getHeight()*bimg.getWidth(), true);
 	}
 
 	private void readMap(String mapYAMLFile) {
