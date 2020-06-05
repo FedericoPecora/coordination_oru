@@ -2045,6 +2045,21 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						//Update graphs
 						if (waitingPoint >= 0) {		
 
+							
+							//Store previous graph (FIXME)
+							DirectedMultigraph<Integer,Dependency> backupDepsGraph = new DirectedMultigraph<Integer, Dependency>(Dependency.class);
+							for (int v : depsGraph.vertexSet()) backupDepsGraph.addVertex(v);
+							for (Dependency dep : depsGraph.edgeSet()) backupDepsGraph.addEdge(dep.getWaitingRobotID(), dep.getDrivingRobotID(), dep);
+
+							SimpleDirectedWeightedGraph<Integer, DefaultWeightedEdge> backupGraph = new SimpleDirectedWeightedGraph<Integer, DefaultWeightedEdge>(DefaultWeightedEdge.class);
+							for (int v : currentOrdersGraph.vertexSet()) backupGraph.addVertex(v);
+							for (DefaultWeightedEdge e : currentOrdersGraph.edgeSet()) {
+								DefaultWeightedEdge e_ = backupGraph.addEdge(currentOrdersGraph.getEdgeSource(e), currentOrdersGraph.getEdgeTarget(e));
+								backupGraph.setEdgeWeight(e_, currentOrdersGraph.getEdgeWeight(e));
+							}
+
+							HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>> backupcurrentCyclesList = new HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>>(currentCyclesList);
+							
 							edgesToDelete.add(new Pair<Integer,Integer>(drivingRobotID, waitingRobotID));
 							Pair<Integer,Integer> newEdge = new Pair<Integer,Integer>(waitingRobotID, drivingRobotID);
 							edgesToAdd.add(newEdge);
@@ -2137,15 +2152,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 							if (!safe) {								
 								metaCSPLogger.finest("Restore previous precedence " + depOld + ".");
-								
-								monitorTime = Calendar.getInstance().getTimeInMillis();
-								updateGraph(edgesToAdd, edgesToDelete);
-								depsGraph.removeEdge(depNew);
-								depsGraph.addVertex(depOld.getWaitingRobotID());
-								depsGraph.addVertex(depOld.getDrivingRobotID());
-								depsGraph.addEdge(depOld.getWaitingRobotID(), depOld.getDrivingRobotID(), depOld);
-								stat = stat + new String("Restore one: " + Long.toString(Calendar.getInstance().getTimeInMillis()-monitorTime) + ", ");
-
+								depsGraph = backupDepsGraph;
+								currentOrdersGraph = backupGraph;
+								currentCyclesList = backupcurrentCyclesList;
 								unaliveStatesAvoided.incrementAndGet();
 							}
 							else {
