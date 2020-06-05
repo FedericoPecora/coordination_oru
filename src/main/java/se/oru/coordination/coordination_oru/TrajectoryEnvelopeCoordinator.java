@@ -1,62 +1,38 @@
 package se.oru.coordination.coordination_oru;
 
 import java.io.File;
-import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.nio.file.Files;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map.Entry;
-import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.Logger;
 
-import javax.swing.SwingUtilities;
-
-import org.apache.commons.collections.comparators.ComparatorChain;
-import org.jgrapht.DirectedGraph;
 import org.jgrapht.alg.ConnectivityInspector;
 import org.jgrapht.alg.KosarajuStrongConnectivityInspector;
 import org.jgrapht.alg.cycle.JohnsonSimpleCycles;
-import org.jgrapht.graph.ClassBasedEdgeFactory;
-import org.jgrapht.graph.DefaultDirectedGraph;
-import org.jgrapht.graph.DefaultEdge;
+import org.jgrapht.graph.DefaultWeightedEdge;
 import org.jgrapht.graph.DirectedMultigraph;
 import org.jgrapht.graph.DirectedSubgraph;
 import org.jgrapht.graph.SimpleDirectedGraph;
+import org.jgrapht.graph.SimpleDirectedWeightedGraph;
 import org.metacsp.framework.Constraint;
-import org.metacsp.meta.spatioTemporal.paths.Map;
 import org.metacsp.multi.allenInterval.AllenIntervalConstraint;
-import org.metacsp.multi.spatial.DE9IM.GeometricShapeDomain;
-import org.metacsp.multi.spatial.DE9IM.GeometricShapeVariable;
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 import org.metacsp.multi.spatioTemporal.paths.Trajectory;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
-import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelopeSolver;
-import org.metacsp.time.Bounds;
 import org.metacsp.utility.PermutationsWithRepetition;
-import org.metacsp.utility.UI.Callback;
-import org.metacsp.utility.logging.MetaCSPLogging;
 
-import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.GeometryFactory;
-import com.vividsolutions.jts.geom.util.AffineTransformation;
 
 import aima.core.util.datastructure.Pair;
 import se.oru.coordination.coordination_oru.motionplanning.AbstractMotionPlanner;
-import se.oru.coordination.coordination_oru.util.FleetVisualization;
-import se.oru.coordination.coordination_oru.util.StringUtils;
 
 
 /**
@@ -70,18 +46,19 @@ import se.oru.coordination.coordination_oru.util.StringUtils;
 public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEnvelopeCoordinator {
 
 	//@note: currentOrdersGraph and currentCyclesList should be synchronized with allCriticalSection variable.
-	protected SimpleDirectedGraph<Integer,String> currentOrdersGraph = new SimpleDirectedGraph<Integer,String>(String.class);
+	protected SimpleDirectedWeightedGraph<Integer,DefaultWeightedEdge> currentOrdersGraph = new SimpleDirectedWeightedGraph<Integer,DefaultWeightedEdge>(DefaultWeightedEdge.class);
 	protected HashMap<Pair<Integer,Integer>, HashSet<ArrayList<Integer>>> currentCyclesList = new HashMap<Pair<Integer,Integer>, HashSet<ArrayList<Integer>>>();
-
+	
 	//Robots currently involved in a re-plan which critical point cannot increase beyond the one used for re-plan
 	//till the re-plan has not finished yet.
 	protected HashMap<Integer,Dependency> lockedRobots = new HashMap<Integer,Dependency>();
 
 	protected boolean breakDeadlocksByReordering = true;
 	protected boolean breakDeadlocksByReplanning = true;
-	protected boolean avoidDeadlockGlobally = false;
+	protected AtomicBoolean avoidDeadlockGlobally = new AtomicBoolean(false);
 	protected AtomicInteger unaliveStatesDetected = new AtomicInteger(0);
 	protected AtomicInteger unaliveStatesAvoided = new AtomicInteger(0);
+	protected AtomicInteger currentOrdersHeurusticallyDecided = new AtomicInteger(0);
 	protected List<List<Integer>> unsafeCyclesOld = new ArrayList<List<Integer>>();
 	protected AtomicInteger replanningTrialsCounter = new AtomicInteger(0);
 	protected AtomicInteger successfulReplanningTrialsCounter = new AtomicInteger(0);
@@ -108,7 +85,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 */
 	public void setBreakDeadlocksByReplanning(boolean value) {
 		this.breakDeadlocksByReplanning = value;
-		this.avoidDeadlockGlobally = false;
+		this.avoidDeadlockGlobally.getAndSet(false);
 	}
 
 	/**
@@ -118,7 +95,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 */
 	public void setBreakDeadlocksByReordering(boolean value) {
 		this.breakDeadlocksByReordering = value;
-		this.avoidDeadlockGlobally = false;
+		this.avoidDeadlockGlobally.getAndSet(false);
 	}
 
 	/**
@@ -126,7 +103,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 * @param value <code>true</code> if deadlocks should be broken.
 	 */
 	public void setAvoidDeadlocksGlobally(boolean value) {
-		this.avoidDeadlockGlobally = value;
+		this.avoidDeadlockGlobally.getAndSet(true);
 		if (value) {
 			this.breakDeadlocksByReordering = false;
 			this.breakDeadlocksByReplanning = false;
@@ -140,7 +117,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 */
 	@Deprecated
 	public void setBreakDeadlocks(boolean value) {
-		this.avoidDeadlockGlobally = false;
+		this.avoidDeadlockGlobally.getAndSet(false);
 		this.setBreakDeadlocksByReordering(value);
 		this.setBreakDeadlocksByReplanning(value);
 	}
@@ -564,7 +541,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	@Override
 	protected void updateDependencies() {
 		synchronized(solver) {
-			if (this.avoidDeadlockGlobally) globalCheckAndRevise();
+			if (this.avoidDeadlockGlobally.get()) globalCheckAndRevise();
 			else localCheckAndRevise();
 		}
 	}
@@ -1072,6 +1049,104 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	}
 
 	@Override
+	protected void setupInferenceCallback() {
+		
+		this.stopInference = false;
+		this.inference = new Thread("Coordinator inference") {
+			
+			@Override
+			public void run() {
+
+				String fileName = new String(System.getProperty("user.home")+File.separator+"coordinator_stat.txt");
+				initStat(fileName, "Init statistics: @"+Calendar.getInstance().getTimeInMillis() + "\n");
+				String stat = new String(//"Legend: at each control period\n\t 1. elapsed time to compute critical sections\n\t 2.elapsed time to update dependencies\n\t 3. number of new critical sections\n\t"
+						"elapsedTimeComputeCriticalSections\t elapsedTimeUpdateDependencies\t numberNewCriticalSections\t numberAllCriticalSections\t numberNewAddedMissions \t numberDrivingRobots\t expectedSleepingTime\t effectiveSleepingTime\t printStatisticsTime\t effectiveTc");
+				if (avoidDeadlockGlobally.get()) stat = stat + new String("\t numberReversedPrecedenceOrder\t numberCurrentCycles");
+				stat.concat("\n");				
+				writeStat(fileName, stat);
+				
+				long threadLastUpdate = Calendar.getInstance().getTimeInMillis();
+				long elapsedTimeComputeCriticalSections = -1;
+				long elapsedTimeUpdateDependencies = -1;
+				int numberNewCriticalSections = -1;
+				int numberAllCriticalSections = -1;
+				int numberNewAddedMissions = 0;
+				int numberDrivingRobots = 0;
+				int MAX_ADDED_MISSIONS = 1;
+				long expectedSleepingTime = -1;
+				long effectiveSleepingTime = -1;
+				long printStatisticsTime = -1;
+				
+				while (!stopInference) {
+					elapsedTimeComputeCriticalSections = -1;
+					elapsedTimeUpdateDependencies = -1;
+					numberNewCriticalSections = -1;
+					numberAllCriticalSections = -1;
+					numberNewAddedMissions = 0;
+					numberDrivingRobots = 0;
+					
+					synchronized (solver) {	
+						for (Integer robotID : trackers.keySet()) 
+							if (!(trackers.get(robotID) instanceof TrajectoryEnvelopeTrackerDummy)) numberDrivingRobots++;
+						
+						if (!missionsPool.isEmpty()) {
+							
+							//FIXME critical sections should be computed incrementally/asynchronously
+							while (!missionsPool.isEmpty() && (numberDrivingRobots == 0 ? true : numberNewAddedMissions < MAX_ADDED_MISSIONS)) {
+								Pair<TrajectoryEnvelope,Long> te = missionsPool.pollFirst();
+								envelopesToTrack.add(te.getFirst());
+								numberNewAddedMissions++;
+							}
+							numberNewCriticalSections = allCriticalSections.size();
+							elapsedTimeComputeCriticalSections = Calendar.getInstance().getTimeInMillis();
+							computeCriticalSections();
+							elapsedTimeComputeCriticalSections = Calendar.getInstance().getTimeInMillis()-elapsedTimeComputeCriticalSections;
+							numberAllCriticalSections = allCriticalSections.size();
+							numberNewCriticalSections = numberAllCriticalSections-numberNewCriticalSections;
+							
+							startTrackingAddedMissions();
+						}
+						elapsedTimeUpdateDependencies = Calendar.getInstance().getTimeInMillis();
+						updateDependencies();
+						elapsedTimeUpdateDependencies = Calendar.getInstance().getTimeInMillis()-elapsedTimeUpdateDependencies;
+						numberAllCriticalSections = allCriticalSections.size();
+						
+						if (!quiet) {
+							printStatisticsTime = Calendar.getInstance().getTimeInMillis();
+							printStatistics();
+							printStatisticsTime = Calendar.getInstance().getTimeInMillis()-printStatisticsTime;
+						}
+						if (overlay) overlayStatistics();
+					}
+					
+					//Sleep a little...
+					expectedSleepingTime = Math.max(500,CONTROL_PERIOD-Calendar.getInstance().getTimeInMillis()+threadLastUpdate);
+					effectiveSleepingTime = Calendar.getInstance().getTimeInMillis();
+					if (CONTROL_PERIOD > 0) {
+						try { Thread.sleep(expectedSleepingTime); }
+						catch (InterruptedException e) { e.printStackTrace(); }
+					}
+					effectiveSleepingTime = Calendar.getInstance().getTimeInMillis()-effectiveSleepingTime;
+					
+					EFFECTIVE_CONTROL_PERIOD = (int)(Calendar.getInstance().getTimeInMillis()-threadLastUpdate);
+					threadLastUpdate = Calendar.getInstance().getTimeInMillis();
+					
+					if (inferenceCallback != null) inferenceCallback.performOperation();
+										
+					stat = new String(elapsedTimeComputeCriticalSections + "\t" + elapsedTimeUpdateDependencies + "\t" + numberNewCriticalSections + "\t" + numberAllCriticalSections + "\t" + numberNewAddedMissions + "\t" + numberDrivingRobots
+							+ "\t" + expectedSleepingTime + "\t" + effectiveSleepingTime + "\t" + printStatisticsTime + "\t" + EFFECTIVE_CONTROL_PERIOD);
+					if (avoidDeadlockGlobally.get()) stat = stat + new String("\t" + currentOrdersHeurusticallyDecided.get() + "\t" + currentCyclesList.size());
+					stat.concat("\n");
+					writeStat(fileName, stat);
+				}
+				
+			}
+		};
+		inference.setPriority(Thread.MAX_PRIORITY);
+		inference.start();
+	}
+	
+	@Override
 	protected void cleanUpRobotCS(int robotID, int lastWaitingPoint) {
 
 		synchronized (allCriticalSections) {
@@ -1097,7 +1172,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			}
 
 			for (CriticalSection cs : toRemove) {
-				if (this.avoidDeadlockGlobally) {
+				if (this.avoidDeadlockGlobally.get()) {
 					if (CSToDepsOrder.containsKey(cs)) {
 						int waitingRobID = CSToDepsOrder.get(cs).getFirst();
 						int drivingRobID = cs.getTe1().getRobotID() == waitingRobID ? cs.getTe2().getRobotID() : cs.getTe1().getRobotID(); 
@@ -1235,7 +1310,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 										metaCSPLogger.finest("Restoring  the order of critical section " + cs2 + "(" + holdingCS.get(cs2).toString() + ") for critical section " + cs1 + ".");
 										CSToDepsOrder.put(cs1, holdingCS.get(cs2));
 
-										if (this.avoidDeadlockGlobally) {
+										if (this.avoidDeadlockGlobally.get()) {
 											//re-add dependency to cyclesList and currentOrdersGraph
 											HashSet<Pair<Integer,Integer>> edgesToAdd = new HashSet<Pair<Integer,Integer>>();
 											int waitingRobotID = holdingCS.get(cs2).getFirst();
@@ -1372,9 +1447,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 			metaCSPLogger.finest("Deleting edges " + edgesToDelete.toString() +".");
 			//metaCSPLogger.finest("Graph before deletion: " + currentOrdersGraph.toString());
-			for (Pair<Integer,Integer> edge : edgesToDelete) {
-				deleteEdge(edge);
-			}	
+			for (Pair<Integer,Integer> edge : edgesToDelete) deleteEdge(edge);
 			//metaCSPLogger.info("... after deletion: " + currentOrdersGraph.toString());
 		}
 	}
@@ -1385,21 +1458,13 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 			if (edge == null) return;
 
-			if (currentOrdersGraph.getEdge(edge.getFirst(), edge.getSecond()) != null) {
-				//hashcode: "s" + startVertex + "t" + targetVertex + "c" + number of edges from startVertex to targetVertex
-				String hashCode = currentOrdersGraph.getEdge(edge.getFirst(), edge.getSecond());
-				int cmark = hashCode.indexOf("c");
-				int numEdge = Integer.valueOf(hashCode.substring(cmark+1, hashCode.length()));
-				currentOrdersGraph.removeEdge(edge.getFirst(), edge.getSecond());
-				//metaCSPLogger.finest("deleting one edge " + edge.toString() + "updating the counter from " + numEdge);
-				if (numEdge > 1) {
-					currentOrdersGraph.addVertex(edge.getFirst());
-					currentOrdersGraph.addVertex(edge.getSecond());
-					String newHashCode = new String(hashCode.substring(0,cmark+1).concat(String.valueOf(numEdge-1)));
-					currentOrdersGraph.addEdge(edge.getFirst(), edge.getSecond(), newHashCode);
-				}
-				else
-				{
+			DefaultWeightedEdge e = currentOrdersGraph.getEdge(edge.getFirst(), edge.getSecond());
+			if (e != null) {
+				int numEdge = (int) currentOrdersGraph.getEdgeWeight(e);
+				if (numEdge > 1) currentOrdersGraph.setEdgeWeight(e, numEdge-1);
+				else {
+					//FIXME Waste of time is probably here
+					currentOrdersGraph.removeEdge(edge.getFirst(), edge.getSecond());
 					if (currentCyclesList.containsKey(edge)) {
 						HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>> toRemove = new HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>>();
 						for (ArrayList<Integer> cycle : currentCyclesList.get(edge)) {
@@ -1433,57 +1498,55 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 			//add the edges if not already in the graph
 			for (Pair<Integer,Integer> edge : edgesToAdd) {
-				if (!currentOrdersGraph.containsEdge(edge.getFirst(), edge.getSecond())) {
+				DefaultWeightedEdge e = currentOrdersGraph.getEdge(edge.getFirst(),edge.getSecond());
+				if (e == null) {
 					toAdd.add(edge);
 					currentOrdersGraph.addVertex(edge.getFirst());
 					currentOrdersGraph.addVertex(edge.getSecond());
-					String hashCode = new String("s"+ String.valueOf(edge.getFirst()) + "t" + String.valueOf(edge.getSecond()) + "c" + String.valueOf(1));
-					currentOrdersGraph.addEdge(edge.getFirst(), edge.getSecond(), hashCode);
+					e = currentOrdersGraph.addEdge(edge.getFirst(),edge.getSecond());
+					currentOrdersGraph.setEdgeWeight(e,1);
 					metaCSPLogger.finest("Add edge:" + edge.toString());
 				}
-				else {
-					String hashCode = currentOrdersGraph.getEdge(edge.getFirst(), edge.getSecond());
-					int cmark = hashCode.indexOf("c");
-					int numEdge = Integer.valueOf(hashCode.substring(cmark+1, hashCode.length()));
-					currentOrdersGraph.removeEdge(edge.getFirst(), edge.getSecond());
-					currentOrdersGraph.addVertex(edge.getFirst());
-					currentOrdersGraph.addVertex(edge.getSecond());
-					String newHashCode = new String(hashCode.substring(0,cmark+1).concat(String.valueOf(numEdge+1)));
-					currentOrdersGraph.addEdge(edge.getFirst(), edge.getSecond(), newHashCode);
-				}
+				else currentOrdersGraph.setEdgeWeight(e,currentOrdersGraph.getEdgeWeight(e)+1);
 			}
 			if (toAdd.isEmpty()) return;
 
 			//compute strongly connected components
-			KosarajuStrongConnectivityInspector<Integer,String> ksccFinder = new KosarajuStrongConnectivityInspector<Integer,String>(currentOrdersGraph);
-			List<DirectedSubgraph<Integer,String>> sccs = ksccFinder.stronglyConnectedSubgraphs();
+			KosarajuStrongConnectivityInspector<Integer,DefaultWeightedEdge> ksccFinder = new KosarajuStrongConnectivityInspector<Integer,DefaultWeightedEdge>(currentOrdersGraph);
+			List<DirectedSubgraph<Integer,DefaultWeightedEdge>> sccs = ksccFinder.stronglyConnectedSubgraphs();
 			metaCSPLogger.finest("Connected components: " + sccs.toString());
 
-			//update the cycle list
+			//update the cycle list. Use a map to avoid recomputing cycles of each connected component.
+			HashMap<DirectedSubgraph<Integer,DefaultWeightedEdge>, List<List<Integer>>> sccToCycles = new HashMap<DirectedSubgraph<Integer,DefaultWeightedEdge>, List<List<Integer>>>();
 			for (Pair<Integer,Integer> pair : toAdd) {
 				//search the strongly connected components containing the two vertices
-				for (DirectedSubgraph<Integer,String> ssc : sccs) {
-					if (ssc.containsVertex(pair.getFirst()) || ssc.containsVertex(pair.getSecond())) {
-						if (ssc.containsVertex(pair.getFirst()) && ssc.containsVertex(pair.getSecond())) {
+				for (DirectedSubgraph<Integer,DefaultWeightedEdge> scc : sccs) {
+					if (scc.containsVertex(pair.getFirst()) && !scc.containsVertex(pair.getSecond()) ||	!scc.containsVertex(pair.getFirst()) && scc.containsVertex(pair.getSecond())) 
+						break; // Vertices are in different connected components. No cycle exists!
+					if (scc.containsVertex(pair.getFirst()) && scc.containsVertex(pair.getSecond())) {
+						List<List<Integer>> cycles = null;
+						if (sccToCycles.containsKey(scc)) cycles = sccToCycles.get(scc);
+						else {
 							//get cycles in this strongly connected components
-							JohnsonSimpleCycles<Integer,String> cycleFinder = new JohnsonSimpleCycles<Integer,String>(ssc);
-							List<List<Integer>> cycles = cycleFinder.findSimpleCycles();
-							metaCSPLogger.finest("Reversed cycles: " + cycles);
-							if (!cycles.isEmpty()) {
-								for(List<Integer> cycle : cycles) {
-									Collections.reverse(cycle);
-									//update the list of cycles for each edge
-									for (int i = 0; i < cycle.size(); i++) {
-										int j = i < cycle.size()-1 ? i+1 : 0;
-										Pair<Integer,Integer> edge = new Pair<Integer,Integer>(cycle.get(i), cycle.get(j));
-										if (!currentCyclesList.containsKey(edge)) currentCyclesList.put(edge, new HashSet<ArrayList<Integer>>());
-										currentCyclesList.get(edge).add((ArrayList<Integer>)cycle);
-										//metaCSPLogger.info("edge: " + edge.toString() + "currentCyclesList:" + currentCyclesList.get(edge));
-									}
+							JohnsonSimpleCycles<Integer,DefaultWeightedEdge> cycleFinder = new JohnsonSimpleCycles<Integer,DefaultWeightedEdge>(scc);
+							cycles = cycleFinder.findSimpleCycles();
+							sccToCycles.put(scc, cycles);
+						}
+						metaCSPLogger.finest("Reversed cycles: " + cycles);
+						if (!cycles.isEmpty()) {
+							for(List<Integer> cycle : cycles) {
+								Collections.reverse(cycle);
+								//update the list of cycles for each edge
+								for (int i = 0; i < cycle.size(); i++) {
+									int j = i < cycle.size()-1 ? i+1 : 0;
+									Pair<Integer,Integer> edge = new Pair<Integer,Integer>(cycle.get(i), cycle.get(j));
+									if (!currentCyclesList.containsKey(edge)) currentCyclesList.put(edge, new HashSet<ArrayList<Integer>>());
+									currentCyclesList.get(edge).add((ArrayList<Integer>)cycle);
+									//metaCSPLogger.info("edge: " + edge.toString() + "currentCyclesList:" + currentCyclesList.get(edge));
 								}
 							}
 						}
-						break; //move to next pair
+						break;
 					}
 				}
 			}
@@ -1496,14 +1559,23 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 			HashSet<Pair<Integer,Integer>> toDelete = null;
 			if (edgesToDelete != null) {
-				toDelete = new HashSet<Pair<Integer,Integer>>(edgesToDelete);
-				if (edgesToAdd != null) toDelete.removeAll(edgesToAdd);
+				//toDelete = new HashSet<Pair<Integer,Integer>>(edgesToDelete);
+				//if (edgesToAdd != null) toDelete.removeAll(edgesToAdd);
+				//
+				toDelete = new HashSet<Pair<Integer,Integer>>();
+				for (Pair<Integer,Integer> e : edgesToDelete) {
+					if (!edgesToAdd.contains(e)) toDelete.add(e);
+				}
 			}
 
 			HashSet<Pair<Integer,Integer>> toAdd = null;
 			if (edgesToAdd != null) {
-				toAdd = new HashSet<Pair<Integer,Integer>>(edgesToAdd);
-				if (edgesToDelete != null) toAdd.removeAll(edgesToDelete);
+				//toAdd = new HashSet<Pair<Integer,Integer>>(edgesToAdd);
+				//if (edgesToDelete != null) toAdd.removeAll(edgesToDelete);
+				toAdd = new HashSet<Pair<Integer,Integer>>();
+				for (Pair<Integer,Integer> e : edgesToAdd) {
+					if (!edgesToDelete.contains(e)) toAdd.add(e);
+				}
 			}
 
 			deleteEdges(toDelete);			
@@ -1525,6 +1597,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			HashSet<Pair<Integer,Integer>> edgesToDelete = new HashSet<Pair<Integer,Integer>>();
 			HashSet<Pair<Integer,Integer>> edgesToAdd = new HashSet<Pair<Integer,Integer>>();
 			HashSet<CriticalSection> reversibleCS = new HashSet<CriticalSection>();
+			currentOrdersHeurusticallyDecided.set(0);
 
 			//Make deps from un-reached stopping points
 			Set<Integer> robotIDs = trackers.keySet();
@@ -1978,17 +2051,21 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						//Update graphs
 						if (waitingPoint >= 0) {		
 
-							//Store previous graph
+							
+							//Store previous graph (FIXME)
 							DirectedMultigraph<Integer,Dependency> backupDepsGraph = new DirectedMultigraph<Integer, Dependency>(Dependency.class);
 							for (int v : depsGraph.vertexSet()) backupDepsGraph.addVertex(v);
 							for (Dependency dep : depsGraph.edgeSet()) backupDepsGraph.addEdge(dep.getWaitingRobotID(), dep.getDrivingRobotID(), dep);
 
-							SimpleDirectedGraph<Integer,String> backupGraph = new SimpleDirectedGraph<Integer, String>(String.class);
+							SimpleDirectedWeightedGraph<Integer, DefaultWeightedEdge> backupGraph = new SimpleDirectedWeightedGraph<Integer, DefaultWeightedEdge>(DefaultWeightedEdge.class);
 							for (int v : currentOrdersGraph.vertexSet()) backupGraph.addVertex(v);
-							for (String edge : currentOrdersGraph.edgeSet()) backupGraph.addEdge(currentOrdersGraph.getEdgeSource(edge), currentOrdersGraph.getEdgeTarget(edge), edge);
+							for (DefaultWeightedEdge e : currentOrdersGraph.edgeSet()) {
+								DefaultWeightedEdge e_ = backupGraph.addEdge(currentOrdersGraph.getEdgeSource(e), currentOrdersGraph.getEdgeTarget(e));
+								backupGraph.setEdgeWeight(e_, currentOrdersGraph.getEdgeWeight(e));
+							}
 
 							HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>> backupcurrentCyclesList = new HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>>(currentCyclesList);
-
+							
 							edgesToDelete.add(new Pair<Integer,Integer>(drivingRobotID, waitingRobotID));
 							Pair<Integer,Integer> newEdge = new Pair<Integer,Integer>(waitingRobotID, drivingRobotID);
 							edgesToAdd.add(newEdge);
@@ -2078,25 +2155,12 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 									}
 								}
 							}
-							if (!safe) {
-								depsGraph = backupDepsGraph;
 
-								//fill without changing the container (not sure they are synchronized)
-								/*HashSet<String> edgesToRemove = new HashSet<String>(currentOrdersGraph.edgeSet());
-								HashSet<Integer> verticesToRemove = new HashSet<Integer>(currentOrdersGraph.vertexSet());
-								currentOrdersGraph.removeAllEdges(edgesToRemove);
-								currentOrdersGraph.removeAllVertices(verticesToRemove);
-								for (int v : backupGraph.vertexSet()) currentOrdersGraph.addVertex(v);
-								for (String e : backupGraph.edgeSet()) currentOrdersGraph.addEdge(backupGraph.getEdgeSource(e), backupGraph.getEdgeTarget(e), e);*/
-								//FIXME
-								currentOrdersGraph = backupGraph;
-
-								//FIXME The HashMap is a synchronized structure so probably it is ok to do 
-								currentCyclesList = backupcurrentCyclesList;
-								//currentCyclesList.clear();
-								//currentCyclesList.putAll(backupcurrentCyclesList);
-
+							if (!safe) {								
 								metaCSPLogger.finest("Restore previous precedence " + depOld + ".");
+								depsGraph = backupDepsGraph;
+								currentOrdersGraph = backupGraph;
+								currentCyclesList = backupcurrentCyclesList;
 								unaliveStatesAvoided.incrementAndGet();
 							}
 							else {
@@ -2110,8 +2174,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 								CSToDepsOrder.put(cs, new Pair<Integer,Integer>(depNew.getWaitingRobotID(), depNew.getWaitingPoint()));
 								depsToCS.put(depNew, cs);
 								metaCSPLogger.finest("Update precedences " + depNew + " according to heuristic.");
+								currentOrdersHeurusticallyDecided.incrementAndGet();
 							}
-							metaCSPLogger.finest("Final graph: " + currentOrdersGraph.toString() + ".");		
+							metaCSPLogger.finest("Final graph: " + currentOrdersGraph.toString() + ".");	
+
 						}
 					}
 				}//end for reversibleCS

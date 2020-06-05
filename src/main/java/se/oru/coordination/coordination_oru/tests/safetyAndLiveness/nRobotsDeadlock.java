@@ -15,6 +15,7 @@ import se.oru.coordination.coordination_oru.RobotAtCriticalSection;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
+import se.oru.coordination.coordination_oru.util.BrowserVisualization;
 import se.oru.coordination.coordination_oru.util.Missions;
 import se.oru.coordination.coordination_oru.util.RVizVisualization;
 
@@ -41,20 +42,21 @@ public class nRobotsDeadlock {
         catch (Exception e) { e.printStackTrace(); }
 	}
 		
-	protected static final int NUMBER_ROBOTS = 20;
+	protected static final int NUMBER_ROBOTS = 40;
+	protected static final int NUMBER_MISSIONS = 10;
 
 	public static void main(String[] args) throws InterruptedException {
 		
 		double MAX_ACCEL = 1.0;
 		double MAX_VEL = 4.0;
-		double radius = 20;
+		double radius = 40;
 		
 		//Instantiate a trajectory envelope coordinator.
 		//The TrajectoryEnvelopeCoordinatorSimulation implementation provides
 		// -- the factory method getNewTracker() which returns a trajectory envelope tracker
 		// -- the getCurrentTimeInMillis() method, which is used by the coordinator to keep time
 		//You still need to add one or more comparators to determine robot orderings thru critical sections (comparators are evaluated in the order in which they are added)
-		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(3000,1000,MAX_VEL,MAX_ACCEL);
+		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(4000,1000,MAX_VEL,MAX_ACCEL);
 		tec.addComparator(new Comparator<RobotAtCriticalSection> () {
 			@Override
 			public int compare(RobotAtCriticalSection o1, RobotAtCriticalSection o2) {
@@ -92,11 +94,11 @@ public class nRobotsDeadlock {
 		tec.startInference();
 		
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
-		RVizVisualization viz = new RVizVisualization();
+		//RVizVisualization viz = new RVizVisualization();
 		//RVizVisualization.writeRVizConfigFile(robotIDs);
 		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
-		//BrowserVisualization viz = new BrowserVisualization();
-		//viz.setInitialTransform(73, 22, 16);
+		BrowserVisualization viz = new BrowserVisualization();
+		viz.setInitialTransform(73, 22, 16);
 		tec.setVisualization(viz);
 		
 		//tec.setUseInternalCriticalPoints(false);
@@ -116,6 +118,7 @@ public class nRobotsDeadlock {
 		// -- each trajectory envelope is the footprint of the corresponding robot in that pose
 		HashMap<Integer,Pose> startPoses = new HashMap<Integer,Pose>();
 		HashMap<Integer,Pose> goalPoses = new HashMap<Integer,Pose>();
+		final HashMap<Integer,Boolean> status = new HashMap<Integer,Boolean>();
 		
 		double theta = 0.0;
 		for (int i = 0; i < NUMBER_ROBOTS; i++) {
@@ -129,10 +132,11 @@ public class nRobotsDeadlock {
 			rsp.setStart(startPoses.get(robotIDs[i]));
 			rsp.setGoals(goalPoses.get(robotIDs[i]));
 			if (!rsp.plan()) throw new Error ("No path between " + startPoses.get(robotIDs[i]) + " and " + goalPoses.get(robotIDs[i]));
-			Mission m = new Mission(robotIDs[i], rsp.getPath());
-			Missions.enqueueMission(m);
-			Mission m1 = new Mission(robotIDs[i], rsp.getPathInv());
-			Missions.enqueueMission(m1);
+			for (int j = 0; j < NUMBER_MISSIONS; j++) {
+				Missions.enqueueMission(new Mission(robotIDs[i], rsp.getPath()));
+				Missions.enqueueMission(new Mission(robotIDs[i], rsp.getPathInv()));
+			}
+			status.put(robotIDs[i], false);
 		}
 		
 		final String statFilename = System.getProperty("user.home")+File.separator+"stats.txt";
@@ -140,6 +144,7 @@ public class nRobotsDeadlock {
 		for (int robotID : robotIDs) header += (robotID + "\t");
 		initStat(statFilename, header);
 
+		Thread.sleep(5000);
 		
 		//Start a mission dispatching thread for each robot, which will run forever
 		for (final int robotID : robotIDs) {
@@ -149,14 +154,12 @@ public class nRobotsDeadlock {
 				@Override
 				public void run() {
 					boolean firstTime = true;
-					int sequenceNumber = 0;
-					int totalIterations = 20;
-					if (robotID%2 == 0) totalIterations = 19;
 					long startTime = Calendar.getInstance().getTimeInMillis();
-					while (true && totalIterations > 0) {
+					while (true && !Missions.getMissions(robotID).isEmpty()) {
 						synchronized(tec.getSolver()) {
-							Mission m = Missions.getMission(robotID, sequenceNumber);
+							Mission m = Missions.peekMission(robotID);
 							if (tec.addMissions(m)) {
+								Missions.dequeueMission(robotID);
 								if (!firstTime) {
 									long elapsed = Calendar.getInstance().getTimeInMillis()-startTime;
 									String stat = "";
@@ -166,8 +169,6 @@ public class nRobotsDeadlock {
 								}
 								startTime = Calendar.getInstance().getTimeInMillis();
 								firstTime = false;
-								sequenceNumber = (sequenceNumber+1)%Missions.getMissions(robotID).size();
-								totalIterations--;
 							}
 						}
 						//Sleep for a little
@@ -175,14 +176,29 @@ public class nRobotsDeadlock {
 						catch (InterruptedException e) { e.printStackTrace(); }
 					}
 					System.out.println("Robot" + robotID + " is done!");
+					synchronized(status) {
+						status.put(robotID, true);
+						boolean allFinished = true;
+						for (int robotID : status.keySet()) {
+							allFinished &= status.get(robotID);
+							if (!allFinished) break;
+						}
+						if (allFinished && tec.isStartedInference()) {
+							System.out.println("All the robots are done. Finishing the simulation.");
+							tec.stopInference();
+						}
+					}
 				}
 			};
+			
 			//Start the thread!
 			t.start();
+			
+			//Sleep for a little
+			try { Thread.sleep(tec.getControlPeriod()); }
+			catch (InterruptedException e) { e.printStackTrace(); }
 		}
-		//Sleep for a little (2 sec)
-		try { Thread.sleep(tec.getControlPeriod()); }
-		catch (InterruptedException e) { e.printStackTrace(); }
+
 	}
 	
 }

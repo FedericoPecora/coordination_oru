@@ -97,7 +97,7 @@ public abstract class AbstractMotionPlanner {
 	}
 	
 	public synchronized void addObstacles(Geometry ... geom) {
-		if (this.om == null) this.om = new OccupancyMap(100, 100, 0.1);
+		if (this.om == null) this.om = new OccupancyMap(1000, 1000, 0.01);
 		this.om.addObstacles(geom);
 	}
 	

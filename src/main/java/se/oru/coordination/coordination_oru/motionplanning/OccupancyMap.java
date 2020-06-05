@@ -166,7 +166,7 @@ public class OccupancyMap {
 
 	}
 	
-	public void addObstacles(Geometry geom, Pose ... poses) {
+	public ArrayList<Geometry> addObstacles(Geometry geom, Pose ... poses) {
 		ArrayList<Geometry> obstacles = new ArrayList<Geometry>();
 		for (Pose pose : poses) {
 			AffineTransformation atObs = new AffineTransformation();
@@ -176,6 +176,7 @@ public class OccupancyMap {
 			obstacles.add(obs);			
 		}
 		this.addObstacles(obstacles.toArray(new Geometry[obstacles.size()]));
+		return obstacles;
 	}
 
 	public double getResolution() {
