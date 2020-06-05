@@ -52,7 +52,7 @@ public class ParkingArrayNew {
 
 		double MAX_ACCEL = 1.0;
 		double MAX_VEL = 2.5;
-		boolean CREATE_SCENARIO = false;
+		boolean CREATE_SCENARIO = true;
 		
 		int NUMBER_ROBOTS = 20;
 		

@@ -94,8 +94,7 @@ public class ThreeDifferentRobotsLinear {
 		viz.setInitialTransform(49, 5, 0);
 		tec.setVisualization(viz);
 		
-
-		tec.setUseInternalCriticalPoints(false);
+		tec.setUseInternalCriticalPoints(true);
 
 		//MetaCSPLogging.setLevel(tec.getClass().getSuperclass(), Level.FINEST);
 

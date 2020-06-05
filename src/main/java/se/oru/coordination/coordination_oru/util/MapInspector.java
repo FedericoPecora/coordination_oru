@@ -112,7 +112,9 @@ public class MapInspector extends JPanel implements MouseListener, MouseMotionLi
 	}
 	
 	public static void main(String[] args) {	
-		OccupancyMap om = new OccupancyMap("/home/fpa/gitroot.github/coordination_oru/maps/map-partial-2.yaml");
+		String map = "maps/map-empty-circle.yaml";
+//		String map = "/home/fpa/gitroot.github/coordination_oru/maps/map-partial-2.yaml";
+		OccupancyMap om = new OccupancyMap(map);
 		//"/home/fpa/gitroot.gitlab/iqmobility/maps/leipzig-lindenau/leipzig-lindenau.yaml"
 		MapInspector p = new MapInspector(om);
 	}
