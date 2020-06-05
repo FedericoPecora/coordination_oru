@@ -119,11 +119,11 @@ public class ParkingArrayNew {
 		String yamlFile = "maps/map-empty-circle.yaml";
 		
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
-		RVizVisualization viz = new RVizVisualization();
+		//RVizVisualization viz = new RVizVisualization();
 		//RVizVisualization.writeRVizConfigFile(robotIDs);
-		//BrowserVisualization viz = new BrowserVisualization();
+		BrowserVisualization viz = new BrowserVisualization();
 		viz.setMap(yamlFile);
-		//viz.setInitialTransform(41, -20, -25);
+		viz.setInitialTransform(41, -20, -25);
 		tec.setVisualization(viz);
 		
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
@@ -131,7 +131,7 @@ public class ParkingArrayNew {
 		rsp.setRadius(0.05);
 		rsp.setFootprint(footprint);
 		rsp.setTurningRadius(4.0);
-		rsp.setDistanceBetweenPathPoints(0.1);
+		rsp.setDistanceBetweenPathPoints(0.5);
 				
 		//Determine locations around the circle, with random orientation
 		long seed = 123123;//Calendar.getInstance().getTimeInMillis();
