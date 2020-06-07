@@ -1764,90 +1764,59 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		
 		this.stopInference = false;
 		this.inference = new Thread("Coordinator inference") {
-			private volatile boolean exit = false;
 			
 			@Override
 			public void run() {
-
-				String fileName = new String(System.getProperty("user.home")+File.separator+"coordinator_stat.txt");
-				initStat(fileName, "Init statistics: @"+Calendar.getInstance().getTimeInMillis() + "\n");
-				String stat = new String(//"Legend: at each control period\n\t 1. elapsed time to compute critical sections\n\t 2.elapsed time to update dependencies\n\t 3. number of new critical sections\n\t"
-						"elapsedTimeComputeCriticalSections\t elapsedTimeUpdateDependencies\t numberNewCriticalSections\t numberAllCriticalSections\t numberNewAddedMissions \t numberDrivingRobots\t expectedSleepingTime\t effectiveSleepingTime\t printStatisticsTime\t effectiveTc\n");
-				writeStat(fileName, stat);
-				
 				long threadLastUpdate = Calendar.getInstance().getTimeInMillis();
-				long elapsedTimeComputeCriticalSections = -1;
-				long elapsedTimeUpdateDependencies = -1;
-				int numberNewCriticalSections = -1;
-				int numberAllCriticalSections = -1;
-				int numberNewAddedMissions = 0;
-				int numberDrivingRobots = 0;
-				int MAX_ADDED_MISSIONS = 3;
-				long expectedSleepingTime = -1;
-				long effectiveSleepingTime = -1;
-				long printStatisticsTime = -1;
+				int MAX_ADDED_MISSIONS = 1;
 				
 				while (!stopInference) {
-					elapsedTimeComputeCriticalSections = -1;
-					elapsedTimeUpdateDependencies = -1;
-					numberNewCriticalSections = -1;
-					numberAllCriticalSections = -1;
-					numberNewAddedMissions = 0;
-					numberDrivingRobots = 0;
-					
+					int numberNewAddedMissions = 0;
+					int numberDrivingRobots = 0;
 					synchronized (solver) {	
-						for (Integer robotID : trackers.keySet()) 
-							if (!(trackers.get(robotID) instanceof TrajectoryEnvelopeTrackerDummy)) numberDrivingRobots++;
-						
 						if (!missionsPool.isEmpty()) {
-							
+							//get the oldest posted mission
+							/*int oldestMissionRobotID = -1;
+							long oldestMissionTime = Long.MAX_VALUE;
+							for (int robotID : missionsPool.keySet()) {
+								if (missionsPool.get(robotID).getSecond().compareTo(oldestMissionTime) < 0) {
+									oldestMissionTime = missionsPool.get(robotID).getSecond().longValue();
+									oldestMissionRobotID = robotID;
+								}
+							}
+							envelopesToTrack.add(missionsPool.get(oldestMissionRobotID).getFirst());
+							missionsPool.remove(oldestMissionRobotID);*/
 							//FIXME critical sections should be computed incrementally/asynchronously
-							while (!missionsPool.isEmpty() && (numberDrivingRobots == 0 ? true : numberNewAddedMissions < MAX_ADDED_MISSIONS)) {
+							for (Integer robotID : trackers.keySet()) 
+								if (!(trackers.get(robotID) instanceof TrajectoryEnvelopeTrackerDummy)) numberDrivingRobots++;
+							
+							while (!missionsPool.isEmpty() && numberNewAddedMissions < MAX_ADDED_MISSIONS) {
 								Pair<TrajectoryEnvelope,Long> te = missionsPool.pollFirst();
 								envelopesToTrack.add(te.getFirst());
 								numberNewAddedMissions++;
 							}
-							numberNewCriticalSections = allCriticalSections.size();
-							elapsedTimeComputeCriticalSections = Calendar.getInstance().getTimeInMillis();
 							computeCriticalSections();
-							elapsedTimeComputeCriticalSections = Calendar.getInstance().getTimeInMillis()-elapsedTimeComputeCriticalSections;
-							numberAllCriticalSections = allCriticalSections.size();
-							numberNewCriticalSections = numberAllCriticalSections-numberNewCriticalSections;
-							
 							startTrackingAddedMissions();
 						}
-						elapsedTimeUpdateDependencies = Calendar.getInstance().getTimeInMillis();
 						updateDependencies();
-						elapsedTimeUpdateDependencies = Calendar.getInstance().getTimeInMillis()-elapsedTimeUpdateDependencies;
-						numberAllCriticalSections = allCriticalSections.size();
 						
-						if (!quiet) {
-							printStatisticsTime = Calendar.getInstance().getTimeInMillis();
-							printStatistics();
-							printStatisticsTime = Calendar.getInstance().getTimeInMillis()-printStatisticsTime;
-						}
+						if (!quiet) printStatistics();
 						if (overlay) overlayStatistics();
 					}
-					
+
 					//Sleep a little...
-					expectedSleepingTime = Math.max(500,CONTROL_PERIOD-Calendar.getInstance().getTimeInMillis()+threadLastUpdate);
-					effectiveSleepingTime = Calendar.getInstance().getTimeInMillis();
 					if (CONTROL_PERIOD > 0) {
-						try { Thread.sleep(expectedSleepingTime); }
+						try { Thread.sleep(Math.max(0, CONTROL_PERIOD-Calendar.getInstance().getTimeInMillis()+threadLastUpdate)); }
 						catch (InterruptedException e) { e.printStackTrace(); }
 					}
-					effectiveSleepingTime = Calendar.getInstance().getTimeInMillis()-effectiveSleepingTime;
-					
-					EFFECTIVE_CONTROL_PERIOD = (int)(Calendar.getInstance().getTimeInMillis()-threadLastUpdate);
-					threadLastUpdate = Calendar.getInstance().getTimeInMillis();
+
+					long threadCurrentUpdate = Calendar.getInstance().getTimeInMillis();
+					EFFECTIVE_CONTROL_PERIOD = (int)(threadCurrentUpdate-threadLastUpdate);
+					threadLastUpdate = threadCurrentUpdate;
 					
 					if (inferenceCallback != null) inferenceCallback.performOperation();
-										
-					stat = new String(elapsedTimeComputeCriticalSections + "\t" + elapsedTimeUpdateDependencies + "\t" + numberNewCriticalSections + "\t" + numberAllCriticalSections + "\t" + numberNewAddedMissions + "\t" + numberDrivingRobots
-							+ "\t" + expectedSleepingTime + "\t" + effectiveSleepingTime + "\t" + printStatisticsTime + "\t" + EFFECTIVE_CONTROL_PERIOD + "\n");
-					writeStat(fileName, stat);
+
 				}
-				
 			}
 		};
 		inference.setPriority(Thread.MAX_PRIORITY);
