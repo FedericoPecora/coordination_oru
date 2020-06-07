@@ -128,8 +128,6 @@ public class RandomPathsInMap {
 
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
-		//Start the thread that checks and enforces dependencies at every clock tick
-		tec.startInference();
 
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		String yamlFile = null;
@@ -185,17 +183,17 @@ public class RandomPathsInMap {
 			
 			locationCounter += 2;
 		}
+		//Instantiate a simple motion planner
+		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
+		rsp.setMap(yamlFile);
+		rsp.setRadius(0.1);
+		rsp.setFootprint(tec.getDefaultFootprint());
+		rsp.setTurningRadius(4.0);
+		rsp.setDistanceBetweenPathPoints(0.3);
 		
 		//int[] robotIDs = new int[] {1,2};
 		for (int robotID : robotIDs) {
-			//Instantiate a simple motion planner
-			ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-			rsp.setMap(yamlFile);
-			rsp.setRadius(0.1);
-			rsp.setFootprint(tec.getDefaultFootprint());
-			rsp.setTurningRadius(4.0);
-			rsp.setDistanceBetweenPathPoints(0.3);
-			
+
 			//In case deadlocks occur, we make the coordinator capable of re-planning on the fly (experimental, not working properly yet)
 			tec.setMotionPlanner(robotID, rsp);
 			
@@ -262,6 +260,9 @@ public class RandomPathsInMap {
 		//To visualize, run "rosrun rviz rviz -d ~/config.rviz"
 		Thread.sleep(5000);
 		
+		//Start the thread that checks and enforces dependencies at every clock tick
+		tec.startInference();
+		
 		//Start a mission dispatching thread for each robot, which will run forever
 		for (int i = 0; i < robotIDs.length; i++) {
 			final int robotID = robotIDs[i];
@@ -305,10 +306,12 @@ public class RandomPathsInMap {
 			};
 			//Start the thread!
 			t.start();
+			
+			//Sleep for a little before dispatching another mission.
+			try { Thread.sleep(tec.getControlPeriod()); }
+			catch (InterruptedException e) { e.printStackTrace(); }
 		}
-		//Sleep for a little (2 sec)
-		try { Thread.sleep(tec.getControlPeriod()); }
-		catch (InterruptedException e) { e.printStackTrace(); }
+
 
 	}
 
