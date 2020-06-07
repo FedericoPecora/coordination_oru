@@ -719,14 +719,14 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			yieldingRobotTE = cs.getTe2();			
 		}
 
-		if (leadingRobotCurrentPathIndex <= leadingRobotStart) {
+		if (leadingRobotCurrentPathIndex < leadingRobotStart) {
 			return Math.max(0, yieldingRobotStart-TRAILING_PATH_POINTS);
 		}
 
 		//Compute sweep of robot 1's footprint from current position to LOOKAHEAD
 		Pose leadingRobotPose = leadingRobotTE.getTrajectory().getPose()[leadingRobotCurrentPathIndex];
 		Geometry leadingRobotInPose = TrajectoryEnvelope.getFootprint(leadingRobotTE.getFootprint(), leadingRobotPose.getX(), leadingRobotPose.getY(), leadingRobotPose.getTheta());
-		if (leadingRobotCurrentPathIndex < leadingRobotEnd) {
+		if (leadingRobotCurrentPathIndex <= leadingRobotEnd) {
 			for (int i = leadingRobotCurrentPathIndex+1; i <= leadingRobotEnd; i++) {
 				Pose leadingRobotNextPose = leadingRobotTE.getTrajectory().getPose()[i];
 				try {
