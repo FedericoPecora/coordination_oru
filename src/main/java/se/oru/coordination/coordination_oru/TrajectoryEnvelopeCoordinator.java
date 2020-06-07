@@ -1559,23 +1559,14 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 			HashSet<Pair<Integer,Integer>> toDelete = null;
 			if (edgesToDelete != null) {
-				//toDelete = new HashSet<Pair<Integer,Integer>>(edgesToDelete);
-				//if (edgesToAdd != null) toDelete.removeAll(edgesToAdd);
-				//
-				toDelete = new HashSet<Pair<Integer,Integer>>();
-				for (Pair<Integer,Integer> e : edgesToDelete) {
-					if (!edgesToAdd.contains(e)) toDelete.add(e);
-				}
+				toDelete = new HashSet<Pair<Integer,Integer>>(edgesToDelete);
+				if (edgesToAdd != null) toDelete.removeAll(edgesToAdd);
 			}
 
 			HashSet<Pair<Integer,Integer>> toAdd = null;
 			if (edgesToAdd != null) {
-				//toAdd = new HashSet<Pair<Integer,Integer>>(edgesToAdd);
-				//if (edgesToDelete != null) toAdd.removeAll(edgesToDelete);
-				toAdd = new HashSet<Pair<Integer,Integer>>();
-				for (Pair<Integer,Integer> e : edgesToAdd) {
-					if (!edgesToDelete.contains(e)) toAdd.add(e);
-				}
+				toAdd = new HashSet<Pair<Integer,Integer>>(edgesToAdd);
+				if (edgesToDelete != null) toAdd.removeAll(edgesToDelete);
 			}
 
 			deleteEdges(toDelete);			
@@ -1757,18 +1748,32 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						else canStopRobot2 = earliestStoppingPoints.get(robotReport2.getRobotID()) < cs.getTe2Start();
 
 
-						//If the precedence IS REVERSIBLE, continue ...
-						//we will check if the heuristic order will preserve the liveness
+						//For each reversible constraint, we preloaded the precedence according to the FCFS heuristic or to the previous decided ones.
+						//We will check if the heuristic after.
 						if (canStopRobot1 && canStopRobot2) {
 							reversibleCS.add(cs);
-							continue;
+							boolean robot2Yields;	
+							if (!CSToDepsOrder.containsKey(cs)) {
+								if (robotTracker1.getStartingTimeInMillis() < robotTracker2.getStartingTimeInMillis() || 
+										robotTracker1.getStartingTimeInMillis() == robotTracker2.getStartingTimeInMillis() && robotReport1.getRobotID() > robotReport2.getRobotID()) 
+									robot2Yields = true;
+								else robot2Yields = false;
+							}
+							else robot2Yields = (CSToDepsOrder.get(cs).getFirst() == robotReport2.getRobotID());
+							drivingCurrentIndex = robot2Yields ? robotReport1.getPathIndex() : robotReport2.getPathIndex();
+							drivingRobotID = robot2Yields ? robotReport1.getRobotID() : robotReport2.getRobotID();
+							waitingRobotID = robot2Yields ? robotReport2.getRobotID() : robotReport1.getRobotID();
+							drivingTE = robot2Yields ? robotTracker1.getTrajectoryEnvelope() : robotTracker2.getTrajectoryEnvelope();
+							waitingTE = robot2Yields ? robotTracker2.getTrajectoryEnvelope() : robotTracker1.getTrajectoryEnvelope();
+							drivingTracker = robot2Yields ? robotTracker1 : robotTracker2;
+							waitingTracker = robot2Yields ? robotTracker2 : robotTracker1;
 						}
 
 						//otherwise, 
 						//the precedence is CONSTRAINED BY DYNAMICS
 
 						//Robot 1 can stop before entering the critical section, robot 2 can't --> robot 1 waits
-						if (canStopRobot1 && !canStopRobot2) {
+						else if (canStopRobot1 && !canStopRobot2) {
 							drivingCurrentIndex = robotReport2.getPathIndex();
 							drivingRobotID = robotReport2.getRobotID();
 							waitingRobotID = robotReport1.getRobotID();
@@ -1921,7 +1926,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 								depsGraph.addVertex(dep.getDrivingRobotID());
 								depsGraph.addEdge(dep.getWaitingRobotID(), dep.getDrivingRobotID(), dep);
 							}
-							CSToDepsOrder.put(cs, new Pair<Integer,Integer>(dep.getWaitingRobotID(),dep.getWaitingPoint()));
+							CSToDepsOrder.put(cs, new Pair<Integer,Integer>(dep.getWaitingRobotID(), dep.getWaitingPoint()));
 							depsToCS.put(dep, cs);
 						}
 						else {
@@ -1932,7 +1937,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 					}
 				}
-
+				
 				//Remove obsolete critical sections
 				for (CriticalSection cs : toRemove) {
 					this.allCriticalSections.remove(cs);
@@ -1940,7 +1945,6 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						int waitingRobID = CSToDepsOrder.get(cs).getFirst();
 						int drivingRobID = cs.getTe1().getRobotID() == waitingRobID ? cs.getTe2().getRobotID() : cs.getTe1().getRobotID(); 
 						edgesToDelete.add(new Pair<Integer,Integer>(waitingRobID, drivingRobID));
-						//this.CSToDepsOrder.remove(cs);
 					}
 					else metaCSPLogger.info("WARNING: Obsolete critical section " + cs + " was not assigned to a dependence.");
 					this.escapingCSToWaitingRobotIDandCP.remove(cs);
@@ -1953,71 +1957,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				updateGraph(edgesToDelete, edgesToAdd);
 				metaCSPLogger.finest("Constrained precedences leads to graph: " + currentOrdersGraph.toString() + ".");		
 
-				//For each reversible constraint, first preload the precedence according to the FCFS heuristic.
-				//Then, try to reverse the constraint and decide for the heuristic order if it will preserve liveness.
-				//( checkAndAdd() ... )				
-
-				/*/////////////////////////////
-							PRE-LOAD
-				/////////////////////////////*/
-				for (CriticalSection cs : reversibleCS) {
-
-					//check each edge one by one
-					edgesToDelete.clear();
-					edgesToAdd.clear();
-
-					AbstractTrajectoryEnvelopeTracker robotTracker1 = trackers.get(cs.getTe1().getRobotID());
-					RobotReport robotReport1 = currentReports.get(cs.getTe1().getRobotID());
-					AbstractTrajectoryEnvelopeTracker robotTracker2 = trackers.get(cs.getTe2().getRobotID());
-					RobotReport robotReport2 = currentReports.get(cs.getTe2().getRobotID());
-
-					//If the dependency is new, the starting robot should yield (FCFS heuristic).
-					//Otherwise, preload the previous precedence order
-					boolean robot2Yields = true;	
-					if (!CSToDepsOrder.containsKey(cs)) 
-						robot2Yields = robotTracker1.getStartingTimeInMillis() < robotTracker2.getStartingTimeInMillis();
-					else robot2Yields = CSToDepsOrder.get(cs).getFirst() == robotReport2.getRobotID();
-
-					int drivingRobotID = robot2Yields ? robotReport1.getRobotID() : robotReport2.getRobotID();
-					int waitingRobotID = robot2Yields ? robotReport2.getRobotID() : robotReport1.getRobotID();
-					TrajectoryEnvelope drivingTE = robot2Yields ? robotTracker1.getTrajectoryEnvelope() : robotTracker2.getTrajectoryEnvelope();
-					TrajectoryEnvelope waitingTE = robot2Yields ? robotTracker2.getTrajectoryEnvelope() : robotTracker1.getTrajectoryEnvelope();
-					int waitingPoint = getCriticalPoint(waitingRobotID, cs, robot2Yields ? robotReport1.getPathIndex() : robotReport2.getPathIndex());								
-
-					//Update graphs
-					if (waitingPoint >= 0) {
-
-						//If cs is new, update the of edges to add (otherwise, it is already in the graph)
-						if (!CSToDepsOrder.containsKey(cs)) {
-							edgesToAdd.add(new Pair<Integer,Integer>(waitingRobotID, drivingRobotID));
-							addEdges(edgesToAdd);
-						}
-
-						metaCSPLogger.finest("Graph after pre-loading precedences: " + currentOrdersGraph.toString() + ".");		
-
-						//Make new dependency
-						int drivingCSEnd =  drivingRobotID == cs.getTe1().getRobotID() ? cs.getTe1End() : cs.getTe2End();
-						if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new HashSet<Dependency>());
-						Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd);
-						if (!currentDeps.get(waitingRobotID).add(dep)) {
-							metaCSPLogger.severe("<<<<<<<<< Add dependency fails (3). Dep: " + dep);
-						}
-
-						//update the global graph
-						if (!depsGraph.containsEdge(dep)) {
-							depsGraph.addVertex(dep.getWaitingRobotID());
-							depsGraph.addVertex(dep.getDrivingRobotID());
-							depsGraph.addEdge(dep.getWaitingRobotID(), dep.getDrivingRobotID(), dep);
-						}
-						CSToDepsOrder.put(cs, new Pair<Integer,Integer>(dep.getWaitingRobotID(), dep.getWaitingPoint()));
-						depsToCS.put(dep, cs);
-					}
-					else {
-						//If robot is asked to wait in an invalid path point, throw error and give up!
-						metaCSPLogger.severe("Waiting point < 0 for critical section " + cs);
-						throw new Error("Waiting point < 0 for critical section " + cs);
-					}
-				}
+				//Let's try to reverse reversible constraints according to the user defined heuristic if this preserves liveness.		
 
 				/*/////////////////////////////
 						CHECK HEURISTIC
