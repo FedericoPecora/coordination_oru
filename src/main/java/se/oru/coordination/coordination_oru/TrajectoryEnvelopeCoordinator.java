@@ -255,7 +255,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		for (Dependency dep : deps) {
 			g.addVertex(dep.getWaitingRobotID());
 			g.addVertex(dep.getDrivingRobotID());
-			g.addEdge(dep.getWaitingRobotID(), dep.getDrivingRobotID(), dep);
+			if (!g.addEdge(dep.getWaitingRobotID(), dep.getDrivingRobotID(), dep))
+				metaCSPLogger.severe("<<<<<<<<< Add dependency fails (13). Dep: " + dep);	
 		}
 		return g;
 	}
@@ -1092,7 +1093,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						if (!missionsPool.isEmpty()) {
 							
 							//FIXME critical sections should be computed incrementally/asynchronously
-							while (!missionsPool.isEmpty() && (numberDrivingRobots == 0 ? true : numberNewAddedMissions < MAX_ADDED_MISSIONS)) {
+							while (!missionsPool.isEmpty() && numberNewAddedMissions < MAX_ADDED_MISSIONS) {
 								Pair<TrajectoryEnvelope,Long> te = missionsPool.pollFirst();
 								envelopesToTrack.add(te.getFirst());
 								numberNewAddedMissions++;
@@ -1498,16 +1499,19 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 			//add the edges if not already in the graph
 			for (Pair<Integer,Integer> edge : edgesToAdd) {
-				DefaultWeightedEdge e = currentOrdersGraph.getEdge(edge.getFirst(),edge.getSecond());
-				if (e == null) {
+				if (!currentOrdersGraph.containsEdge(edge.getFirst(),edge.getSecond())) {
 					toAdd.add(edge);
 					currentOrdersGraph.addVertex(edge.getFirst());
 					currentOrdersGraph.addVertex(edge.getSecond());
-					e = currentOrdersGraph.addEdge(edge.getFirst(),edge.getSecond());
+					DefaultWeightedEdge e = currentOrdersGraph.addEdge(edge.getFirst(),edge.getSecond());
+					if (e == null) metaCSPLogger.severe("<<<<<<<<< Add dependency order fails (12). Edge: " + edge.getFirst() + "->" + edge.getSecond());				
 					currentOrdersGraph.setEdgeWeight(e,1);
 					metaCSPLogger.finest("Add edge:" + edge.toString());
 				}
-				else currentOrdersGraph.setEdgeWeight(e,currentOrdersGraph.getEdgeWeight(e)+1);
+				else {
+					DefaultWeightedEdge e = currentOrdersGraph.getEdge(edge.getFirst(),edge.getSecond());
+					currentOrdersGraph.setEdgeWeight(e,currentOrdersGraph.getEdgeWeight(e)+1);
+				}
 			}
 			if (toAdd.isEmpty()) return;
 
@@ -1517,32 +1521,26 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			metaCSPLogger.finest("Connected components: " + sccs.toString());
 
 			//update the cycle list. Use a map to avoid recomputing cycles of each connected component.
-			HashMap<DirectedSubgraph<Integer,DefaultWeightedEdge>, List<List<Integer>>> sccToCycles = new HashMap<DirectedSubgraph<Integer,DefaultWeightedEdge>, List<List<Integer>>>();
 			for (Pair<Integer,Integer> pair : toAdd) {
 				//search the strongly connected components containing the two vertices
 				for (DirectedSubgraph<Integer,DefaultWeightedEdge> scc : sccs) {
-					if (scc.containsVertex(pair.getFirst()) && !scc.containsVertex(pair.getSecond()) ||	!scc.containsVertex(pair.getFirst()) && scc.containsVertex(pair.getSecond())) 
-						break; // Vertices are in different connected components. No cycle exists!
-					if (scc.containsVertex(pair.getFirst()) && scc.containsVertex(pair.getSecond())) {
-						List<List<Integer>> cycles = null;
-						if (sccToCycles.containsKey(scc)) cycles = sccToCycles.get(scc);
-						else {
+					if (scc.containsVertex(pair.getFirst()) ||	scc.containsVertex(pair.getSecond())) {
+						if (scc.containsVertex(pair.getFirst()) && scc.containsVertex(pair.getSecond())) {
 							//get cycles in this strongly connected components
 							JohnsonSimpleCycles<Integer,DefaultWeightedEdge> cycleFinder = new JohnsonSimpleCycles<Integer,DefaultWeightedEdge>(scc);
-							cycles = cycleFinder.findSimpleCycles();
-							sccToCycles.put(scc, cycles);
-						}
-						metaCSPLogger.finest("Reversed cycles: " + cycles);
-						if (!cycles.isEmpty()) {
-							for(List<Integer> cycle : cycles) {
-								Collections.reverse(cycle);
-								//update the list of cycles for each edge
-								for (int i = 0; i < cycle.size(); i++) {
-									int j = i < cycle.size()-1 ? i+1 : 0;
-									Pair<Integer,Integer> edge = new Pair<Integer,Integer>(cycle.get(i), cycle.get(j));
-									if (!currentCyclesList.containsKey(edge)) currentCyclesList.put(edge, new HashSet<ArrayList<Integer>>());
-									currentCyclesList.get(edge).add((ArrayList<Integer>)cycle);
-									//metaCSPLogger.info("edge: " + edge.toString() + "currentCyclesList:" + currentCyclesList.get(edge));
+							List<List<Integer>> cycles = cycleFinder.findSimpleCycles();
+							metaCSPLogger.finest("Reversed cycles: " + cycles);
+							if (!cycles.isEmpty()) {
+								for(List<Integer> cycle : cycles) {
+									Collections.reverse(cycle);
+									//update the list of cycles for each edge
+									for (int i = 0; i < cycle.size(); i++) {
+										int j = i < cycle.size()-1 ? i+1 : 0;
+										Pair<Integer,Integer> edge = new Pair<Integer,Integer>(cycle.get(i), cycle.get(j));
+										if (!currentCyclesList.containsKey(edge)) currentCyclesList.put(edge, new HashSet<ArrayList<Integer>>());
+										currentCyclesList.get(edge).add((ArrayList<Integer>)cycle);
+										//metaCSPLogger.info("edge: " + edge.toString() + "currentCyclesList:" + currentCyclesList.get(edge));
+									}
 								}
 							}
 						}
@@ -1719,7 +1717,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							if (!depsGraph.containsEdge(dep)) {
 								if (!depsGraph.containsVertex(dep.getWaitingRobotID())) depsGraph.addVertex(dep.getWaitingRobotID());
 								if (!depsGraph.containsVertex(dep.getDrivingRobotID())) depsGraph.addVertex(dep.getDrivingRobotID());
-								depsGraph.addEdge(dep.getWaitingRobotID(), dep.getDrivingRobotID(), dep);
+								if (!depsGraph.addEdge(dep.getWaitingRobotID(), dep.getDrivingRobotID(), dep))
+									metaCSPLogger.severe("<<<<<<<<< Add dependency fails (3). Dep: " + dep);
 							}
 							CSToDepsOrder.put(cs, new Pair<Integer,Integer>(dep.getWaitingRobotID(),dep.getWaitingPoint()));
 							depsToCS.put(dep, cs);
@@ -1748,14 +1747,14 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						else canStopRobot2 = earliestStoppingPoints.get(robotReport2.getRobotID()) < cs.getTe2Start();
 
 
-						//For each reversible constraint, we preloaded the precedence according to the FCFS heuristic or to the previous decided ones.
+						//For each reversible constraint, we pre-load the precedence according to the FCFS heuristic or to the previous decided ones.
 						//We will check if the heuristic after.
 						if (canStopRobot1 && canStopRobot2) {
 							reversibleCS.add(cs);
 							boolean robot2Yields;	
 							if (!CSToDepsOrder.containsKey(cs)) {
-								if (robotTracker1.getStartingTimeInMillis() < robotTracker2.getStartingTimeInMillis() || 
-										robotTracker1.getStartingTimeInMillis() == robotTracker2.getStartingTimeInMillis() && robotReport1.getRobotID() > robotReport2.getRobotID()) 
+								if (robotTracker1.getStartingTimeInMillis() < robotTracker2.getStartingTimeInMillis() ||
+										robotTracker1.getStartingTimeInMillis() == robotTracker2.getStartingTimeInMillis() && robotReport1.getRobotID() < robotReport2.getRobotID()) 
 									robot2Yields = true;
 								else robot2Yields = false;
 							}
@@ -1874,9 +1873,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 										//update the global graph
 										if (!depsGraph.containsEdge(dep)) {
-											depsGraph.addVertex(dep.getWaitingRobotID());
-											depsGraph.addVertex(dep.getDrivingRobotID());
-											depsGraph.addEdge(dep.getWaitingRobotID(), dep.getDrivingRobotID(), dep);
+											if (!depsGraph.containsVertex(dep.getWaitingRobotID())) depsGraph.addVertex(dep.getWaitingRobotID());
+											if (!depsGraph.containsVertex(dep.getDrivingRobotID())) depsGraph.addVertex(dep.getDrivingRobotID());
+											if (!depsGraph.addEdge(dep.getWaitingRobotID(), dep.getDrivingRobotID(), dep))
+												metaCSPLogger.severe("<<<<<<<<< Add dependency fails (5a). Dep: " + dep);
 										}
 
 										metaCSPLogger.info("Robot" + drivingRobotID + " cannot escape from CS: " + cs + ". Let's create a deadlock. Add artificial dependency for Robot" + drivingRobotID + " at " + dep.getWaitingPoint() + ".");
@@ -1913,7 +1913,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new HashSet<Dependency>());
 							Dependency dep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd);
 							if (!currentDeps.get(waitingRobotID).add(dep)) {
-								metaCSPLogger.severe("<<<<<<<<< Add dependency fails (3). Dep: " + dep);
+								metaCSPLogger.severe("<<<<<<<<< Add dependency fails (4). Dep: " + dep);
 							}
 
 							//If cs is new, update the of edges to add (otherwise, it is already in the graph)
@@ -1922,9 +1922,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 							//update the global graph
 							if (!depsGraph.containsEdge(dep)) {
-								depsGraph.addVertex(dep.getWaitingRobotID());
-								depsGraph.addVertex(dep.getDrivingRobotID());
-								depsGraph.addEdge(dep.getWaitingRobotID(), dep.getDrivingRobotID(), dep);
+								if (!depsGraph.containsVertex(dep.getWaitingRobotID())) depsGraph.addVertex(dep.getWaitingRobotID());
+								if (!depsGraph.containsVertex(dep.getDrivingRobotID())) depsGraph.addVertex(dep.getDrivingRobotID());
+								if (!depsGraph.addEdge(dep.getWaitingRobotID(), dep.getDrivingRobotID(), dep))
+									metaCSPLogger.severe("<<<<<<<<< Add dependency fails (5). Dep: " + dep);
 							}
 							CSToDepsOrder.put(cs, new Pair<Integer,Integer>(dep.getWaitingRobotID(), dep.getWaitingPoint()));
 							depsToCS.put(dep, cs);
@@ -1981,7 +1982,6 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						metaCSPLogger.finest("Trying reversing a precedence at critical section " + cs + ".");
 
 						//try reversing the order
-
 						int drivingRobotID = robot2Yields ? robotReport1.getRobotID() : robotReport2.getRobotID();
 						int waitingRobotID = robot2Yields ? robotReport2.getRobotID() : robotReport1.getRobotID();
 						TrajectoryEnvelope drivingTE = robot2Yields ? robotTracker1.getTrajectoryEnvelope() : robotTracker2.getTrajectoryEnvelope();
@@ -1990,28 +1990,31 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 						//Update graphs
 						if (waitingPoint >= 0) {		
-
 							
 							//Store previous graph (FIXME)
 							DirectedMultigraph<Integer,Dependency> backupDepsGraph = new DirectedMultigraph<Integer, Dependency>(Dependency.class);
 							for (int v : depsGraph.vertexSet()) backupDepsGraph.addVertex(v);
-							for (Dependency dep : depsGraph.edgeSet()) backupDepsGraph.addEdge(dep.getWaitingRobotID(), dep.getDrivingRobotID(), dep);
+							for (Dependency dep : depsGraph.edgeSet()) {
+								if (!backupDepsGraph.addEdge(dep.getWaitingRobotID(), dep.getDrivingRobotID(), dep)) 
+									metaCSPLogger.severe("<<<<<<<<< Add dependency fails (6). Dep: " + dep);
+							}
 
 							SimpleDirectedWeightedGraph<Integer, DefaultWeightedEdge> backupGraph = new SimpleDirectedWeightedGraph<Integer, DefaultWeightedEdge>(DefaultWeightedEdge.class);
 							for (int v : currentOrdersGraph.vertexSet()) backupGraph.addVertex(v);
 							for (DefaultWeightedEdge e : currentOrdersGraph.edgeSet()) {
 								DefaultWeightedEdge e_ = backupGraph.addEdge(currentOrdersGraph.getEdgeSource(e), currentOrdersGraph.getEdgeTarget(e));
+								if (e_ == null) metaCSPLogger.severe("<<<<<<<<< Add egde fails (7). Edge: " + e.toString());
 								backupGraph.setEdgeWeight(e_, currentOrdersGraph.getEdgeWeight(e));
 							}
 
 							HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>> backupcurrentCyclesList = new HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>>(currentCyclesList);
 							
-							edgesToDelete.clear();
-							edgesToDelete.add(new Pair<Integer,Integer>(drivingRobotID, waitingRobotID));
+							if (!edgesToDelete.add(new Pair<Integer,Integer>(drivingRobotID, waitingRobotID))) 
+								metaCSPLogger.severe("<<<<<<<<< Add egde fails (8). Edge: " + drivingRobotID + "->" + waitingRobotID + ".");
 							Pair<Integer,Integer> newEdge = new Pair<Integer,Integer>(waitingRobotID, drivingRobotID);
-							edgesToAdd.clear();
-							edgesToAdd.add(newEdge);
-							updateGraph(edgesToDelete, edgesToAdd);
+							if (!edgesToAdd.add(newEdge))
+								metaCSPLogger.severe("<<<<<<<<< Add egde fails (9). Edge: " + drivingRobotID + "->" + waitingRobotID + ".");
+							updateGraph(edgesToDelete,edgesToAdd);
 							metaCSPLogger.finest("Graph after revising according to the heuristic: " + currentOrdersGraph.toString() + ".");		
 
 							//Make new dependency
@@ -2022,9 +2025,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 							//update the global graph and treeset
 							depsGraph.removeEdge(depOld);
-							depsGraph.addVertex(depNew.getWaitingRobotID());
-							depsGraph.addVertex(depNew.getDrivingRobotID());
-							depsGraph.addEdge(depNew.getWaitingRobotID(), depNew.getDrivingRobotID(), depNew);
+							if (!depsGraph.containsVertex(depNew.getWaitingRobotID())) depsGraph.addVertex(depNew.getWaitingRobotID());
+							if (!depsGraph.containsVertex(depNew.getDrivingRobotID())) depsGraph.addVertex(depNew.getDrivingRobotID());
+							if (!depsGraph.addEdge(depNew.getWaitingRobotID(), depNew.getDrivingRobotID(), depNew))
+								metaCSPLogger.severe("<<<<<<<<< Add dependency fails (10). Dep: " + depNew);
 
 							//check if safe (continue here) 
 							boolean safe = true;
@@ -2045,11 +2049,14 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 										else {
 											Set<Dependency> allEdges = depsGraph.getAllEdges(cycle.get(i), cycle.get(j));
 											if (allEdges == null) {
-												metaCSPLogger.severe("<<<<<<<<< Unfound deps from: " + cycle.get(i) + " to: "+ cycle.get(j));
+												metaCSPLogger.severe("<<<<<<<<< Unfound one vertex between " + cycle.get(i) + " and "+ cycle.get(j));
 												//metaCSPLogger.info(depsGraph.toString());
 												//metaCSPLogger.info(currentCyclesList.toString());
 											}
-											else edgesAlongCycle.add(new ArrayList<Dependency>(allEdges));
+											else {
+												if (allEdges.isEmpty()) metaCSPLogger.severe("<<<<<<<<< Unfound deps from: " + cycle.get(i) + " to: "+ cycle.get(j) + ", currentCyclesList: " + currentCyclesList.get(newEdge).toString());
+												edgesAlongCycle.add(new ArrayList<Dependency>(allEdges));
+											}
 										}
 									}
 
@@ -2111,7 +2118,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 								if (currentDeps.get(depOld.getWaitingRobotID()).isEmpty()) currentDeps.remove(depOld.getWaitingRobotID());
 								if (!currentDeps.containsKey(waitingRobotID)) currentDeps.put(waitingRobotID, new HashSet<Dependency>());
 								if (!currentDeps.get(waitingRobotID).add(depNew)) {
-									metaCSPLogger.severe("<<<<<<<<< Add dependency fails (2). Dep: " + depNew);
+									metaCSPLogger.severe("<<<<<<<<< Add dependency fails (11). Dep: " + depNew);
 								}
 								CSToDepsOrder.put(cs, new Pair<Integer,Integer>(depNew.getWaitingRobotID(), depNew.getWaitingPoint()));
 								depsToCS.put(depNew, cs);
@@ -2122,7 +2129,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 						}
 					}
-				}//end for reversibleCS
+				}//end for reversibleCS*/
 			}//end synchronized(allCriticalSections)
 
 			//update and communicate critical points
