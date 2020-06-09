@@ -1313,7 +1313,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 										if (this.avoidDeadlockGlobally.get()) {
 											//re-add dependency to cyclesList and currentOrdersGraph
-											HashSet<Pair<Integer,Integer>> edgesToAdd = new HashSet<Pair<Integer,Integer>>();
+											ArrayList<Pair<Integer,Integer>> edgesToAdd = new ArrayList<Pair<Integer,Integer>>();
 											int waitingRobotID = holdingCS.get(cs2).getFirst();
 											int drivingRobotID = waitingRobotID == cs2.getTe1().getRobotID() ? cs2.getTe2().getRobotID() : cs2.getTe1().getRobotID();
 											edgesToAdd.add(new Pair<Integer,Integer>(waitingRobotID, drivingRobotID));
@@ -1440,16 +1440,14 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		}
 	}
 
-	protected void deleteEdges(HashSet<Pair<Integer,Integer>> edgesToDelete) {	
+	protected void deleteEdges(ArrayList<Pair<Integer,Integer>> edgesToDelete) {	
 
 		synchronized(allCriticalSections) {
 
 			if (edgesToDelete == null) return;
 
 			metaCSPLogger.finest("Deleting edges " + edgesToDelete.toString() +".");
-			//metaCSPLogger.finest("Graph before deletion: " + currentOrdersGraph.toString());
 			for (Pair<Integer,Integer> edge : edgesToDelete) deleteEdge(edge);
-			//metaCSPLogger.info("... after deletion: " + currentOrdersGraph.toString());
 		}
 	}
 
@@ -1479,7 +1477,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						}
 						for (Pair<Integer, Integer> key : toRemove.keySet()) {
 							if (currentCyclesList.containsKey(key)) {
-								currentCyclesList.get(key).removeAll(toRemove.get(key));
+								HashSet<ArrayList<Integer>> revised = new HashSet<ArrayList<Integer>>(currentCyclesList.get(key));
+								revised.removeAll(toRemove.get(key));
+								currentCyclesList.put(key, revised);
 								if (currentCyclesList.get(key).isEmpty()) currentCyclesList.remove(key);
 							}
 						}
@@ -1490,7 +1490,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		}
 	}
 
-	protected void addEdges(HashSet<Pair<Integer,Integer>> edgesToAdd) {
+	protected void addEdges(ArrayList<Pair<Integer,Integer>> edgesToAdd) {
 
 		if (edgesToAdd == null || edgesToAdd.isEmpty()) return;
 
@@ -1551,19 +1551,19 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		}
 	}
 
-	protected void updateGraph(HashSet<Pair<Integer,Integer>> edgesToDelete, HashSet<Pair<Integer,Integer>> edgesToAdd) {
+	protected void updateGraph(ArrayList<Pair<Integer,Integer>> edgesToDelete, ArrayList<Pair<Integer,Integer>> edgesToAdd) {
 
 		synchronized(allCriticalSections) {		
 
-			HashSet<Pair<Integer,Integer>> toDelete = null;
+			ArrayList<Pair<Integer,Integer>> toDelete = null;
 			if (edgesToDelete != null) {
-				toDelete = new HashSet<Pair<Integer,Integer>>(edgesToDelete);
+				toDelete = new ArrayList<Pair<Integer,Integer>>(edgesToDelete);
 				if (edgesToAdd != null) toDelete.removeAll(edgesToAdd);
 			}
 
-			HashSet<Pair<Integer,Integer>> toAdd = null;
+			ArrayList<Pair<Integer,Integer>> toAdd = null;
 			if (edgesToAdd != null) {
-				toAdd = new HashSet<Pair<Integer,Integer>>(edgesToAdd);
+				toAdd = new ArrayList<Pair<Integer,Integer>>(edgesToAdd);
 				if (edgesToDelete != null) toAdd.removeAll(edgesToDelete);
 			}
 
@@ -1583,8 +1583,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			HashSet<Integer> askForReplan = new HashSet<Integer>();			
 			HashMap<Integer, Integer> earliestStoppingPoints = new HashMap<Integer,Integer>();
 
-			HashSet<Pair<Integer,Integer>> edgesToDelete = new HashSet<Pair<Integer,Integer>>();
-			HashSet<Pair<Integer,Integer>> edgesToAdd = new HashSet<Pair<Integer,Integer>>();
+			ArrayList<Pair<Integer,Integer>> edgesToDelete = new ArrayList<Pair<Integer,Integer>>();
+			ArrayList<Pair<Integer,Integer>> edgesToAdd = new ArrayList<Pair<Integer,Integer>>();
 			HashSet<CriticalSection> reversibleCS = new HashSet<CriticalSection>();
 			currentOrdersHeurusticallyDecided.set(0);
 
