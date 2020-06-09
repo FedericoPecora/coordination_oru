@@ -1570,6 +1570,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				for (Pair<Integer,Integer> edge : edgesToDelete.keySet()) {
 					if (edgesToAdd.containsKey(edge) && edgesToAdd.get(edge) != null && edgesToAdd.get(edge) < edgesToDelete.get(edge)) 
 						toDelete.put(edge, edgesToDelete.get(edge)-edgesToAdd.get(edge));
+					else toDelete.put(edge, edgesToDelete.get(edge));
 				}
 			}
 			
@@ -1579,6 +1580,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				for (Pair<Integer,Integer> edge : edgesToAdd.keySet()) {
 					if (edgesToDelete.containsKey(edge) && edgesToDelete.get(edge) != null && edgesToDelete.get(edge) < edgesToAdd.get(edge)) 
 						toAdd.put(edge, edgesToAdd.get(edge)-edgesToDelete.get(edge));
+					else toAdd.put(edge, edgesToAdd.get(edge));
 				}
 			}
 
