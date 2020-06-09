@@ -1313,10 +1313,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 										if (this.avoidDeadlockGlobally.get()) {
 											//re-add dependency to cyclesList and currentOrdersGraph
-											ArrayList<Pair<Integer,Integer>> edgesToAdd = new ArrayList<Pair<Integer,Integer>>();
+											HashMap<Pair<Integer,Integer>,Integer> edgesToAdd = new HashMap<Pair<Integer,Integer>,Integer>();
 											int waitingRobotID = holdingCS.get(cs2).getFirst();
 											int drivingRobotID = waitingRobotID == cs2.getTe1().getRobotID() ? cs2.getTe2().getRobotID() : cs2.getTe1().getRobotID();
-											edgesToAdd.add(new Pair<Integer,Integer>(waitingRobotID, drivingRobotID));
+											edgesToAdd.put(new Pair<Integer,Integer>(waitingRobotID, drivingRobotID),1);
 											addEdges(edgesToAdd);
 										}
 										break;
@@ -1440,86 +1440,95 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		}
 	}
 
-	protected void deleteEdges(ArrayList<Pair<Integer,Integer>> edgesToDelete) {	
-
-		synchronized(allCriticalSections) {
-
-			if (edgesToDelete == null) return;
-
-			metaCSPLogger.finest("Deleting edges " + edgesToDelete.toString() +".");
-			for (Pair<Integer,Integer> edge : edgesToDelete) deleteEdge(edge);
-		}
-	}
-
 	protected void deleteEdge(Pair<Integer,Integer> edge) {
+		HashMap<Pair<Integer,Integer>, Integer> edgesToDelete = new HashMap<Pair<Integer,Integer>, Integer>();
+		edgesToDelete.put(edge, 1);
+		deleteEdges(edgesToDelete);
+	}
+	
+	protected void deleteEdges(HashMap<Pair<Integer,Integer>, Integer> edgesToDelete) {
 
 		synchronized(allCriticalSections) {
 
-			if (edge == null) return;
+			if (edgesToDelete == null || edgesToDelete.isEmpty()) return;
 
-			DefaultWeightedEdge e = currentOrdersGraph.getEdge(edge.getFirst(), edge.getSecond());
-			if (e != null) {
-				int numEdge = (int) currentOrdersGraph.getEdgeWeight(e);
-				if (numEdge > 1) currentOrdersGraph.setEdgeWeight(e, numEdge-1);
-				else {
-					//FIXME Waste of time is probably here
-					currentOrdersGraph.removeEdge(edge.getFirst(), edge.getSecond());
-					if (currentCyclesList.containsKey(edge)) {
-						HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>> toRemove = new HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>>();
-						for (ArrayList<Integer> cycle : currentCyclesList.get(edge)) {
-							for (int i = 0; i < cycle.size(); i++) {
-								Pair<Integer,Integer> otherEdge = new Pair<Integer,Integer>(cycle.get(i), cycle.get(i < cycle.size()-1 ? i+1 : 0));
-								if (!otherEdge.equals(edge)) {
-									if (!toRemove.containsKey(otherEdge)) toRemove.put(otherEdge, new HashSet<ArrayList<Integer>>());
-									toRemove.get(otherEdge).add(cycle);
+			for (Pair<Integer,Integer> edge : edgesToDelete.keySet()) {
+				Integer occurrence = edgesToDelete.get(edge);
+				if (occurrence == null || occurrence == 0) {
+					metaCSPLogger.severe("<<<<<<<<<< Found edge " + edge.toString() + " with invalid weigth. Skipping deletion." );
+					continue;
+				}
+				DefaultWeightedEdge e = currentOrdersGraph.getEdge(edge.getFirst(), edge.getSecond());
+				if (e != null) {
+					int numEdge = (int) currentOrdersGraph.getEdgeWeight(e);
+					if (numEdge > occurrence) currentOrdersGraph.setEdgeWeight(e, numEdge-occurrence);
+					else {
+						//FIXME Waste of time is probably here
+						metaCSPLogger.finest("Removing the edge: " + edge.toString());
+						currentOrdersGraph.removeEdge(edge.getFirst(), edge.getSecond());
+						if (currentCyclesList.containsKey(edge)) {
+							HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>> toRemove = new HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>>();
+							for (ArrayList<Integer> cycle : currentCyclesList.get(edge)) {
+								for (int i = 0; i < cycle.size(); i++) {
+									Pair<Integer,Integer> otherEdge = new Pair<Integer,Integer>(cycle.get(i), cycle.get(i < cycle.size()-1 ? i+1 : 0));
+									if (!otherEdge.equals(edge)) {
+										if (!toRemove.containsKey(otherEdge)) toRemove.put(otherEdge, new HashSet<ArrayList<Integer>>());
+										toRemove.get(otherEdge).add(cycle);
+									}
 								}
 							}
-						}
-						for (Pair<Integer, Integer> key : toRemove.keySet()) {
-							if (currentCyclesList.containsKey(key)) {
-								HashSet<ArrayList<Integer>> revised = new HashSet<ArrayList<Integer>>(currentCyclesList.get(key));
-								revised.removeAll(toRemove.get(key));
-								currentCyclesList.put(key, revised);
-								if (currentCyclesList.get(key).isEmpty()) currentCyclesList.remove(key);
+							for (Pair<Integer, Integer> key : toRemove.keySet()) {
+								if (currentCyclesList.containsKey(key)) {
+									HashSet<ArrayList<Integer>> revised = new HashSet<ArrayList<Integer>>(currentCyclesList.get(key));
+									revised.removeAll(toRemove.get(key));
+									currentCyclesList.put(key, revised);
+									if (currentCyclesList.get(key).isEmpty()) currentCyclesList.remove(key);
+								}
 							}
+							currentCyclesList.remove(edge);
 						}
-						currentCyclesList.remove(edge);
 					}
 				}
 			}
 		}
 	}
 
-	protected void addEdges(ArrayList<Pair<Integer,Integer>> edgesToAdd) {
+	protected void addEdges(HashMap<Pair<Integer,Integer>, Integer> edgesToAdd) {
 
 		if (edgesToAdd == null || edgesToAdd.isEmpty()) return;
-
+		
 		synchronized(allCriticalSections) {
-			HashSet<Pair<Integer,Integer>> toAdd = new HashSet<Pair<Integer,Integer>>();
 
+			HashSet<Pair<Integer,Integer>> toAdd = new HashSet<Pair<Integer,Integer>>();
+	
 			//add the edges if not already in the graph
-			for (Pair<Integer,Integer> edge : edgesToAdd) {
+			for (Pair<Integer,Integer> edge : edgesToAdd.keySet()) {
+				Integer occurrence = edgesToAdd.get(edge);
+				if (occurrence == null || occurrence == 0) {
+					metaCSPLogger.severe("<<<<<<<<<< Found edge " + edge.toString() + " with invalid weigth. Skipping addition." );
+					continue;
+				}
 				if (!currentOrdersGraph.containsEdge(edge.getFirst(),edge.getSecond())) {
 					toAdd.add(edge);
 					currentOrdersGraph.addVertex(edge.getFirst());
 					currentOrdersGraph.addVertex(edge.getSecond());
 					DefaultWeightedEdge e = currentOrdersGraph.addEdge(edge.getFirst(),edge.getSecond());
-					if (e == null) metaCSPLogger.severe("<<<<<<<<< Add dependency order fails (12). Edge: " + edge.getFirst() + "->" + edge.getSecond());				
-					currentOrdersGraph.setEdgeWeight(e,1);
-					metaCSPLogger.finest("Add edge:" + edge.toString());
+					if (e == null) System.out.println("<<<<<<<<< Add dependency order fails (12). Edge: " + edge.getFirst() + "->" + edge.getSecond());				
+					currentOrdersGraph.setEdgeWeight(e, occurrence);
+					metaCSPLogger.finest("Add " + occurrence + " edges:" + edge.toString());
 				}
 				else {
 					DefaultWeightedEdge e = currentOrdersGraph.getEdge(edge.getFirst(),edge.getSecond());
-					currentOrdersGraph.setEdgeWeight(e,currentOrdersGraph.getEdgeWeight(e)+1);
+					currentOrdersGraph.setEdgeWeight(e,currentOrdersGraph.getEdgeWeight(e)+occurrence);
 				}
 			}
 			if (toAdd.isEmpty()) return;
-
+	
 			//compute strongly connected components
 			KosarajuStrongConnectivityInspector<Integer,DefaultWeightedEdge> ksccFinder = new KosarajuStrongConnectivityInspector<Integer,DefaultWeightedEdge>(currentOrdersGraph);
 			List<DirectedSubgraph<Integer,DefaultWeightedEdge>> sccs = ksccFinder.stronglyConnectedSubgraphs();
 			metaCSPLogger.finest("Connected components: " + sccs.toString());
-
+	
 			//update the cycle list. Use a map to avoid recomputing cycles of each connected component.
 			for (Pair<Integer,Integer> pair : toAdd) {
 				//search the strongly connected components containing the two vertices
@@ -1551,20 +1560,26 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		}
 	}
 
-	protected void updateGraph(ArrayList<Pair<Integer,Integer>> edgesToDelete, ArrayList<Pair<Integer,Integer>> edgesToAdd) {
+	protected void updateGraph(HashMap<Pair<Integer,Integer>, Integer> edgesToDelete, HashMap<Pair<Integer,Integer>, Integer> edgesToAdd) {
 
 		synchronized(allCriticalSections) {		
 
-			ArrayList<Pair<Integer,Integer>> toDelete = null;
-			if (edgesToDelete != null) {
-				toDelete = new ArrayList<Pair<Integer,Integer>>(edgesToDelete);
-				if (edgesToAdd != null) toDelete.removeAll(edgesToAdd);
+			HashMap<Pair<Integer,Integer>, Integer> toDelete = null;
+			if (edgesToDelete != null && !edgesToDelete.isEmpty()) {
+				toDelete = new HashMap<Pair<Integer,Integer>, Integer>();
+				for (Pair<Integer,Integer> edge : edgesToDelete.keySet()) {
+					if (edgesToAdd.containsKey(edge) && edgesToAdd.get(edge) != null && edgesToAdd.get(edge) < edgesToDelete.get(edge)) 
+						toDelete.put(edge, edgesToDelete.get(edge)-edgesToAdd.get(edge));
+				}
 			}
-
-			ArrayList<Pair<Integer,Integer>> toAdd = null;
-			if (edgesToAdd != null) {
-				toAdd = new ArrayList<Pair<Integer,Integer>>(edgesToAdd);
-				if (edgesToDelete != null) toAdd.removeAll(edgesToDelete);
+			
+			HashMap<Pair<Integer,Integer>, Integer> toAdd = null;
+			if (edgesToAdd != null && !edgesToAdd.isEmpty()) {
+				toAdd = new HashMap<Pair<Integer,Integer>, Integer>();
+				for (Pair<Integer,Integer> edge : edgesToAdd.keySet()) {
+					if (edgesToDelete.containsKey(edge) && edgesToDelete.get(edge) != null && edgesToDelete.get(edge) < edgesToAdd.get(edge)) 
+						toAdd.put(edge, edgesToAdd.get(edge)-edgesToDelete.get(edge));
+				}
 			}
 
 			deleteEdges(toDelete);			
@@ -1583,8 +1598,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			HashSet<Integer> askForReplan = new HashSet<Integer>();			
 			HashMap<Integer, Integer> earliestStoppingPoints = new HashMap<Integer,Integer>();
 
-			ArrayList<Pair<Integer,Integer>> edgesToDelete = new ArrayList<Pair<Integer,Integer>>();
-			ArrayList<Pair<Integer,Integer>> edgesToAdd = new ArrayList<Pair<Integer,Integer>>();
+			HashMap<Pair<Integer,Integer>,Integer> edgesToDelete = new HashMap<Pair<Integer,Integer>,Integer> ();
+			HashMap<Pair<Integer,Integer>,Integer> edgesToAdd = new HashMap<Pair<Integer,Integer>,Integer> ();
 			HashSet<CriticalSection> reversibleCS = new HashSet<CriticalSection>();
 			currentOrdersHeurusticallyDecided.set(0);
 
@@ -1710,8 +1725,11 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							}
 
 							//If cs is new, update the of edges to add (otherwise, it is already in the graph)
-							if (!CSToDepsOrder.containsKey(cs))
-								edgesToAdd.add(new Pair<Integer,Integer>(dep.getWaitingRobotID(), dep.getDrivingRobotID()));
+							if (!CSToDepsOrder.containsKey(cs)) {
+								Pair<Integer,Integer> edge = new Pair<Integer,Integer>(dep.getWaitingRobotID(), dep.getDrivingRobotID());
+								if (edgesToAdd.containsKey(edge)) edgesToAdd.put(edge,edgesToAdd.get(edge)+1);
+								else edgesToAdd.put(edge,1);
+							}
 
 							//update the global graph
 							if (!depsGraph.containsEdge(dep)) {
@@ -1917,8 +1935,11 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							}
 
 							//If cs is new, update the of edges to add (otherwise, it is already in the graph)
-							if (!CSToDepsOrder.containsKey(cs))
-								edgesToAdd.add(new Pair<Integer,Integer>(dep.getWaitingRobotID(), dep.getDrivingRobotID()));
+							if (!CSToDepsOrder.containsKey(cs)) {
+								Pair<Integer,Integer> edge = new Pair<Integer,Integer>(dep.getWaitingRobotID(), dep.getDrivingRobotID());
+								if (edgesToAdd.containsKey(edge)) edgesToAdd.put(edge, edgesToAdd.get(edge)+1);
+								else edgesToAdd.put(edge,1);
+							}
 
 							//update the global graph
 							if (!depsGraph.containsEdge(dep)) {
@@ -1945,7 +1966,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					if (CSToDepsOrder.containsKey(cs)) {
 						int waitingRobID = CSToDepsOrder.get(cs).getFirst();
 						int drivingRobID = cs.getTe1().getRobotID() == waitingRobID ? cs.getTe2().getRobotID() : cs.getTe1().getRobotID(); 
-						edgesToDelete.add(new Pair<Integer,Integer>(waitingRobID, drivingRobID));
+						Pair<Integer,Integer> edge = new Pair<Integer,Integer>(waitingRobID, drivingRobID);
+						if (edgesToDelete.containsKey(edge)) edgesToDelete.put(edge, edgesToDelete.get(edge)+1);
+						else edgesToDelete.put(edge,1);
 					}
 					else metaCSPLogger.info("WARNING: Obsolete critical section " + cs + " was not assigned to a dependence.");
 					this.escapingCSToWaitingRobotIDandCP.remove(cs);
@@ -2009,11 +2032,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 							HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>> backupcurrentCyclesList = new HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>>(currentCyclesList);
 							
-							if (!edgesToDelete.add(new Pair<Integer,Integer>(drivingRobotID, waitingRobotID))) 
-								metaCSPLogger.severe("<<<<<<<<< Add egde fails (8). Edge: " + drivingRobotID + "->" + waitingRobotID + ".");
+							edgesToDelete.put(new Pair<Integer,Integer>(drivingRobotID, waitingRobotID),1);
 							Pair<Integer,Integer> newEdge = new Pair<Integer,Integer>(waitingRobotID, drivingRobotID);
-							if (!edgesToAdd.add(newEdge))
-								metaCSPLogger.severe("<<<<<<<<< Add egde fails (9). Edge: " + drivingRobotID + "->" + waitingRobotID + ".");
+							edgesToAdd.put(newEdge, 1);
 							updateGraph(edgesToDelete,edgesToAdd);
 							metaCSPLogger.finest("Graph after revising according to the heuristic: " + currentOrdersGraph.toString() + ".");		
 
