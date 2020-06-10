@@ -1,6 +1,10 @@
 package se.oru.coordination.coordination_oru.tests.safetyAndLiveness;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -12,17 +16,41 @@ import org.jgrapht.alg.util.Pair;
 import org.jgrapht.graph.DefaultWeightedEdge;
 import org.jgrapht.graph.DirectedSubgraph;
 import org.jgrapht.graph.SimpleDirectedWeightedGraph;
+import org.metacsp.utility.Permutation;
 
 public class TestUpdateGraph {
 	
+	private static void writeStat(String fileName, String stat) {
+        try {
+        	//Append to file
+            PrintWriter writer = new PrintWriter(new FileOutputStream(new File(fileName), true)); 
+            writer.println(stat);
+            writer.close();
+        }
+        catch (Exception e) { e.printStackTrace(); }
+	}
+	
+	private static void initStat(String fileName, String stat) {
+        try {
+        	//Append to file
+            PrintWriter writer = new PrintWriter(new FileOutputStream(new File(fileName), false)); 
+            writer.println(stat);
+            writer.close();
+        }
+        catch (Exception e) { e.printStackTrace(); }
+	}
+	
 	static HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>> currentCyclesList = new HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>>();
 	static SimpleDirectedWeightedGraph<Integer,DefaultWeightedEdge> currentOrdersGraph = new SimpleDirectedWeightedGraph<Integer,DefaultWeightedEdge>(DefaultWeightedEdge.class);
-	
+	static String fileName1 = System.getProperty("user.home")+File.separator+"add.txt";
+	static String stat1 = "";
+	static String fileName2 = System.getProperty("user.home")+File.separator+"delete.txt";
+	static String stat2 = "";
 
 	static void deleteEdges(HashMap<Pair<Integer,Integer>, Integer> edgesToDelete) {
 
 		if (edgesToDelete == null || edgesToDelete.isEmpty()) return;
-
+		
 		for (Pair<Integer,Integer> edge : edgesToDelete.keySet()) {
 			Integer occurrence = edgesToDelete.get(edge);
 			if (occurrence == 0 || occurrence == null) {
@@ -35,8 +63,11 @@ public class TestUpdateGraph {
 				if (numEdge > occurrence) currentOrdersGraph.setEdgeWeight(e, numEdge-occurrence);
 				else {
 					//FIXME Waste of time is probably here
-					System.out.println("Removing the edge: " + edge.toString());
+					System.out.println("Removing edge " + edge.toString());
+					long startTime = Calendar.getInstance().getTimeInMillis();
 					currentOrdersGraph.removeEdge(edge.getFirst(), edge.getSecond());
+					stat2 = stat2 + Long.toString(Calendar.getInstance().getTimeInMillis()-startTime);
+					startTime = Calendar.getInstance().getTimeInMillis();
 					if (currentCyclesList.containsKey(edge)) {
 						HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>> toRemove = new HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>>();
 						for (ArrayList<Integer> cycle : currentCyclesList.get(edge)) {
@@ -51,9 +82,28 @@ public class TestUpdateGraph {
 							if (currentCyclesList.get(key).isEmpty()) currentCyclesList.remove(key);
 						}
 					}
+					stat2 = stat2 + "\t" + Long.toString(Calendar.getInstance().getTimeInMillis()-startTime);
 				}
 			}
+			else 
+				stat2 += stat2 + "0\t 0";
 		}
+	}
+	
+	static void addEdge(int source, int target) {
+		HashMap<Pair<Integer,Integer>, Integer> edgesToAdd = new HashMap<Pair<Integer,Integer>, Integer>();
+		edgesToAdd.put(new Pair<Integer,Integer>(source,target), 1);
+		long startTime = Calendar.getInstance().getTimeInMillis();
+		addEdges(edgesToAdd);
+		stat1 = stat1 + "\t" + Long.toString(Calendar.getInstance().getTimeInMillis()-startTime);
+	}
+	
+	static void deleteEdge(int source, int target) {
+		HashMap<Pair<Integer,Integer>, Integer> edgesToDelete = new HashMap<Pair<Integer,Integer>, Integer>();
+		edgesToDelete.put(new Pair<Integer,Integer>(source,target), 1);
+		long startTime = Calendar.getInstance().getTimeInMillis();
+		deleteEdges(edgesToDelete);
+		stat2 = stat2 + "\t" + Long.toString(Calendar.getInstance().getTimeInMillis()-startTime);
 	}
 
 	static void addEdges(HashMap<Pair<Integer,Integer>, Integer> edgesToAdd) {
@@ -76,30 +126,41 @@ public class TestUpdateGraph {
 				DefaultWeightedEdge e = currentOrdersGraph.addEdge(edge.getFirst(),edge.getSecond());
 				if (e == null) System.out.println("<<<<<<<<< Add dependency order fails (12). Edge: " + edge.getFirst() + "->" + edge.getSecond());				
 				currentOrdersGraph.setEdgeWeight(e, occurrence);
-				System.out.println("Add " + occurrence + " edges:" + edge.toString());
+				//System.out.println("Add " + occurrence + " edges:" + edge.toString());
 			}
 			else {
 				DefaultWeightedEdge e = currentOrdersGraph.getEdge(edge.getFirst(),edge.getSecond());
 				currentOrdersGraph.setEdgeWeight(e,currentOrdersGraph.getEdgeWeight(e)+occurrence);
 			}
 		}
-		if (toAdd.isEmpty()) return;
+		if (toAdd.isEmpty()) {
+			stat1 = stat1 + "\t\t";
+			return;
+		}
 
 		//compute strongly connected components
+		long startTime = Calendar.getInstance().getTimeInMillis();
 		KosarajuStrongConnectivityInspector<Integer,DefaultWeightedEdge> ksccFinder = new KosarajuStrongConnectivityInspector<Integer,DefaultWeightedEdge>(currentOrdersGraph);
 		List<DirectedSubgraph<Integer,DefaultWeightedEdge>> sccs = ksccFinder.stronglyConnectedSubgraphs();
-		System.out.println("Connected components: " + sccs.toString());
+		stat1 = stat1 + Long.toString(Calendar.getInstance().getTimeInMillis()-startTime);
+		//System.out.println("Connected components: " + sccs.toString());
 
 		//update the cycle list. Use a map to avoid recomputing cycles of each connected component.
 		for (Pair<Integer,Integer> pair : toAdd) {
+			System.out.println("Adding edge " + pair.toString());
 			//search the strongly connected components containing the two vertices
 			for (DirectedSubgraph<Integer,DefaultWeightedEdge> scc : sccs) {
+				boolean got = false;
 				if (scc.containsVertex(pair.getFirst()) ||	scc.containsVertex(pair.getSecond())) {
 					if (scc.containsVertex(pair.getFirst()) && scc.containsVertex(pair.getSecond())) {
+						got = true;
 						//get cycles in this strongly connected components
+						startTime = Calendar.getInstance().getTimeInMillis();
 						JohnsonSimpleCycles<Integer,DefaultWeightedEdge> cycleFinder = new JohnsonSimpleCycles<Integer,DefaultWeightedEdge>(scc);
 						List<List<Integer>> cycles = cycleFinder.findSimpleCycles();
-						System.out.println("Reversed cycles: " + cycles);
+						stat1 = stat1 + "\t" + Long.toString(Calendar.getInstance().getTimeInMillis()-startTime);
+						//System.out.println("Reversed cycles: " + cycles);
+						startTime = Calendar.getInstance().getTimeInMillis();
 						if (!cycles.isEmpty()) {
 							for(List<Integer> cycle : cycles) {
 								Collections.reverse(cycle);
@@ -113,7 +174,9 @@ public class TestUpdateGraph {
 								}
 							}
 						}
+						stat1 = stat1 + "\t" + Long.toString(Calendar.getInstance().getTimeInMillis()-startTime);
 					}
+					if (!got) stat1 = stat1 + "\t\t";
 					break;
 				}
 			}
@@ -149,49 +212,82 @@ public class TestUpdateGraph {
 			addEdges(toAdd);
 	}
 	
+	
+	
 	public static void main(String[] args) {
-		/*ArrayList<Integer> cycle = new ArrayList<Integer>(Arrays.asList(1,2,3));
-		for (int i = 0; i < cycle.size(); i++) {
-			int j = i < cycle.size()-1 ? i+1 : 0;
-			Pair<Integer,Integer> edge = new Pair<Integer,Integer>(cycle.get(i), cycle.get(j));
-			if (!currentCyclesList.containsKey(edge)) currentCyclesList.put(edge, new HashSet<ArrayList<Integer>>());
-			currentCyclesList.get(edge).add((ArrayList<Integer>)cycle);
-		}*/
-        
-        HashMap<Pair<Integer,Integer>,Integer> edgesToDelete = new HashMap<Pair<Integer,Integer>,Integer>();
-        HashMap<Pair<Integer,Integer>,Integer> edgesToAdd = new HashMap<Pair<Integer,Integer>,Integer>();
-        edgesToAdd.put(new Pair<Integer,Integer>(1,2), 2);
-        edgesToAdd.put(new Pair<Integer,Integer>(2,3), 1);
-        edgesToAdd.put(new Pair<Integer,Integer>(3,1), 1);
-        updateGraph(edgesToDelete,edgesToAdd);
-        System.out.println("currentCyclesList: " + currentCyclesList.toString());
-        System.out.println("graph: " + currentOrdersGraph.toString());
-        
-        HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>> backupcurrentCyclesList = new HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>>();
-		for (Pair<Integer,Integer> key : currentCyclesList.keySet())
-			backupcurrentCyclesList.put(key, new HashSet<ArrayList<Integer>>(currentCyclesList.get(key)));
-        
-        SimpleDirectedWeightedGraph<Integer, DefaultWeightedEdge> backupGraph = new SimpleDirectedWeightedGraph<Integer, DefaultWeightedEdge>(DefaultWeightedEdge.class);
-		for (int v : currentOrdersGraph.vertexSet()) backupGraph.addVertex(v);
-		for (DefaultWeightedEdge e : currentOrdersGraph.edgeSet()) {
-			DefaultWeightedEdge e_ = backupGraph.addEdge(currentOrdersGraph.getEdgeSource(e), currentOrdersGraph.getEdgeTarget(e));
-			if (e_ == null) System.out.println("<<<<<<<<< Add egde fails (7). Edge: " + e.toString());
-			backupGraph.setEdgeWeight(e_, currentOrdersGraph.getEdgeWeight(e));
+		
+		boolean DEBUGGING = false;
+		int NUMBER_ROBOTS = 10;
+				
+		if (DEBUGGING) {
+	        //Basic test
+	        HashMap<Pair<Integer,Integer>,Integer> edgesToDelete = new HashMap<Pair<Integer,Integer>,Integer>();
+	        HashMap<Pair<Integer,Integer>,Integer> edgesToAdd = new HashMap<Pair<Integer,Integer>,Integer>();
+	        edgesToAdd.put(new Pair<Integer,Integer>(1,2), 2);
+	        edgesToAdd.put(new Pair<Integer,Integer>(2,3), 1);
+	        edgesToAdd.put(new Pair<Integer,Integer>(3,1), 1);
+	        updateGraph(edgesToDelete,edgesToAdd);
+	        System.out.println("currentCyclesList: " + currentCyclesList.toString());
+	        System.out.println("graph: " + currentOrdersGraph.toString());
+	        
+	        HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>> backupcurrentCyclesList = new HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>>();
+			for (Pair<Integer,Integer> key : currentCyclesList.keySet())
+				backupcurrentCyclesList.put(key, new HashSet<ArrayList<Integer>>(currentCyclesList.get(key)));
+	        
+	        SimpleDirectedWeightedGraph<Integer, DefaultWeightedEdge> backupGraph = new SimpleDirectedWeightedGraph<Integer, DefaultWeightedEdge>(DefaultWeightedEdge.class);
+			for (int v : currentOrdersGraph.vertexSet()) backupGraph.addVertex(v);
+			for (DefaultWeightedEdge e : currentOrdersGraph.edgeSet()) {
+				DefaultWeightedEdge e_ = backupGraph.addEdge(currentOrdersGraph.getEdgeSource(e), currentOrdersGraph.getEdgeTarget(e));
+				if (e_ == null) System.out.println("<<<<<<<<< Add egde fails (7). Edge: " + e.toString());
+				backupGraph.setEdgeWeight(e_, currentOrdersGraph.getEdgeWeight(e));
+			}
+	        //check delete edge
+	        edgesToDelete.put(new Pair<Integer,Integer>(1,2), 2);
+	        edgesToAdd.clear();
+	        edgesToDelete.put(new Pair<Integer,Integer>(2,3), 1);
+	        updateGraph(edgesToDelete,edgesToAdd);
+	        System.out.println("backupcurrentCyclesList: " + backupcurrentCyclesList.toString());
+	        System.out.println("currentCyclesList: " + currentCyclesList.toString());
+	        System.out.println("backupGraph: " + backupGraph.toString());
+	        System.out.println("graph: " + currentOrdersGraph.toString());
+	        
+	        Pair<Integer,Integer> pair1 = new Pair<Integer,Integer>(1,2);
+	        Pair<Integer,Integer> pair2 = new Pair<Integer,Integer>(1,2);
+	        Pair<Integer,Integer> pair3 = new Pair<Integer,Integer>(2,1);
+	        System.out.println(pair1.equals(pair2) + ", " + pair1.equals(pair3));
+	        
+	        return;
 		}
-        //check delete edge
-        edgesToDelete.put(new Pair<Integer,Integer>(1,2), 2);
-        edgesToAdd.clear();
-        edgesToDelete.put(new Pair<Integer,Integer>(2,3), 1);
-        updateGraph(edgesToDelete,edgesToAdd);
-        System.out.println("backupcurrentCyclesList: " + backupcurrentCyclesList.toString());
-        System.out.println("currentCyclesList: " + currentCyclesList.toString());
-        System.out.println("backupGraph: " + backupGraph.toString());
-        System.out.println("graph: " + currentOrdersGraph.toString());
-        
-        Pair<Integer,Integer> pair1 = new Pair<Integer,Integer>(1,2);
-        Pair<Integer,Integer> pair2 = new Pair<Integer,Integer>(1,2);
-        Pair<Integer,Integer> pair3 = new Pair<Integer,Integer>(2,1);
-        System.out.println(pair1.equals(pair2) + ", " + pair1.equals(pair3));
+		
+		initStat(fileName1,"Number robots: " + NUMBER_ROBOTS + "\n" + "Connected components\t Compute cycles\t Update list\t Tot");
+		initStat(fileName2,"Number robots: " + NUMBER_ROBOTS + "\n" + "Update graph\t Update list\t Tot");
+		
+		currentCyclesList = new HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>>();
+		currentOrdersGraph = new SimpleDirectedWeightedGraph<Integer,DefaultWeightedEdge>(DefaultWeightedEdge.class);
+		ArrayList<Integer> robotIDs = new ArrayList<Integer>();
+		for (int i = 0; i < NUMBER_ROBOTS; i++) robotIDs.add(i);
+		Permutation p = new Permutation(NUMBER_ROBOTS, 2);
+		
+		//Add all the edges one by one
+		while (p.hasNext()) {
+		      int[] a = p.next();
+		      System.out.println(Arrays.toString(a));
+		      stat1 = "";
+		      addEdge(a[0],a[1]);   
+		      writeStat(fileName1, stat1);
+		}
+		
+		//remove edges one by one
+	    p = new Permutation(NUMBER_ROBOTS, 2);
+	    while (p.hasNext()) {
+		      int[] a = p.next();
+		      System.out.println(Arrays.toString(a));
+		      stat2 = "";
+		      deleteEdge(a[0],a[1]);	      
+		      writeStat(fileName2, stat2);
+		}
+	    
+	    System.out.println("Done!");
 
 	}
 
