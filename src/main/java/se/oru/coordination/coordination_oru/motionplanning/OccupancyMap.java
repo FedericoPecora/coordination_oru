@@ -71,6 +71,7 @@ public class OccupancyMap {
 	}
 	
 	public OccupancyMap(OccupancyMap om) {
+		if (om == null) throw new Error("Null occupancy map passed as parameter.");
 		this.mapWidth = om.mapWidth;
 		this.mapHeight= om.mapHeight;
 		this.threshold = om.threshold;
