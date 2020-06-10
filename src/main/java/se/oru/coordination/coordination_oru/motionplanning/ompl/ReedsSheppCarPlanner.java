@@ -15,6 +15,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.Polygon;
 
 import se.oru.coordination.coordination_oru.motionplanning.AbstractMotionPlanner;
+import se.oru.coordination.coordination_oru.motionplanning.OccupancyMap;
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlannerLib.PathPose;
 import se.oru.coordination.coordination_oru.util.GeometrySmoother;
 import se.oru.coordination.coordination_oru.util.GeometrySmoother.SmootherControl;
@@ -45,7 +46,7 @@ public class ReedsSheppCarPlanner extends AbstractMotionPlanner {
 		ret.setDistanceBetweenPathPoints(this.distanceBetweenPathPoints);
 		ret.setTurningRadius(this.turningRadius);
 		ret.setFootprint(this.footprintCoords);
-		ret.om = this.om;
+		ret.om = new OccupancyMap(this.om);
 		return ret;
 	}
 	
