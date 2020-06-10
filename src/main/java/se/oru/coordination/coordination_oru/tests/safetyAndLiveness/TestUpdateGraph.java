@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Random;
 
 import org.jgrapht.alg.KosarajuStrongConnectivityInspector;
 import org.jgrapht.alg.cycle.JohnsonSimpleCycles;
@@ -40,12 +41,19 @@ public class TestUpdateGraph {
         catch (Exception e) { e.printStackTrace(); }
 	}
 	
+	static int NUMBER_ROBOTS = 10;
+	static String searchType = "BF";//otherwise it assumes DF
 	static HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>> currentCyclesList = new HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>>();
 	static SimpleDirectedWeightedGraph<Integer,DefaultWeightedEdge> currentOrdersGraph = new SimpleDirectedWeightedGraph<Integer,DefaultWeightedEdge>(DefaultWeightedEdge.class);
-	static String fileName1 = System.getProperty("user.home")+File.separator+"add.txt";
+	static long nameTime = Calendar.getInstance().getTimeInMillis();
+	static String fileName1 = System.getProperty("user.home")+File.separator+"/add-"+searchType+"-"+ NUMBER_ROBOTS+"-"+nameTime+".txt";
 	static String stat1 = "";
-	static String fileName2 = System.getProperty("user.home")+File.separator+"delete.txt";
+	static String fileName2 = System.getProperty("user.home")+File.separator+"/delete-"+searchType+"-"+ NUMBER_ROBOTS+"-"+nameTime+".txt";
 	static String stat2 = "";
+	static String fileName3 = System.getProperty("user.home")+File.separator+"/degrees-"+searchType+"-"+ NUMBER_ROBOTS+"-"+nameTime+".txt";
+	static String stat3 = "";
+	
+	
 
 	static void deleteEdges(HashMap<Pair<Integer,Integer>, Integer> edgesToDelete) {
 
@@ -96,6 +104,16 @@ public class TestUpdateGraph {
 		long startTime = Calendar.getInstance().getTimeInMillis();
 		addEdges(edgesToAdd);
 		stat1 = stat1 + "\t" + Long.toString(Calendar.getInstance().getTimeInMillis()-startTime);
+		stat3 = stat3 + currentOrdersGraph.edgeSet().size();
+		for (int i = 0; i < NUMBER_ROBOTS; i++) {
+			int in_degree = 0;
+			int out_degree = 0;
+			if (currentOrdersGraph.containsVertex(i)) {
+				in_degree = currentOrdersGraph.inDegreeOf(i);
+				out_degree = currentOrdersGraph.outDegreeOf(i);
+			}
+			stat3 = stat3 + "\t[" + in_degree + "," + out_degree + "]";
+		}
 	}
 	
 	static void deleteEdge(int source, int target) {
@@ -174,9 +192,9 @@ public class TestUpdateGraph {
 								}
 							}
 						}
-						stat1 = stat1 + "\t" + Long.toString(Calendar.getInstance().getTimeInMillis()-startTime);
+						stat1 = stat1 + "\t" + cycles.size() + "\t" + Long.toString(Calendar.getInstance().getTimeInMillis()-startTime);
 					}
-					if (!got) stat1 = stat1 + "\t\t";
+					if (!got) stat1 = stat1 + "\t 0\t\t";
 					break;
 				}
 			}
@@ -217,7 +235,6 @@ public class TestUpdateGraph {
 	public static void main(String[] args) {
 		
 		boolean DEBUGGING = false;
-		int NUMBER_ROBOTS = 10;
 				
 		if (DEBUGGING) {
 	        //Basic test
@@ -259,34 +276,52 @@ public class TestUpdateGraph {
 	        return;
 		}
 		
-		initStat(fileName1,"Number robots: " + NUMBER_ROBOTS + "\n" + "Connected components\t Compute cycles\t Update list\t Tot");
+		initStat(fileName1,"Number robots: " + NUMBER_ROBOTS + "\n" + "Connected components\t Number cycles found \t Compute cycles\t Update list\t Tot time");
 		initStat(fileName2,"Number robots: " + NUMBER_ROBOTS + "\n" + "Update graph\t Update list\t Tot");
+		initStat(fileName3,"Number robots: " + NUMBER_ROBOTS + "\n" + "Number edges\t [In degree, Out degree]");
 		
 		currentCyclesList = new HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>>();
 		currentOrdersGraph = new SimpleDirectedWeightedGraph<Integer,DefaultWeightedEdge>(DefaultWeightedEdge.class);
-		ArrayList<Integer> robotIDs = new ArrayList<Integer>();
-		for (int i = 0; i < NUMBER_ROBOTS; i++) robotIDs.add(i);
-		Permutation p = new Permutation(NUMBER_ROBOTS, 2);
 		
-		//Add all the edges one by one
+					
+		//Add and remove all the edges one by one
+		/*Permutation p = new Permutation(NUMBER_ROBOTS, 2);
 		while (p.hasNext()) {
 		      int[] a = p.next();
 		      System.out.println(Arrays.toString(a));
 		      stat1 = "";
 		      addEdge(a[0],a[1]);   
 		      writeStat(fileName1, stat1);
-		}
-		
-		//remove edges one by one
-	    p = new Permutation(NUMBER_ROBOTS, 2);
-	    while (p.hasNext()) {
-		      int[] a = p.next();
-		      System.out.println(Arrays.toString(a));
 		      stat2 = "";
-		      deleteEdge(a[0],a[1]);	      
+		      deleteEdge(a[0],a[1]);
 		      writeStat(fileName2, stat2);
+		      addEdge(a[0],a[1]);   
 		}
+
+	    System.out.println("Done!");*/
 	    
+	    /////////// entering edges ///////
+	    for (int i = 0; i < NUMBER_ROBOTS; i++) {
+	    	for (int j = 0; j < NUMBER_ROBOTS; j++) {
+	    		if (j != i) {
+		    		stat1 = "";
+		    		stat3 = "";
+		    		int s = i;
+		    		int t = j;
+				    if (searchType.equalsIgnoreCase("BF")) {
+				    	s = j;
+				    	t = i;
+				    }
+				    addEdge(s,t);   
+				    writeStat(fileName1, stat1);
+				    writeStat(fileName3, stat3);
+				    stat2 = "";
+				    deleteEdge(s,t);
+				    writeStat(fileName2, stat2);
+				    addEdge(j,i);
+	    		}
+	    	}
+	    }
 	    System.out.println("Done!");
 
 	}
