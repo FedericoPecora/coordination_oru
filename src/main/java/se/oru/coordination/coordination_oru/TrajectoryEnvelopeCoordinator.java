@@ -240,7 +240,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					break;
 				}
 				if (i == edgesAlongCycle.size()-1) {
-					metaCSPLogger.info("Cycle: " + edgesAlongCycle + " is NOT deadlock-free");
+					metaCSPLogger.info("Cycle: " + edgesAlongCycle + " is NOT deadlock-free. Current cycle list contains this cycle? :" + currentCyclesList.containsValue(cycle));
 					unsafeCycles.add(cycle);
 				}
 			}			
@@ -1470,22 +1470,15 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>> toRemove = new HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>>();
 							for (ArrayList<Integer> cycle : currentCyclesList.get(edge)) {
 								for (int i = 0; i < cycle.size(); i++) {
-									Pair<Integer,Integer> otherEdge = new Pair<Integer,Integer>(cycle.get(i), cycle.get(i < cycle.size()-1 ? i+1 : 0));
-									if (!otherEdge.equals(edge)) {
-										if (!toRemove.containsKey(otherEdge)) toRemove.put(otherEdge, new HashSet<ArrayList<Integer>>());
-										toRemove.get(otherEdge).add(cycle);
-									}
+									Pair<Integer,Integer> key = new Pair<Integer,Integer>(cycle.get(i), cycle.get(i < cycle.size()-1 ? i+1 : 0));
+									if (!toRemove.containsKey(key)) toRemove.put(key, new HashSet<ArrayList<Integer>>());
+									toRemove.get(key).add(cycle);
 								}
 							}
 							for (Pair<Integer, Integer> key : toRemove.keySet()) {
-								if (currentCyclesList.containsKey(key)) {
-									HashSet<ArrayList<Integer>> revised = new HashSet<ArrayList<Integer>>(currentCyclesList.get(key));
-									revised.removeAll(toRemove.get(key));
-									currentCyclesList.put(key, revised);
-									if (currentCyclesList.get(key).isEmpty()) currentCyclesList.remove(key);
-								}
+								currentCyclesList.get(key).removeAll(toRemove.get(key));
+								if (currentCyclesList.get(key).isEmpty()) currentCyclesList.remove(key);
 							}
-							currentCyclesList.remove(edge);
 						}
 					}
 				}
@@ -1538,7 +1531,6 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							//get cycles in this strongly connected components
 							JohnsonSimpleCycles<Integer,DefaultWeightedEdge> cycleFinder = new JohnsonSimpleCycles<Integer,DefaultWeightedEdge>(scc);
 							List<List<Integer>> cycles = cycleFinder.findSimpleCycles();
-							metaCSPLogger.finest("Reversed cycles: " + cycles);
 							if (!cycles.isEmpty()) {
 								for(List<Integer> cycle : cycles) {
 									Collections.reverse(cycle);
@@ -1637,6 +1629,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							//We should enforce the last robot stopping point while it is involved in a re-plan.
 							if (!currentDeps.containsKey(robotID)) currentDeps.put(robotID, new HashSet<Dependency>());
 							currentDeps.get(robotID).add(lockedRobots.get(robotID));
+							metaCSPLogger.info("Add Locking dependency to Robot" + robotID + ". Dep: " + lockedRobots.get(robotID));
 						}			
 					}
 				}
@@ -1729,8 +1722,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							//If cs is new, update the of edges to add (otherwise, it is already in the graph)
 							if (!CSToDepsOrder.containsKey(cs)) {
 								Pair<Integer,Integer> edge = new Pair<Integer,Integer>(dep.getWaitingRobotID(), dep.getDrivingRobotID());
-								if (edgesToAdd.containsKey(edge)) edgesToAdd.put(edge,edgesToAdd.get(edge)+1);
-								else edgesToAdd.put(edge,1);
+								if (edgesToAdd.containsKey(edge)) edgesToAdd.put(edge, edgesToAdd.get(edge)+1);
+								else edgesToAdd.put(edge, 1);
 							}
 
 							//update the global graph
@@ -2032,9 +2025,11 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 								backupGraph.setEdgeWeight(e_, currentOrdersGraph.getEdgeWeight(e));
 							}
 
-							HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>> backupcurrentCyclesList = new HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>>(currentCyclesList);
+							HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>> backupcurrentCyclesList = new HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>>();
+							for (Pair<Integer,Integer> key : currentCyclesList.keySet())
+								backupcurrentCyclesList.put(key, new HashSet<ArrayList<Integer>>(currentCyclesList.get(key)));
 							
-							edgesToDelete.put(new Pair<Integer,Integer>(drivingRobotID, waitingRobotID),1);
+							edgesToDelete.put(new Pair<Integer,Integer>(drivingRobotID, waitingRobotID), 1);
 							Pair<Integer,Integer> newEdge = new Pair<Integer,Integer>(waitingRobotID, drivingRobotID);
 							edgesToAdd.put(newEdge, 1);
 							updateGraph(edgesToDelete,edgesToAdd);
@@ -2077,7 +2072,23 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 												//metaCSPLogger.info(currentCyclesList.toString());
 											}
 											else {
-												if (allEdges.isEmpty()) metaCSPLogger.severe("<<<<<<<<< Unfound deps from: " + cycle.get(i) + " to: "+ cycle.get(j) + ", currentCyclesList: " + currentCyclesList.get(newEdge).toString());
+												if (allEdges.isEmpty()) {
+													metaCSPLogger.severe("<<<<<<<<< Unfound deps from: " + cycle.get(i) + " to: "+ cycle.get(j) + " when reversing dep  " + depOld + " to " + depNew);
+													metaCSPLogger.severe("currentCyclesList: " + currentCyclesList.get(newEdge).toString());
+													metaCSPLogger.severe("currentOrdersGraph contains it? " + currentOrdersGraph.containsEdge(cycle.get(i), cycle.get(j)));
+													metaCSPLogger.severe("backupDepsGraph contains it? " + backupDepsGraph.containsEdge(cycle.get(i), cycle.get(j)));
+													metaCSPLogger.severe("backupGraph contains it? " + backupGraph.containsEdge(cycle.get(i), cycle.get(j)));
+													boolean got = false;
+													if (currentDeps.containsKey(cycle.get(i))) {
+														for (Dependency dep1 : currentDeps.get(cycle.get(i))) {
+															if (dep1.getDrivingRobotID() == cycle.get(j)) {
+																got = true;
+																break;
+															}
+														}
+													}
+													metaCSPLogger.severe("currentDeps contains it? " + got);
+												}
 												edgesAlongCycle.add(new ArrayList<Dependency>(allEdges));
 											}
 										}
