@@ -70,6 +70,23 @@ public class OccupancyMap {
 		this.bimg_original = deepCopy(this.bimg);
 	}
 	
+	public OccupancyMap(OccupancyMap om) {
+		if (om == null) throw new Error("Null occupancy map passed as parameter.");
+		this.mapWidth = om.mapWidth;
+		this.mapHeight= om.mapHeight;
+		this.threshold = om.threshold;
+		this.mapResolution = om.mapResolution;
+		this.obstacles = new ArrayList<Geometry>(om.obstacles);
+		this.bimg = new BufferedImage(this.mapWidth, this.mapHeight, BufferedImage.TYPE_INT_RGB);
+		Graphics2D g2 = bimg.createGraphics();
+		g2.setPaint(Color.white);
+		g2.fillRect(0, 0, this.mapWidth, this.mapHeight);
+		g2.dispose();
+		//--
+		this.createOccupancyMap();
+		this.bimg_original = deepCopy(this.bimg);
+	}
+	
 	public OccupancyMap(String yamlFile) {
 		this.readMap(yamlFile);
 		//--
