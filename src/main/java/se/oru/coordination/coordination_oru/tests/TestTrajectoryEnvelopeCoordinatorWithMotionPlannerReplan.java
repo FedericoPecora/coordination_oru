@@ -89,8 +89,8 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlannerReplan {
 		
 		//For robot 1 ...
 		final ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-		String yamlFile = "maps/map-empty.yaml";
-		rsp.setMap(yamlFile);
+		//String yamlFile = "maps/map-empty.yaml";
+		//rsp.setMap(yamlFile);
 		rsp.setRadius(0.1);
 		rsp.setFootprint(footprint1, footprint2, footprint3, footprint4);
 		rsp.setTurningRadius(4.0);

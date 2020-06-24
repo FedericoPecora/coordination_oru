@@ -57,6 +57,12 @@ public class OccupancyMap {
 	private BufferedImage bimg_original = null;
 	private ArrayList<Geometry> obstacles = new ArrayList<Geometry>();
 
+	/**
+	 * Create a new empty occupancy map (no obstacles, all in C_free).
+	 * @param width The width of the map to create (in meters).
+	 * @param height The height of the map to create (in meters).
+	 * @param resolution The resolution of the map to create (in meters/pixel).
+	 */
 	public OccupancyMap(double width, double height, double resolution) {
 		this.mapWidth = (int)(width/resolution);
 		this.mapHeight= (int)(height/resolution);
@@ -70,6 +76,10 @@ public class OccupancyMap {
 		this.bimg_original = deepCopy(this.bimg);
 	}
 	
+	/**
+	 * Create a new occupancy map that is identical to a given occupancy map.
+	 * @param om The occupancy map to copy.
+	 */
 	public OccupancyMap(OccupancyMap om) {
 		if (om == null) throw new Error("Null occupancy map passed as parameter.");
 		this.mapWidth = om.mapWidth;
@@ -87,6 +97,15 @@ public class OccupancyMap {
 		this.bimg_original = deepCopy(this.bimg);
 	}
 	
+	/**
+	 * Create a new occupancy map from a given YAML file. The file is expected to look like this:
+	 * <code>
+	 * image: <mapfile.png>
+	 * resolution: <resolution_in_meters/pixel>
+	 * occupied_thresh: <least_pixel_value_that_is_considered_occupied>
+	 * </code> 
+	 * @param yamlFile The YAML file to construct the occupancy map from.
+	 */
 	public OccupancyMap(String yamlFile) {
 		this.readMap(yamlFile);
 		//--
@@ -94,6 +113,10 @@ public class OccupancyMap {
 		this.bimg_original = deepCopy(this.bimg);
 	}
 	
+	/**
+	 * Get a {@link BufferedImage} of this occupancy map.
+	 * @return A {@link BufferedImage} representing this occupancy map.
+	 */
 	public BufferedImage getMapImage() {
 		return this.bimg;
 	}
@@ -105,16 +128,28 @@ public class OccupancyMap {
 		 return new BufferedImage(cm, raster, isAlphaPremultiplied, null);
 	}
 
+	/**
+	 * Clear previously added obstacles from the occupancy map. This applies to all obstacles added
+	 * via the {@link #addObstacles(Geometry...)} or {@link #addObstacles(Geometry, Pose...)} methods.
+	 */
 	public void clearObstacles() {
 		this.bimg = deepCopy(this.bimg_original);
 		this.obstacles.clear();
 	}
 	
+	/**
+	 * Get the geometries of the obstacles added to this occupancy map.
+	 * @return The geometries of all obstacles that have been added to this occupancy map.
+	 */
 	public Geometry[] getObstacles() {
 		if (this.obstacles.isEmpty()) return new Geometry[]{};
 		return this.obstacles.toArray(new Geometry[this.obstacles.size()]);
 	}
 	
+	/**
+	 * Add obstacles to this occupancy map.
+	 * @param obstacles One or more geometries of obstacles to add to this occupancy map.
+	 */
 	public void addObstacles(Geometry ... obstacles) {
 		Graphics2D g2 = bimg.createGraphics();
 		ShapeWriter writer = new ShapeWriter();
@@ -131,9 +166,15 @@ public class OccupancyMap {
 		}
 		g2.dispose();
 		this.createOccupancyMap();
-
 	}
 	
+	/**
+	 * Save an image of the occupancy map with extra markings to indicate start and goal poses
+	 * of a robot with a given footprint.
+	 * @param startPose The start pose to mark.
+	 * @param goalPose The end pose to mark.
+	 * @param robotFoot The footprint to use in marking the start and goal poses.
+	 */
 	public void saveDebugObstacleImage(Pose startPose, Pose goalPose, Geometry robotFoot) {
 		BufferedImage copyForDebug = new BufferedImage(bimg.getWidth(), bimg.getHeight(), BufferedImage.TYPE_INT_RGB);
 		Graphics2D g2 = copyForDebug.createGraphics();
@@ -183,6 +224,12 @@ public class OccupancyMap {
 
 	}
 	
+	/**
+	 * Add one or more obstacles with a given geometry placed in given poses. 
+	 * @param geom The geometry of the obstacles to add.
+	 * @param poses The poses in which to add obstacles.
+	 * @return A list of geometries representing the added obstacles.
+	 */
 	public ArrayList<Geometry> addObstacles(Geometry geom, Pose ... poses) {
 		ArrayList<Geometry> obstacles = new ArrayList<Geometry>();
 		for (Pose pose : poses) {
@@ -196,22 +243,42 @@ public class OccupancyMap {
 		return obstacles;
 	}
 
+	/**
+	 * Get the resolution of this occupancy map.
+	 * @return The resolution of this occupancy map (in meters/pixel).
+	 */
 	public double getResolution() {
 		return this.mapResolution;
 	}
 
+	/**
+	 * Get the threshold pixel value below which the pixel is considered to be occupied.
+	 * @return The threshold pixel value below which the pixel is considered to be occupied.
+	 */
 	public double getThreshold() {
 		return this.threshold;
 	}
 	
+	/**
+	 * Get a linear byte array representation of this occupancy map. Pixel (i,j) is in location (i*mapWidth+j).
+	 * @return Linear byte array representation of this occupancy map, where (i,j) is in location (i*mapWidth+j).
+	 */
 	public byte[] asByteArray() {
 		return this.occupancyMapLinearBits.toByteArray();
 	}
 
+	/**
+	 * Get a {@link BufferedImage} representing this occupancy map.
+	 * @return A {@link BufferedImage} representing this occupancy map.
+	 */
 	public BufferedImage asBufferedImage() {
 		return this.bimg;
 	}
 
+	/**
+	 * Get a two-color {@link BufferedImage} representing this occupancy map. A pixel is black iff it is considered occupied.
+	 * @return A two-color {@link BufferedImage} representing this occupancy map, where all black pixels are occupied.
+	 */
 	public BufferedImage asThresholdedBufferedImage() {
 		BufferedImage oimg = new BufferedImage(bimg.getWidth(), bimg.getHeight(), BufferedImage.TYPE_INT_RGB);
 		for (int y = 0; y < this.mapHeight; y++) {
@@ -223,40 +290,84 @@ public class OccupancyMap {
 		return oimg;
 	}
 
+	/**
+	 * Get the coordinates in pixel space corresponding to a given {@link Coordinate} in the workspace.
+	 * @param coord A {@link Coordinate} within the workspace.
+	 * @return The coordinates in pixel space corresponding to the given {@link Coordinate} in the workspace.
+	 */
 	public int[] toPixels(Coordinate coord) {
 		return new int[] { this.mapHeight-((int)(coord.y*this.mapResolution)), (int)(coord.x*(this.mapResolution)) };
 	}
 
+	/**
+	 * Get the {@link Coordinate}s in workspace corresponding to given coordinates in pixel space.
+	 * @param x The x coordinate of the pixel in the occupancy map.
+	 * @param y The y coordinate of the pixel in the occupancy map.
+	 * @return The {@link Coordinate}s in workspace corresponding to given coordinates in pixel space.
+	 */
 	public Coordinate toWorldCoordiantes(int x, int y) {
 		return new Coordinate(x*this.mapResolution, (this.mapHeight-y)*this.mapResolution);
 	}
 
+	/**
+	 * Get the width of this occupancy map in pixels.
+	 * @return The width of this occupancy map in pixels.
+	 */
 	public int getPixelWidth() {
 		return this.mapWidth;
 	}
 
+	/**
+	 * Get the height of this occupancy map in pixels.
+	 * @return The height of this occupancy map in pixels.
+	 */
 	public int getPixelHeight() {
 		return this.mapHeight;
 	}
 
+	/**
+	 * Get the width of this occupancy map in the workspace coordinates.
+	 * @return The width of this occupancy map in the workspace coordinates.
+	 */
 	public double getWorldWidth() {
 		return this.mapWidth*mapResolution;
 	}
 
+	/**
+	 * Get the height of this occupancy map in the workspace coordinates.
+	 * @return The height of this occupancy map in the workspace coordinates.
+	 */
 	public double getWorldHeight() {
 		return this.mapHeight*mapResolution;
 	}
 
+	/**
+	 * Get the value of the occupancy map in a given pixel.
+	 * @param pixelX The x coordinate of the pixel.
+	 * @param pixelY The y coordinate of the pixel.
+	 * @return The value of the occupancy map in the given pixel.
+	 */
 	public double getOccupancyValue(int pixelX, int pixelY) {
 		if (this.bimg == null) throw new Error("No occupancy map!");
 		return new Color(bimg.getRGB(pixelX,pixelY)).getRed()/255.0;
 	}
 	
+	/**
+	 * Return whether a given pixel of the occupancy map is occupied.
+	 * @param pixelX The x coordinate of the pixel.
+	 * @param pixelY The y coordinate of the pixel.
+	 * @return <code>true</code> iff the given pixel of the occupancy map is occupied.
+	 */
 	public boolean isOccupied(int pixelX, int pixelY) {
 		if (this.occupancyMapLinearBits == null) return false;
 		return this.occupancyMapLinearBits.get(this.mapWidth*pixelY+pixelX);
 	}
 
+	/**
+	 * Return whether a given {@link Coordinate} in the workspace is occupied.
+	 * @param coord The coordinate to check in the workspace.
+	 * @return <code>true</code> iff the given {@link Coordinate} in the workspace is occupied.
+	 */
 	public boolean isOccupied(Coordinate coord) {
 		int[] pixel = toPixels(coord);
 		return this.isOccupied(pixel[0], pixel[1]);
