@@ -41,16 +41,16 @@ public class TestUpdateGraph {
         catch (Exception e) { e.printStackTrace(); }
 	}
 	
-	static int NUMBER_ROBOTS = 10;
-	static String searchType = "BF";//otherwise it assumes DF
+	static int NUMBER_ROBOTS = 1000;
+	static String searchType = "LC";//otherwise it assumes DF
 	static HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>> currentCyclesList = new HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>>();
 	static SimpleDirectedWeightedGraph<Integer,DefaultWeightedEdge> currentOrdersGraph = new SimpleDirectedWeightedGraph<Integer,DefaultWeightedEdge>(DefaultWeightedEdge.class);
 	static long nameTime = Calendar.getInstance().getTimeInMillis();
-	static String fileName1 = System.getProperty("user.home")+File.separator+"/add-"+searchType+"-"+ NUMBER_ROBOTS+"-"+nameTime+".txt";
+	static String fileName1 = System.getProperty("user.home")+File.separator+"T-RO ORU/update Graph/"+NUMBER_ROBOTS+"/"+searchType+"/add-"+nameTime+".txt";
 	static String stat1 = "";
-	static String fileName2 = System.getProperty("user.home")+File.separator+"/delete-"+searchType+"-"+ NUMBER_ROBOTS+"-"+nameTime+".txt";
+	static String fileName2 = System.getProperty("user.home")+File.separator+"T-RO ORU/update Graph/"+NUMBER_ROBOTS+"/"+searchType+"/delete-"+nameTime+".txt";
 	static String stat2 = "";
-	static String fileName3 = System.getProperty("user.home")+File.separator+"/degrees-"+searchType+"-"+ NUMBER_ROBOTS+"-"+nameTime+".txt";
+	static String fileName3 = System.getProperty("user.home")+File.separator+"T-RO ORU/update Graph/"+NUMBER_ROBOTS+"/"+searchType+"/degrees-"+nameTime+".txt";
 	static String stat3 = "";
 	
 	
@@ -76,7 +76,7 @@ public class TestUpdateGraph {
 					currentOrdersGraph.removeEdge(edge.getFirst(), edge.getSecond());
 					stat2 = stat2 + Long.toString(Calendar.getInstance().getTimeInMillis()-startTime);
 					startTime = Calendar.getInstance().getTimeInMillis();
-					if (currentCyclesList.containsKey(edge)) {
+					/*if (currentCyclesList.containsKey(edge)) {
 						HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>> toRemove = new HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>>();
 						for (ArrayList<Integer> cycle : currentCyclesList.get(edge)) {
 							for (int i = 0; i < cycle.size(); i++) {
@@ -89,7 +89,7 @@ public class TestUpdateGraph {
 							currentCyclesList.get(key).removeAll(toRemove.get(key));
 							if (currentCyclesList.get(key).isEmpty()) currentCyclesList.remove(key);
 						}
-					}
+					}*/
 					stat2 = stat2 + "\t" + Long.toString(Calendar.getInstance().getTimeInMillis()-startTime);
 				}
 			}
@@ -104,6 +104,22 @@ public class TestUpdateGraph {
 		long startTime = Calendar.getInstance().getTimeInMillis();
 		addEdges(edgesToAdd);
 		stat1 = stat1 + "\t" + Long.toString(Calendar.getInstance().getTimeInMillis()-startTime);
+		stat3 = stat3 + currentOrdersGraph.edgeSet().size();
+		for (int i = 0; i < NUMBER_ROBOTS; i++) {
+			int in_degree = 0;
+			int out_degree = 0;
+			if (currentOrdersGraph.containsVertex(i)) {
+				in_degree = currentOrdersGraph.inDegreeOf(i);
+				out_degree = currentOrdersGraph.outDegreeOf(i);
+			}
+			stat3 = stat3 + "\t[" + in_degree + "," + out_degree + "]";
+		}
+	}
+	
+	static void addEdgeLocal(int source, int target) {
+		HashMap<Pair<Integer,Integer>, Integer> edgesToAdd = new HashMap<Pair<Integer,Integer>, Integer>();
+		edgesToAdd.put(new Pair<Integer,Integer>(source,target), 1);
+		addEdgesLocal(edgesToAdd);
 		stat3 = stat3 + currentOrdersGraph.edgeSet().size();
 		for (int i = 0; i < NUMBER_ROBOTS; i++) {
 			int in_degree = 0;
@@ -201,6 +217,45 @@ public class TestUpdateGraph {
 		}
 	}
 	
+	static void addEdgesLocal(HashMap<Pair<Integer,Integer>, Integer> edgesToAdd) {
+
+		if (edgesToAdd == null || edgesToAdd.isEmpty()) return;
+
+		HashSet<Pair<Integer,Integer>> toAdd = new HashSet<Pair<Integer,Integer>>();
+
+		//add the edges if not already in the graph
+		for (Pair<Integer,Integer> edge : edgesToAdd.keySet()) {
+			Integer occurrence = edgesToAdd.get(edge);
+			if (occurrence == 0 || occurrence == null) {
+				System.out.println("<<<<<<<<<< Found edge " + edge.toString() + " with invalid weigth. Skipping addition." );
+				continue;
+			}
+			if (!currentOrdersGraph.containsEdge(edge.getFirst(),edge.getSecond())) {
+				toAdd.add(edge);
+				currentOrdersGraph.addVertex(edge.getFirst());
+				currentOrdersGraph.addVertex(edge.getSecond());
+				DefaultWeightedEdge e = currentOrdersGraph.addEdge(edge.getFirst(),edge.getSecond());
+				if (e == null) System.out.println("<<<<<<<<< Add dependency order fails (12). Edge: " + edge.getFirst() + "->" + edge.getSecond());				
+				currentOrdersGraph.setEdgeWeight(e, occurrence);
+				System.out.println("Add " + occurrence + " edges:" + edge.toString());
+			}
+			else {
+				DefaultWeightedEdge e = currentOrdersGraph.getEdge(edge.getFirst(),edge.getSecond());
+				currentOrdersGraph.setEdgeWeight(e,currentOrdersGraph.getEdgeWeight(e)+occurrence);
+			}
+		}
+		if (toAdd.isEmpty()) {
+			stat1 = stat1 + "\t 0 \t 0";
+			return;
+		}
+
+		//compute strongly connected components
+		long startTime = Calendar.getInstance().getTimeInMillis();
+		JohnsonSimpleCycles<Integer,DefaultWeightedEdge> cycleFinder = new JohnsonSimpleCycles<Integer,DefaultWeightedEdge>(currentOrdersGraph);
+		List<List<Integer>> cycles = cycleFinder.findSimpleCycles();
+		stat1 = stat1 + "\t" + cycles.size() + "\t" + Long.toString(Calendar.getInstance().getTimeInMillis()-startTime);
+	}
+	
 	//map edge, counter
 	static void updateGraph(HashMap<Pair<Integer,Integer>, Integer> edgesToDelete, HashMap<Pair<Integer,Integer>, Integer> edgesToAdd) {
 
@@ -276,7 +331,8 @@ public class TestUpdateGraph {
 	        return;
 		}
 		
-		initStat(fileName1,"Number robots: " + NUMBER_ROBOTS + "\n" + "Connected components\t Number cycles found \t Compute cycles\t Update list\t Tot time");
+		//initStat(fileName1,"Number robots: " + NUMBER_ROBOTS + "\n" + "Connected components\t Number cycles found \t Compute cycles\t Update list\t Tot time");
+		initStat(fileName1,"Number robots: " + NUMBER_ROBOTS + "\n" + "Number cycles \t Compute cycles");
 		initStat(fileName2,"Number robots: " + NUMBER_ROBOTS + "\n" + "Update graph\t Update list\t Tot");
 		initStat(fileName3,"Number robots: " + NUMBER_ROBOTS + "\n" + "Number edges\t [In degree, Out degree]");
 		
@@ -301,26 +357,37 @@ public class TestUpdateGraph {
 	    System.out.println("Done!");*/
 	    
 	    /////////// entering edges ///////
-	    for (int i = 0; i < NUMBER_ROBOTS; i++) {
+	    /*for (int i = 0; i < NUMBER_ROBOTS; i++) {
 	    	for (int j = 0; j < NUMBER_ROBOTS; j++) {
 	    		if (j != i) {
 		    		stat1 = "";
 		    		stat3 = "";
-		    		int s = i;
-		    		int t = j;
-				    if (searchType.equalsIgnoreCase("BF")) {
-				    	s = j;
-				    	t = i;
-				    }
-				    addEdge(s,t);   
+				    addEdge(i,j);   
 				    writeStat(fileName1, stat1);
 				    writeStat(fileName3, stat3);
 				    stat2 = "";
-				    deleteEdge(s,t);
+				    deleteEdge(i,j);
 				    writeStat(fileName2, stat2);
-				    addEdge(j,i);
+			    	//if (s == 1 && t == 10) break;
+				    addEdge(s,t);
 	    		}
 	    	}
+	    }
+	    System.out.println("Done!");*/
+	    
+	    /////////// entering edges ///////
+	    for (int i = 0; i < .5*NUMBER_ROBOTS; i++) {
+	    	stat1 = "";
+		    stat3 = "";
+		    int s = 2*i;
+		    int t = i == 0 ? NUMBER_ROBOTS : (2*i)+1;
+			addEdgeLocal(s,t);   
+			writeStat(fileName1, stat1);
+			writeStat(fileName3, stat3);
+			addEdgeLocal(t,s);
+			writeStat(fileName1, stat1);
+			writeStat(fileName3, stat3);
+
 	    }
 	    System.out.println("Done!");
 
