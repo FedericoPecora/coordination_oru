@@ -2,10 +2,12 @@ package se.oru.coordination.coordination_oru.tests;
 
 import java.io.File;
 import java.util.Comparator;
+import java.util.logging.Level;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
+import org.metacsp.utility.logging.MetaCSPLogging;
 
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
@@ -49,6 +51,8 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner9 {
 				return (o2.getRobotReport().getRobotID()-o1.getRobotReport().getRobotID());
 			}
 		});
+		
+		//MetaCSPLogging.setLevel(Level.FINEST);
 
 		//You probably also want to provide a non-trivial forward model
 		//(the default assumes that robots can always stop)
@@ -67,8 +71,9 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner9 {
 		tec.startInference();
 
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
-		String yamlFile = "maps/map-empty.yaml";
-		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization(yamlFile);
+		//String yamlFile = "maps/map-empty.yaml";
+		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization(yamlFile);
+		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
 		tec.setVisualization(viz);
 
 		tec.setUseInternalCriticalPoints(false);
@@ -77,7 +82,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner9 {
 
 		//Instantiate a simple motion planner
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-		rsp.setMap(yamlFile);
+		//rsp.setMap(yamlFile);
 		rsp.setRadius(0.2);
 		rsp.setFootprint(footprint1,footprint2,footprint3,footprint4);
 		rsp.setTurningRadius(4.0);
