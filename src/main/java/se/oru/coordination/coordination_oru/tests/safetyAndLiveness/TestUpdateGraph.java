@@ -46,11 +46,11 @@ public class TestUpdateGraph {
 	static HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>> currentCyclesList = new HashMap<Pair<Integer, Integer>, HashSet<ArrayList<Integer>>>();
 	static SimpleDirectedWeightedGraph<Integer,DefaultWeightedEdge> currentOrdersGraph = new SimpleDirectedWeightedGraph<Integer,DefaultWeightedEdge>(DefaultWeightedEdge.class);
 	static long nameTime = Calendar.getInstance().getTimeInMillis();
-	static String fileName1 = System.getProperty("user.home")+File.separator+"T-RO ORU/update Graph/"+NUMBER_ROBOTS+"/"+searchType+"/add-"+nameTime+".txt";
+	static String fileName1 = System.getProperty("user.home")+File.separator+"T-RO-ORU/update Graph/"+NUMBER_ROBOTS+"/"+searchType+"/add-"+nameTime+".txt";
 	static String stat1 = "";
-	static String fileName2 = System.getProperty("user.home")+File.separator+"T-RO ORU/update Graph/"+NUMBER_ROBOTS+"/"+searchType+"/delete-"+nameTime+".txt";
+	static String fileName2 = System.getProperty("user.home")+File.separator+"T-RO-ORU/update Graph/"+NUMBER_ROBOTS+"/"+searchType+"/delete-"+nameTime+".txt";
 	static String stat2 = "";
-	static String fileName3 = System.getProperty("user.home")+File.separator+"T-RO ORU/update Graph/"+NUMBER_ROBOTS+"/"+searchType+"/degrees-"+nameTime+".txt";
+	static String fileName3 = System.getProperty("user.home")+File.separator+"T-RO-ORU/update Graph/"+NUMBER_ROBOTS+"/"+searchType+"/degrees-"+nameTime+".txt";
 	static String stat3 = "";
 	
 	
