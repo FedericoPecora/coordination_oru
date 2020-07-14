@@ -85,7 +85,6 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 */
 	public void setBreakDeadlocksByReplanning(boolean value) {
 		this.breakDeadlocksByReplanning = value;
-		this.avoidDeadlockGlobally.getAndSet(false);
 	}
 
 	/**
@@ -95,7 +94,6 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 */
 	public void setBreakDeadlocksByReordering(boolean value) {
 		this.breakDeadlocksByReordering = value;
-		this.avoidDeadlockGlobally.getAndSet(false);
 	}
 
 	/**
@@ -104,10 +102,6 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 */
 	public void setAvoidDeadlocksGlobally(boolean value) {
 		this.avoidDeadlockGlobally.getAndSet(true);
-		if (value) {
-			this.breakDeadlocksByReordering = false;
-			this.breakDeadlocksByReplanning = false;
-		}
 	}
 
 	/**
@@ -1073,7 +1067,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				int numberAllCriticalSections = -1;
 				int numberNewAddedMissions = 0;
 				int numberDrivingRobots = 0;
-				int MAX_ADDED_MISSIONS = 1;
+				int MAX_ADDED_MISSIONS = 3;
 				long expectedSleepingTime = -1;
 				long effectiveSleepingTime = -1;
 				long printStatisticsTime = -1;
@@ -1772,6 +1766,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 								else robot2Yields = false;
 							}
 							else robot2Yields = (CSToDepsOrder.get(cs).getFirst() == robotReport2.getRobotID());
+							metaCSPLogger.info("Robot" + robotTracker1.getRobotReport().getRobotID() + ": " + robotTracker1.getStartingTimeInMillis() + ", " +
+									"Robot" + robotTracker2.getRobotReport().getRobotID() + ": " + robotTracker2.getStartingTimeInMillis() + ", yielding: " + (robot2Yields ?
+											robotReport2.getRobotID() : robotReport1.getRobotID()));
 							drivingCurrentIndex = robot2Yields ? robotReport1.getPathIndex() : robotReport2.getPathIndex();
 							drivingRobotID = robot2Yields ? robotReport1.getRobotID() : robotReport2.getRobotID();
 							waitingRobotID = robot2Yields ? robotReport2.getRobotID() : robotReport1.getRobotID();
