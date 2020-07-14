@@ -194,7 +194,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		}
 		ret.add(CONNECTOR_BRANCH + "Total number of obsolete critical sections ... " + criticalSectionCounter.get() + ".");
 		ret.add(CONNECTOR_BRANCH + "Total messages sent: ... " + totalMsgsSent.get() + ",, retransmitted: " + totalMsgsReTx.get() + ", number of replicas: " + numberOfReplicas + ".");
-		ret.add(CONNECTOR_BRANCH + "Total unalive states detected: ... " + unaliveStatesDetected.get() + ", avoided: " + unaliveStatesAvoided.get() + ".");
+		ret.add(CONNECTOR_BRANCH + "Total unalive states detected: ... " + unaliveStatesDetected.get() + ", avoided: " + unaliveStatesAvoided.get() + ", revised according to heuristic: " + currentOrdersHeurusticallyDecided.get() + ".");
 		ret.add(CONNECTOR_LEAF + "Total re-planned path: ... " + replanningTrialsCounter.get() + ", successful: " + successfulReplanningTrialsCounter.get() + ".");
 		return ret.toArray(new String[ret.size()]);
 	}
@@ -240,7 +240,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					break;
 				}
 				if (i == edgesAlongCycle.size()-1) {
-					metaCSPLogger.info("Cycle: " + edgesAlongCycle + " is NOT deadlock-free. Current cycle list contains this cycle? " + currentCyclesList.containsValue(cycle));
+					metaCSPLogger.info("Cycle: " + edgesAlongCycle + " is NOT deadlock-free. Current cycle list contains this cycle? :" + currentCyclesList.containsValue(cycle));
 					unsafeCycles.add(cycle);
 				}
 			}			
@@ -1172,24 +1172,19 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				}
 			}
 
-			//Remove obsolete critical sections
-			HashMap<Pair<Integer,Integer>,Integer> edgesToDelete = new HashMap<Pair<Integer,Integer>,Integer>();
-			HashMap<Pair<Integer,Integer>,Integer> edgesToAdd = new HashMap<Pair<Integer,Integer>,Integer>();
 			for (CriticalSection cs : toRemove) {
 				if (this.avoidDeadlockGlobally.get()) {
 					if (CSToDepsOrder.containsKey(cs)) {
 						int waitingRobID = CSToDepsOrder.get(cs).getFirst();
 						int drivingRobID = cs.getTe1().getRobotID() == waitingRobID ? cs.getTe2().getRobotID() : cs.getTe1().getRobotID(); 
-						Pair<Integer,Integer> edge = new Pair<Integer,Integer>(waitingRobID, drivingRobID);
-						if (edgesToDelete.containsKey(edge)) edgesToDelete.put(edge, edgesToDelete.get(edge)+1);
-						else edgesToDelete.put(edge,1);
+						deleteEdge(new Pair<Integer,Integer>(waitingRobID,drivingRobID));
+						//metaCSPLogger.info(currentCyclesList.toString());
 					}
 				}
 				CSToDepsOrder.remove(cs);
 				allCriticalSections.remove(cs);
 				escapingCSToWaitingRobotIDandCP.remove(cs);
 			}
-			if (this.avoidDeadlockGlobally.get()) updateGraph(edgesToDelete, edgesToAdd);
 		}
 	}
 
@@ -1542,10 +1537,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 									//update the list of cycles for each edge
 									for (int i = 0; i < cycle.size(); i++) {
 										int j = i < cycle.size()-1 ? i+1 : 0;
-										Pair<Integer,Integer> edge_ = new Pair<Integer,Integer>(cycle.get(i), cycle.get(j));
-										if (!currentCyclesList.containsKey(edge_)) currentCyclesList.put(edge_, new HashSet<ArrayList<Integer>>());
-										currentCyclesList.get(edge_).add((ArrayList<Integer>)cycle);
-										//System.out.println("edge: " + edge.toString() + "currentCyclesList:" + currentCyclesList.get(edge));
+										Pair<Integer,Integer> edge = new Pair<Integer,Integer>(cycle.get(i), cycle.get(j));
+										if (!currentCyclesList.containsKey(edge)) currentCyclesList.put(edge, new HashSet<ArrayList<Integer>>());
+										currentCyclesList.get(edge).add((ArrayList<Integer>)cycle);
+										//metaCSPLogger.info("edge: " + edge.toString() + "currentCyclesList:" + currentCyclesList.get(edge));
 									}
 								}
 							}
@@ -1562,7 +1557,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		synchronized(allCriticalSections) {		
 
 			HashMap<Pair<Integer,Integer>, Integer> toDelete = null;
-			if (edgesToDelete != null) {
+			if (edgesToDelete != null && !edgesToDelete.isEmpty()) {
 				toDelete = new HashMap<Pair<Integer,Integer>, Integer>();
 				for (Pair<Integer,Integer> edge : edgesToDelete.keySet()) {
 					if (edgesToAdd.containsKey(edge) && edgesToAdd.get(edge) != null && edgesToAdd.get(edge) < edgesToDelete.get(edge)) 
@@ -1572,7 +1567,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			}
 			
 			HashMap<Pair<Integer,Integer>, Integer> toAdd = null;
-			if (edgesToAdd != null) {
+			if (edgesToAdd != null && !edgesToAdd.isEmpty()) {
 				toAdd = new HashMap<Pair<Integer,Integer>, Integer>();
 				for (Pair<Integer,Integer> edge : edgesToAdd.keySet()) {
 					if (edgesToDelete.containsKey(edge) && edgesToDelete.get(edge) != null && edgesToDelete.get(edge) < edgesToAdd.get(edge)) 
