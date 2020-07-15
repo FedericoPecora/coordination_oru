@@ -374,11 +374,12 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	@Override
 	protected void updateDependencies() {
 		synchronized(solver) {
-			if(!this.fake) {
-				if (this.avoidDeadlockGlobally) globalCheckAndRevise();
-				else localCheckAndRevise();
+			if (this.fake) {
+				for (int robotID : trackers.keySet()) setCriticalPoint(robotID, -1, true);
+				return;
 			}
-			else for (int robotID : trackers.keySet()) setCriticalPoint(robotID, -1, true); 
+			if (this.avoidDeadlockGlobally.get()) globalCheckAndRevise();
+			else localCheckAndRevise(); 
 			
 		}
 	}
