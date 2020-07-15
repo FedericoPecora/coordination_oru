@@ -37,6 +37,7 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	protected int trackingPeriodInMillis;
 	protected boolean useInternalCPs = true;
 	
+	protected boolean fake = false;
 	protected boolean checkCollisions = false;
 	protected ArrayList<CollisionEvent> collisionsList = new ArrayList<CollisionEvent>();
 	protected Thread collisionThread = null;
@@ -44,10 +45,21 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	protected AtomicInteger totalMsgsLost = new AtomicInteger(0);
 	protected AtomicInteger totalPacketsLost = new AtomicInteger(0);
 	
-	public void setCheckCollisions(boolean checkCollision) {
-		this.checkCollisions = checkCollision;
+	/**
+	 * Enable the collision checking thread.
+	 * @param enable <code>true</code>  if the thread for checking collisions should be enabled.
+	 */
+	public void setCheckCollisions(boolean enable) {
+		this.checkCollisions = enable;
 	}
 		
+	/**
+	 * Enable fake coordination.
+	 * @param enable <code>true</code> whether the coordinator does not impose any precedence constraints.
+	 */
+	public void setFakeCoordination(boolean fake) {
+		this.fake = fake;
+	}
 
 	/** 
 	 * Just for statistic purposes (simulation).
@@ -359,4 +371,15 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 		}
 	}
 	
+	@Override
+	protected void updateDependencies() {
+		synchronized(solver) {
+			if(!this.fake) {
+				if (this.avoidDeadlockGlobally) globalCheckAndRevise();
+				else localCheckAndRevise();
+			}
+			else for (int robotID : trackers.keySet()) setCriticalPoint(robotID, -1, true); 
+			
+		}
+	}
 }
