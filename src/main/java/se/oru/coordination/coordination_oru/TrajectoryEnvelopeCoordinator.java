@@ -121,6 +121,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 * Set whether waiting for deadlocks to happen before starting re-plan to recover from deadlock.
 	 * @param value <code>true</code> if all the robots should yield at their deadlocking critical points 
 	 * before starting a recovery strategy based on re-plan.
+	 * Default value: false.
 	 */
 	public void setStaticReplan(boolean value) {
 		this.staticReplan = value;
