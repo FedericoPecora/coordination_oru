@@ -1766,7 +1766,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 								else robot2Yields = false;
 							}
 							else robot2Yields = (CSToDepsOrder.get(cs).getFirst() == robotReport2.getRobotID());
-							metaCSPLogger.info("Robot" + robotTracker1.getRobotReport().getRobotID() + ": " + robotTracker1.getStartingTimeInMillis() + ", " +
+							metaCSPLogger.finest("Robot" + robotTracker1.getRobotReport().getRobotID() + ": " + robotTracker1.getStartingTimeInMillis() + ", " +
 									"Robot" + robotTracker2.getRobotReport().getRobotID() + ": " + robotTracker2.getStartingTimeInMillis() + ", yielding: " + (robot2Yields ?
 											robotReport2.getRobotID() : robotReport1.getRobotID()));
 							drivingCurrentIndex = robot2Yields ? robotReport1.getPathIndex() : robotReport2.getPathIndex();
