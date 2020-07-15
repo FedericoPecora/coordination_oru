@@ -101,7 +101,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 * @param value <code>true</code> if deadlocks should be broken.
 	 */
 	public void setAvoidDeadlocksGlobally(boolean value) {
-		this.avoidDeadlockGlobally.getAndSet(true);
+		this.avoidDeadlockGlobally.getAndSet(value);
 	}
 
 	/**
@@ -1589,7 +1589,6 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			HashMap<Pair<Integer,Integer>,Integer> edgesToDelete = new HashMap<Pair<Integer,Integer>,Integer> ();
 			HashMap<Pair<Integer,Integer>,Integer> edgesToAdd = new HashMap<Pair<Integer,Integer>,Integer> ();
 			HashSet<CriticalSection> reversibleCS = new HashSet<CriticalSection>();
-			currentOrdersHeurusticallyDecided.set(0);
 
 			//Make deps from un-reached stopping points
 			Set<Integer> robotIDs = trackers.keySet();
