@@ -48,8 +48,7 @@ public class Circle {
 		
 		tec.setUseInternalCriticalPoints(false);
 		tec.setYieldIfParking(false);
-		tec.setBreakDeadlocksByReordering(false);
-		tec.setBreakDeadlocksByReplanning(true);
+		tec.setBreakDeadlocks(false, false, true);
 		//Enable checking for collisions
 		tec.setCheckCollisions(true);
 		

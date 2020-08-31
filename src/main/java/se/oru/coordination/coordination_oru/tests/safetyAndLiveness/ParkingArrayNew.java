@@ -54,7 +54,7 @@ public class ParkingArrayNew {
 		double MAX_VEL = 2.5;
 		boolean CREATE_SCENARIO = true;
 		
-		int NUMBER_ROBOTS = 20;
+		int NUMBER_ROBOTS = 12;
 		
 		//Define the parking positions
 		int numSlots = Math.max(NUMBER_ROBOTS/2, 8);
@@ -78,9 +78,7 @@ public class ParkingArrayNew {
 		tec.setUseInternalCriticalPoints(false);
 		tec.setCheckEscapePoses(true);
 		tec.setYieldIfParking(false);
-		//tec.setBreakDeadlocksByReordering(true);
-		//tec.setBreakDeadlocksByReplanning(true);
-		tec.setAvoidDeadlocksGlobally(true);
+		tec.setBreakDeadlocks(true, false, false);
 		tec.setCheckCollisions(true);
 		//MetaCSPLogging.setLevel(TrajectoryEnvelopeCoordinator.class, Level.FINEST);
 		

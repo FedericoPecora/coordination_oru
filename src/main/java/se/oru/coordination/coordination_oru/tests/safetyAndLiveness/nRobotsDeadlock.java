@@ -77,9 +77,7 @@ public class nRobotsDeadlock {
 		}
 		
 		//comment out following (or set to true) to make the coordinator attempt to break the deadlock
-		//tec.setBreakDeadlocks(false);
-		//tec.setBreakDeadlocksByReordering(true);
-		tec.setAvoidDeadlocksGlobally(true);
+		tec.setBreakDeadlocks(true, false, false);
 		tec.setCheckCollisions(true);
 
 		Coordinate footprint1 = new Coordinate(-0.25,0.25);

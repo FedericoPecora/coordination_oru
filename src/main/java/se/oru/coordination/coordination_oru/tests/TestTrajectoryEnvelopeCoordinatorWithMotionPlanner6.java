@@ -49,7 +49,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner6 {
 		tec.setForwardModel(2, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
 		tec.setForwardModel(3, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
 		//comment out following (or set to true) to make the coordinator attempt to break the deadlock
-		tec.setBreakDeadlocks(false);
+		tec.setBreakDeadlocks(false, false, false);
 
 		Coordinate footprint1 = new Coordinate(-0.25,0.25);
 		Coordinate footprint2 = new Coordinate(0.25,0.25);

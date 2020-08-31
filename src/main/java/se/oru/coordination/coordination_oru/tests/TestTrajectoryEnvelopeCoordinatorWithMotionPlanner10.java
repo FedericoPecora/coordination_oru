@@ -65,7 +65,7 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner10 {
 		tec.setVisualization(viz);
 
 		tec.setUseInternalCriticalPoints(false);
-		tec.setBreakDeadlocks(false);
+		tec.setBreakDeadlocks(false, false, false);
 		tec.setYieldIfParking(false);
 		
 		Integer[] robotIDs = new Integer[] {1,2,3,4};

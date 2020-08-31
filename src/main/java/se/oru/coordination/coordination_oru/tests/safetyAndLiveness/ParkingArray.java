@@ -70,8 +70,7 @@ public class ParkingArray {
 		
 		tec.setUseInternalCriticalPoints(false);
 		tec.setYieldIfParking(true);
-		tec.setBreakDeadlocksByReordering(false);
-		tec.setBreakDeadlocksByReplanning(true);
+		tec.setBreakDeadlocks(false, true, true);
 		//Enable checking for collisions
 		tec.setCheckCollisions(true);
 		

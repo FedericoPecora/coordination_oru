@@ -78,42 +78,24 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		return this.isBlocked;
 	}
 
+	
 	/**
-	 * Set whether the coordinator should try to break deadlocks by attempting to re-plan
-	 * the path of one of the robots involved in a nonlive cycle.
-	 * @param value <code>true</code> if deadlocks should be broken by re-planning.
+	 * Set whether the coordinator should try to break deadlocks by either global re-ordering, or by re-ordering and/or re-planning.
+	 * @param global <code>true</code> if deadlocks should be broken via global re-ordering (complete, complexity: O(2^nlogn) in the worst case).
+	 * @param reorder <code>true</code> if deadlocks should be broken via local re-ordering (incomplete, complexity: O(n^2) in the worst case).
+	 * @param replan <code>true</code> if deadlocks should be broken via local re-planning (incomplete).
 	 */
-	public void setBreakDeadlocksByReplanning(boolean value) {
-		this.breakDeadlocksByReplanning = value;
-	}
-
-	/**
-	 * Set whether the coordinator should try to break deadlocks by disallowing an arbitrary
-	 * ordering involved in a loop in the current dependency graph.
-	 * @param value <code>true</code> if deadlocks should be broken.
-	 */
-	public void setBreakDeadlocksByReordering(boolean value) {
-		this.breakDeadlocksByReordering = value;
-	}
-
-	/**
-	 * Set whether the coordinator should use the global strategy to avoid deadlocks
-	 * @param value <code>true</code> if deadlocks should be broken.
-	 */
-	public void setAvoidDeadlocksGlobally(boolean value) {
-		this.avoidDeadlockGlobally.getAndSet(value);
-	}
-
-	/**
-	 * Set whether the coordinator should try to break deadlocks by both arbitrary
-	 * re-ordering and re-planning.
-	 * @param value <code>true</code> if deadlocks should be broken.
-	 */
-	@Deprecated
-	public void setBreakDeadlocks(boolean value) {
-		this.avoidDeadlockGlobally.getAndSet(false);
-		this.setBreakDeadlocksByReordering(value);
-		this.setBreakDeadlocksByReplanning(value);
+	public void setBreakDeadlocks(boolean global, boolean reorder, boolean replan) {
+		if (global && (reorder||replan)) {
+			metaCSPLogger.severe("Enable either the global or the local strategies for deadlock prevention!! Using default values (i.e., enabling local re-order + replan).");
+			this.avoidDeadlockGlobally.getAndSet(false);
+			this.breakDeadlocksByReordering = true;
+			this.breakDeadlocksByReplanning = true;
+			return;
+		}
+		this.avoidDeadlockGlobally.getAndSet(global);
+		this.breakDeadlocksByReordering = reorder;
+		this.breakDeadlocksByReplanning = replan;
 	}
 
 
@@ -1042,7 +1024,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				int numberAllCriticalSections = -1;
 				int numberNewAddedMissions = 0;
 				int numberDrivingRobots = 0;
-				int MAX_ADDED_MISSIONS = 3;
+				int MAX_ADDED_MISSIONS = 1;
 				long expectedSleepingTime = -1;
 				long effectiveSleepingTime = -1;
 				long printStatisticsTime = -1;

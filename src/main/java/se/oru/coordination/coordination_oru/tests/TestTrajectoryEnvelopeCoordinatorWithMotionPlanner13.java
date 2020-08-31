@@ -63,7 +63,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner13 {
 		//Start the thread that checks and enforces dependencies at every clock tick
 		tec.startInference();
 		tec.setCheckEscapePoses(true);
-		tec.setBreakDeadlocks(true);
+		tec.setBreakDeadlocks(false, true, true);
 
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
