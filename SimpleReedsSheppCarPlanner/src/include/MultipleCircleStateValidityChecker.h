@@ -4,6 +4,7 @@
 #include <ompl/base/spaces/ReedsSheppStateSpace.h>
 #include <ompl/base/ScopedState.h>
 #include <ompl/geometric/SimpleSetup.h>
+#include <math.h>
 
 namespace ob = ompl::base;
 namespace og = ompl::geometric;
