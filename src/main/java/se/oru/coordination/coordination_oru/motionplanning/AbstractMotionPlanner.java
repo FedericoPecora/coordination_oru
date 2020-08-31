@@ -167,7 +167,7 @@ public abstract class AbstractMotionPlanner {
 			if (this.om != null) {
 				for (Geometry obs : this.om.getObstacles()) {
 					if (obs.intersects(checkFoot)) {
-						collidingPose = new Pose(p.getX(),p.getY(),p.getYaw());
+						collidingPose = new Pose(p.getX(),p.getY(),p.getTheta());
 						metaCSPLogger.info("Path verification failed");
 						return false;
 					}

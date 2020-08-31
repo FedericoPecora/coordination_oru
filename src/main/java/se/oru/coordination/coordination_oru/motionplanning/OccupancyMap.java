@@ -230,19 +230,20 @@ public class OccupancyMap {
 		g2.draw(shapeAtGoal);
 		//g2.fill(shapeAtGoal);
 			
-
-		g2.setPaint(Color.blue);
-		AffineTransformation inPose = new AffineTransformation();
-		inPose.rotate(collidingPose.getTheta());
-		inPose.translate(collidingPose.getX(), collidingPose.getY());
-		Geometry robotInPose = inPose.transform(robotFoot);
-		AffineTransformation inPoseScale = new AffineTransformation();
-		inPoseScale.scale(1.0/mapResolution, -1.0/mapResolution);
-		inPoseScale.translate(0, copyForDebug.getHeight());
-		Geometry scaledGeomPose = inPoseScale.transform(robotInPose);
-		Shape shapeInPose = writer.toShape(scaledGeomPose);
-		g2.draw(shapeInPose);
-		//g2.fill(shapeInPose);
+		if (collidingPose != null) {
+			g2.setPaint(Color.blue);
+			AffineTransformation inPose = new AffineTransformation();
+			inPose.rotate(collidingPose.getTheta());
+			inPose.translate(collidingPose.getX(), collidingPose.getY());
+			Geometry robotInPose = inPose.transform(robotFoot);
+			AffineTransformation inPoseScale = new AffineTransformation();
+			inPoseScale.scale(1.0/mapResolution, -1.0/mapResolution);
+			inPoseScale.translate(0, copyForDebug.getHeight());
+			Geometry scaledGeomPose = inPoseScale.transform(robotInPose);
+			Shape shapeInPose = writer.toShape(scaledGeomPose);
+			g2.draw(shapeInPose);
+			//g2.fill(shapeInPose);
+		}
 		
 		g2.dispose();
 		
