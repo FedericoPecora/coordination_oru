@@ -192,9 +192,9 @@ public class OccupancyMap {
 	 * @param startPose The start pose to mark.
 	 * @param goalPose The end pose to mark.
 	 * @param robotFoot The footprint to use in marking the start and goal poses.
-	 * @param collidingPoses Set of robot poses along the path which are colliding with some obstacles.
+	 * @param collidingPose One of the poses of path which is colliding with some obstacles.
 	 */
-	public void saveDebugObstacleImage(Pose startPose, Pose goalPose, Geometry robotFoot, ArrayList<Pose> collidingPoses) {
+	public void saveDebugObstacleImage(Pose startPose, Pose goalPose, Geometry robotFoot, Pose collidingPose) {
 		BufferedImage copyForDebug = new BufferedImage(bimg.getWidth(), bimg.getHeight(), BufferedImage.TYPE_INT_RGB);
 		Graphics2D g2 = copyForDebug.createGraphics();
 		g2.drawImage(bimg, 0, 0, bimg.getWidth(), bimg.getHeight(), 0, 0, bimg.getWidth(), bimg.getHeight(), null);
@@ -230,20 +230,19 @@ public class OccupancyMap {
 		g2.draw(shapeAtGoal);
 		//g2.fill(shapeAtGoal);
 			
-		for (Pose onePose : collidingPoses) {
-			g2.setPaint(Color.blue);
-			AffineTransformation inPose = new AffineTransformation();
-			inPose.rotate(onePose.getTheta());
-			inPose.translate(onePose.getX(), onePose.getY());
-			Geometry robotInPose = inPose.transform(robotFoot);
-			AffineTransformation inPoseScale = new AffineTransformation();
-			inPoseScale.scale(1.0/mapResolution, -1.0/mapResolution);
-			inPoseScale.translate(0, copyForDebug.getHeight());
-			Geometry scaledGeomPose = inPoseScale.transform(robotInPose);
-			Shape shapeInPose = writer.toShape(scaledGeomPose);
-			g2.draw(shapeInPose);
-			//g2.fill(shapeAtGoal);
-		}
+
+		g2.setPaint(Color.blue);
+		AffineTransformation inPose = new AffineTransformation();
+		inPose.rotate(collidingPose.getTheta());
+		inPose.translate(collidingPose.getX(), collidingPose.getY());
+		Geometry robotInPose = inPose.transform(robotFoot);
+		AffineTransformation inPoseScale = new AffineTransformation();
+		inPoseScale.scale(1.0/mapResolution, -1.0/mapResolution);
+		inPoseScale.translate(0, copyForDebug.getHeight());
+		Geometry scaledGeomPose = inPoseScale.transform(robotInPose);
+		Shape shapeInPose = writer.toShape(scaledGeomPose);
+		g2.draw(shapeInPose);
+		//g2.fill(shapeInPose);
 		
 		g2.dispose();
 		

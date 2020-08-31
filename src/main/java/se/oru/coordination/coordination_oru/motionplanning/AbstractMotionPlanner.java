@@ -24,6 +24,7 @@ public abstract class AbstractMotionPlanner {
 	protected Pose[] goal = null;
 	protected Coordinate[] footprintCoords = null;
 	protected boolean verifyPlanning = true;
+	protected Pose collidingPose = null;
 	protected OccupancyMap om = null;
 	protected boolean noMap = true;
 	
@@ -102,7 +103,7 @@ public abstract class AbstractMotionPlanner {
 	}
 	
 	public synchronized void writeDebugImage() {
-		om.saveDebugObstacleImage(this.start, this.goal[this.goal.length-1], getFootprintAsGeometry());
+		om.saveDebugObstacleImage(this.start, this.goal[this.goal.length-1], getFootprintAsGeometry(), this.collidingPose);
 	}
 	
 	public synchronized void clearObstacles() {
@@ -155,7 +156,7 @@ public abstract class AbstractMotionPlanner {
 			metaCSPLogger.info("Path planner could not find a plan");
 			return false;
 		}
-		
+
 		for (int i = 0; i < path.length; i++) {
 			Pose p = path[i].getPose();
 			Geometry checkFoot = getFootprintAsGeometry();
@@ -166,6 +167,7 @@ public abstract class AbstractMotionPlanner {
 			if (this.om != null) {
 				for (Geometry obs : this.om.getObstacles()) {
 					if (obs.intersects(checkFoot)) {
+						collidingPose = new Pose(p.getX(),p.getY(),p.getYaw());
 						metaCSPLogger.info("Path verification failed");
 						return false;
 					}
