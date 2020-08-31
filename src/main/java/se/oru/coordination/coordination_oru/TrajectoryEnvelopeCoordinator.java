@@ -56,10 +56,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	protected boolean breakDeadlocksByReordering = true;
 	protected boolean breakDeadlocksByReplanning = true;
 	protected AtomicBoolean avoidDeadlockGlobally = new AtomicBoolean(false);
-	protected AtomicInteger unaliveStatesDetected = new AtomicInteger(0);
-	protected AtomicInteger unaliveStatesAvoided = new AtomicInteger(0);
+	protected AtomicInteger nonliveStatesDetected = new AtomicInteger(0);
+	protected AtomicInteger nonliveStatesAvoided = new AtomicInteger(0);
 	protected AtomicInteger currentOrdersHeurusticallyDecided = new AtomicInteger(0);
-	protected List<List<Integer>> unsafeCyclesOld = new ArrayList<List<Integer>>();
+	protected List<List<Integer>> nonliveCyclesOld = new ArrayList<List<Integer>>();
 	protected AtomicInteger replanningTrialsCounter = new AtomicInteger(0);
 	protected AtomicInteger successfulReplanningTrialsCounter = new AtomicInteger(0);
 
@@ -80,7 +80,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 	/**
 	 * Set whether the coordinator should try to break deadlocks by attempting to re-plan
-	 * the path of one of the robots involved in an unsafe cycle.
+	 * the path of one of the robots involved in a nonlive cycle.
 	 * @param value <code>true</code> if deadlocks should be broken by re-planning.
 	 */
 	public void setBreakDeadlocksByReplanning(boolean value) {
@@ -189,18 +189,18 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		}
 		ret.add(CONNECTOR_BRANCH + "Total number of obsolete critical sections ... " + criticalSectionCounter.get() + ".");
 		ret.add(CONNECTOR_BRANCH + "Total messages sent: ... " + totalMsgsSent.get() + ",, retransmitted: " + totalMsgsReTx.get() + ", number of replicas: " + numberOfReplicas + ".");
-		ret.add(CONNECTOR_BRANCH + "Total unalive states detected: ... " + unaliveStatesDetected.get() + ", avoided: " + unaliveStatesAvoided.get() + ", revised according to heuristic: " + currentOrdersHeurusticallyDecided.get() + ".");
+		ret.add(CONNECTOR_BRANCH + "Total nonlive states detected: ... " + nonliveStatesDetected.get() + ", avoided: " + nonliveStatesAvoided.get() + ", revised according to heuristic: " + currentOrdersHeurusticallyDecided.get() + ".");
 		ret.add(CONNECTOR_LEAF + "Total re-planned path: ... " + replanningTrialsCounter.get() + ", successful: " + successfulReplanningTrialsCounter.get() + ".");
 		return ret.toArray(new String[ret.size()]);
 	}
 
-	private List<List<Integer>> findSimpleUnsafeCycles(SimpleDirectedGraph<Integer,Dependency> g) {
+	private List<List<Integer>> findSimpleNonliveCycles(SimpleDirectedGraph<Integer,Dependency> g) {
 
 		JohnsonSimpleCycles<Integer, Dependency> cycleFinder = new JohnsonSimpleCycles<Integer, Dependency>(g);
 		List<List<Integer>> cycles = cycleFinder.findSimpleCycles();
-		List<List<Integer>> unsafeCycles = new ArrayList<List<Integer>>();
+		List<List<Integer>> nonliveCycles = new ArrayList<List<Integer>>();
 
-		//Find all the unsafe cycles
+		//Find all the nonlive cycles
 
 		//For each cycle...
 		//example [1,2]
@@ -217,7 +217,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			}
 			//[1,2], [2,1]
 
-			//Check for unsafety condition, that is:
+			//Check for nonlive condition, that is:
 			//  All along the cycle, check if there are (u,v,dep1) and (v,w,dep2) such that
 			//    v.dep2.waitingpoint <= v.dep1.releasingpoint
 			//  And if so mark cycle as deadlock
@@ -227,7 +227,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			//i = 2:  -             [3,1], [1,2]
 			for (int i = 0; i < edgesAlongCycle.size(); i++) {
 				boolean safe = true;
-				if (unsafePair(edgesAlongCycle.get(i), edgesAlongCycle.get(i < edgesAlongCycle.size()-1 ? i+1 : 0))) {
+				if (nonlivePair(edgesAlongCycle.get(i), edgesAlongCycle.get(i < edgesAlongCycle.size()-1 ? i+1 : 0))) {
 					safe = false;
 				}
 				if (safe) {
@@ -236,12 +236,12 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				}
 				if (i == edgesAlongCycle.size()-1) {
 					metaCSPLogger.info("Cycle: " + edgesAlongCycle + " is NOT deadlock-free. Current cycle list contains this cycle? :" + currentCyclesList.containsValue(cycle));
-					unsafeCycles.add(cycle);
+					nonliveCycles.add(cycle);
 				}
 			}			
 		}
 
-		return unsafeCycles;
+		return nonliveCycles;
 	}
 
 
@@ -318,7 +318,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			allDeps.put(robotID, set);
 		}
 
-		//1. COMPUTE UNSAFE CYCLES
+		//1. COMPUTE NONLIVE CYCLES
 
 		//Dep graph G = (V,E)
 		//  V = robots involved in current deps
@@ -330,27 +330,27 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		//      v.dep2.waitingpoint <= v.dep1.releasingpoint
 
 		SimpleDirectedGraph<Integer,Dependency> g = depsToGraph(currentDependencies);
-		List<List<Integer>> unsafeCycles = findSimpleUnsafeCycles(g);
+		List<List<Integer>> nonliveCycles = findSimpleNonliveCycles(g);
 
-		this.isDeadlocked = unsafeCycles.size() > 0;
+		this.isDeadlocked = nonliveCycles.size() > 0;
 
 		// ... keep tracks of size and old cycles for statistics
-		List<List<Integer>> unsafeCyclesNew = new ArrayList<List<Integer>>();
-		unsafeCyclesNew.addAll(unsafeCycles);
-		unsafeCyclesNew.removeAll(unsafeCyclesOld);
-		unaliveStatesDetected.addAndGet(unsafeCyclesNew.size());
-		unsafeCyclesOld.clear();
-		unsafeCyclesOld.addAll(unsafeCycles);
+		List<List<Integer>> nonliveCyclesNew = new ArrayList<List<Integer>>();
+		nonliveCyclesNew.addAll(nonliveCycles);
+		nonliveCyclesNew.removeAll(nonliveCyclesOld);
+		nonliveStatesDetected.addAndGet(nonliveCyclesNew.size());
+		nonliveCyclesOld.clear();
+		nonliveCyclesOld.addAll(nonliveCycles);
 
-		//2. IF THERE ARE UNSAFE CYCLES AND RE-ORDERING IS ENABLED, TRY RE-ORDER
+		//2. IF THERE ARE NONLIVE CYCLES AND RE-ORDERING IS ENABLED, TRY RE-ORDER
 		if (breakDeadlocksByReordering) {
 
 			int counter = 0;
 
-			while (counter < unsafeCycles.size()) { //if empty no problem
+			while (counter < nonliveCycles.size()) { //if empty no problem
 
 				//get one cycle
-				List<Integer> cycle = unsafeCycles.get(counter);
+				List<Integer> cycle = nonliveCycles.get(counter);
 				counter++;
 
 				//Get edges along the cycle...
@@ -409,9 +409,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						SimpleDirectedGraph<Integer,Dependency> gTmp = depsToGraph(currentDepsTmp);
 
 						//compute cycles again. If the number of cycles is lower, keep this solution
-						List<List<Integer>> unsafeCyclesTmp = findSimpleUnsafeCycles(gTmp);
-						if (unsafeCyclesTmp.size() < unsafeCycles.size()) {
-							unaliveStatesAvoided.incrementAndGet();
+						List<List<Integer>> nonliveCyclesTmp = findSimpleNonliveCycles(gTmp);
+						if (nonliveCyclesTmp.size() < nonliveCycles.size()) {
+							nonliveStatesAvoided.incrementAndGet();
 							metaCSPLogger.info("REVERSING a precedence constraint to break a deadlock: " + revDep.getWaitingRobotID() + " now waits for " + revDep.getDrivingRobotID());						
 
 							//reset the counter
@@ -422,7 +422,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							currentDependencies.clear();
 							currentDependencies.addAll(currentDepsTmp);				
 							allDeps = allDepsTmp;
-							unsafeCycles = unsafeCyclesTmp;					
+							nonliveCycles = nonliveCyclesTmp;					
 							CSToDepsOrder.clear();
 							CSToDepsOrder.putAll(CSToDepsOrderTmp);							
 							depsToCS.clear();
@@ -441,7 +441,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		if (breakDeadlocksByReplanning) {
 
 			HashSet<Integer> spawnedThreadRobotSet = new HashSet<Integer>();
-			for (List<Integer> cycle : unsafeCycles) {
+			for (List<Integer> cycle : nonliveCycles) {
 				boolean spawnThread = true;
 
 				//Get edges along the cycle...
@@ -976,7 +976,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		}
 	}
 
-	private boolean unsafePair(Dependency dep1, Dependency dep2) {
+	private boolean nonlivePair(Dependency dep1, Dependency dep2) {
 		if (dep2.getWaitingPoint() <= dep1.getReleasingPoint()) return true;
 		return false;
 	}
@@ -2110,7 +2110,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 										if (oneSelection != null) newDeps.add(oneSelection);
 									}
 
-									//Check for unsafe cycles, that is:
+									//Check for nonlive cycles, that is:
 									//  All along the cycle, check if there are (u,v,dep1) and (v,w,dep2) such that
 									//    v.dep2.waitingpoint <= v.dep1.releasingpoint
 
@@ -2119,12 +2119,12 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 											safe = true;
 											Dependency dep1 = depList.get(i);
 											Dependency dep2 = depList.get(i < depList.size()-1 ? i+1 : 0);
-											if (unsafePair(dep1,dep2)) safe = false;
+											if (nonlivePair(dep1,dep2)) safe = false;
 											if (safe) break; //if one pair in the cycle is safe, then the cycle is safe
 										}
-										//  If there exists almost one unsafe cycle, then the precedence cannot be reversed.	
+										//  If there exists almost one nonlive cycle, then the precedence cannot be reversed.	
 										if(!safe) {
-											metaCSPLogger.finest("An unsafe cycle: " + depList + ".");
+											metaCSPLogger.finest("A nonlive cycle: " + depList + ".");
 											break;
 										}
 									}
@@ -2141,7 +2141,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 								depsGraph = backupDepsGraph;
 								currentOrdersGraph = backupGraph;
 								currentCyclesList = backupcurrentCyclesList;
-								unaliveStatesAvoided.incrementAndGet();
+								nonliveStatesAvoided.incrementAndGet();
 							}
 							else {
 								//update the maps
@@ -2173,7 +2173,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				currentDependencies.addAll(closestDeps);
 
 				//The global strategy builds upon the assumption that robots do not start from critical section. 
-				//If this is not the case, them pre-loading may bring to unsafe cycles. 
+				//If this is not the case, them pre-loading may bring to nonlive cycles. 
 				//To handle this case, switch to a local strategy whenever a robot is starting from a critical section and cannot
 				//exit from it.
 				/*if (!artificialDependencies.isEmpty()) {
@@ -2187,11 +2187,11 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 				//re-plan for the set of robots that are currently in a critical section
 				SimpleDirectedGraph<Integer,Dependency> g = depsToGraph(currentDependencies);
-				List<List<Integer>> unsafeCycles = findSimpleUnsafeCycles(g);
-				unaliveStatesDetected.addAndGet(unsafeCycles.size());
+				List<List<Integer>> nonliveCycles = findSimpleNonliveCycles(g);
+				nonliveStatesDetected.addAndGet(nonliveCycles.size());
 
 				HashSet<Integer> spawnedThreadRobotSet = new HashSet<Integer>();
-				for (List<Integer> cycle : unsafeCycles) {
+				for (List<Integer> cycle : nonliveCycles) {
 					int robotID = -1;
 					for (int ID : askForReplan) {
 						if (cycle.contains(ID)) {
