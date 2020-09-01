@@ -53,8 +53,7 @@ public class OccupancyMap {
 	private BitSet occupancyMapLinearBits = null;
 	private double threshold = 0.3;
 	private double mapResolution = 0.1;
-	private double origin_x = 0.;
-	private double origin_y = 0.;
+	private Coordinate mapOrigin = new Coordinate(0.,0.);
 	private BufferedImage bimg = null;
 	private BufferedImage bimg_original = null;
 	private ArrayList<Geometry> obstacles = new ArrayList<Geometry>();
@@ -64,14 +63,13 @@ public class OccupancyMap {
 	 * @param width The width of the map to create (in meters).
 	 * @param height The height of the map to create (in meters).
 	 * @param resolution The resolution of the map to create (in meters/pixel).
-	 * @param origin_x The origin x of the map in the global frame in meters.
-	 * @param origin_y The origin y of the map in the global frame in meters.
+	 * @param mapOriginX The origin x of the map in the global frame in meters.
+	 * @param mapOriginY The origin y of the map in the global frame in meters.
 	 */
-	public OccupancyMap(double width, double height, double resolution, double origin_x, double origin_y) {
+	public OccupancyMap(double width, double height, double resolution, double mapOriginX, double mapOriginY) {
 		this.mapWidth = (int)(width/resolution);
 		this.mapHeight= (int)(height/resolution);
-		this.origin_x = origin_x;
-		this.origin_y = origin_y;
+		this.mapOrigin = new Coordinate(mapOriginX, mapOriginY);
 		bimg = new BufferedImage(this.mapWidth, this.mapHeight, BufferedImage.TYPE_INT_RGB);
 		Graphics2D g2 = bimg.createGraphics();
 		g2.setPaint(Color.white);
@@ -100,8 +98,7 @@ public class OccupancyMap {
 		if (om == null) throw new Error("Null occupancy map passed as parameter.");
 		this.mapWidth = om.mapWidth;
 		this.mapHeight= om.mapHeight;
-		this.origin_x = om.origin_x;
-		this.origin_y = om.origin_y;
+		this.mapOrigin = new Coordinate(om.mapOrigin.x, om.mapOrigin.y);
 		this.threshold = om.threshold;
 		this.mapResolution = om.mapResolution;
 		this.obstacles = new ArrayList<Geometry>(om.obstacles);
@@ -284,6 +281,14 @@ public class OccupancyMap {
 	public double getResolution() {
 		return this.mapResolution;
 	}
+	
+	/**
+	 * Get the origin of this occupancy map.
+	 * @return The coordinates of the origin of this occupancy map in global frame.
+	 */
+	public Coordinate getMapOrigin() {
+		return this.mapOrigin;
+	}
 
 	/**
 	 * Get the threshold pixel value below which the pixel is considered to be occupied.
@@ -330,7 +335,7 @@ public class OccupancyMap {
 	 * @return The coordinates in pixel space corresponding to the given {@link Coordinate} in the workspace.
 	 */
 	public int[] toPixels(Coordinate coord) {
-		return new int[] { (int)((coord.x-this.origin_x)/this.mapResolution), this.mapHeight-((int)((coord.y-this.origin_y)/this.mapResolution)) };
+		return new int[] { (int)((coord.x-this.mapOrigin.x)/this.mapResolution), this.mapHeight-((int)((coord.y-this.mapOrigin.y)/this.mapResolution)) };
 	}
 
 	/**
@@ -340,7 +345,7 @@ public class OccupancyMap {
 	 * @return The {@link Coordinate}s in workspace corresponding to given coordinates in pixel space.
 	 */
 	public Coordinate toWorldCoordiantes(int x, int y) {
-		return new Coordinate(this.origin_x+x*this.mapResolution, this.origin_y+(this.mapHeight-y)*this.mapResolution);
+		return new Coordinate(this.mapOrigin.x+(x+0.5)*this.mapResolution, this.mapOrigin.y+(this.mapHeight-y+0.5)*this.mapResolution);
 	}
 
 	/**
@@ -433,8 +438,7 @@ public class OccupancyMap {
 					else if (key.equals("origin")) {
 						String x = value.substring(1, value.indexOf(",")).trim();
 						String y = value.substring(value.indexOf(",")+1, value.indexOf(",", value.indexOf(",")+1)).trim();
-						this.origin_x = Double.parseDouble(x);
-						this.origin_y = Double.parseDouble(y);
+						this.mapOrigin = new Coordinate(Double.parseDouble(x),Double.parseDouble(y));
 					}
 				}
 			}
