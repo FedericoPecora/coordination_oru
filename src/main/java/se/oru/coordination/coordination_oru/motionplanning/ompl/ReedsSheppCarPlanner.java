@@ -140,8 +140,10 @@ public class ReedsSheppCarPlanner extends AbstractMotionPlanner {
 				byte[] occ = om.asByteArray();
 				int w = om.getPixelWidth();
 				int h = om.getPixelHeight();
-				double res = om.getResolution();				
-				if (!INSTANCE.plan_multiple_circles(occ, w, h, res, robotRadius, xCoords, yCoords, numCoords, start_.getX(), start_.getY(), start_.getTheta(), goal_.getX(), goal_.getY(), goal_.getTheta(), path, pathLength, distanceBetweenPathPoints, turningRadius, planningTimeInSecs, algo.ordinal())) return false;
+				double res = om.getResolution();
+				double mapOriginX = om.getMapOrigin().x;
+				double mapOriginY = om.getMapOrigin().y;
+				if (!INSTANCE.plan_multiple_circles(occ, w, h, res, mapOriginX, mapOriginY, robotRadius, xCoords, yCoords, numCoords, start_.getX(), start_.getY(), start_.getTheta(), goal_.getX(), goal_.getY(), goal_.getTheta(), path, pathLength, distanceBetweenPathPoints, turningRadius, planningTimeInSecs, algo.ordinal())) return false;
 			}
 			else {
 				if (!INSTANCE.plan_multiple_circles_nomap(xCoords, yCoords, numCoords, start_.getX(), start_.getY(), start_.getTheta(), goal_.getX(), goal_.getY(), goal_.getTheta(), path, pathLength, distanceBetweenPathPoints, turningRadius, planningTimeInSecs, algo.ordinal())) return false;					

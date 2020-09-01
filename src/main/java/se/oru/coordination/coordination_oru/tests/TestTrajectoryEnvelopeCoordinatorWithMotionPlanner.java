@@ -72,7 +72,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner {
 		tec.setVisualization(viz);
 
 		tec.setUseInternalCriticalPoints(false);
-		tec.setBreakDeadlocks(true);
+		tec.setBreakDeadlocks(false, true, true);
 
 		//MetaCSPLogging.setLevel(tec.getClass().getSuperclass(), Level.FINEST);
 

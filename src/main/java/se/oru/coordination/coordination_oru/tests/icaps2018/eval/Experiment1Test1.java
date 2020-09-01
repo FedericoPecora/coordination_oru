@@ -76,7 +76,7 @@ public class Experiment1Test1 {
 		tec.startInference();
 		tec.setUseInternalCriticalPoints(false);
 		tec.setYieldIfParking(false);
-		tec.setBreakDeadlocks(false);
+		tec.setBreakDeadlocks(false, false, false);
 
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 //		String yamlFile = "../maps/map-empty.yaml";

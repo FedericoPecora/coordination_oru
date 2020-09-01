@@ -113,7 +113,7 @@ public class Experiment2 {
 		
 		tec.setUseInternalCriticalPoints(true);
 		tec.setYieldIfParking(false);
-		tec.setBreakDeadlocks(true);
+		tec.setBreakDeadlocks(false, true, true);
 		
 		Missions.loadLocationAndPathData("missions/icaps_locations_and_paths_1.txt");
 

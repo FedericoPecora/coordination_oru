@@ -53,6 +53,7 @@ public class OccupancyMap {
 	private BitSet occupancyMapLinearBits = null;
 	private double threshold = 0.3;
 	private double mapResolution = 0.1;
+	private Coordinate mapOrigin = new Coordinate(0.,0.);
 	private BufferedImage bimg = null;
 	private BufferedImage bimg_original = null;
 	private ArrayList<Geometry> obstacles = new ArrayList<Geometry>();
@@ -62,10 +63,13 @@ public class OccupancyMap {
 	 * @param width The width of the map to create (in meters).
 	 * @param height The height of the map to create (in meters).
 	 * @param resolution The resolution of the map to create (in meters/pixel).
+	 * @param mapOriginX The origin x of the map in the global frame in meters.
+	 * @param mapOriginY The origin y of the map in the global frame in meters.
 	 */
-	public OccupancyMap(double width, double height, double resolution) {
+	public OccupancyMap(double width, double height, double resolution, double mapOriginX, double mapOriginY) {
 		this.mapWidth = (int)(width/resolution);
 		this.mapHeight= (int)(height/resolution);
+		this.mapOrigin = new Coordinate(mapOriginX, mapOriginY);
 		bimg = new BufferedImage(this.mapWidth, this.mapHeight, BufferedImage.TYPE_INT_RGB);
 		Graphics2D g2 = bimg.createGraphics();
 		g2.setPaint(Color.white);
@@ -77,6 +81,16 @@ public class OccupancyMap {
 	}
 	
 	/**
+	 * Create a new empty occupancy map (no obstacles, all in C_free).
+	 * @param width The width of the map to create (in meters).
+	 * @param height The height of the map to create (in meters).
+	 * @param resolution The resolution of the map to create (in meters/pixel).
+	 */
+	public OccupancyMap(double width, double height, double resolution) {
+		this(width, height, resolution, 0., 0.);
+	}
+	
+	/**
 	 * Create a new occupancy map that is identical to a given occupancy map.
 	 * @param om The occupancy map to copy.
 	 */
@@ -84,6 +98,7 @@ public class OccupancyMap {
 		if (om == null) throw new Error("Null occupancy map passed as parameter.");
 		this.mapWidth = om.mapWidth;
 		this.mapHeight= om.mapHeight;
+		this.mapOrigin = new Coordinate(om.mapOrigin.x, om.mapOrigin.y);
 		this.threshold = om.threshold;
 		this.mapResolution = om.mapResolution;
 		this.obstacles = new ArrayList<Geometry>(om.obstacles);
@@ -174,8 +189,9 @@ public class OccupancyMap {
 	 * @param startPose The start pose to mark.
 	 * @param goalPose The end pose to mark.
 	 * @param robotFoot The footprint to use in marking the start and goal poses.
+	 * @param collidingPose One of the poses of path which is colliding with some obstacles.
 	 */
-	public void saveDebugObstacleImage(Pose startPose, Pose goalPose, Geometry robotFoot) {
+	public void saveDebugObstacleImage(Pose startPose, Pose goalPose, Geometry robotFoot, Pose collidingPose) {
 		BufferedImage copyForDebug = new BufferedImage(bimg.getWidth(), bimg.getHeight(), BufferedImage.TYPE_INT_RGB);
 		Graphics2D g2 = copyForDebug.createGraphics();
 		g2.drawImage(bimg, 0, 0, bimg.getWidth(), bimg.getHeight(), 0, 0, bimg.getWidth(), bimg.getHeight(), null);
@@ -210,6 +226,21 @@ public class OccupancyMap {
 		Shape shapeAtGoal = writer.toShape(scaledGeomGoal);
 		g2.draw(shapeAtGoal);
 		//g2.fill(shapeAtGoal);
+			
+		if (collidingPose != null) {
+			g2.setPaint(Color.blue);
+			AffineTransformation inPose = new AffineTransformation();
+			inPose.rotate(collidingPose.getTheta());
+			inPose.translate(collidingPose.getX(), collidingPose.getY());
+			Geometry robotInPose = inPose.transform(robotFoot);
+			AffineTransformation inPoseScale = new AffineTransformation();
+			inPoseScale.scale(1.0/mapResolution, -1.0/mapResolution);
+			inPoseScale.translate(0, copyForDebug.getHeight());
+			Geometry scaledGeomPose = inPoseScale.transform(robotInPose);
+			Shape shapeInPose = writer.toShape(scaledGeomPose);
+			g2.draw(shapeInPose);
+			//g2.fill(shapeInPose);
+		}
 		
 		g2.dispose();
 		
@@ -249,6 +280,14 @@ public class OccupancyMap {
 	 */
 	public double getResolution() {
 		return this.mapResolution;
+	}
+	
+	/**
+	 * Get the origin of this occupancy map.
+	 * @return The coordinates of the origin of this occupancy map in global frame.
+	 */
+	public Coordinate getMapOrigin() {
+		return this.mapOrigin;
 	}
 
 	/**
@@ -296,7 +335,7 @@ public class OccupancyMap {
 	 * @return The coordinates in pixel space corresponding to the given {@link Coordinate} in the workspace.
 	 */
 	public int[] toPixels(Coordinate coord) {
-		return new int[] { this.mapHeight-((int)(coord.y*this.mapResolution)), (int)(coord.x*(this.mapResolution)) };
+		return new int[] { (int)((coord.x-this.mapOrigin.x)/this.mapResolution), this.mapHeight-((int)((coord.y-this.mapOrigin.y)/this.mapResolution)) };
 	}
 
 	/**
@@ -306,7 +345,7 @@ public class OccupancyMap {
 	 * @return The {@link Coordinate}s in workspace corresponding to given coordinates in pixel space.
 	 */
 	public Coordinate toWorldCoordiantes(int x, int y) {
-		return new Coordinate(x*this.mapResolution, (this.mapHeight-y)*this.mapResolution);
+		return new Coordinate(this.mapOrigin.x+(x+0.5)*this.mapResolution, this.mapOrigin.y+(this.mapHeight-y+0.5)*this.mapResolution);
 	}
 
 	/**
@@ -399,8 +438,7 @@ public class OccupancyMap {
 					else if (key.equals("origin")) {
 						String x = value.substring(1, value.indexOf(",")).trim();
 						String y = value.substring(value.indexOf(",")+1, value.indexOf(",", value.indexOf(",")+1)).trim();
-						//FIXME: deal with map origin
-						//this.setMapOrigin(new Coordinate(Double.parseDouble(x),Double.parseDouble(y)));
+						this.mapOrigin = new Coordinate(Double.parseDouble(x),Double.parseDouble(y));
 					}
 				}
 			}

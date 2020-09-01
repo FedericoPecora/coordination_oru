@@ -21,9 +21,9 @@ bool MultipleCircleStateValidityChecker::isValid(const ob::State *state) const {
     x += refPoseX;
     y += refPoseY;
 
-    int xPx = (int)(x/mapResolution);
-    int yPx = mapHeight-(int)(y/mapResolution);
-    int radiusPx = (int)(radius/mapResolution);
+    int xPx = (int)((x-mapOriginX)/mapResolution);
+    int yPx = mapHeight-(int)((y-mapOriginY)/mapResolution);
+    int radiusPx = ceil(radius/mapResolution);
 
     /*
     std::cout << "(" << x << "," << y << ") -> (" << xPx << "," << yPx << ") with radius in pixels of " << radiusPx << std::endl;

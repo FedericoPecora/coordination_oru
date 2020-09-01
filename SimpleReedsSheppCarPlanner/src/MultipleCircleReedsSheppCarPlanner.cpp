@@ -33,7 +33,7 @@ extern "C" void cleanupPath(PathPose* path) {
   free(path);
 }
 
-extern "C" bool plan_multiple_circles(uint8_t* occupancyMap, int mapWidth, int mapHeight, double mapResolution, double robotRadius, double* xCoords, double* yCoords, int numCoords, double startX, double startY, double startTheta, double goalX, double goalY, double goalTheta, PathPose** path, int* pathLength, double distanceBetweenPathPoints, double turningRadius, double planningTimeInSecs, PLANNING_ALGORITHM algo) {
+extern "C" bool plan_multiple_circles(uint8_t* occupancyMap, int mapWidth, int mapHeight, double mapResolution, double mapOriginX, double mapOriginY, double robotRadius, double* xCoords, double* yCoords, int numCoords, double startX, double startY, double startTheta, double goalX, double goalY, double goalTheta, PathPose** path, int* pathLength, double distanceBetweenPathPoints, double turningRadius, double planningTimeInSecs, PLANNING_ALGORITHM algo) {
 
   double pLen = 0.0;
   int numInterpolationPoints = 0;
@@ -43,10 +43,10 @@ extern "C" bool plan_multiple_circles(uint8_t* occupancyMap, int mapWidth, int m
   
   ob::ScopedState<> start(space), goal(space);
   ob::RealVectorBounds bounds(2);
-  bounds.low[0] = 0;
-  bounds.low[1] = 0;
-  bounds.high[0] = mapWidth*mapResolution;
-  bounds.high[1] = mapHeight*mapResolution;
+  bounds.low[0] = mapOriginX;
+  bounds.low[1] = mapOriginY;
+  bounds.high[0] = mapOriginX+mapWidth*mapResolution;
+  bounds.high[1] = mapOriginY+mapHeight*mapResolution;
 	  
   space->as<ob::SE2StateSpace>()->setBounds(bounds);
   std::cout << "Bounds are [(" << bounds.low[0] << "," << bounds.low[1] << "),(" << bounds.high[0] << "," << bounds.high[1] << ")]" << std::endl;
@@ -56,7 +56,7 @@ extern "C" bool plan_multiple_circles(uint8_t* occupancyMap, int mapWidth, int m
 
   // set state validity checking for this space
   ob::SpaceInformationPtr si(ss.getSpaceInformation());
-  si->setStateValidityChecker(ob::StateValidityCheckerPtr(new MultipleCircleStateValidityChecker(si, occupancyMap, mapWidth, mapHeight, mapResolution, robotRadius, xCoords, yCoords, numCoords)));
+  si->setStateValidityChecker(ob::StateValidityCheckerPtr(new MultipleCircleStateValidityChecker(si, occupancyMap, mapWidth, mapHeight, mapResolution, mapOriginX, mapOriginY, robotRadius, xCoords, yCoords, numCoords)));
   
   //Return false if the start is occupied.  
   ompl::base::State *statePtrS = space->allocState();
@@ -67,7 +67,7 @@ extern "C" bool plan_multiple_circles(uint8_t* occupancyMap, int mapWidth, int m
   bool isStartValid = si->getStateValidityChecker()->isValid(statePtrS);
   space->freeState(statePtrS);
   if (!isStartValid) {
-    std::cout << "Invalid start pose (" << startX << "," << startY << "," << startTheta << ") since pixel(s) around (" << startX/mapResolution << "," << (mapHeight-startY/mapResolution) << ") are occupied" << std::endl;
+    std::cout << "Invalid start pose (" << startX << "," << startY << "," << startTheta << ") since pixel(s) around (" << (startX-mapOriginX)/mapResolution << "," << (mapHeight-(startY-mapOriginY)/mapResolution) << ") are occupied" << std::endl;
     return false;
   }
   
@@ -81,7 +81,7 @@ extern "C" bool plan_multiple_circles(uint8_t* occupancyMap, int mapWidth, int m
   bool isGoalValid = si->getStateValidityChecker()->isValid(statePtrG);
   space->freeState(statePtrG);
   if (!isGoalValid) {
-    std::cout << "Invalid goal pose (" << goalX << "," << goalY << "," << goalTheta << ") since pixel(s) around (" << goalX/mapResolution << "," << (mapHeight-goalY/mapResolution) << ") are occupied" << std::endl;
+    std::cout << "Invalid goal pose (" << goalX << "," << goalY << "," << goalTheta << ") since pixel(s) around (" << (goalX-mapOriginX)/mapResolution << "," << (mapHeight-(goalY-mapOriginY)/mapResolution) << ") are occupied" << std::endl;
     return false;
   }
     

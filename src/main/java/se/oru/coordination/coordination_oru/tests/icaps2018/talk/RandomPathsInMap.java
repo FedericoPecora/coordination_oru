@@ -106,10 +106,7 @@ public class RandomPathsInMap {
 		
 		tec.setUseInternalCriticalPoints(false);
 		tec.setYieldIfParking(true);
-		//tec.setBreakDeadlocksByReordering(true);
-		//tec.setBreakDeadlocksByReplanning(true);
-		//tec.setBreakDeadlocks(false);
-		tec.setAvoidDeadlocksGlobally(true);
+		tec.setBreakDeadlocks(false, true, true);
 		tec.setCheckCollisions(true);
 		//MetaCSPLogging.setLevel(TrajectoryEnvelopeCoordinator.class, Level.FINEST);
 		
@@ -156,7 +153,7 @@ public class RandomPathsInMap {
 			new File(outputDir).mkdir();
 		}
 				
-		int[] robotIDs = new int[] {1,2,3,4,5,6,7,8,9,10};
+		int[] robotIDs = new int[] {1,2,3,4,5,6,7};
 		int locationCounter = 0;
 		HashSet<Pose> obstacles = new HashSet<Pose>();
 		

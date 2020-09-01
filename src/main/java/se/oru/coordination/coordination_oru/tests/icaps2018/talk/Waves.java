@@ -140,8 +140,7 @@ public class Waves {
 		
 		tec.setUseInternalCriticalPoints(false);
 		tec.setYieldIfParking(false);
-		tec.setBreakDeadlocksByReplanning(false);
-		tec.setBreakDeadlocksByReordering(true);
+		tec.setBreakDeadlocks(false, true, false);
 
 		//Set up motion planner
 		//String yamlFile = "maps/map-empty.yaml";
