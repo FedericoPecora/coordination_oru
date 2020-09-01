@@ -76,7 +76,7 @@ public class ParkingArrayNew {
 		tec.startInference();
 		
 		tec.setUseInternalCriticalPoints(false);
-		tec.setCheckEscapePoses(true);
+		//tec.setCheckEscapePoses(true);
 		tec.setYieldIfParking(false);
 		tec.setBreakDeadlocks(true, false, false);
 		tec.setCheckCollisions(true);
@@ -114,18 +114,18 @@ public class ParkingArrayNew {
 		inactiveRobots.add(12);
 		
 		//Set a map
-		String yamlFile = "maps/map-empty-circle.yaml";
+		//String yamlFile = "maps/map-empty-circle.yaml";
 		
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		//RVizVisualization viz = new RVizVisualization();
 		//RVizVisualization.writeRVizConfigFile(robotIDs);
 		BrowserVisualization viz = new BrowserVisualization();
-		viz.setMap(yamlFile);
+		//viz.setMap(yamlFile);
 		viz.setInitialTransform(41, -20, -25);
 		tec.setVisualization(viz);
 		
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-		rsp.setMap(yamlFile);
+		//rsp.setMap(yamlFile);
 		rsp.setRadius(0.1);
 		rsp.setFootprint(footprint);
 		rsp.setTurningRadius(4.0);
@@ -204,7 +204,7 @@ public class ParkingArrayNew {
 			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
 			//In case deadlocks occur, we make the coordinator capable of re-planning on the fly (experimental, not working properly yet)
 			ReedsSheppCarPlanner rsp_ = new ReedsSheppCarPlanner();
-			rsp_.setMap(yamlFile);
+			//rsp_.setMap(yamlFile);
 			rsp_.setRadius(0.1);
 			rsp_.setFootprint(footprint);
 			rsp_.setTurningRadius(4.0);

@@ -27,7 +27,7 @@ public class MinimalExample {
 
 	private static ArrayList<Pair<Integer>> placements = new ArrayList<Pair<Integer>>();
 
-	private static Coordinate[] makeFootprint(int centerX, int centerY, int minVerts, int maxVerts, double minRadius, double maxRadius) {
+	private static Coordinate[] makeRandomFootprint(int centerX, int centerY, int minVerts, int maxVerts, double minRadius, double maxRadius) {
 	    // Split a full circle into numVerts step, this is how much to advance each part
 		int numVerts = minVerts+rand.nextInt(maxVerts-minVerts);
 	    double angleStep = Math.PI * 2 / numVerts;
@@ -43,7 +43,7 @@ public class MinimalExample {
 	    return ret;
 	}
 
-	private static Pose[] makeStartGoalPair(int numRobots, double maxRadius, double offsetX, double offsetY) {
+	private static Pose[] makeRandomStartGoalPair(int numRobots, double maxRadius, double offsetX, double offsetY) {
 		Pose[] ret = new Pose[2];
 		Pair<Integer> placement = new Pair<Integer>(rand.nextInt(numRobots), rand.nextInt(numRobots));		
 		while (placements.contains(placement)) placement = new Pair<Integer>(rand.nextInt(numRobots),rand.nextInt(numRobots));
@@ -103,19 +103,19 @@ public class MinimalExample {
 		for (int robotID : robotIDs) {
 			
 			//Use a random polygon as this robot's geometry (footprint)
-			Coordinate[] fp = makeFootprint(0, 0, 3, 6, minRobotRadius, maxRobotRadius);
+			Coordinate[] fp = makeRandomFootprint(0, 0, 3, 6, minRobotRadius, maxRobotRadius);
 			tec.setFootprint(robotID,fp);
 			
 			//Set a forward model (all robots have the same here)
 			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
 
 			//Define start and goal poses for the robot
-			Pose[] startAndGoal = makeStartGoalPair(robotIDs.length, 1.5*maxRobotRadius, 1.1*maxRobotRadius, 1.1*maxRobotRadius);
+			Pose[] startAndGoal = makeRandomStartGoalPair(robotIDs.length, 1.5*maxRobotRadius, 1.1*maxRobotRadius, 1.1*maxRobotRadius);
 			
 			//Place the robot in the start pose
 			tec.placeRobot(robotID, startAndGoal[0]);
 
-			//Simple path planner for each robot (can provide map as YAML file)
+			//Path planner for each robot (with empty map)
 			ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
 			rsp.setRadius(0.2);
 			rsp.setTurningRadius(4.0);
@@ -133,12 +133,12 @@ public class MinimalExample {
 			Missions.enqueueMission(new Mission(robotID,path));
 			Missions.enqueueMission(new Mission(robotID,pathInv));
 			
-			//Use path planner online to resolve blockings if needed
+			//Path planner to use for re-planning if needed
 			tec.setMotionPlanner(robotID, rsp);
 		}
 		
-		//Avoid deadlocks by using global cycle detection
-		tec.setAvoidDeadlocksGlobally(true);
+		//Avoid deadlocks via global re-ordering
+		tec.setBreakDeadlocks(true, false, false);
 
 		//Start a visualization (will open a new browser tab)
 		BrowserVisualization viz = new BrowserVisualization();
