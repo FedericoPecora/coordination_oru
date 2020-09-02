@@ -9,6 +9,14 @@ public class Pair<T extends Comparable<T>> {
         this.p2 = p2;
     }
     
+    public T getFirst() {
+    	return p1;
+    }
+
+    public T getSecond() {
+    	return p2;
+    }
+
     public boolean contains(Pair<T> otherPair) {
     	return 	(this.p1.compareTo(otherPair.p1) < 0 && this.p2.compareTo(otherPair.p2) > 0) ||
     			(this.p1.compareTo(otherPair.p1) < 0 && this.p2.compareTo(otherPair.p2) >= 0) ||
