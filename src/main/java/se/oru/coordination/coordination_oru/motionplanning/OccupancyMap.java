@@ -171,6 +171,7 @@ public class OccupancyMap {
 		g2.setPaint(Color.black);
 		for (Geometry g : obstacles) {
 			AffineTransformation at = new AffineTransformation();
+			at.translate(-mapOrigin.x, -mapOrigin.y);
 			at.scale(1.0/mapResolution, -1.0/mapResolution);
 			at.translate(0, bimg.getHeight());
 			Geometry scaledGeom = at.transform(g);
@@ -204,7 +205,7 @@ public class OccupancyMap {
 		g2.setPaint(Color.red);
 		AffineTransformation atStart = new AffineTransformation();
 		atStart.rotate(startPose.getTheta());
-		atStart.translate(startPose.getX(), startPose.getY());
+		atStart.translate(startPose.getX()-mapOrigin.x, startPose.getY()-mapOrigin.y);
 		Geometry robotAtStart = atStart.transform(robotFoot);
 		AffineTransformation atStartScale = new AffineTransformation();
 		atStartScale.scale(1.0/mapResolution, -1.0/mapResolution);
@@ -217,7 +218,7 @@ public class OccupancyMap {
 		g2.setPaint(Color.green);
 		AffineTransformation atGoal = new AffineTransformation();
 		atGoal.rotate(goalPose.getTheta());
-		atGoal.translate(goalPose.getX(), goalPose.getY());
+		atGoal.translate(goalPose.getX()-mapOrigin.x, goalPose.getY()-mapOrigin.y);
 		Geometry robotAtGoal = atGoal.transform(robotFoot);
 		AffineTransformation atGoalScale = new AffineTransformation();
 		atGoalScale.scale(1.0/mapResolution, -1.0/mapResolution);
@@ -231,7 +232,7 @@ public class OccupancyMap {
 			g2.setPaint(Color.blue);
 			AffineTransformation inPose = new AffineTransformation();
 			inPose.rotate(collidingPose.getTheta());
-			inPose.translate(collidingPose.getX(), collidingPose.getY());
+			inPose.translate(collidingPose.getX()-mapOrigin.x, collidingPose.getY()-mapOrigin.y);
 			Geometry robotInPose = inPose.transform(robotFoot);
 			AffineTransformation inPoseScale = new AffineTransformation();
 			inPoseScale.scale(1.0/mapResolution, -1.0/mapResolution);

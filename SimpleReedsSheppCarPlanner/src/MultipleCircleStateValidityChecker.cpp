@@ -3,26 +3,31 @@
 bool MultipleCircleStateValidityChecker::isValid(const ob::State *state) const {
 
   const ob::SE2StateSpace::StateType *s = state->as<ob::SE2StateSpace::StateType>();
-  float x, y, theta;
-
-  float refPoseX = (float)s->getX();
-  float refPoseY = (float)s->getY();
-  float refPoseTheta = (float)s->getYaw();
-  //std::cout << "Checking for collision in " << refPoseX << "," << refPoseY << "," << refPoseTheta << std::endl;
 
   if (noMap) {
-    //std::cout << "No map, so no collision! " << std::endl;
-    return true;
+      //std::cout << "No map, so no collision! " << std::endl;
+      return true;
   }
+
+  float x, y, theta;
+
+  //Position in meters in map frame.
+  float refPoseX = (float)s->getX()-mapOriginX;
+  float refPoseY = (float)s->getY()-mapOriginY;
+  float refPoseTheta = (float)s->getYaw();
+  //std::cout << "Checking for collision in " << refPoseX << "," << refPoseY << "," << refPoseTheta << std::endl;
   
+  if (refPoseX < 0 || refPoseY < 0) return false;
+
   for (int i = 0; i < numCoords; i++) {
     x = xCoords[i]*cos(refPoseTheta) - yCoords[i]*sin(refPoseTheta);
     y = xCoords[i]*sin(refPoseTheta) + yCoords[i]*cos(refPoseTheta);
     x += refPoseX;
     y += refPoseY;
 
-    int xPx = (int)((x-mapOriginX)/mapResolution);
-    int yPx = mapHeight-(int)((y-mapOriginY)/mapResolution);
+    //Position center in pixel (in map frame)
+    int xPx = (int)(x/mapResolution);
+    int yPx = mapHeight-(int)(y/mapResolution);
     int radiusPx = ceil(radius/mapResolution);
 
     /*

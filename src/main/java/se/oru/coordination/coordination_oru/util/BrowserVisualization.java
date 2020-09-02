@@ -359,6 +359,7 @@ public class BrowserVisualization implements FleetVisualization {
 			BufferedReader br = new BufferedReader(new FileReader(file));
 			String imageFileName = null;
 			String st;
+			Coordinate bottomLeftOrigin = null;
 			while((st=br.readLine()) != null){ 
 				if (!st.trim().startsWith("#") && !st.trim().isEmpty()) {
 					String key = st.substring(0, st.indexOf(":")).trim();
@@ -368,12 +369,14 @@ public class BrowserVisualization implements FleetVisualization {
 					else if (key.equals("origin")) {
 						String x = value.substring(1, value.indexOf(",")).trim();
 						String y = value.substring(value.indexOf(",")+1, value.indexOf(",", value.indexOf(",")+1)).trim();
-						BrowserVisualizationSocket.origin = new Coordinate(Double.parseDouble(x),Double.parseDouble(y));
+						//BrowserVisualizationSocket.origin = new Coordinate(Double.parseDouble(x),Double.parseDouble(y));
+						bottomLeftOrigin = new Coordinate(Double.parseDouble(x),Double.parseDouble(y));
 					}
 				}
 			}
 			br.close();
 			BrowserVisualizationSocket.map = ImageIO.read(new File(imageFileName));
+			BrowserVisualizationSocket.origin = new Coordinate(bottomLeftOrigin.x, BrowserVisualizationSocket.map.getHeight()*BrowserVisualizationSocket.resolution-bottomLeftOrigin.y);
 		}
 		catch (IOException e) { e.printStackTrace(); }
 	}
