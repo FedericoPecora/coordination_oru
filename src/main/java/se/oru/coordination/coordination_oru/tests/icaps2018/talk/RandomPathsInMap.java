@@ -74,8 +74,8 @@ public class RandomPathsInMap {
 		
 		/*double MAX_ACCEL = 1.0;
 		double MAX_VEL = 2.5;*/
-		boolean useValidInfrastructure = true;
-		boolean randomObstacles = true;
+		boolean useValidInfrastructure = false;
+		boolean randomObstacles = false;
 
 		//Instantiate a trajectory envelope coordinator.
 		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(2000, 1000, MAX_VEL,MAX_ACCEL);
@@ -106,10 +106,7 @@ public class RandomPathsInMap {
 		
 		tec.setUseInternalCriticalPoints(false);
 		tec.setYieldIfParking(true);
-		//tec.setBreakDeadlocksByReordering(true);
-		//tec.setBreakDeadlocksByReplanning(true);
-		//tec.setBreakDeadlocks(false);
-		tec.setAvoidDeadlocksGlobally(true);
+		tec.setBreakDeadlocks(false, true, true);
 		tec.setCheckCollisions(true);
 		//MetaCSPLogging.setLevel(TrajectoryEnvelopeCoordinator.class, Level.FINEST);
 		
@@ -118,8 +115,8 @@ public class RandomPathsInMap {
 		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0;
 		tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, NetworkConfiguration.getMaximumTxDelay(), 1e-2);
 
-		double xl = .5; //1.0
-		double yl = .5; //.5
+		double xl = 1.0;
+		double yl = .5;
 		Coordinate footprint1 = new Coordinate(-xl,yl);
 		Coordinate footprint2 = new Coordinate(xl,yl);
 		Coordinate footprint3 = new Coordinate(xl,-yl);
@@ -133,33 +130,21 @@ public class RandomPathsInMap {
 		String yamlFile = null;
 		if (randomObstacles) yamlFile = useValidInfrastructure ? "maps/map-partial-vi.yaml" : "maps/map-partial-2.yaml";
 		else yamlFile = useValidInfrastructure ? "maps/map-corridors-vi.yaml" : "maps/map-corridors.yaml"; 
-			
+		yamlFile = "maps/map-partial-2.yaml";	
+		
 		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
 		//viz.setMap(yamlFile);
-		RVizVisualization viz = new RVizVisualization();
-		viz.setMap(yamlFile);
-		//BrowserVisualization viz = new BrowserVisualization();
+		//RVizVisualization viz = new RVizVisualization();
 		//viz.setMap(yamlFile);
-		//viz.setInitialTransform(20.0, 9.0, 2.0);
+		BrowserVisualization viz = new BrowserVisualization();
+		viz.setMap(yamlFile);
+		viz.setInitialTransform(20.0, 9.0, 2.0);
 		tec.setVisualization(viz);
 		
-		Missions.loadLocationAndPathData("missions/icaps_locations_and_paths_4.txt");
+		Missions.loadRoadMap("missions/icaps_locations_and_paths_4.txt");
 
 		//MetaCSPLogging.setLevel(tec.getClass().getSuperclass(), Level.FINEST);
-
-		//Instantiate a simple motion planner
-		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-		rsp.setMapFilename("maps"+File.separator+Missions.getProperty("image", yamlFile));
-		double res = Double.parseDouble(Missions.getProperty("resolution", yamlFile));
-		rsp.setMapResolution(res);
-		rsp.setRadius(0.1);
-		rsp.setFootprint(tec.getDefaultFootprint());
-		rsp.setTurningRadius(4.0);
-		rsp.setDistanceBetweenPathPoints(0.3);
-		
-		//In case deadlocks occur, we make the coordinator capable of re-planning on the fly (experimental, not working properly yet)
-		tec.setMotionPlanner(rsp);
-		
+	
 		boolean cachePaths = false;
 		String outputDir = "paths";
 		boolean clearOutput = false;
@@ -168,7 +153,7 @@ public class RandomPathsInMap {
 			new File(outputDir).mkdir();
 		}
 				
-		int[] robotIDs = new int[] {1,2,3,4,5,6,7,8,9,10};
+		int[] robotIDs = new int[] {1,2,3,4,5,6,7};
 		int locationCounter = 0;
 		HashSet<Pose> obstacles = new HashSet<Pose>();
 		
@@ -182,12 +167,12 @@ public class RandomPathsInMap {
 		for (int robotID : robotIDs) {
 			
 			String startLocName = "L_"+locationCounter;
-			Pose startLoc = Missions.getLocation(startLocName);
+			Pose startLoc = Missions.getLocationPose(startLocName);
 			startsPoses.put(robotID, startLoc);
 			startsNames.put(robotID, startLocName);
 			
 			String endLocName = "R_"+locationCounter;
-			Pose endLoc = Missions.getLocation(endLocName);
+			Pose endLoc = Missions.getLocationPose(endLocName);
 			endsPoses.put(robotID, endLoc);
 			endsNames.put(robotID, endLocName);		
 			//obstacles.add(startLoc);
@@ -195,9 +180,20 @@ public class RandomPathsInMap {
 			
 			locationCounter += 2;
 		}
+		//Instantiate a simple motion planner
+		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
+		rsp.setMap(yamlFile);
+		rsp.setRadius(0.1);
+		rsp.setFootprint(tec.getDefaultFootprint());
+		rsp.setTurningRadius(4.0);
+		rsp.setDistanceBetweenPathPoints(0.3);
 		
 		//int[] robotIDs = new int[] {1,2};
 		for (int robotID : robotIDs) {
+
+			//In case deadlocks occur, we make the coordinator capable of re-planning on the fly (experimental, not working properly yet)
+			tec.setMotionPlanner(robotID, rsp);
+			
 			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
 			String startLocName = startsNames.get(robotID);
 			Pose startLoc = startsPoses.get(robotID);
@@ -227,6 +223,9 @@ public class RandomPathsInMap {
 				}
 				else rsp.setGoals(endLoc);
 				rsp.plan();
+				if (rsp.getPath() == null) {
+					throw new Error("No path found.");
+				}
 				path = rsp.getPath();
 				pathInv = rsp.getPathInv();
 				if (cachePaths) {
@@ -257,6 +256,9 @@ public class RandomPathsInMap {
 		//RVizVisualization.writeRVizConfigFile(robotIDs);
 		//To visualize, run "rosrun rviz rviz -d ~/config.rviz"
 		Thread.sleep(5000);
+		
+		//Start the thread that checks and enforces dependencies at every clock tick
+		tec.startInference();
 		
 		//Start a mission dispatching thread for each robot, which will run forever
 		for (int i = 0; i < robotIDs.length; i++) {
@@ -301,10 +303,12 @@ public class RandomPathsInMap {
 			};
 			//Start the thread!
 			t.start();
+			
+			//Sleep for a little before dispatching another mission.
+			try { Thread.sleep(tec.getControlPeriod()); }
+			catch (InterruptedException e) { e.printStackTrace(); }
 		}
-		//Sleep for a little (2 sec)
-		try { Thread.sleep(tec.getControlPeriod()); }
-		catch (InterruptedException e) { e.printStackTrace(); }
+
 
 	}
 

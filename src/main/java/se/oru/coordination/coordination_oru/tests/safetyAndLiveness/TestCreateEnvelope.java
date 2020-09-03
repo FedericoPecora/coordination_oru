@@ -56,7 +56,11 @@ public class TestCreateEnvelope {
 			if (!rsp.plan()) throw new Error("Cannot plan for Robot2");
 			SpatialEnvelope se2 = TrajectoryEnvelope.createSpatialEnvelope(rsp.getPath(), footprint1, footprint2, footprint3, footprint4);
 			
+<<<<<<< HEAD
 			CriticalSection[] css = AbstractTrajectoryEnvelopeCoordinator.getCriticalSections(se1, se2, true, 2.0);
+=======
+			CriticalSection[] css = AbstractTrajectoryEnvelopeCoordinator.getCriticalSections(se1, se2, 2.0);
+>>>>>>> master
 			System.out.println("Found " + css.length + " critical sections");
 			
 			System.out.println(Arrays.toString(css));

@@ -1,4 +1,4 @@
-/*
+1/*
  * coordination_oru_ros - Online coordination for multiple robots
  *
  * Copyright (C) 2017 Federico Pecora
@@ -22,16 +22,13 @@ apply plugin: 'java'
 apply plugin: 'eclipse'
 
 // The Maven publish plugin is only required if your package is used as a library.
-apply plugin: 'maven'
+apply plugin: 'maven-publish'
 
 // The Application plugin and mainClassName attribute are only required if
 // your package is used as a binary.
 apply plugin: 'application'
 // The main class that will be executed when you do 'gradle run'
 mainClassName = 'se.oru.coordination.coordination_oru.demo.DemoLauncher'
-
-sourceCompatibility = 1.6
-targetCompatibility = 1.6
 
 repositories {
   mavenLocal()

@@ -68,6 +68,8 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner4 {
 
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
+		//Start the thread that checks and enforces dependencies at every clock tick
+		tec.startInference();
 
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		String yamlFile = "maps/map-empty.yaml";
@@ -80,10 +82,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner4 {
 
 		//Instantiate a simple motion planner
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-		String mapFile = "maps"+File.separator+Missions.getProperty("image", yamlFile);
-		rsp.setMapFilename(mapFile);
-		double res = Double.parseDouble(Missions.getProperty("resolution", yamlFile));
-		rsp.setMapResolution(res);
+		rsp.setMap(yamlFile);
 		rsp.setRadius(0.2);
 		rsp.setFootprint(footprint1, footprint2, footprint3, footprint4);
 		rsp.setTurningRadius(4.0);
@@ -91,9 +90,10 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner4 {
 		double deltaY = 3;
 		double height = deltaY/2;
 		double mapHeight = -1;
+		double res = Double.parseDouble(Missions.getProperty("resolution", yamlFile));
 
 		try {
-			BufferedImage img = ImageIO.read(new File(mapFile));
+			BufferedImage img = ImageIO.read(new File(yamlFile.substring(0,yamlFile.lastIndexOf("."))+".png"));
 			mapHeight = img.getHeight()*res*0.9;
 		}
 		catch (IOException e) { e.printStackTrace(); }

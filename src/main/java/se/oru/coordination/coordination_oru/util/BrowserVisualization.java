@@ -2,6 +2,7 @@ package se.oru.coordination.coordination_oru.util;
 
 
 import java.awt.Desktop;
+import java.awt.Dimension;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -103,6 +104,34 @@ public class BrowserVisualization implements FleetVisualization {
 	public void setInitialTransform(double scale, double xTrans, double yTrans) {
 		BrowserVisualizationSocket.initialScale = scale;
 		BrowserVisualizationSocket.initialTranslation = new Coordinate(xTrans,yTrans);		
+	}
+	
+	private static int getScreenDPI() {
+		//Dimension screen = java.awt.Toolkit.getDefaultToolkit().getScreenSize();
+		//System.out.println("Screen width: "+screen.getWidth()); 
+		//System.out.println("Screen height: "+screen.getHeight()); 
+		int pixelPerInch = java.awt.Toolkit.getDefaultToolkit().getScreenResolution(); 
+		//System.out.println("DPI: " + pixelPerInch); 
+		return pixelPerInch; 
+	}
+	
+	private static double getScreenHeight() {
+		Dimension screen = java.awt.Toolkit.getDefaultToolkit().getScreenSize();
+		return screen.getHeight(); 
+	}
+	
+	public void guessInitialTransform(double robotDimension, Pose ... robotPoses) {
+		BrowserVisualizationSocket.initialScale = getScreenDPI()/robotDimension;
+		double avgX = 0;
+		double avgY = 0;
+		for (int i = 0; i < robotPoses.length; i++) {
+			avgX += robotPoses[i].getX();
+			avgY += robotPoses[i].getY();
+		}
+		avgX /= robotPoses.length;
+		avgY /= robotPoses.length;
+		avgY -= 0.45*(getScreenHeight()/getScreenDPI());
+		BrowserVisualizationSocket.initialTranslation = new Coordinate(avgX,avgY);		
 	}
 
 	private static void setupVizServer(String serverHostNameOrIP) {
@@ -330,19 +359,24 @@ public class BrowserVisualization implements FleetVisualization {
 			BufferedReader br = new BufferedReader(new FileReader(file));
 			String imageFileName = null;
 			String st;
+			Coordinate bottomLeftOrigin = null;
 			while((st=br.readLine()) != null){ 
-				String key = st.substring(0, st.indexOf(":")).trim();
-				String value = st.substring(st.indexOf(":")+1).trim();
-				if (key.equals("image")) imageFileName = file.getParentFile()+File.separator+value;
-				else if (key.equals("resolution")) BrowserVisualizationSocket.resolution = Double.parseDouble(value);
-				else if (key.equals("origin")) {
-					String x = value.substring(1, value.indexOf(",")).trim();
-					String y = value.substring(value.indexOf(",")+1, value.indexOf(",", value.indexOf(",")+1)).trim();
-					BrowserVisualizationSocket.origin = new Coordinate(Double.parseDouble(x),Double.parseDouble(y));
+				if (!st.trim().startsWith("#") && !st.trim().isEmpty()) {
+					String key = st.substring(0, st.indexOf(":")).trim();
+					String value = st.substring(st.indexOf(":")+1).trim();
+					if (key.equals("image")) imageFileName = file.getParentFile()+File.separator+value;
+					else if (key.equals("resolution")) BrowserVisualizationSocket.resolution = Double.parseDouble(value);
+					else if (key.equals("origin")) {
+						String x = value.substring(1, value.indexOf(",")).trim();
+						String y = value.substring(value.indexOf(",")+1, value.indexOf(",", value.indexOf(",")+1)).trim();
+						//BrowserVisualizationSocket.origin = new Coordinate(Double.parseDouble(x),Double.parseDouble(y));
+						bottomLeftOrigin = new Coordinate(Double.parseDouble(x),Double.parseDouble(y));
+					}
 				}
 			}
 			br.close();
 			BrowserVisualizationSocket.map = ImageIO.read(new File(imageFileName));
+			BrowserVisualizationSocket.origin = new Coordinate(bottomLeftOrigin.x, BrowserVisualizationSocket.map.getHeight()*BrowserVisualizationSocket.resolution-bottomLeftOrigin.y);
 		}
 		catch (IOException e) { e.printStackTrace(); }
 	}

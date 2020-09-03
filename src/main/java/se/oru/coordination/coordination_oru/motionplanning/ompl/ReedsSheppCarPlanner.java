@@ -1,6 +1,5 @@
 package se.oru.coordination.coordination_oru.motionplanning.ompl;
 
-import java.io.File;
 import java.util.ArrayList;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
@@ -16,11 +15,14 @@ import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.Polygon;
 
 import se.oru.coordination.coordination_oru.motionplanning.AbstractMotionPlanner;
+import se.oru.coordination.coordination_oru.motionplanning.OccupancyMap;
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlannerLib.PathPose;
 import se.oru.coordination.coordination_oru.util.GeometrySmoother;
 import se.oru.coordination.coordination_oru.util.GeometrySmoother.SmootherControl;
 
 public class ReedsSheppCarPlanner extends AbstractMotionPlanner {
+	
+	public static enum PLANNING_ALGORITHM { RRTConnect, RRTstar, TRRT, SST, LBTRRT, PRMstar, SPARS, pRRT, LazyRRT }; 
 
 	private double robotRadius = 1.0;
 	private PointerByReference path = null;
@@ -29,6 +31,7 @@ public class ReedsSheppCarPlanner extends AbstractMotionPlanner {
 	private double turningRadius = 1.0;
 	private double planningTimeInSecs = 30.0;
 	private Coordinate[] collisionCircleCenters = null;
+	private PLANNING_ALGORITHM algo = PLANNING_ALGORITHM.RRTConnect;
 	
 	public static ReedsSheppCarPlannerLib INSTANCE = null;
 	static {
@@ -43,8 +46,7 @@ public class ReedsSheppCarPlanner extends AbstractMotionPlanner {
 		ret.setDistanceBetweenPathPoints(this.distanceBetweenPathPoints);
 		ret.setTurningRadius(this.turningRadius);
 		ret.setFootprint(this.footprintCoords);
-		ret.setMapFilename(mapFilename);
-		ret.setMapResolution(mapResolution);
+		if (this.om != null) ret.om = new OccupancyMap(this.om);
 		return ret;
 	}
 	
@@ -62,8 +64,7 @@ public class ReedsSheppCarPlanner extends AbstractMotionPlanner {
 		SmootherControl sc = new SmootherControl() {
 	        public double getMinLength() {
 	            return robotRadius;
-	        }
-	        
+	        }	        
 	        public int getNumVertices(double length) {
 	            return (int)(length/(2*robotRadius))+2;
 	        }
@@ -78,17 +79,15 @@ public class ReedsSheppCarPlanner extends AbstractMotionPlanner {
 	}
 	
 	public ReedsSheppCarPlanner() {
-		deleteDir(new File(TEMP_MAP_DIR));
-		new File(TEMP_MAP_DIR).mkdir();
+		this.algo = PLANNING_ALGORITHM.RRTConnect;
+	}
+	
+	public ReedsSheppCarPlanner(PLANNING_ALGORITHM algo) {
+		this.algo = algo;
 	}
 
 	public void setCirclePositions(Coordinate ... circlePositions) {
 		this.collisionCircleCenters = circlePositions;
-	}
-
-	@Deprecated
-	public void setRobotRadius(double rad) {
-		this.robotRadius = rad;
 	}
 
 	public void setRadius(double rad) {
@@ -129,27 +128,25 @@ public class ReedsSheppCarPlanner extends AbstractMotionPlanner {
 			else start_ = this.goal[i-1];
 			path = new PointerByReference();
 			pathLength = new IntByReference();
-			if (collisionCircleCenters == null) {
-				if (!INSTANCE.plan(mapFilename, mapResolution, robotRadius, start_.getX(), start_.getY(), start_.getTheta(), goal_.getX(), goal_.getY(), goal_.getTheta(), path, pathLength, distanceBetweenPathPoints, turningRadius, planningTimeInSecs)) {
-					System.out.println("[ReedsSheppCarPlanner] Path not found.");
-					return false;
-				}
+			double[] xCoords = new double[collisionCircleCenters.length];
+			double[] yCoords = new double[collisionCircleCenters.length];
+			int numCoords = collisionCircleCenters.length;
+			for (int j = 0; j < collisionCircleCenters.length; j++) {
+				xCoords[j] = collisionCircleCenters[j].x;
+				yCoords[j] = collisionCircleCenters[j].y;
+			}
+			metaCSPLogger.info("Path planning with " + collisionCircleCenters.length + " circle positions");
+			if (this.om != null) {
+				byte[] occ = om.asByteArray();
+				int w = om.getPixelWidth();
+				int h = om.getPixelHeight();
+				double res = om.getResolution();
+				double mapOriginX = om.getMapOrigin().x;
+				double mapOriginY = om.getMapOrigin().y;
+				if (!INSTANCE.plan_multiple_circles(occ, w, h, res, mapOriginX, mapOriginY, robotRadius, xCoords, yCoords, numCoords, start_.getX(), start_.getY(), start_.getTheta(), goal_.getX(), goal_.getY(), goal_.getTheta(), path, pathLength, distanceBetweenPathPoints, turningRadius, planningTimeInSecs, algo.ordinal())) return false;
 			}
 			else {
-				double[] xCoords = new double[collisionCircleCenters.length];
-				double[] yCoords = new double[collisionCircleCenters.length];
-				int numCoords = collisionCircleCenters.length;
-				for (int j = 0; j < collisionCircleCenters.length; j++) {
-					xCoords[j] = collisionCircleCenters[j].x;
-					yCoords[j] = collisionCircleCenters[j].y;
-				}
-				metaCSPLogger.info("Path planning with " + collisionCircleCenters.length + " circle positions");
-				if (this.mapFilename != null) {
-					if (!INSTANCE.plan_multiple_circles(mapFilename, mapResolution, robotRadius, xCoords, yCoords, numCoords, start_.getX(), start_.getY(), start_.getTheta(), goal_.getX(), goal_.getY(), goal_.getTheta(), path, pathLength, distanceBetweenPathPoints, turningRadius, planningTimeInSecs)) return false;					
-				}
-				else {
-					if (!INSTANCE.plan_multiple_circles_nomap(xCoords, yCoords, numCoords, start_.getX(), start_.getY(), start_.getTheta(), goal_.getX(), goal_.getY(), goal_.getTheta(), path, pathLength, distanceBetweenPathPoints, turningRadius, planningTimeInSecs)) return false;					
-				}
+				if (!INSTANCE.plan_multiple_circles_nomap(xCoords, yCoords, numCoords, start_.getX(), start_.getY(), start_.getTheta(), goal_.getX(), goal_.getY(), goal_.getTheta(), path, pathLength, distanceBetweenPathPoints, turningRadius, planningTimeInSecs, algo.ordinal())) return false;					
 			}
 			final Pointer pathVals = path.getValue();
 			final PathPose valsRef = new PathPose(pathVals);

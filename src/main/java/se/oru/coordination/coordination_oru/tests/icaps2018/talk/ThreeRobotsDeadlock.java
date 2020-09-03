@@ -23,7 +23,7 @@ public class ThreeRobotsDeadlock {
 	public static void main(String[] args) throws InterruptedException {
 		
 		double MAX_ACCEL = 1.0;
-		double MAX_VEL = 4.0;
+		double MAX_VEL = 2.5;
 		//Instantiate a trajectory envelope coordinator.
 		//The TrajectoryEnvelopeCoordinatorSimulation implementation provides
 		// -- the factory method getNewTracker() which returns a trajectory envelope tracker
@@ -50,7 +50,7 @@ public class ThreeRobotsDeadlock {
 		tec.setForwardModel(2, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
 		tec.setForwardModel(3, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
 		//comment out following (or set to true) to make the coordinator attempt to break the deadlock
-		tec.setBreakDeadlocks(false);
+		tec.setBreakDeadlocks(false, false, false);
 
 		Coordinate footprint1 = new Coordinate(-0.25,0.25);
 		Coordinate footprint2 = new Coordinate(0.25,0.25);
@@ -69,6 +69,8 @@ public class ThreeRobotsDeadlock {
 
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
+		//Start the thread that checks and enforces dependencies at every clock tick
+		tec.startInference();
 		
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
@@ -127,21 +129,26 @@ public class ThreeRobotsDeadlock {
 		if (!rsp.plan()) throw new Error ("No path between " + goalPoseRobot1 + " and " + startPoseRobot1);
 		PoseSteering[] pssInv1 = rsp.getPath();
 		paths.add(pssInv1);
-				
+		Mission m1 = new Mission(1,rsp.getPath());
+		
 		rsp.setStart(goalPoseRobot2);
 		rsp.setGoals(startPoseRobot2);
 		if (!rsp.plan()) throw new Error ("No path between " + goalPoseRobot2 + " and " + startPoseRobot2);
 		PoseSteering[] pssInv2 = rsp.getPath();
 		paths.add(pssInv2);
+		Mission m2 = new Mission(2,rsp.getPath());
 		
 		rsp.setStart(goalPoseRobot3);
 		rsp.setGoals(startPoseRobot3);
 		if (!rsp.plan()) throw new Error ("No path between " + goalPoseRobot3 + " and " + startPoseRobot3);
 		PoseSteering[] pssInv3 = rsp.getPath();
 		paths.add(pssInv3);
+		Mission m3 = new Mission(3,rsp.getPath());
+		
+		tec.addMissions(m1,m2,m3);
 		
 		//Start a mission dispatching thread for each robot, which will run forever
-		int iteration = 0;
+		/*int iteration = 0;
 		while(true) {
 			for (int i = 0; i < 3; i++) {
 				Mission m = null;
@@ -154,7 +161,7 @@ public class ThreeRobotsDeadlock {
 				}
 			}			
 			iteration++;
-		}				
+		}*/				
 	}
 	
 }

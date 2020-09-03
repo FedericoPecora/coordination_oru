@@ -56,6 +56,9 @@ public abstract class TrajectoryEnvelopeTrackerDummy extends AbstractTrajectoryE
 	 */
 	public void finishParking() {		
 		this.parkingFinished = true;
+		synchronized(th) {
+			th.notify();
+		}
 	}
 	
 	/**
@@ -91,11 +94,22 @@ public abstract class TrajectoryEnvelopeTrackerDummy extends AbstractTrajectoryE
 
 		//Just do prolong the earliest end time until finished by external call to finishParking()
 		metaCSPLogger.info("Parking starts for Robot " + te.getRobotID());
-		while (!parkingFinished) {
+		updateDeadline(this.te, DELTA_FUTURE);
+		onPositionUpdate();
+		/*while (!parkingFinished) {
 			updateDeadline(this.te, DELTA_FUTURE);
 			onPositionUpdate();
 			try { Thread.sleep(trackingPeriodInMillis); }
 			catch (InterruptedException e) { e.printStackTrace(); }
+		}*/		
+		synchronized(th) {
+			try {
+				th.wait();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+				metaCSPLogger.severe(e.toString());
+			}
 		}
 		metaCSPLogger.info("Parking finishes for Robot " + te.getRobotID());
 		

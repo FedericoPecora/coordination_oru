@@ -8,10 +8,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
+import org.metacsp.multi.spatioTemporal.paths.Trajectory;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
+import org.metacsp.utility.UI.Callback;
 
+import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.util.AffineTransformation;
 
+import geometry_msgs.Point;
 import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeTracker;
 import se.oru.coordination.coordination_oru.CollisionEvent;
 import se.oru.coordination.coordination_oru.CriticalSection;
@@ -31,6 +37,7 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	protected int trackingPeriodInMillis;
 	protected boolean useInternalCPs = true;
 	
+	protected boolean fake = false;
 	protected boolean checkCollisions = false;
 	protected ArrayList<CollisionEvent> collisionsList = new ArrayList<CollisionEvent>();
 	protected Thread collisionThread = null;
@@ -38,10 +45,21 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	protected AtomicInteger totalMsgsLost = new AtomicInteger(0);
 	protected AtomicInteger totalPacketsLost = new AtomicInteger(0);
 	
-	public void setCheckCollisions(boolean checkCollision) {
-		this.checkCollisions = checkCollision;
+	/**
+	 * Enable the collision checking thread.
+	 * @param enable <code>true</code>  if the thread for checking collisions should be enabled.
+	 */
+	public void setCheckCollisions(boolean enable) {
+		this.checkCollisions = enable;
 	}
 		
+	/**
+	 * Enable fake coordination.
+	 * @param enable <code>true</code> whether the coordinator does not impose any precedence constraints.
+	 */
+	public void setFakeCoordination(boolean fake) {
+		this.fake = fake;
+	}
 
 	/** 
 	 * Just for statistic purposes (simulation).
@@ -352,4 +370,16 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 		}
 	}
 	
+	@Override
+	protected void updateDependencies() {
+		synchronized(solver) {
+			if (this.fake) {
+				for (int robotID : trackers.keySet()) setCriticalPoint(robotID, -1, true);
+				return;
+			}
+			if (this.avoidDeadlockGlobally.get()) globalCheckAndRevise();
+			else localCheckAndRevise(); 
+			
+		}
+	}
 }

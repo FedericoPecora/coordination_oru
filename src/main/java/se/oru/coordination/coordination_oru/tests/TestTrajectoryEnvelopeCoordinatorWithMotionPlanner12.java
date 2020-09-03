@@ -81,6 +81,8 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner12 {
 
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
+		//Start the thread that checks and enforces dependencies at every clock tick
+		tec.startInference();
 
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		String yamlFile = "maps/map-empty.yaml";
@@ -91,16 +93,6 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner12 {
 		tec.setUseInternalCriticalPoints(false);
 
 		//MetaCSPLogging.setLevel(tec.getClass().getSuperclass(), Level.FINEST);
-
-		//Instantiate a simple motion planner
-		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-		String mapFile = "maps"+File.separator+Missions.getProperty("image", yamlFile);
-		rsp.setMapFilename(mapFile);
-		double res = Double.parseDouble(Missions.getProperty("resolution", yamlFile));
-		rsp.setMapResolution(res);
-		rsp.setRadius(0.2);
-		rsp.setTurningRadius(4.0);
-		rsp.setDistanceBetweenPathPoints(0.5);
 
 		Pose startPoseRobot1 = new Pose(4.0,6.0,0.0);
 		Pose goalPoseRobot1 = new Pose(16.0,15.0,Math.PI/4);
@@ -116,25 +108,39 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner12 {
 		tec.placeRobot(1, startPoseRobot1);
 		tec.placeRobot(2, startPoseRobot2);
 		tec.placeRobot(3, startPoseRobot3);
+		
+		//Instantiate a motion planner for each robot
+		final ReedsSheppCarPlanner rsp1 = new ReedsSheppCarPlanner();
+		rsp1.setMap(yamlFile);
+		rsp1.setRadius(0.2);
+		rsp1.setTurningRadius(4.0);
+		rsp1.setDistanceBetweenPathPoints(0.5);
+		tec.setMotionPlanner(1, rsp1);
 
-		rsp.setFootprint(fp1);
-		rsp.setStart(startPoseRobot1);
-		rsp.setGoals(goalPoseRobot1);
-		if (!rsp.plan()) throw new Error ("No path between " + startPoseRobot1 + " and " + goalPoseRobot1);
-		PoseSteering[] pss1 = rsp.getPath();
+		rsp1.setFootprint(fp1);
+		rsp1.setStart(startPoseRobot1);
+		rsp1.setGoals(goalPoseRobot1);
+		if (!rsp1.plan()) throw new Error ("No path between " + startPoseRobot1 + " and " + goalPoseRobot1);
+		PoseSteering[] pss1 = rsp1.getPath();
 
-		rsp.setFootprint(fp2);
-		rsp.setStart(startPoseRobot2);
-		rsp.setGoals(goalPoseRobot2);
-		if (!rsp.plan()) throw new Error ("No path between " + startPoseRobot2 + " and " + goalPoseRobot2);
-		PoseSteering[] pss2 = rsp.getPath();
+		final ReedsSheppCarPlanner rsp2 = (ReedsSheppCarPlanner) rsp1.getCopy();
+		tec.setMotionPlanner(2, rsp2);
+		rsp2.setFootprint(fp2);
+		rsp2.setStart(startPoseRobot2);
+		rsp2.setGoals(goalPoseRobot2);
+		if (!rsp2.plan()) throw new Error ("No path between " + startPoseRobot2 + " and " + goalPoseRobot2);
+		PoseSteering[] pss2 = rsp2.getPath();
 
-		rsp.setFootprint(fp3);
-		rsp.setStart(startPoseRobot3);
-		rsp.setGoals(goalPoseRobot3);
-		if (!rsp.plan()) throw new Error ("No path between " + startPoseRobot3 + " and " + goalPoseRobot3);
-		PoseSteering[] pss3 = rsp.getPath();
+		final ReedsSheppCarPlanner rsp3 = (ReedsSheppCarPlanner) rsp1.getCopy();
+		tec.setMotionPlanner(3, rsp3);
+		rsp3.setFootprint(fp3);
+		rsp3.setStart(startPoseRobot3);
+		rsp3.setGoals(goalPoseRobot3);
+		if (!rsp3.plan()) throw new Error ("No path between " + startPoseRobot3 + " and " + goalPoseRobot3);
+		PoseSteering[] pss3 = rsp3.getPath();
 
+		
+		//Add missions
 		Mission m1 = new Mission(1,pss1);
 		Mission m2 = new Mission(2,pss2);
 		Mission m3 = new Mission(3,pss3);

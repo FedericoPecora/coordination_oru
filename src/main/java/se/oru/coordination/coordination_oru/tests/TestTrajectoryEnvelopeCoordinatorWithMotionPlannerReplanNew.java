@@ -32,9 +32,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlannerReplanNew {
 		//Set up path planner (using empty map)
 		final ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
 		String yamlFile = "maps/map-empty.yaml";
-		rsp.setMapFilename("maps"+File.separator+Missions.getProperty("image", yamlFile));
-		double res = 0.2;// Double.parseDouble(getProperty("resolution", yamlFile));
-		rsp.setMapResolution(res);
+		rsp.setMap(yamlFile);
 		rsp.setRadius(0.2);
 		rsp.setFootprint(footprint1, footprint2, footprint3, footprint4);
 		rsp.setTurningRadius(4.0);
@@ -48,8 +46,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlannerReplanNew {
 		// -- the getCurrentTimeInMillis() method, which is used by the coordinator to keep time
 		//You still need to add one or more comparators to determine robot orderings thru critical sections (comparators are evaluated in the order in which they are added)
 		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(MAX_VEL,MAX_ACCEL);
-		tec.setDefaultMotionPlanner(rsp);
-		
+				
 		tec.addComparator(new Comparator<RobotAtCriticalSection> () {
 			@Override
 			public int compare(RobotAtCriticalSection o1, RobotAtCriticalSection o2) {
@@ -74,8 +71,15 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlannerReplanNew {
 		tec.setForwardModel(1, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
 		tec.setForwardModel(2, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
 
+		//Set private planners for each robot
+		tec.setMotionPlanner(1, rsp);
+		tec.setMotionPlanner(2, rsp.getCopy());
+		
+		
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
+		//Start the thread that checks and enforces dependencies at every clock tick
+		tec.startInference();
 
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();

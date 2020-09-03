@@ -8,6 +8,7 @@ import java.util.Random;
 import java.util.TreeMap;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
+import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 import org.metacsp.multi.spatioTemporal.paths.Trajectory;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 
@@ -16,6 +17,7 @@ import se.oru.coordination.coordination_oru.NetworkConfiguration;
 import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.TrackingCallback;
 import se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator;
+import se.oru.coordination.coordination_oru.util.Missions;
 
 public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnvelopeTracker implements Runnable {
 
@@ -31,7 +33,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 	protected State state = null;
 	protected double[] curvatureDampening = null;
 	private ArrayList<Integer> internalCriticalPoints = new ArrayList<Integer>();
-	private int maxDelayInMilis = 0;
+	private int maxDelayInMillis = 0;
 	private Random rand = new Random(Calendar.getInstance().getTimeInMillis()); 
 	private TreeMap<Double,Double> slowDownProfile = null;
 	private boolean slowingDown = false;
@@ -66,7 +68,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 			this.curvatureDampening[i+1] = 1.0;
 		}
 	}
-			
+	
 	public void setCurvatureDampening(int index, double dampening) {
 		this.curvatureDampening[index] = dampening;
 	}
@@ -81,6 +83,20 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 	
 	public double[] getCurvatureDampening() {
 		return this.curvatureDampening;
+	}private void computeCurvatureDampening() {
+		PoseSteering[] path = this.traj.getPoseSteering();
+		double deltaSinTheta = 0;
+		double sinThetaPrev = Math.sin(Missions.wrapAngle180b(path[0].getTheta()));
+		for (int i = 1; i < path.length; i++) {
+			double sinTheta = Math.sin(Missions.wrapAngle180b(path[i].getTheta()));
+			double deltaSinThetaNew = sinTheta-sinThetaPrev;
+			if (deltaSinThetaNew*deltaSinTheta < 0 && i != 1) {
+				System.out.println("Direction change for Robot" + this.te.getRobotID() + " in " + i);
+				this.curvatureDampening[i] = 0.2;
+			}
+			deltaSinTheta = deltaSinThetaNew;
+			sinThetaPrev = deltaSinThetaNew;
+		}
 	}
 
 	public double getCurvatureDampening(int index, boolean backwards) {
@@ -126,7 +142,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 
 	public static double computeDistance(Trajectory traj, int startIndex, int endIndex) {
 		double ret = 0.0;
-		for (int i = startIndex; i < endIndex; i++) {
+		for (int i = startIndex; i < Math.min(endIndex,traj.getPoseSteering().length-1); i++) {
 			ret += traj.getPose()[i].distanceTo(traj.getPose()[i+1]);
 		}
 		return ret;
@@ -290,11 +306,12 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 		//Compute where to slow down (can do forward here, we have the slowdown profile...)
 		while (tempStateFW.getPosition() < this.totalDistance) {
 			double prevSpeed = -1.0;
+			boolean firstTime = true;
 			for (Double speed : this.slowDownProfile.keySet()) {
 				//Find your speed in the table (table is ordered w/ highest speed first)...
 				if (tempStateFW.getVelocity() > speed) {
 					//If this speed lands you after total dist you are OK (you've checked at lower speeds and either returned or breaked...) 
-					double landingPosition = tempStateFW.getPosition()+slowDownProfile.get(prevSpeed);
+					double landingPosition = tempStateFW.getPosition() + (firstTime ? 0.0 : slowDownProfile.get(prevSpeed));
 					if (landingPosition > totalDistance) {
 						//System.out.println("Found: speed = " + tempStateFW.getVelocity() + " space needed = " + slowDownProfile.get(prevSpeed) + " (delta = " + Math.abs(totalDistance-landingPosition) + ")");
 						//System.out.println("Position to slow down = " + tempStateFW.getPosition());
@@ -303,6 +320,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 					//System.out.println("Found: speed = " + tempStateFW.getVelocity() + " space needed = " + slowDownProfile.get(speed) + " (undershoot by " + (totalDistance-tempStateFW.getPosition()+slowDownProfile.get(speed)) + ")");
 					break;
 				}
+				firstTime = false;
 				prevSpeed = speed;
 			}
 			
@@ -526,8 +544,8 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 		return new RobotReport(te.getRobotID(), pose, currentPathIndex, auxState.getVelocity(), auxState.getPosition(), -1);
 	}
 
-	public void delayIntegrationThread(int maxDelayInmillis) {
-		this.maxDelayInMilis = maxDelayInmillis;
+	public void delayIntegrationThread(int maxDelayInMillis) {
+		this.maxDelayInMillis = maxDelayInMillis;
 	}
 	
 	@Override
@@ -537,6 +555,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 		boolean atCP = false;
 		int myRobotID = te.getRobotID();
 		int myTEID = te.getID();
+		
 		
 		while (true) {
 						
@@ -585,7 +604,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 						
 			//Sleep for tracking period
 			int delay = trackingPeriodInMillis;
-			if (maxDelayInMilis > 0) delay += rand.nextInt(maxDelayInMilis);
+			if (maxDelayInMillis > 0) delay += rand.nextInt(maxDelayInMillis);
 			try { Thread.sleep(delay); }
 			catch (InterruptedException e) { e.printStackTrace(); }
 			

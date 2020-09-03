@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Random;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
@@ -96,6 +97,8 @@ public class Waves {
 		double MAX_ACCEL = 3.0;
 		double MAX_VEL = 2.5;
 		final int numRobots = (args != null && args.length > 0) ? Integer.parseInt(args[0]) : 1;
+		int NUMBER_MISSIONS = 10;
+		
 		//Instantiate a trajectory envelope coordinator.
 		//The TrajectoryEnvelopeCoordinatorSimulation implementation provides
 		// -- the factory method getNewTracker() which returns a trajectory envelope tracker
@@ -132,10 +135,12 @@ public class Waves {
 
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
+		//Start the thread that checks and enforces dependencies at every clock tick
+		tec.startInference();
 		
 		tec.setUseInternalCriticalPoints(false);
 		tec.setYieldIfParking(false);
-		tec.setBreakDeadlocks(false);
+		tec.setBreakDeadlocks(false, true, false);
 
 		//Set up motion planner
 		//String yamlFile = "maps/map-empty.yaml";
@@ -154,6 +159,7 @@ public class Waves {
 		
 		final int[] robotIDs = new int[numRobots];
 		for (int i = 0; i < numRobots; i++) robotIDs[i] = i+1;
+		final HashMap<Integer,Boolean> status = new HashMap<Integer,Boolean>();
 		
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		//JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
@@ -171,67 +177,37 @@ public class Waves {
 
 			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
 			Pose from = new Pose(0.0,index*deltaY,0.0);
-			Pose to = new Pose(3*period,index*deltaY,0.0); //new Pose(5*period,index*deltaY,0.0);
-
+			Pose to = new Pose(2*period,index*deltaY,0.0); //new Pose(5*period,index*deltaY,0.0);
+			tec.placeRobot(robotID, from);
 			if (index%2 != 0) mag*=(-1);
 			PoseSteering[] robotPath = getSinePath(period, mag, from, to);
 			PoseSteering[] robotPathInv = invertPath(robotPath);
-			if (robotID%2 == 0) {
+			for (int j = 0; j < NUMBER_MISSIONS; j++) {
 				Missions.enqueueMission(new Mission(robotID, robotPath));
 				Missions.enqueueMission(new Mission(robotID, robotPathInv));
-				tec.placeRobot(robotID, robotPath[0].getPose());
 			}
-			else {
-				Missions.enqueueMission(new Mission(robotID, robotPathInv));
-				Missions.enqueueMission(new Mission(robotID, robotPath));
-				tec.placeRobot(robotID, robotPathInv[0].getPose());				
-			}
+			status.put(robotID, false);
 		}
 
 		System.out.println("Added missions " + Missions.getMissions());
-		
-//		while (true) {
-//			ArrayList<Mission> missionsToAdd = new ArrayList<Mission>();
-//			for (int robotID : robotIDs) {
-//				if (tec.isFree(robotID)) {
-//					Mission m = Missions.dequeueMission(robotID);
-//					missionsToAdd.add(m);
-//					Missions.enqueueMission(m);
-//				}
-//			}
-//			tec.addMissions(missionsToAdd.toArray(new Mission[missionsToAdd.size()]));
-//			tec.computeCriticalSections();
-//			tec.startTrackingAddedMissions();
-//			Thread.sleep(1000);
-//		}
-		
+				
 		final String statFilename = System.getProperty("user.home")+File.separator+"stats.txt";
 		
 		//Start a mission dispatching thread for each robot, which will run forever
 		for (int i = 0; i < robotIDs.length; i++) {
 			final int robotID = robotIDs[i];
-			//For each robot, create a thread that dispatches the "next" mission when the robot is free
 			
+			//For each robot, create a thread that dispatches the "next" mission when the robot is free
 			Thread t = new Thread() {
 				@Override
 				public void run() {
 					boolean firstTime = true;
-					boolean isFree = false;
-					int sequenceNumber = 0;
-					int totalIterations = 21;
-					//if (robotID%2 == 0) totalIterations = 19;
 					long startTime = Calendar.getInstance().getTimeInMillis();
-					while (true && totalIterations > 0) {
+					while (true && !Missions.getMissions(robotID).isEmpty()) {
 						synchronized(tec.getSolver()) {
-							if (tec.isFree(robotID)) isFree = true;
-						}
-						//Sleep for a little
-						try { Thread.sleep(2000); }
-						catch (InterruptedException e) { e.printStackTrace(); }
-						
-						if (isFree) {
-							isFree = false;
-							synchronized(tec.getSolver()) {
+							Mission m = Missions.peekMission(robotID);
+							if (tec.addMissions(m)) {
+								Missions.dequeueMission(robotID);
 								if (!firstTime) {
 									long elapsed = Calendar.getInstance().getTimeInMillis()-startTime;
 									String stat = "";
@@ -241,21 +217,34 @@ public class Waves {
 								}
 								startTime = Calendar.getInstance().getTimeInMillis();
 								firstTime = false;
-								Mission m = Missions.getMission(robotID,sequenceNumber);
-								tec.addMissions(m);
-								sequenceNumber = (sequenceNumber+1)%Missions.getMissions(robotID).size();
-								totalIterations--;
 							}
 						}
-						//Sleep for a little (2 sec)
-						try { Thread.sleep(1000); }
+						//Sleep for a little
+						try { Thread.sleep(tec.getControlPeriod()); }
 						catch (InterruptedException e) { e.printStackTrace(); }
 					}
 					System.out.println("Robot" + robotID + " is done!");
+					synchronized(status) {
+						status.put(robotID, true);
+						boolean allFinished = true;
+						for (int robotID : status.keySet()) {
+							allFinished &= status.get(robotID);
+							if (!allFinished) break;
+						}
+						if (allFinished && tec.isStartedInference()) {
+							System.out.println("All the robots are done. Finishing the simulation.");
+							tec.stopInference();
+						}
+					}
 				}
 			};
+			
 			//Start the thread!
 			t.start();
+			
+			//Sleep for a little
+			try { Thread.sleep(tec.getControlPeriod()); }
+			catch (InterruptedException e) { e.printStackTrace(); }
 		}
 
 	}

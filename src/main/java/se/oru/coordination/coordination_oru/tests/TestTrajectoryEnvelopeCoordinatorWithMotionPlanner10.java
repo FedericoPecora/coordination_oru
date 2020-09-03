@@ -46,7 +46,7 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner10 {
 		});
 		
 
-		Missions.loadLocationAndPathData("paths/test_poses.txt");
+		Missions.loadRoadMap("paths/test_poses.txt");
 
 		Coordinate footprint1 = new Coordinate(-1.0,0.5);
 		Coordinate footprint2 = new Coordinate(1.0,0.5);
@@ -56,6 +56,8 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner10 {
 
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
+		//Start the thread that checks and enforces dependencies at every clock tick
+		tec.startInference();
 
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		String yamlFile = "maps/map1.yaml";
@@ -63,22 +65,22 @@ public abstract class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner10 {
 		tec.setVisualization(viz);
 
 		tec.setUseInternalCriticalPoints(false);
-		tec.setBreakDeadlocks(false);
+		tec.setBreakDeadlocks(false, false, false);
 		tec.setYieldIfParking(false);
-
-		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-		rsp.setMapFilename("maps"+File.separator+Missions.getProperty("image", yamlFile));
-		double res = Double.parseDouble(Missions.getProperty("resolution", yamlFile));
-		rsp.setMapResolution(res);
-		rsp.setRadius(0.2);
-		rsp.setFootprint(footprint1, footprint2, footprint3, footprint4);
-		rsp.setTurningRadius(4.0);
-		rsp.setDistanceBetweenPathPoints(0.5);
 		
 		Integer[] robotIDs = new Integer[] {1,2,3,4};
 		for (Integer robotID : robotIDs) {
 			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));	
 			tec.placeRobot(robotID, Missions.getLocation("a"+robotID));
+			
+			//Set up private motion planners.
+			final ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
+			rsp.setMap(yamlFile);
+			rsp.setRadius(0.1);
+			rsp.setFootprint(footprint1, footprint2, footprint3, footprint4);
+			rsp.setTurningRadius(4.0);
+			rsp.setDistanceBetweenPathPoints(0.05);
+			tec.setMotionPlanner(robotID, rsp);
 			
 			rsp.setStart(Missions.getLocation("a"+robotID));
 			rsp.setGoals(Missions.getLocation("b"+robotID));

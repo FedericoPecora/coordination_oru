@@ -50,6 +50,8 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner11 {
 		tec.setForwardModel(3, new ConstantAccelerationForwardModel(MAX_ACCEL*0.9, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
+		//Start the thread that checks and enforces dependencies at every clock tick
+		tec.startInference();
 
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
@@ -68,9 +70,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner11 {
 
 		String yamlFile = "maps/map-empty.yaml";
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-		rsp.setMapFilename("maps"+File.separator+Missions.getProperty("image", yamlFile));
-		double res = 0.2;// Double.parseDouble(getProperty("resolution", yamlFile));
-		rsp.setMapResolution(res);
+		rsp.setMap(yamlFile);
 		rsp.setRadius(0.2);
 		rsp.setFootprint(tec.getDefaultFootprint());
 		rsp.setTurningRadius(4.0);
@@ -99,6 +99,9 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner11 {
 		//Start a mission dispatching thread for each robot, which will run forever
 		for (int i = 1; i <= 3; i++) {
 			final int robotID = i;
+			//Set each robot motion planner
+			tec.setMotionPlanner(robotID, rsp.getCopy());
+			
 			//For each robot, create a thread that dispatches the "next" mission when the robot is free 
 			Thread t = new Thread() {
 				int iteration = 0;

@@ -1,41 +1,49 @@
 #ifndef MultipleCircleStateValidityChecker_H
 #define MultipleCircleStateValidityChecker_H
 
-#include <mrpt/maps/COccupancyGridMap2D.h>
 #include <ompl/base/spaces/ReedsSheppStateSpace.h>
 #include <ompl/base/ScopedState.h>
 #include <ompl/geometric/SimpleSetup.h>
+#include <math.h>
 
-using namespace mrpt::maps;
 namespace ob = ompl::base;
 namespace og = ompl::geometric;
 
 class MultipleCircleStateValidityChecker : public ob::StateValidityChecker {
  public:
-  COccupancyGridMap2D gridmap;
+  uint8_t* occupancyMap;
+  double mapResolution;
+  int mapWidth;
+  int mapHeight;
+  double mapOriginX;
+  double mapOriginY;
   float radius;
   double* xCoords;
   double* yCoords;
   int numCoords;
   bool noMap;
   
- MultipleCircleStateValidityChecker(const ob::SpaceInformationPtr &si, const char *mapFilename, double mapResolution, double _radius, double* _xCoords, double* _yCoords, int _numCoords) : ob::StateValidityChecker(si) {
+  MultipleCircleStateValidityChecker(const ob::SpaceInformationPtr &si, uint8_t* _occupancyMap, int _mapWidth, int _mapHeight, double _mapResolution, double _mapOriginX, double _mapOriginY, double _radius, double* _xCoords, double* _yCoords, int _numCoords) : ob::StateValidityChecker(si) {
     noMap = false;
     radius = (float)_radius;
     xCoords = _xCoords;
     yCoords = _yCoords;
     numCoords = _numCoords;
-    gridmap.loadFromBitmapFile( mapFilename, mapResolution, 0.0f, 0.0f );
-    std::cout << "Loaded map " << mapFilename << " for validity checking" << std::endl;
+    occupancyMap = _occupancyMap;
+    mapResolution = _mapResolution;
+    mapWidth = _mapWidth;
+    mapHeight = _mapHeight;
+    mapOriginX = _mapOriginX;
+    mapOriginY = _mapOriginY;
   }
-
-   MultipleCircleStateValidityChecker(const ob::SpaceInformationPtr &si) : ob::StateValidityChecker(si) {
-    noMap = true;
-    std::cout << "Using empty map for validity checking" << std::endl;
-  }
-
-  virtual bool isValid(const ob::State *state) const;
   
+  MultipleCircleStateValidityChecker(const ob::SpaceInformationPtr &si) : ob::StateValidityChecker(si) {
+    noMap = true;
+    std::cout << "(Using empty map for validity checking)" << std::endl;
+  }
+
+  virtual bool isValid(const ob::State *state) const;  
+
 };
 
 #endif
