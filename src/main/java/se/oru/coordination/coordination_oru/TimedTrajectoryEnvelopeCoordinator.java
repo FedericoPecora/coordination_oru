@@ -135,7 +135,7 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 		synchronized(solver) {
 			if (this.fleetMasterInterface != null && this.propagateDelays) localCheckAndReviseWithDelayPropagation();
 			else { //use "the super" updateDependencies(), eventually with new heuristic, defined in the overridden getOrderWithAdvancedHeuristics function.
-				if (this.avoidDeadlockGlobally) globalCheckAndRevise();
+				if (this.avoidDeadlockGlobally.get()) globalCheckAndRevise();
 				else localCheckAndRevise();
 			}
 		}

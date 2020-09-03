@@ -44,9 +44,7 @@ public class ThreeDifferentRobotsEmptyMap {
 				return (o2.getRobotReport().getRobotID()-o1.getRobotReport().getRobotID());
 			}
 		});
-		tec.setAvoidDeadlocksGlobally(false);
-		tec.setBreakDeadlocksByReordering(true);
-		tec.setBreakDeadlocksByReplanning(true);
+		tec.setBreakDeadlocks(false, true, true);
 		
 		NetworkConfiguration.setDelays(0,0);
 		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0.;

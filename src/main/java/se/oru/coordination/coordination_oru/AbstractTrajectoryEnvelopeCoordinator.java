@@ -15,6 +15,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Random;
+import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
@@ -100,7 +101,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
         }
 	});
 	protected ArrayList<TrajectoryEnvelope> envelopesToTrack = new ArrayList<TrajectoryEnvelope>();
-	protected ArrayList<TrajectoryEnvelope> currentParkingEnvelopes = new ArrayList<TrajectoryEnvelope>();
+	protected HashMap<Integer,TrajectoryEnvelope> currentParkingEnvelopes = new HashMap<Integer,TrajectoryEnvelope>();
 	protected HashSet<CriticalSection> allCriticalSections = new HashSet<CriticalSection>();
 	protected HashMap<CriticalSection,Pair<Integer,Integer>> CSToDepsOrder = new HashMap<CriticalSection,Pair<Integer,Integer>>(); 
 	HashMap<Dependency,CriticalSection> depsToCS = new HashMap<Dependency, CriticalSection>();
@@ -374,6 +375,12 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			public int getEarliestStoppingPathIndex(TrajectoryEnvelope te, RobotReport currentState) {
 				// TODO Auto-generated method stub
 				return 0;
+			}
+			@Override
+			public int[] getStoppingPathIndicesBounds(TrajectoryEnvelope te, RobotReport currentState,
+					int numberOfAdditionalCoordinationPeriods) {
+				// TODO Auto-generated method stub
+				return new int[] {0,0};
 			}
 		};
 	}

@@ -26,18 +26,6 @@ import se.oru.coordination.coordination_oru.util.Missions;
 @DemoDescription(desc = "Coordination of robots vertically. Goals are continually posted to robots. Paths are computed by using the ReedsSheppCarPlanner.")
 public class TimedParkingArrayNew {
 	
-	private static AbstractMotionPlanner createMotionPlanner(Coordinate[] footprint, String yamlFile) {
-		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-		rsp.setMapFilename("maps"+File.separator+Missions.getProperty("image", yamlFile));
-		double res = Double.parseDouble(Missions.getProperty("resolution", yamlFile));
-		rsp.setMapResolution(res);
-		rsp.setRadius(0.1);
-		rsp.setFootprint(footprint);
-		rsp.setTurningRadius(4.0);
-		rsp.setDistanceBetweenPathPoints(0.3);
-		return rsp;
-	}
-	
 	private static void writeStat(String fileName, String stat) {
         try {
         	//Append to file
@@ -86,9 +74,7 @@ public class TimedParkingArrayNew {
 		tec.setUseInternalCriticalPoints(false);
 		tec.setCheckEscapePoses(true);
 		tec.setYieldIfParking(false);
-		//tec.setAvoidDeadlocksGlobally(true);
-		//tec.setBreakDeadlocksByReordering(false);
-		tec.setBreakDeadlocksByReplanning(true);
+		tec.setBreakDeadlocks(false, true, true);
 		tec.setCheckCollisions(true);
 		//MetaCSPLogging.setLevel(TrajectoryEnvelopeCoordinator.class, Level.FINEST);
 		
@@ -127,8 +113,13 @@ public class TimedParkingArrayNew {
 		for (int i : robotIDs) {
 			tec.setForwardModel(i, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
 			//In case deadlocks occur, we make the coordinator capable of re-planning on the fly (experimental, not working properly yet)
-			AbstractMotionPlanner rsp_i = createMotionPlanner(footprint, yamlFile);
-			tec.setMotionPlanner(i, rsp_i);
+			ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
+			rsp.setMap(yamlFile);
+			rsp.setRadius(0.1);
+			rsp.setFootprint(footprint);
+			rsp.setTurningRadius(4.0);
+			rsp.setDistanceBetweenPathPoints(0.5);
+			tec.setMotionPlanner(i, rsp);
 			tec.setNominalTrajectoryParameters(i, MAX_VEL, MAX_VEL, false, -1, -1, -1, MAX_ACCEL, -1, -1);
 		}
 				
@@ -157,7 +148,12 @@ public class TimedParkingArrayNew {
 		for (int robotID : robotIDs) header += (robotID + "\t");
 		initStat(statFilename, header);
 		
-		AbstractMotionPlanner rsp = createMotionPlanner(footprint, yamlFile);
+		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
+		rsp.setMap(yamlFile);
+		rsp.setRadius(0.1);
+		rsp.setFootprint(footprint);
+		rsp.setTurningRadius(4.0);
+		rsp.setDistanceBetweenPathPoints(0.5);
 		
 		//Here we pre-compute all paths
 		for (int i = 0; i < numSlots; i++) {
