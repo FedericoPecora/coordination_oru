@@ -1954,7 +1954,6 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		}
 		System.out.println();
 	}
-
 	
 }
 

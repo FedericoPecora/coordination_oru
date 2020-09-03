@@ -113,12 +113,6 @@ public abstract class TimedTrajectoryEnvelopeCoordinator extends TrajectoryEnvel
 	}
 	
 	@Override
-	protected void onSettingDefaultFootprint() {
-		if (this.fleetMasterInterface != null)
-			this.fleetMasterInterface.setDefaultFootprint(DEFAULT_FOOTPRINT);
-	}
-		
-	@Override
 	protected void onClearingTe(TrajectoryEnvelope te) {
 		if (this.fleetMasterInterface != null) 
 			this.fleetMasterInterface.clearPath(te.getID());
