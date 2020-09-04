@@ -91,6 +91,24 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	protected Thread inference = null;
 	protected volatile Boolean stopInference = new Boolean(true);
 
+	protected HashSet<Integer> uncontrollableRobots = new HashSet<Integer>();
+
+	public void addUncontrollableRobots(int ... robotIDs) {
+		for (int i : robotIDs) this.uncontrollableRobots.add(i);
+	}
+
+	public void removeUncontrollableRobots(int ... robotIDs) {
+		for (int i : robotIDs) this.uncontrollableRobots.remove(i);
+	}
+
+	public void resetUncontrollableRobots() {
+		this.uncontrollableRobots.clear();
+	}
+
+	public boolean isUncontrollable(int robotID) {
+		return this.uncontrollableRobots.contains(robotID);
+	}
+
 	//protected JTSDrawingPanel panel = null;
 	protected FleetVisualization viz = null;
 	protected TreeSet<Pair<TrajectoryEnvelope,Long>> missionsPool = new TreeSet<Pair<TrajectoryEnvelope,Long>>(new Comparator<Pair<TrajectoryEnvelope,Long>>() {
@@ -981,6 +999,12 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				for (int i = 0; i < drivingEnvelopes.size(); i++) {
 					for (int j = 0; j < envelopesToTrack.size(); j++) {	
 						if (drivingEnvelopes.get(i).getRobotID() != envelopesToTrack.get(j).getRobotID()) {
+
+							// If both agents are uncontrollable, don't compute critical sections.
+							if(this.isUncontrollable(drivingEnvelopes.get(i).getRobotID()) && this.isUncontrollable(envelopesToTrack.get(j).getRobotID())) {
+								continue;
+							}
+
 							int minStart1 = currentReports.containsKey(drivingEnvelopes.get(i).getRobotID()) ? currentReports.get(drivingEnvelopes.get(i).getRobotID()).getPathIndex() : -1;
 							int minStart2 = currentReports.containsKey(envelopesToTrack.get(j).getRobotID()) ? currentReports.get(envelopesToTrack.get(j).getRobotID()).getPathIndex() : -1;
 							double maxDimensionOfSmallestRobot = Math.min(getMaxFootprintDimension(drivingEnvelopes.get(i).getRobotID()), getMaxFootprintDimension(envelopesToTrack.get(j).getRobotID()));
@@ -996,6 +1020,12 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				for (int i = 0; i < envelopesToTrack.size(); i++) {
 					for (int j = i+1; j < envelopesToTrack.size(); j++) {
 						if (envelopesToTrack.get(i).getRobotID() != envelopesToTrack.get(j).getRobotID()) {
+
+							// If both agents are uncontrollable, don't compute critical sections.
+							if(this.isUncontrollable(envelopesToTrack.get(i).getRobotID()) && this.isUncontrollable(envelopesToTrack.get(j).getRobotID())) {
+								continue;
+							}
+
 							int minStart1 = currentReports.containsKey(envelopesToTrack.get(i).getRobotID()) ? currentReports.get(envelopesToTrack.get(i).getRobotID()).getPathIndex() : -1;
 							int minStart2 = currentReports.containsKey(envelopesToTrack.get(j).getRobotID()) ? currentReports.get(envelopesToTrack.get(j).getRobotID()).getPathIndex() : -1;
 							double maxDimensionOfSmallestRobot = Math.min(getMaxFootprintDimension(envelopesToTrack.get(i).getRobotID()), getMaxFootprintDimension(envelopesToTrack.get(j).getRobotID()));
@@ -1011,6 +1041,12 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				for (int i = 0; i < drivingEnvelopes.size(); i++) {
 					for (int j = 0; j < currentParkingEnvelopes.size(); j++) {
 						if (drivingEnvelopes.get(i).getRobotID() != currentParkingEnvelopes.get(j).getRobotID()) {
+
+							// If both agents are uncontrollable, don't compute critical sections.
+							if(this.isUncontrollable(drivingEnvelopes.get(i).getRobotID()) && this.isUncontrollable(currentParkingEnvelopes.get(j).getRobotID())) {
+								continue;
+							}
+
 							int minStart1 = currentReports.containsKey(drivingEnvelopes.get(i).getRobotID()) ? currentReports.get(drivingEnvelopes.get(i).getRobotID()).getPathIndex() : -1;
 							int minStart2 = currentReports.containsKey(currentParkingEnvelopes.get(j).getRobotID()) ? currentReports.get(currentParkingEnvelopes.get(j).getRobotID()).getPathIndex() : -1;
 							double maxDimensionOfSmallestRobot = Math.min(getMaxFootprintDimension(drivingEnvelopes.get(i).getRobotID()), getMaxFootprintDimension(currentParkingEnvelopes.get(j).getRobotID()));
@@ -1026,6 +1062,12 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				for (int i = 0; i < envelopesToTrack.size(); i++) {
 					for (int j = 0; j < currentParkingEnvelopes.size(); j++) {
 						if (envelopesToTrack.get(i).getRobotID() != currentParkingEnvelopes.get(j).getRobotID()) {
+
+							// If both agents are uncontrollable, don't compute critical sections.
+							if(this.isUncontrollable(envelopesToTrack.get(i).getRobotID()) && this.isUncontrollable(currentParkingEnvelopes.get(j).getRobotID())) {
+								continue;
+							}
+
 							int minStart1 = currentReports.containsKey(envelopesToTrack.get(i).getRobotID()) ? currentReports.get(envelopesToTrack.get(i).getRobotID()).getPathIndex() : -1;
 							int minStart2 = currentReports.containsKey(currentParkingEnvelopes.get(j).getRobotID()) ? currentReports.get(currentParkingEnvelopes.get(j).getRobotID()).getPathIndex() : -1;
 							double maxDimensionOfSmallestRobot = Math.min(getMaxFootprintDimension(envelopesToTrack.get(i).getRobotID()), getMaxFootprintDimension(currentParkingEnvelopes.get(j).getRobotID()));
