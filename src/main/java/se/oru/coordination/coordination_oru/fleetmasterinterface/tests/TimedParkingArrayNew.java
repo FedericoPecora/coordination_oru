@@ -203,6 +203,9 @@ public class TimedParkingArrayNew {
 			Missions.enqueueMission(mBW);
 			}
 		}
+		
+		//Start the thread that checks and enforces dependencies at every clock tick
+		tec.startInference();
 
 		for (final int robotID : robotIDs) {
 			if (!inactiveRobots.contains(robotID)) {

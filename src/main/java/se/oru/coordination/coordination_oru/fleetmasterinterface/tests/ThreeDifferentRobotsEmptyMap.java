@@ -90,14 +90,12 @@ public class ThreeDifferentRobotsEmptyMap {
 		
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
-
+		
 		JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
 		viz.setSize(1024, 768);
 		//BrowserVisualization viz = new BrowserVisualization();
 		//viz.setInitialTransform(49, 5, 0);
 		tec.setVisualization(viz);
-		
-
 		tec.setUseInternalCriticalPoints(false);
 
 		//MetaCSPLogging.setLevel(tec.getClass().getSuperclass(), Level.FINEST);
@@ -145,6 +143,9 @@ public class ThreeDifferentRobotsEmptyMap {
 		Mission m2 = new Mission(2,pss2);
 		Mission m3 = new Mission(3,pss3);
 		tec.addMissions(m1,m2,m3);
+		
+		//Start the thread that checks and enforces dependencies at every clock tick
+		tec.startInference();
 
 	}
 

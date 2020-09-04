@@ -115,6 +115,9 @@ public class TwoRobotsFollowingEmptyMap {
 		tec.addMissions(Missions.getMission(1, 0));
 		tec.addMissions(Missions.getMission(2, 0));
 		
+		//Start the thread that checks and enforces dependencies at every clock tick
+		tec.startInference();
+		
 	}
 
 }
