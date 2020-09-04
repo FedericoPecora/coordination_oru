@@ -238,7 +238,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		return g;
 	}
 
-	private HashSet<Dependency> computeClosestDependencies(HashMap<Integer,HashSet<Dependency>> allDeps, HashMap<Integer, HashSet<Dependency>> artificialDeps) {
+	protected HashSet<Dependency> computeClosestDependencies(HashMap<Integer,HashSet<Dependency>> allDeps, HashMap<Integer, HashSet<Dependency>> artificialDeps) {
 
 		HashSet<Dependency> closestDeps = new HashSet<Dependency>();
 
@@ -291,7 +291,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		return this.isDeadlocked;
 	}
 
-	private HashMap<Integer,HashSet<Dependency>> findCurrentCycles(HashMap<Integer,HashSet<Dependency>> currentDeps, HashMap<Integer,HashSet<Dependency>> artificialDeps, HashSet<Dependency> reversibleDeps, HashMap<Integer,RobotReport> currentReports, Set<Integer> robotIDs) {
+	protected HashMap<Integer,HashSet<Dependency>> findCurrentCycles(HashMap<Integer,HashSet<Dependency>> currentDeps, HashMap<Integer,HashSet<Dependency>> artificialDeps, HashSet<Dependency> reversibleDeps, HashMap<Integer,RobotReport> currentReports, Set<Integer> robotIDs) {
 
 		HashMap<Integer,HashSet<Dependency>> allDeps = new HashMap<Integer, HashSet<Dependency>>();
 		for (int robotID : currentDeps.keySet()) {
@@ -1207,7 +1207,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				synchronized (trackers) {
 					this.trackers.get(robotID).updateTrajectoryEnvelope(newTE);
 				}
-
+				
+				onClearingTe(te);
+				onAddingTe(newTE);
+				
 				//Stitch together with rest of constraint network (temporal constraints with parking envelopes etc.)
 				for (Constraint con : solver.getConstraintNetwork().getOutgoingEdges(te)) {
 					if (con instanceof AllenIntervalConstraint) {
@@ -1621,10 +1624,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				for (CriticalSection cs : this.allCriticalSections) {
 
 					//Will be assigned depending on current situation of robot reports...
+					AbstractTrajectoryEnvelopeTracker waitingTracker = null;
+					AbstractTrajectoryEnvelopeTracker drivingTracker = null;
 					int waitingPoint = -1;
 					int drivingCurrentIndex = -1;
-					AbstractTrajectoryEnvelopeTracker drivingTracker = null;
-					AbstractTrajectoryEnvelopeTracker waitingTracker = null;
 
 					AbstractTrajectoryEnvelopeTracker robotTracker1 = trackers.get(cs.getTe1().getRobotID());
 					RobotReport robotReport1 = currentReports.get(cs.getTe1().getRobotID());
@@ -1765,6 +1768,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 						else {	//Otherwise re-impose previously decided dependency if possible			
 							
+							//Update the TreeSets for both the robots (if not already done).
+							robotsToCS.remove(cs);
+
 							int drivingRobotID = -1;
 							int waitingRobotID = -1;
 

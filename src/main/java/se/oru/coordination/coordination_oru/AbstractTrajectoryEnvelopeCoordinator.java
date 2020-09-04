@@ -24,10 +24,7 @@ import javax.swing.SwingUtilities;
 
 import org.apache.commons.collections.comparators.ComparatorChain;
 import org.metacsp.framework.Constraint;
-import org.metacsp.meta.spatioTemporal.paths.Map;
 import org.metacsp.multi.allenInterval.AllenIntervalConstraint;
-import org.metacsp.multi.spatial.DE9IM.GeometricShapeDomain;
-import org.metacsp.multi.spatial.DE9IM.GeometricShapeVariable;
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
@@ -181,6 +178,18 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 */
 	public Set<Integer> getAllRobotIDs() {
 		return trackers.keySet();
+	}
+	
+	/**
+	 * Return the current parking envelope of the robot with the specified ID.
+	 * @param robotID The ID of the robot.
+	 * @return
+	 */
+	public TrajectoryEnvelope getCurrentParkingEnvelope(int robotID) {
+		if (currentParkingEnvelopes.containsKey(robotID))
+			return currentParkingEnvelopes.get(robotID);
+		metaCSPLogger.severe("[getCurrentParkingEnvelope] Invalid robot ID.");
+		return null;
 	}
 	
 	/**
@@ -1058,7 +1067,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	
 				//Compute critical sections between driving envelopes and current parking envelopes	
 				for (int i = 0; i < drivingEnvelopes.size(); i++) {
-					for (int j = 0; j < currentParkingEnvelopes.size(); j++) {
+					for (int j : currentParkingEnvelopes.keySet()) {
 						if (drivingEnvelopes.get(i).getRobotID() != currentParkingEnvelopes.get(j).getRobotID()) {
 							int minStart1 = currentReports.containsKey(drivingEnvelopes.get(i).getRobotID()) ? currentReports.get(drivingEnvelopes.get(i).getRobotID()).getPathIndex() : -1;
 							int minStart2 = currentReports.containsKey(currentParkingEnvelopes.get(j).getRobotID()) ? currentReports.get(currentParkingEnvelopes.get(j).getRobotID()).getPathIndex() : -1;
@@ -1073,7 +1082,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	
 				//Compute critical sections between NEW driving envelopes and current parking envelopes	
 				for (int i = 0; i < envelopesToTrack.size(); i++) {
-					for (int j = 0; j < currentParkingEnvelopes.size(); j++) {
+					for (int j : currentParkingEnvelopes.keySet()) {
 						if (envelopesToTrack.get(i).getRobotID() != currentParkingEnvelopes.get(j).getRobotID()) {
 							int minStart1 = currentReports.containsKey(envelopesToTrack.get(i).getRobotID()) ? currentReports.get(envelopesToTrack.get(i).getRobotID()).getPathIndex() : -1;
 							int minStart2 = currentReports.containsKey(currentParkingEnvelopes.get(j).getRobotID()) ? currentReports.get(currentParkingEnvelopes.get(j).getRobotID()).getPathIndex() : -1;
