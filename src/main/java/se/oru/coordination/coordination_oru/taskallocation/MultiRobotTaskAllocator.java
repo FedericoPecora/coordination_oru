@@ -47,9 +47,9 @@ public class MultiRobotTaskAllocator {
 	//tec.getRobotFootprint(robotID)
 	//tec.getFootprintPolygon(robotID)
 	//tec.getDrivingEnvelope(robotID)
-	//tec.getRobot
 	//tec.getForwardModel(robotID)
 	//tec.getIdleRobots(robotID)
+	//ALL OK.
 	
 	//Fleetmaster: use a local instance instead of the coordination one.
 	

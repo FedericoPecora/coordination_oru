@@ -167,6 +167,17 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		return (isDriving.containsKey(robotID) && isDriving.get(robotID));
 	}
 	
+	/**
+	 * Return the current {@link TrajectoryEnvelope} of a given robot.
+	 * @param robotID The ID of the robot.
+	 * @return Its current {@link TrajectoryEnvelope}.
+	 */
+	public TrajectoryEnvelope getCurrentDrivingEnvelope(int robotID) {
+		if (trackers.containsKey(robotID)) return trackers.get(robotID).getTrajectoryEnvelope();
+		metaCSPLogger.severe("Invalid robotID.");
+		return null;
+	}
+	
 	
 	/**
 	 * Returning the number of messages required by each send to be effective
@@ -180,18 +191,20 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 * Return the IDs of the tracked robots.
 	 */
 	public Set<Integer> getAllRobotIDs() {
-		return trackers.keySet();
+		synchronized (trackers) {
+			return trackers.keySet();
+		}
 	}
 	
 	/**
-	 * Return the current parking envelope of the robot with the specified ID.
+	 * Return the current parking envelope of a robot.
 	 * @param robotID The ID of the robot.
-	 * @return
+	 * @return Its current parking envelope.
 	 */
 	public TrajectoryEnvelope getCurrentParkingEnvelope(int robotID) {
 		if (currentParkingEnvelopes.containsKey(robotID))
 			return currentParkingEnvelopes.get(robotID);
-		metaCSPLogger.severe("[getCurrentParkingEnvelope] Invalid robot ID.");
+		metaCSPLogger.severe("Invalid robot ID.");
 		return null;
 	}
 	
@@ -412,11 +425,24 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 * @return The {@link RobotType} of the robot (null in case of unknown robotID).
 	 */
 	public RobotType getRobotType(int robotID) {
-		if (!this.types.containsKey(robotID))
-			metaCSPLogger.severe("Unknown robotID.");
-		return this.types.get(robotID); 
+		if (this.types.containsKey(robotID)) return this.types.get(robotID); 
+		metaCSPLogger.severe("Invalid robotID.");
+		return null;
 	}
 	
+	/**
+	 * Return IDs of the robots which are currently idle.
+	 * @return The IDs the robots which are currently idle.
+	 * FIXME check better with respect to isParked/isDriving flags.
+	 */
+	public Integer[] getIdleRobots() {
+		ArrayList<Integer> ret = new ArrayList<Integer>();
+		synchronized (trackers) {
+			for (int robotID : trackers.keySet()) 
+				if (trackers.get(robotID) instanceof TrajectoryEnvelopeTrackerDummy) ret.add(robotID);
+		}
+		return ret.toArray(new Integer[ret.size()]);
+	}
 		
 	protected void setupLogging() {
 		//logDirName = "log-" + Calendar.getInstance().getTimeInMillis();
