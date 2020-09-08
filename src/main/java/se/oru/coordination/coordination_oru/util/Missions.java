@@ -73,7 +73,7 @@ public class Missions {
 	
 	/**
 	 * Set the minimum acceptable distance between path poses. This is used to re-sample paths
-	 * when they are loaded from file or when the method {@link #resamplePathsInRoadMap()} is called.
+	 * when they are loaded from file or when the method {@link #filterPathsSamplesInRoadMap()} is called.
 	 * @param minPathDist The minimum acceptable distance between path poses.
 	 */
 	public static void setMinPathDistance(double minPathDist) {
@@ -81,16 +81,21 @@ public class Missions {
 	}
 	
 	/**
-	 * Re-sample all paths so that the minimum distance between path poses is the value
+	 * Filter the samples of all paths so that the minimum distance between path poses is the value
 	 * set by {@link #setMinPathDistance(double)}.
 	 */
-	public static void resamplePathsInRoadMap() {
+	public static void filterPathsSamplesInRoadMap() {
 		for (String pathname : paths.keySet()) {
-			paths.put(pathname, resamplePath(paths.get(pathname)));
+			paths.put(pathname, filterPathSamples(paths.get(pathname)));
 		}
 	}
-	
-	private static PoseSteering[] resamplePath(PoseSteering[] path) {
+
+	/**
+	 * Filter the samples of a given paths so that the minimum distance between path poses is the value
+	 * set by {@link #setMinPathDistance(double)}.
+	 * @param path The path to be filtered.
+	 */
+	private static PoseSteering[] filterPathSamples(PoseSteering[] path) {
 		if (minPathDistance < 0) return path;
 		ArrayList<PoseSteering> ret = new ArrayList<PoseSteering>();
 		PoseSteering lastAdded = path[0];
@@ -977,7 +982,6 @@ public class Missions {
 										//cat with future missions if necessary
 										if (concatenatedMissions.containsKey(m)) {
 											ArrayList<Mission> catMissions = concatenatedMissions.get(m);
-											m = new Mission(m.getRobotID(), m.getFromLocation(), catMissions.get(catMissions.size()-1).getToLocation(), m.getFromPose(), catMissions.get(catMissions.size()-1).getToPose());
 											ArrayList<PoseSteering> path = new ArrayList<PoseSteering>();
 											for (int i = 0; i < catMissions.size(); i++) {
 												Mission oneMission = catMissions.get(i);
@@ -988,7 +992,7 @@ public class Missions {
 												}
 												if (i == catMissions.size()-1) path.add(oneMission.getPath()[oneMission.getPath().length-1]);
 											}
-											m.setPath(path.toArray(new PoseSteering[path.size()]));
+											m = new Mission(m.getRobotID(), path.toArray(new PoseSteering[path.size()]), m.getFromLocation(), catMissions.get(catMissions.size()-1).getToLocation(), m.getFromPose(), catMissions.get(catMissions.size()-1).getToPose());
 										}
 										else if (mdcs.containsKey(robotID)) mdcs.get(robotID).beforeMissionDispatch(m);							
 									}
@@ -1067,7 +1071,7 @@ public class Missions {
 		}
 		catch (FileNotFoundException e) { e.printStackTrace(); }
 		PoseSteering[] retArray = ret.toArray(new PoseSteering[ret.size()]);
-		return resamplePath(retArray);
+		return filterPathSamples(retArray);
 	}
 	
 

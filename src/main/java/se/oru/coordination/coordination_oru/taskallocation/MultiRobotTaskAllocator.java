@@ -4,13 +4,15 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.TreeSet;
 import org.apache.commons.collections.comparators.ComparatorChain;
+
+import se.oru.coordination.coordination_oru.SimpleNonCooperativeTask;
 import se.oru.coordination.coordination_oru.util.StringUtils;
 
 /**
  * This class provides task allocation for a fleet of robots. An instantiatable {@link MultiRobotTaskAllocator}
  * must provide a comparator for queuing tasks. Default ordering is EDF (Earliest Deadline First) when a deadline is provided, FIFO otherwise.
  * 
- * @author am, pf, fpa
+ * @author anmi, pf, fpa
  *
  */
 public class MultiRobotTaskAllocator {
@@ -32,7 +34,7 @@ public class MultiRobotTaskAllocator {
 	//Force printing of (c) and license upon class loading
 	static { printLicense(); }
 	
-	TreeSet<NonCooperativeTask> taskQueue = new TreeSet<NonCooperativeTask>();
+	TreeSet<SimpleNonCooperativeTask> taskQueue = new TreeSet<SimpleNonCooperativeTask>();
 	protected ComparatorChain comparators = new ComparatorChain();
 	/**
 	 * Add a criterion for determining the order of robots through critical sections
@@ -40,7 +42,7 @@ public class MultiRobotTaskAllocator {
 	 * Comparators are considered in the order in which they are added.
 	 * @param c A new comparator for determining robot ordering through critical sections.
 	 */
-	public void addComparator(Comparator<NonCooperativeTask> c) {
+	public void addComparator(Comparator<SimpleNonCooperativeTask> c) {
 		this.comparators.addComparator(c);
 	}
 	
