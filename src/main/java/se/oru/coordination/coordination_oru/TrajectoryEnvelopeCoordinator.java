@@ -69,6 +69,21 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	protected boolean isDeadlocked = false;
 	protected boolean isBlocked = false;
 
+	public double getRobotStoppageTime(int robotID) {
+		return trackers.get(robotID).getStoppageTime();
+	}
+
+	public int getRobotStops(int robotID) {
+		return trackers.get(robotID).getStops();
+	}
+
+	public double getTotalStoppageTime() {
+		double totalStoppageTime = 0.0;
+		for(HashMap.Entry<Integer, AbstractTrajectoryEnvelopeTracker> tracker : trackers.entrySet()) {
+			totalStoppageTime += tracker.getValue().getStoppageTime();
+		}
+		return totalStoppageTime;
+	}
 
 	/**
 	 * Get whether there is a robot in a blocked situation (waiting for a parked robot).

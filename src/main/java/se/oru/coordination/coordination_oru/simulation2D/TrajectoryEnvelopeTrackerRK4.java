@@ -29,6 +29,8 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 	protected double totalDistance = 0.0;
 	protected double positionToSlowDown = -1.0;
 	protected double elapsedTrackingTime = 0.0;
+	protected double stoppageTime = 0.0;
+	protected int stops = 0;
 	private Thread th = null;
 	protected State state = null;
 	protected double[] curvatureDampening = null;
@@ -42,6 +44,12 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 	protected ArrayList<Long> reportTimeLists = new ArrayList<Long>();
 	
 	private HashMap<Integer,Integer> userCPReplacements = null;
+
+	@Override
+	public double getStoppageTime() { return stoppageTime; }
+
+	@Override
+	public int getStops() { return stops; }
 
 	public void setUseInternalCriticalPoints(boolean value) {
 		this.useInternalCPs = value;
@@ -583,6 +591,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 			if (!skipIntegration) {
 				if (atCP) {
 					metaCSPLogger.info("Resuming from critical point (" + te.getComponent() + ")");
+					stops = stops + 1;
 					atCP = false;
 				}
 				slowingDown = false;
@@ -606,6 +615,9 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 			long deltaTimeInMillis = Calendar.getInstance().getTimeInMillis()-timeStart;
 			deltaTime = deltaTimeInMillis/this.temporalResolution;
 			elapsedTrackingTime += deltaTime;
+
+			// If we have skipped integration, add this to stoppage time.
+			if(skipIntegration)	this.stoppageTime += deltaTime;
 		}
 		
 		//continue transmitting until the coordinator will be informed of having reached the last position.
