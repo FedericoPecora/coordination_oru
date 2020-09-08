@@ -54,6 +54,10 @@ import se.oru.coordination.coordination_oru.util.StringUtils;
  */
 public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	
+	public static enum RobotType {
+	    NOT_SPECIFIED, KIVA_LIKE, FORKLIFT, MOBILE_MANIPULATOR, MANIPULATOR 
+	}
+	
 	public static String TITLE = "coordination_oru - Robot-agnostic online coordination for multiple robots";
 	public static String COPYRIGHT = "Copyright \u00a9 2017-2020 Federico Pecora";
 
@@ -121,9 +125,8 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	
 	//Robots knowledge
 	protected HashMap<Integer,ForwardModel> forwardModels = new HashMap<Integer, ForwardModel>();
-
 	protected HashMap<Integer,Coordinate[]> footprints = new HashMap<Integer, Coordinate[]>();
-	protected HashMap<Integer,Integer> types = new HashMap<Integer, Integer>();
+	protected HashMap<Integer,RobotType> types = new HashMap<Integer, RobotType>();
 	protected HashMap<Integer,Double> maxFootprintDimensions = new HashMap<Integer, Double>();
 
 	protected HashSet<Integer> muted = new HashSet<Integer>();
@@ -395,13 +398,25 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	}
 	
 	/**
-	 * Set the type of a given robot.
+	 * Set the {@link RobotType} of a given robot.
 	 * @param robotID The ID of the robot.
-	 * @param type The robot's type.
+	 * @param type The {@link RobotType} of the robot.
 	 */
-	public void setForwardModel(int robotID, int type) {
+	public void setRobotType(int robotID, RobotType type) {
 		this.types.put(robotID, type); 
 	}
+	
+	/**
+	 * Get the type of a given robot.
+	 * @param robotID The ID of the robot.
+	 * @return The {@link RobotType} of the robot (null in case of unknown robotID).
+	 */
+	public RobotType getRobotType(int robotID) {
+		if (!this.types.containsKey(robotID))
+			metaCSPLogger.severe("Unknown robotID.");
+		return this.types.get(robotID); 
+	}
+	
 		
 	protected void setupLogging() {
 		//logDirName = "log-" + Calendar.getInstance().getTimeInMillis();
@@ -1682,11 +1697,11 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				synchronized(stoppingPoints) {
 					for (int i = 0; i < e.getValue().size(); i++) {
 						Mission m = e.getValue().get(i);
-						for (Entry<Pose,Integer> entry : m.getStoppingPoints().entrySet()) {
+						for (Entry<Pose,Long> entry : m.getStoppingPoints().entrySet()) {
 							Pose stoppingPose = entry.getKey();
 							int stoppingPoint = te.getSequenceNumber(new Coordinate(stoppingPose.getX(), stoppingPose.getY()));
 							if (stoppingPoint == te.getPathLength()-1) stoppingPoint -= 2;
-							int duration = entry.getValue();
+							int duration = entry.getValue().intValue();
 							if (!stoppingPoints.keySet().contains(robotID)) {
 								stoppingPoints.put(robotID, new ArrayList<Integer>());
 								stoppingTimes.put(robotID, new ArrayList<Integer>());
