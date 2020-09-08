@@ -34,7 +34,33 @@ public class MultiRobotTaskAllocator {
 	//Force printing of (c) and license upon class loading
 	static { printLicense(); }
 	
+	//A task queue (whenever a new task is posted, it is automatically added to the task queue).
 	TreeSet<SimpleNonCooperativeTask> taskQueue = new TreeSet<SimpleNonCooperativeTask>();
+	
+	//Mission dispatcher for each robot (where to put the output of each instance).
+	
+	//Coordinator (to get informations about the current paths in execution and status of the robots).
+	//what's the info required?
+	//tec.getMotionPlanner(robotID) -> gestire conflitto sulla risorsa (synchronized? plan and doPlanning yes!).
+	//tec.getRobotReport(robotID) -> getLastRobotReport
+	//tec.getRobotType(robotID)
+	//tec.getRobotFootprint(robotID)
+	//tec.getFootprintPolygon(robotID)
+	//tec.getDrivingEnvelope(robotID)
+	//tec.getRobot
+	//tec.getForwardModel(robotID)
+	//tec.getIdleRobots(robotID)
+	
+	//Fleetmaster: use a local instance instead of the coordination one.
+	
+	//Visualization on Rviz? (Non completely useful).
+	
+	//Parameters: use_scenario, weights for the B function, alpha, period of the main loop
+	
+	//Start a periodic thread which checks for current posted goals and solves the MRTA problem at each instance.
+	//flow:
+	//
+	
 	protected ComparatorChain comparators = new ComparatorChain();
 	/**
 	 * Add a criterion for determining the order of robots through critical sections
