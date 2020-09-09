@@ -75,6 +75,7 @@ public class MultiRobotTaskAllocator {
 	double pathLengthWeight = 1;
 	double arrivalTimeWeight = 0;
 	double tardinessWeight = 0;
+	int maximumPathsPerTask = 1;
 	
 	//Start a periodic thread which checks for current posted goals and solves the MRTA problem at each instance.
 	//flow:
@@ -89,7 +90,7 @@ public class MultiRobotTaskAllocator {
 		this.comparators.addComparator(c);
 	}
 	
-	public MultiRobotTaskAllocator(AbstractTrajectoryEnvelopeCoordinator tec, ComparatorChain comparators, double interferenceWeight, double pathLengthWeight, double arrivalTimeWeight, double tardinessWeight) {
+	public MultiRobotTaskAllocator(AbstractTrajectoryEnvelopeCoordinator tec, ComparatorChain comparators, double interferenceWeight, double pathLengthWeight, double arrivalTimeWeight, double tardinessWeight, int maximumPathsPerTask) {
 		if (tec == null) {
 			metaCSPLogger.severe("Passed null coordinator.");
 			throw new Error("Passed null coordinator.");
@@ -104,6 +105,8 @@ public class MultiRobotTaskAllocator {
 		//Initialize all the parameters
 		setInterferenceWeight(interferenceWeight);
 		setInterferenceFreeWeights(pathLengthWeight, arrivalTimeWeight, tardinessWeight);
+		setMaximumPathsPerTask(maximumPathsPerTask);
+		//TODO add finest/info to write to screen the values.
 		
 		//TODO Instantiate the fleetmaster
 		//continue here.
@@ -134,6 +137,14 @@ public class MultiRobotTaskAllocator {
 			this.arrivalTimeWeight = arrivalTimeWeight;
 			this.tardinessWeight = tardinessWeight;
 		}
+	}
+	
+	/**
+	 * Set the maximum number of paths for each task which are considered in the optimization problem.
+	 * @param value The maximum number of paths for each task.
+	 */
+	public void setMaximumPathsPerTask(int value) {
+		this.maximumPathsPerTask = value;
 	}
 	
 	private static void printLicense() {
