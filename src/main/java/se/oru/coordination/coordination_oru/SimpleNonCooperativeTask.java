@@ -16,7 +16,7 @@ import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
  * @author anmi
  *
  */
-public class SimpleNonCooperativeTask {
+public class SimpleNonCooperativeTask implements Comparable<SimpleNonCooperativeTask>{
 	//ID
 	protected static int NUMTASKS = 0;
 	protected int taskID = NUMTASKS++;
@@ -201,6 +201,11 @@ public class SimpleNonCooperativeTask {
 	 */
 	public boolean isCompatible(int robotType) {
 		return this.compatibleRobotTypes.contains(robotType);
+	}
+
+	@Override
+	public int compareTo(SimpleNonCooperativeTask o) {
+		return this.taskID-o.taskID;
 	}
 	
 }

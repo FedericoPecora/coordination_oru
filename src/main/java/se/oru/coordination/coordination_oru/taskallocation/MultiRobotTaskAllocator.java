@@ -1,11 +1,19 @@
 package se.oru.coordination.coordination_oru.taskallocation;
 
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.TreeSet;
-import org.apache.commons.collections.comparators.ComparatorChain;
+import java.util.logging.Logger;
 
+import org.apache.commons.collections.comparators.ComparatorChain;
+import org.metacsp.utility.logging.MetaCSPLogging;
+
+import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeCoordinator;
 import se.oru.coordination.coordination_oru.SimpleNonCooperativeTask;
+import se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator;
+import se.oru.coordination.coordination_oru.fleetmasterinterface.AbstractFleetMasterInterface;
+import se.oru.coordination.coordination_oru.util.Missions;
 import se.oru.coordination.coordination_oru.util.StringUtils;
 
 /**
@@ -34,13 +42,18 @@ public class MultiRobotTaskAllocator {
 	//Force printing of (c) and license upon class loading
 	static { printLicense(); }
 	
+	//Logging
+	protected static Logger metaCSPLogger = MetaCSPLogging.getLogger(MultiRobotTaskAllocator.class);
+	
 	//A task queue (whenever a new task is posted, it is automatically added to the task queue).
-	TreeSet<SimpleNonCooperativeTask> taskQueue = new TreeSet<SimpleNonCooperativeTask>();
+	protected TreeSet<SimpleNonCooperativeTask> taskQueue = null;
+	protected ComparatorChain comparators = null;
 	
 	//Mission dispatcher for each robot (where to put the output of each instance).
 	
 	//Coordinator (to get informations about the current paths in execution and status of the robots).
 	//what's the info required?
+	protected AbstractTrajectoryEnvelopeCoordinator tec = null;
 	//tec.getMotionPlanner(robotID) -> gestire conflitto sulla risorsa (synchronized? plan and doPlanning yes!).
 	//tec.getRobotReport(robotID) -> getLastRobotReport
 	//tec.getRobotType(robotID)
@@ -50,26 +63,77 @@ public class MultiRobotTaskAllocator {
 	//tec.getForwardModel(robotID)
 	//tec.getIdleRobots(robotID)
 	//ALL OK.
+	protected Missions missionsDispatchers = null;
 	
 	//Fleetmaster: use a local instance instead of the coordination one.
+	protected AbstractFleetMasterInterface fleetMasterInterface = null;
 	
 	//Visualization on Rviz? (Non completely useful).
 	
 	//Parameters: use_scenario, weights for the B function, alpha, period of the main loop
+	double interferenceWeight = 0;
+	double pathLengthWeight = 1;
+	double arrivalTimeWeight = 0;
+	double tardinessWeight = 0;
 	
 	//Start a periodic thread which checks for current posted goals and solves the MRTA problem at each instance.
 	//flow:
 	//
 	
-	protected ComparatorChain comparators = new ComparatorChain();
 	/**
-	 * Add a criterion for determining the order of robots through critical sections
-	 * (comparator of {@link AbstractTrajectoryEnvelopeTracker}s). 
+	 * Add a criterion for determining the order of tasks in the task queue. 
 	 * Comparators are considered in the order in which they are added.
-	 * @param c A new comparator for determining robot ordering through critical sections.
+	 * @param c A new comparator for determining task ordering in the task queue.
 	 */
 	public void addComparator(Comparator<SimpleNonCooperativeTask> c) {
 		this.comparators.addComparator(c);
+	}
+	
+	public MultiRobotTaskAllocator(AbstractTrajectoryEnvelopeCoordinator tec, ComparatorChain comparators, double interferenceWeight, double pathLengthWeight, double arrivalTimeWeight, double tardinessWeight) {
+		if (tec == null) {
+			metaCSPLogger.severe("Passed null coordinator.");
+			throw new Error("Passed null coordinator.");
+		}
+		this.tec = tec;		
+		
+		//Initialize the task queue and its comparators.
+		this.comparators = new ComparatorChain(comparators);
+		if (comparators != null) this.taskQueue = new TreeSet<SimpleNonCooperativeTask>(this.comparators);
+		else this.taskQueue = new TreeSet<SimpleNonCooperativeTask>();
+		
+		//Initialize all the parameters
+		setInterferenceWeight(interferenceWeight);
+		setInterferenceFreeWeights(pathLengthWeight, arrivalTimeWeight, tardinessWeight);
+		
+		//TODO Instantiate the fleetmaster
+		//continue here.
+	}
+	
+	/**
+	 * Set the weight of the interference cost in the optimization function f defined as:
+	 * 		  f = (1-value) * interference-free cost + value * interference cost
+	 * @param value Normalized weight of the interference cost. 
+	 */
+	public void setInterferenceWeight(double value) {
+		if (value < 0 || value > 1) metaCSPLogger.severe("Invalid interference weight. Restoring previously assigned value: " + this.interferenceWeight + ".");
+		else this.interferenceWeight = value;
+	}
+	
+	/**
+	 * Set the weights of the interference-free cost defined as
+	 * interference-free cost = pathLengthWeight * path length cost + arrivalTimeWeight * arrival time cost + tardinessWeight * tardiness cost.
+	 * @param pathLengthWeight Normalized weight of the path length cost (the longest the path, the higher the cost).
+	 * @param arrivalTimeWeight Normalized weight of the arrival time cost (XXX FIXME: add definition).
+	 * @param tardinessWeight Normalized weight of the tardiness cost (XXX FIXME: add definition).
+	 */
+	public void setInterferenceFreeWeights(double pathLengthWeight, double arrivalTimeWeight, double tardinessWeight)  {
+		if (pathLengthWeight < 0 || arrivalTimeWeight < 0 || tardinessWeight < 0 || pathLengthWeight + arrivalTimeWeight + tardinessWeight > 1)
+			metaCSPLogger.severe("Invalid interference-free weights. Restoring previously assigned values: path length weight " + this.pathLengthWeight + ", arrival time weight " + this.arrivalTimeWeight + ", tardiness weight " + tardinessWeight + ".");
+		else {
+			this.pathLengthWeight = pathLengthWeight;
+			this.arrivalTimeWeight = arrivalTimeWeight;
+			this.tardinessWeight = tardinessWeight;
+		}
 	}
 	
 	private static void printLicense() {
