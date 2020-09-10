@@ -11,6 +11,7 @@ import org.metacsp.utility.logging.MetaCSPLogging;
 import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeCoordinator;
 import se.oru.coordination.coordination_oru.SimpleNonCooperativeTask;
 import se.oru.coordination.coordination_oru.fleetmasterinterface.AbstractFleetMasterInterface;
+import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInterface;
 import se.oru.coordination.coordination_oru.util.Missions;
 import se.oru.coordination.coordination_oru.util.StringUtils;
 
@@ -89,7 +90,8 @@ public class MultiRobotTaskAllocator {
 		this.comparators.addComparator(c);
 	}
 	
-	public MultiRobotTaskAllocator(AbstractTrajectoryEnvelopeCoordinator tec, ComparatorChain comparators, double interferenceWeight, double pathLengthWeight, double arrivalTimeWeight, double tardinessWeight, int maxNumberPathsPerTask) {
+	public MultiRobotTaskAllocator(AbstractTrajectoryEnvelopeCoordinator tec, ComparatorChain comparators, double interferenceWeight, double pathLengthWeight, double arrivalTimeWeight, double tardinessWeight, int maxNumberPathsPerTask, 
+			double origin_x, double origin_y, double origin_theta, double resolution, long width, long height, boolean dynamic_size, boolean propagateDelays, boolean debug) {
 		if (tec == null) {
 			metaCSPLogger.severe("Passed null coordinator.");
 			throw new Error("Passed null coordinator.");
@@ -106,9 +108,11 @@ public class MultiRobotTaskAllocator {
 		setInterferenceFreeWeights(pathLengthWeight, arrivalTimeWeight, tardinessWeight);
 		setMaxNumberPathsPerTask(maxNumberPathsPerTask);
 		
-		//TODO Instantiate the fleetmaster
-		//continue here.
+		//Instantiate the fleetmaster
+		instantiateFleetMaster(origin_x, origin_y, origin_theta, resolution, width, height, dynamic_size, propagateDelays, debug);
+		//TODO Capire come fare la query per F.
 	}
+	
 	
 	/**
 	 * Set the weight of the interference cost in the optimization function f defined as:
@@ -120,6 +124,7 @@ public class MultiRobotTaskAllocator {
 		else this.interferenceWeight = value;
 		metaCSPLogger.info("Updated interference weight with value " + this.interferenceWeight + ".");
 	}
+	
 	
 	/**
 	 * Set the weights of the interference-free cost defined as
@@ -139,14 +144,37 @@ public class MultiRobotTaskAllocator {
 		metaCSPLogger.info("Updated interference-free cost functions weights with values: path length " + this.pathLengthWeight + ", arrival time " + this.arrivalTimeWeight + ", tardiness " + this.tardinessWeight + ".");
 	}
 	
+	
 	/**
 	 * Set the maximum number of paths for each task which are considered in the optimization problem.
 	 * @param value The maximum number of paths for each task.
 	 */
 	public void setMaxNumberPathsPerTask(int value) {
 		this.maxNumberPathsPerTask = value;
-		metaCSPLogger.info("Updated the upperbound of the number of paths for each tasks to " + this.maxNumberPathsPerTask + ".");
+		metaCSPLogger.info("Updated the maximum number of paths for each tasks parameter to " + this.maxNumberPathsPerTask + ".");
 	}
+	
+	
+	/**
+	 * Enable and initialize the fleetmaster library to estimate precedences to minimize the overall completion time.
+	 * Note: this function should be called before placing the first robot.
+	 * ATTENTION: If dynamic_size is <code>false</code>, then the user should check that all the paths will lay in the given area.
+	 * @param origin_x The x coordinate (in meters and in global inertial frame) of the lower-left pixel of fleetmaster GridMap.
+	 * @param origin_y The y coordinate (in meters and in global inertial frame) of the lower-left pixel of fleetmaster GridMap.
+	 * @param origin_theta The theta coordinate (in rads) of the lower-left pixel map (counterclockwise rotation). Many parts of the system currently ignore it.
+	 * @param resolution The resolution of the map (in meters/cell), 0.01 <= resolution <= 1. It is assumed this parameter to be global among the fleet.
+	 * 					 The highest the value, the less accurate the estimation, the lowest the more the computational effort.
+	 * @param width Number of columns of the map (>= 1) if dynamic sizing is not enabled.
+	 * @param height Number of rows of the map (>= 1) if dynamic sizing is not enabled.
+	 * @param dynamic_size If <code>true</code>, it allows to store only the bounding box containing each path.
+	 * @param propagateDelays If <code>true</code>, it enables the delay propagation.
+	 * @param debug If <code>true</code>, it enables writing to screen debugging info.
+	 */
+	public void instantiateFleetMaster(double origin_x, double origin_y, double origin_theta, double resolution, long width, long height, boolean dynamic_size, boolean propagateDelays, boolean debug) {
+		this.fleetMasterInterface = new FleetMasterInterface(origin_x, origin_y, origin_theta, resolution, width, height, dynamic_size, debug);
+		this.fleetMasterInterface.setDefaultFootprint(this.tec.getDefaultFootprint());
+	}
+	
 	
 	private static void printLicense() {
 		System.out.println("\n"+MultiRobotTaskAllocator.TITLE);
