@@ -7,6 +7,8 @@ import org.apache.commons.collections.comparators.ComparatorChain;
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 
+import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeCoordinator.RobotType;
+
 /**
  * This class provides the simplest definition of a non cooperative task.
  * Note that {@link Mission}s are paths assigned to a specific robot, 
@@ -25,7 +27,7 @@ public class SimpleNonCooperativeTask implements Comparable<SimpleNonCooperative
 	protected long deadline = -1;
 	
 	//List of robot types which can perform this task.
-	protected ArrayList<Integer> compatibleRobotTypes = null;
+	protected ArrayList<RobotType> compatibleRobotTypes = null;
 	
 	//Path-related class members
 	protected String fromLocation = null;
@@ -46,7 +48,7 @@ public class SimpleNonCooperativeTask implements Comparable<SimpleNonCooperative
 	 * @param deadline The expected, absolute deadline to complete this task in millis (-1 if none).
 	 * @param compatibleRobotTypes List of robot types which can perform this task (all can if empty).
 	 */
-	public SimpleNonCooperativeTask(String fromLocation, String toLocation, Pose fromPose, Pose toPose, ArrayList<Pose> stoppingPoints, ArrayList<Integer> stoppingPointsDurations, long deadline, ArrayList<Integer> compatibleRbotTypes) {
+	public SimpleNonCooperativeTask(String fromLocation, String toLocation, Pose fromPose, Pose toPose, ArrayList<Pose> stoppingPoints, ArrayList<Integer> stoppingPointsDurations, long deadline, ArrayList<RobotType> compatibleRbotTypes) {
 		this.fromLocation = fromLocation;
 		this.toLocation = toLocation;
 		this.fromPose = fromPose;
@@ -54,7 +56,7 @@ public class SimpleNonCooperativeTask implements Comparable<SimpleNonCooperative
 		this.stoppingPoints = new ArrayList<Pose>(stoppingPoints);
 		this.stoppingPointDurations = new ArrayList<Integer>(stoppingPointDurations);
 		this.deadline = deadline;
-		this.compatibleRobotTypes = new ArrayList<Integer>(compatibleRobotTypes);		
+		this.compatibleRobotTypes = new ArrayList<RobotType>(compatibleRobotTypes);		
 	}
 		
 	/**
@@ -65,7 +67,7 @@ public class SimpleNonCooperativeTask implements Comparable<SimpleNonCooperative
 	 * @param toPose The pose of the destination location.
 	 */
 	public SimpleNonCooperativeTask(Pose fromPose, Pose toPose) {
-		this(fromPose.toString(), toPose.toString(), fromPose, toPose, new ArrayList<Pose>(), new ArrayList<Integer>(), -1, new ArrayList<Integer>());		
+		this(fromPose.toString(), toPose.toString(), fromPose, toPose, new ArrayList<Pose>(), new ArrayList<Integer>(), -1, new ArrayList<RobotType>());		
 	}
 	
 
@@ -193,14 +195,14 @@ public class SimpleNonCooperativeTask implements Comparable<SimpleNonCooperative
 	 * Set the robot types of robots which may be required to perform this task.
 	 * @param compatibleRobotTypes
 	 */
-	public void setCompatibleRobotTypes(ArrayList<Integer> compatibleRobotTypes) {
-		this.compatibleRobotTypes = new ArrayList<Integer>(compatibleRobotTypes);	
+	public void setCompatibleRobotTypes(ArrayList<RobotType> compatibleRobotTypes) {
+		this.compatibleRobotTypes = new ArrayList<RobotType>(compatibleRobotTypes);	
 	}
 	
 	/**
 	 * Get the robot types which are compatible with this task.
 	 */
-	public ArrayList<Integer> getCompatibleRobotTypes() {
+	public ArrayList<RobotType> getCompatibleRobotTypes() {
 		return this.compatibleRobotTypes;	
 	}
 	
