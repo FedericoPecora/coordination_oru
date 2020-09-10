@@ -1,6 +1,7 @@
 package se.oru.coordination.coordination_oru.taskallocation;
 
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.TreeSet;
 import java.util.logging.Logger;
@@ -46,7 +47,8 @@ public class MultiRobotTaskAllocator {
 	protected static Logger metaCSPLogger = MetaCSPLogging.getLogger(MultiRobotTaskAllocator.class);
 	
 	//A task queue (whenever a new task is posted, it is automatically added to the task queue).
-	protected TreeSet<SimpleNonCooperativeTask> taskQueue = null;
+	protected TreeSet<SimpleNonCooperativeTask> taskPool = null;
+	protected HashMap<Integer,TreeSet<SimpleNonCooperativeTask>> singleRobotTaskPools = null;
 	protected ComparatorChain comparators = null;
 	
 	//Mission dispatcher for each robot (where to put the output of each instance).
@@ -100,8 +102,8 @@ public class MultiRobotTaskAllocator {
 		
 		//Initialize the task queue and its comparators.
 		this.comparators = new ComparatorChain(comparators);
-		if (comparators != null) this.taskQueue = new TreeSet<SimpleNonCooperativeTask>(this.comparators);
-		else this.taskQueue = new TreeSet<SimpleNonCooperativeTask>();
+		if (comparators != null) this.taskPool = new TreeSet<SimpleNonCooperativeTask>(this.comparators);
+		else this.taskPool = new TreeSet<SimpleNonCooperativeTask>();
 		
 		//Initialize all the parameters
 		setInterferenceWeight(interferenceWeight);
@@ -173,6 +175,64 @@ public class MultiRobotTaskAllocator {
 	public void instantiateFleetMaster(double origin_x, double origin_y, double origin_theta, double resolution, long width, long height, boolean dynamic_size, boolean propagateDelays, boolean debug) {
 		this.fleetMasterInterface = new FleetMasterInterface(origin_x, origin_y, origin_theta, resolution, width, height, dynamic_size, debug);
 		this.fleetMasterInterface.setDefaultFootprint(this.tec.getDefaultFootprint());
+	}
+	
+	
+	/**
+	 * Add a {@link SimpleNonCooperativeTask} to the task pool.
+	 * @param task The task to be added.
+	 * @return <code>true<code> whether the task was correctly added.
+	 */
+	public boolean addTask(SimpleNonCooperativeTask task) {
+		boolean ret = this.taskPool.add(task);
+		if (!ret) metaCSPLogger.severe("Error. Task " + task.getID() +" was not correctly added to the task pool.");
+		return ret;
+	}
+	
+	
+	/**
+	 * Remove a {@link SimpleNonCooperativeTask} from the task pool.
+	 * @param task The task to be removed.
+	 * @return <code>true<code> whether the task was correctly removed.
+	 */
+	public boolean removeTask(SimpleNonCooperativeTask task) {
+		boolean ret = this.taskPool.remove(task);
+		if (!ret) metaCSPLogger.severe("Error. Task " + task.getID() + " was not correctly removed from the task pool.");
+		return ret;
+	}
+	
+	
+	/**
+	 * Add a {@link SimpleNonCooperativeTask} to a specific robot.
+	 * @param robotID ID of the robot which should perform this task
+	 * @param task The task to add.
+	 * @return <code>true<code> whether the task was correctly added.
+	 */
+	public boolean addTask(int robotID, SimpleNonCooperativeTask task) {
+		if (!tec.getAllRobotIDs().contains(robotID)) {
+			metaCSPLogger.severe("Task " + task.getID() + "cannot be assigned to robot " + robotID + " since robotID is not valid.");
+			return false;
+		}
+		if (!task.getCompatibleRobotTypes().contains(tec.getRobotType(robotID))) {
+			metaCSPLogger.severe("Task " + task.getID() + "cannot be assigned to robot " + robotID + " since types are not compatible.");
+			return false;
+		}
+		if (!this.singleRobotTaskPools.containsKey(robotID)) this.singleRobotTaskPools.put(robotID, new TreeSet<SimpleNonCooperativeTask>());
+		boolean ret = this.singleRobotTaskPools.get(robotID).add(task);
+		return ret;
+	}
+	
+	
+	/**
+	 * Remove a {@link SimpleNonCooperativeTask} assigned to a specific robot.
+	 * @param robotID ID of the robot.
+	 * @param task The task to be removed.
+	 * @return <code>true<code> whether the task was correctly removed.
+	 */
+	public boolean removeTask(int robotID, SimpleNonCooperativeTask task) {
+		boolean ret = this.singleRobotTaskPools.containsKey(robotID) && this.singleRobotTaskPools.get(robotID).remove(task);
+		if (!ret) metaCSPLogger.severe("Error. Task " + task.getID() + " was not correctly removed from the task pool.");
+		return ret;
 	}
 	
 	
