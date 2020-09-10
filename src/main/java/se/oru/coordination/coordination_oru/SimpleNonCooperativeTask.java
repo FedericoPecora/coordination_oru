@@ -68,6 +68,15 @@ public class SimpleNonCooperativeTask implements Comparable<SimpleNonCooperative
 		this(fromPose.toString(), toPose.toString(), fromPose, toPose, new ArrayList<Pose>(), new ArrayList<Integer>(), -1, new ArrayList<Integer>());		
 	}
 	
+
+	/**
+	 * Get the ID of this task.
+	 * @return The ID of this task.
+	 */
+	public int getID() {
+		return this.taskID;
+	}
+	
 	/**
 	 * Get the name of the source location of this {@link SimpleNonCooperativeTask}.
 	 * @return The name of the source location of this {@link SimpleNonCooperativeTask}.
@@ -208,4 +217,12 @@ public class SimpleNonCooperativeTask implements Comparable<SimpleNonCooperative
 		return this.taskID-o.taskID;
 	}
 	
+	@Override
+	public String toString() {
+		return "SimpleNonCooperativeTask [taskID=" + taskID + ", deadline=" + deadline + ", compatibleRobotTypes="
+				+ compatibleRobotTypes + ", fromLocation=" + fromLocation + ", toLocation=" + toLocation + ", fromPose="
+				+ fromPose + ", toPose=" + toPose + ", stoppingPoints=" + stoppingPoints + ", stoppingPointDurations="
+				+ stoppingPointDurations + "]";
+	}
+
 }
