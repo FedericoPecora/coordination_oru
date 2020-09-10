@@ -213,7 +213,7 @@ public class MultiRobotTaskAllocator {
 			metaCSPLogger.severe("Task " + task.getID() + "cannot be assigned to robot " + robotID + " since robotID is not valid.");
 			return false;
 		}
-		if (!task.getCompatibleRobotTypes().contains(tec.getRobotType(robotID))) {
+		if (!task.isCompatible(tec.getRobotType(robotID))) {
 			metaCSPLogger.severe("Task " + task.getID() + "cannot be assigned to robot " + robotID + " since types are not compatible.");
 			return false;
 		}
@@ -267,7 +267,7 @@ public class MultiRobotTaskAllocator {
 	 * Get a previously added task.
 	 * @param taskID The ID of the task.
 	 * @return The desired task (null if not found).
-	 * ATTENTION. Use the method {@link updateDeadline} to update the deadline.
+	 * ATTENTION. Use the method {@link updateDeadline} to update the task deadline.
 	 */
 	public SimpleNonCooperativeTask getTask(int taskID) {
 		for (SimpleNonCooperativeTask task : this.taskPool) 
@@ -278,6 +278,9 @@ public class MultiRobotTaskAllocator {
 		}
 		return null;
 	}
+	
+	
+	
 	
 	
 	private static void printLicense() {
