@@ -181,7 +181,7 @@ public class MultiRobotTaskAllocator {
 	/**
 	 * Add a {@link SimpleNonCooperativeTask} to the task pool.
 	 * @param task The task to be added.
-	 * @return <code>true<code> whether the task was correctly added.
+	 * @return <code>true</code> whether the task was correctly added.
 	 */
 	public boolean addTask(SimpleNonCooperativeTask task) {
 		boolean ret = this.taskPool.add(task);
@@ -193,7 +193,7 @@ public class MultiRobotTaskAllocator {
 	/**
 	 * Remove a {@link SimpleNonCooperativeTask} from the task pool.
 	 * @param task The task to be removed.
-	 * @return <code>true<code> whether the task was correctly removed.
+	 * @return <code>true</code> whether the task was correctly removed.
 	 */
 	public boolean removeTask(SimpleNonCooperativeTask task) {
 		boolean ret = this.taskPool.remove(task);
@@ -206,7 +206,7 @@ public class MultiRobotTaskAllocator {
 	 * Add a {@link SimpleNonCooperativeTask} to a specific robot.
 	 * @param robotID ID of the robot which should perform this task
 	 * @param task The task to add.
-	 * @return <code>true<code> whether the task was correctly added.
+	 * @return <code>true</code> whether the task was correctly added.
 	 */
 	public boolean addTask(int robotID, SimpleNonCooperativeTask task) {
 		if (!tec.getAllRobotIDs().contains(robotID)) {
@@ -227,12 +227,56 @@ public class MultiRobotTaskAllocator {
 	 * Remove a {@link SimpleNonCooperativeTask} assigned to a specific robot.
 	 * @param robotID ID of the robot.
 	 * @param task The task to be removed.
-	 * @return <code>true<code> whether the task was correctly removed.
+	 * @return <code>true</code> whether the task was correctly removed.
 	 */
 	public boolean removeTask(int robotID, SimpleNonCooperativeTask task) {
 		boolean ret = this.singleRobotTaskPools.containsKey(robotID) && this.singleRobotTaskPools.get(robotID).remove(task);
 		if (!ret) metaCSPLogger.severe("Error. Task " + task.getID() + " was not correctly removed from the task pool.");
 		return ret;
+	}
+	
+	/**
+	 * Update the deadline of a previously added task.
+	 * @param task The task to be updated.
+	 * @param deadline The new deadline of the task (in millis).
+	 * @return <code>true</code> whether the deadline was correctly updated.
+	 */
+	public boolean updateDeadline(SimpleNonCooperativeTask task, long deadline) {
+		for (SimpleNonCooperativeTask _task : this.taskPool) {
+			if (_task.equals(task)) {
+				boolean ret = this.removeTask(task);
+				task.setDeadline(deadline);
+				ret &= this.addTask(task);
+				return ret;
+			}
+		}
+		for (Integer robotID : this.singleRobotTaskPools.keySet()) {
+			for (SimpleNonCooperativeTask _task : this.singleRobotTaskPools.get(robotID)) {
+				if (_task.equals(task)) {
+					boolean ret = this.removeTask(robotID, task);
+					task.setDeadline(deadline);
+					ret &= this.addTask(robotID, task);
+					return ret;
+				}
+			}
+		}
+		return false;
+	}
+	
+	/**
+	 * Get a previously added task.
+	 * @param taskID The ID of the task.
+	 * @return The desired task (null if not found).
+	 * ATTENTION. Use the method {@link updateDeadline} to update the deadline.
+	 */
+	public SimpleNonCooperativeTask getTask(int taskID) {
+		for (SimpleNonCooperativeTask task : this.taskPool) 
+			if (task.getID() == taskID) return task;
+		for (Integer robotID : this.singleRobotTaskPools.keySet()) {
+			for (SimpleNonCooperativeTask task : this.singleRobotTaskPools.get(robotID)) 
+				if (task.getID() == taskID) return task;
+		}
+		return null;
 	}
 	
 	
@@ -249,5 +293,5 @@ public class MultiRobotTaskAllocator {
 		}
 		System.out.println();
 	}
-	
+		
 }
