@@ -1723,7 +1723,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				synchronized(stoppingPoints) {
 					for (int i = 0; i < e.getValue().size(); i++) {
 						Mission m = e.getValue().get(i);
-						for (Entry<Pose,Long> entry : m.getStoppingPoints().entrySet()) {
+						for (Entry<Pose,Integer> entry : m.getStoppingPoints().entrySet()) {
 							Pose stoppingPose = entry.getKey();
 							int stoppingPoint = te.getSequenceNumber(new Coordinate(stoppingPose.getX(), stoppingPose.getY()));
 							if (stoppingPoint == te.getPathLength()-1) stoppingPoint -= 2;
