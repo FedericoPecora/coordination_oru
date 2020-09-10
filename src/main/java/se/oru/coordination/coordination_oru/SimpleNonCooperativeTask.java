@@ -33,7 +33,7 @@ public class SimpleNonCooperativeTask implements Comparable<SimpleNonCooperative
 	protected Pose fromPose = null;
 	protected Pose toPose = null;
 	protected ArrayList<Pose> stoppingPoints = null;
-	protected ArrayList<Long> stoppingPointDurations = null;
+	protected ArrayList<Integer> stoppingPointDurations = null;
 	
 	//FIXME add operations at start and at stopping points.
 	
@@ -46,13 +46,13 @@ public class SimpleNonCooperativeTask implements Comparable<SimpleNonCooperative
 	 * @param deadline The expected, absolute deadline to complete this task in millis (-1 if none).
 	 * @param compatibleRobotTypes List of robot types which can perform this task (all can if empty).
 	 */
-	public SimpleNonCooperativeTask(String fromLocation, String toLocation, Pose fromPose, Pose toPose, ArrayList<Pose> stoppingPoints, ArrayList<Long> stoppingPointsDurations, long deadline, ArrayList<Integer> compatibleRbotTypes) {
+	public SimpleNonCooperativeTask(String fromLocation, String toLocation, Pose fromPose, Pose toPose, ArrayList<Pose> stoppingPoints, ArrayList<Integer> stoppingPointsDurations, long deadline, ArrayList<Integer> compatibleRbotTypes) {
 		this.fromLocation = fromLocation;
 		this.toLocation = toLocation;
 		this.fromPose = fromPose;
 		this.toPose = toPose;
 		this.stoppingPoints = new ArrayList<Pose>(stoppingPoints);
-		this.stoppingPointDurations = new ArrayList<Long>(stoppingPointDurations);
+		this.stoppingPointDurations = new ArrayList<Integer>(stoppingPointDurations);
 		this.deadline = deadline;
 		this.compatibleRobotTypes = new ArrayList<Integer>(compatibleRobotTypes);		
 	}
@@ -65,7 +65,7 @@ public class SimpleNonCooperativeTask implements Comparable<SimpleNonCooperative
 	 * @param toPose The pose of the destination location.
 	 */
 	public SimpleNonCooperativeTask(Pose fromPose, Pose toPose) {
-		this(fromPose.toString(), toPose.toString(), fromPose, toPose, new ArrayList<Pose>(), new ArrayList<Long>(), -1, new ArrayList<Integer>());		
+		this(fromPose.toString(), toPose.toString(), fromPose, toPose, new ArrayList<Pose>(), new ArrayList<Integer>(), -1, new ArrayList<Integer>());		
 	}
 	
 	/**
@@ -121,7 +121,7 @@ public class SimpleNonCooperativeTask implements Comparable<SimpleNonCooperative
 	 * @param pose A pose to stop at.
 	 * @param duration Stopping time in milliseconds. 
 	 */
-	public void setStoppingPoint(Pose pose, long duration) {
+	public void setStoppingPoint(Pose pose, int duration) {
 		this.stoppingPoints.add(pose);
 		this.stoppingPointDurations.add(duration);
 		//this.stoppingPoints.put(pose, duration);
@@ -139,8 +139,8 @@ public class SimpleNonCooperativeTask implements Comparable<SimpleNonCooperative
 	 * Get the stopping points along this {@link SimpleNonCooperativeTask}'s trajectory along with their durations.
 	 * @return The stopping points along this {@link SimpleNonCooperativeTask}'s trajectory along with their durations.
 	 */
-	public HashMap<Pose, Long> getStoppingPoints() {
-		HashMap<Pose, Long> ret = new HashMap<Pose, Long>();
+	public HashMap<Pose, Integer> getStoppingPoints() {
+		HashMap<Pose, Integer> ret = new HashMap<Pose, Integer>();
 		for (int i = 0; i < this.stoppingPoints.size(); i++) {
 			ret.put(this.stoppingPoints.get(i), this.stoppingPointDurations.get(i));
 		}

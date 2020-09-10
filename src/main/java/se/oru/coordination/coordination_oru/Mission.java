@@ -26,7 +26,7 @@ public class Mission implements Comparable<Mission> {
 	protected Pose fromPose = null;
 	protected Pose toPose = null;
 	protected ArrayList<Pose> stoppingPoints = null;
-	protected ArrayList<Long> stoppingPointDurations = null;
+	protected ArrayList<Integer> stoppingPointDurations = null;
 		
 	
 	/**
@@ -41,14 +41,14 @@ public class Mission implements Comparable<Mission> {
 	 * @param stoppingPointDurations Durations of the stopping points (in millis).
 	 * @param path An array of {@link PoseSteering}s representing the path to be driven.
 	 */
-	public Mission(int robotID, String fromLocation, String toLocation, Pose fromPose, Pose toPose, ArrayList<Pose> stoppingPoints, ArrayList<Long> stoppingPointDurations, PoseSteering[] path) {
+	public Mission(int robotID, String fromLocation, String toLocation, Pose fromPose, Pose toPose, ArrayList<Pose> stoppingPoints, ArrayList<Integer> stoppingPointDurations, PoseSteering[] path) {
 		this.robotID = robotID;
 		this.fromLocation = fromLocation;
 		this.toLocation = toLocation;
 		this.fromPose = fromPose;
 		this.toPose = toPose;	
 		this.stoppingPoints = new ArrayList<Pose>(stoppingPoints);
-		this.stoppingPointDurations = new ArrayList<Long>(stoppingPointDurations);
+		this.stoppingPointDurations = new ArrayList<Integer>(stoppingPointDurations);
 		this.path = path.clone();
 		if (path != null && (path.length < 2 || !fromPose.equals(path[0].getPose()) || !toPose.equals(path[path.length-1].getPose()))) {
 			System.out.println("Mission is not well defined. Class members have incoherent values.");
@@ -63,7 +63,7 @@ public class Mission implements Comparable<Mission> {
 	 * @param path An array of {@link PoseSteering}s representing the path to be driven.
 	 */
 	public Mission(int robotID, PoseSteering[] path) {
-		this(robotID, path[0].getPose().toString(), path[path.length-1].getPose().toString(), path[0].getPose(), path[path.length-1].getPose(), new ArrayList<Pose>(), new ArrayList<Long>(), path);
+		this(robotID, path[0].getPose().toString(), path[path.length-1].getPose().toString(), path[0].getPose(), path[path.length-1].getPose(), new ArrayList<Pose>(), new ArrayList<Integer>(), path);
 	}
 	
 	/**
@@ -77,7 +77,7 @@ public class Mission implements Comparable<Mission> {
 	 * @param toPose The pose of the destination location.
 	 */
 	public Mission(int robotID, PoseSteering[] path, String fromLocation, String toLocation, Pose fromPose, Pose toPose) {
-		this(robotID, fromLocation, toLocation, fromPose, toPose, new ArrayList<Pose>(), new ArrayList<Long>(), path);
+		this(robotID, fromLocation, toLocation, fromPose, toPose, new ArrayList<Pose>(), new ArrayList<Integer>(), path);
 	}
 	
 	/**
@@ -85,7 +85,7 @@ public class Mission implements Comparable<Mission> {
 	 * @param pose A pose to stop at.
 	 * @param duration Stopping time in milliseconds. 
 	 */
-	public void setStoppingPoint(Pose pose, long duration) {
+	public void setStoppingPoint(Pose pose, int duration) {
 		this.stoppingPoints.add(pose);
 		this.stoppingPointDurations.add(duration);
 		//this.stoppingPoints.put(pose, duration);
@@ -103,8 +103,8 @@ public class Mission implements Comparable<Mission> {
 	 * Get the stopping points along this {@link SimpleNonCooperativeTask}'s trajectory along with their durations.
 	 * @return The stopping points along this {@link SimpleNonCooperativeTask}'s trajectory along with their durations.
 	 */
-	public HashMap<Pose, Long> getStoppingPoints() {
-		HashMap<Pose, Long> ret = new HashMap<Pose, Long>();
+	public HashMap<Pose, Integer> getStoppingPoints() {
+		HashMap<Pose, Integer> ret = new HashMap<Pose, Integer>();
 		for (int i = 0; i < this.stoppingPoints.size(); i++) {
 			ret.put(this.stoppingPoints.get(i), this.stoppingPointDurations.get(i));
 		}
