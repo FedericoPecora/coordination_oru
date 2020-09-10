@@ -1,7 +1,6 @@
 package se.oru.coordination.coordination_oru.taskallocation;
 
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.TreeSet;
 import java.util.logging.Logger;
@@ -11,7 +10,6 @@ import org.metacsp.utility.logging.MetaCSPLogging;
 
 import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeCoordinator;
 import se.oru.coordination.coordination_oru.SimpleNonCooperativeTask;
-import se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator;
 import se.oru.coordination.coordination_oru.fleetmasterinterface.AbstractFleetMasterInterface;
 import se.oru.coordination.coordination_oru.util.Missions;
 import se.oru.coordination.coordination_oru.util.StringUtils;
@@ -19,6 +17,7 @@ import se.oru.coordination.coordination_oru.util.StringUtils;
 /**
  * This class provides task allocation for a fleet of robots. An instantiatable {@link MultiRobotTaskAllocator}
  * must provide a comparator for queuing tasks. Default ordering is EDF (Earliest Deadline First) when a deadline is provided, FIFO otherwise.
+ * FIXME Capire come fare questa cosa della catena di comparatori.
  * 
  * @author anmi, pf, fpa
  *
@@ -75,7 +74,7 @@ public class MultiRobotTaskAllocator {
 	double pathLengthWeight = 1;
 	double arrivalTimeWeight = 0;
 	double tardinessWeight = 0;
-	int maximumPathsPerTask = 1;
+	int maxNumberPathsPerTask = 1;
 	
 	//Start a periodic thread which checks for current posted goals and solves the MRTA problem at each instance.
 	//flow:
@@ -90,7 +89,7 @@ public class MultiRobotTaskAllocator {
 		this.comparators.addComparator(c);
 	}
 	
-	public MultiRobotTaskAllocator(AbstractTrajectoryEnvelopeCoordinator tec, ComparatorChain comparators, double interferenceWeight, double pathLengthWeight, double arrivalTimeWeight, double tardinessWeight, int maximumPathsPerTask) {
+	public MultiRobotTaskAllocator(AbstractTrajectoryEnvelopeCoordinator tec, ComparatorChain comparators, double interferenceWeight, double pathLengthWeight, double arrivalTimeWeight, double tardinessWeight, int maxNumberPathsPerTask) {
 		if (tec == null) {
 			metaCSPLogger.severe("Passed null coordinator.");
 			throw new Error("Passed null coordinator.");
@@ -105,8 +104,7 @@ public class MultiRobotTaskAllocator {
 		//Initialize all the parameters
 		setInterferenceWeight(interferenceWeight);
 		setInterferenceFreeWeights(pathLengthWeight, arrivalTimeWeight, tardinessWeight);
-		setMaximumPathsPerTask(maximumPathsPerTask);
-		//TODO add finest/info to write to screen the values.
+		setMaxNumberPathsPerTask(maxNumberPathsPerTask);
 		
 		//TODO Instantiate the fleetmaster
 		//continue here.
@@ -120,6 +118,7 @@ public class MultiRobotTaskAllocator {
 	public void setInterferenceWeight(double value) {
 		if (value < 0 || value > 1) metaCSPLogger.severe("Invalid interference weight. Restoring previously assigned value: " + this.interferenceWeight + ".");
 		else this.interferenceWeight = value;
+		metaCSPLogger.info("Updated interference weight with value " + this.interferenceWeight + ".");
 	}
 	
 	/**
@@ -137,14 +136,16 @@ public class MultiRobotTaskAllocator {
 			this.arrivalTimeWeight = arrivalTimeWeight;
 			this.tardinessWeight = tardinessWeight;
 		}
+		metaCSPLogger.info("Updated interference-free cost functions weights with values: path length " + this.pathLengthWeight + ", arrival time " + this.arrivalTimeWeight + ", tardiness " + this.tardinessWeight + ".");
 	}
 	
 	/**
 	 * Set the maximum number of paths for each task which are considered in the optimization problem.
 	 * @param value The maximum number of paths for each task.
 	 */
-	public void setMaximumPathsPerTask(int value) {
-		this.maximumPathsPerTask = value;
+	public void setMaxNumberPathsPerTask(int value) {
+		this.maxNumberPathsPerTask = value;
+		metaCSPLogger.info("Updated the upperbound of the number of paths for each tasks to " + this.maxNumberPathsPerTask + ".");
 	}
 	
 	private static void printLicense() {
