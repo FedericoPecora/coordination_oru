@@ -1,5 +1,6 @@
 package se.oru.coordination.coordination_oru.taskallocation;
 
+import java.util.Calendar;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -43,6 +44,12 @@ public class MultiRobotTaskAllocator {
 	//Force printing of (c) and license upon class loading
 	static { printLicense(); }
 	
+	protected int CONTROL_PERIOD = 5000;
+	protected double TEMPORAL_RESOLUTION = 1000;
+	public static int EFFECTIVE_CONTROL_PERIOD = 0;
+	protected Thread inference = null;
+	protected volatile Boolean stopInference = new Boolean(true);
+	
 	//Logging
 	protected static Logger metaCSPLogger = MetaCSPLogging.getLogger(MultiRobotTaskAllocator.class);
 	
@@ -54,17 +61,9 @@ public class MultiRobotTaskAllocator {
 	//Mission dispatcher for each robot (where to put the output of each instance).
 	
 	//Coordinator (to get informations about the current paths in execution and status of the robots).
-	//what's the info required?
 	protected AbstractTrajectoryEnvelopeCoordinator tec = null;
-	//tec.getMotionPlanner(robotID) -> gestire conflitto sulla risorsa (synchronized? plan and doPlanning yes!).
-	//tec.getRobotReport(robotID) -> getLastRobotReport
-	//tec.getRobotType(robotID)
-	//tec.getRobotFootprint(robotID)
-	//tec.getFootprintPolygon(robotID)
-	//tec.getDrivingEnvelope(robotID)
-	//tec.getForwardModel(robotID)
-	//tec.getIdleRobots(robotID)
-	//ALL OK.
+	
+	//Use {@link Missions} class utilities to dispatch missions
 	protected Missions missionsDispatchers = null;
 	
 	//Fleetmaster: use a local instance instead of the coordination one.
@@ -92,8 +91,11 @@ public class MultiRobotTaskAllocator {
 		this.comparators.addComparator(c);
 	}
 	
-	public MultiRobotTaskAllocator(AbstractTrajectoryEnvelopeCoordinator tec, ComparatorChain comparators, double interferenceWeight, double pathLengthWeight, double arrivalTimeWeight, double tardinessWeight, int maxNumberPathsPerTask, 
+	public MultiRobotTaskAllocator(int controlPeriod, int temporalResolution, AbstractTrajectoryEnvelopeCoordinator tec, ComparatorChain comparators, double interferenceWeight, double pathLengthWeight, double arrivalTimeWeight, double tardinessWeight, int maxNumberPathsPerTask, 
 			double origin_x, double origin_y, double origin_theta, double resolution, long width, long height, boolean dynamic_size, boolean propagateDelays, boolean debug) {
+		
+		setControlPeriod(controlPeriod, temporalResolution);
+		
 		if (tec == null) {
 			metaCSPLogger.severe("Passed null coordinator.");
 			throw new Error("Passed null coordinator.");
@@ -116,14 +118,28 @@ public class MultiRobotTaskAllocator {
 	}
 	
 	
+	public void setControlPeriod(int controlPeriod, int temporalResolution) {
+		if (controlPeriod <= 0 || temporalResolution <= 0) {
+			metaCSPLogger.severe("Invalid control period or temporal resolution parameter. Restoring previously assigned parameters: control period " + this.CONTROL_PERIOD + " msec, temporal resolution " + this.TEMPORAL_RESOLUTION + ".");
+			return;
+		}
+		this.CONTROL_PERIOD= controlPeriod;
+		this.TEMPORAL_RESOLUTION = temporalResolution;
+		metaCSPLogger.info("Updated control period and temporal resolution with values " + this.CONTROL_PERIOD + " msec and " + this.TEMPORAL_RESOLUTION + " respectively.");
+	}
+	
+ 	
 	/**
 	 * Set the weight of the interference cost in the optimization function f defined as:
 	 * 		  f = (1-value) * interference-free cost + value * interference cost
 	 * @param value Normalized weight of the interference cost. 
 	 */
 	public void setInterferenceWeight(double value) {
-		if (value < 0 || value > 1) metaCSPLogger.severe("Invalid interference weight. Restoring previously assigned value: " + this.interferenceWeight + ".");
-		else this.interferenceWeight = value;
+		if (value < 0 || value > 1) {
+			metaCSPLogger.severe("Invalid interference weight. Restoring previously assigned value: " + this.interferenceWeight + ".");
+			return;
+		}
+		this.interferenceWeight = value;
 		metaCSPLogger.info("Updated interference weight with value " + this.interferenceWeight + ".");
 	}
 	
@@ -136,13 +152,13 @@ public class MultiRobotTaskAllocator {
 	 * @param tardinessWeight Normalized weight of the tardiness cost (XXX FIXME: add definition).
 	 */
 	public void setInterferenceFreeWeights(double pathLengthWeight, double arrivalTimeWeight, double tardinessWeight)  {
-		if (pathLengthWeight < 0 || arrivalTimeWeight < 0 || tardinessWeight < 0 || pathLengthWeight + arrivalTimeWeight + tardinessWeight > 1)
+		if (pathLengthWeight < 0 || arrivalTimeWeight < 0 || tardinessWeight < 0 || pathLengthWeight + arrivalTimeWeight + tardinessWeight > 1) {
 			metaCSPLogger.severe("Invalid interference-free weights. Restoring previously assigned values: path length weight " + this.pathLengthWeight + ", arrival time weight " + this.arrivalTimeWeight + ", tardiness weight " + tardinessWeight + ".");
-		else {
-			this.pathLengthWeight = pathLengthWeight;
-			this.arrivalTimeWeight = arrivalTimeWeight;
-			this.tardinessWeight = tardinessWeight;
+			return;
 		}
+		this.pathLengthWeight = pathLengthWeight;
+		this.arrivalTimeWeight = arrivalTimeWeight;
+		this.tardinessWeight = tardinessWeight;
 		metaCSPLogger.info("Updated interference-free cost functions weights with values: path length " + this.pathLengthWeight + ", arrival time " + this.arrivalTimeWeight + ", tardiness " + this.tardinessWeight + ".");
 	}
 	
@@ -279,8 +295,77 @@ public class MultiRobotTaskAllocator {
 		return null;
 	}
 	
+	/**
+	 * Call this method to start the thread that assigns new goals at every clock tick.
+	 */
+	public void startInferenceCallback() {		
+		if (!stopInference) {
+			metaCSPLogger.info("MRTA inference thread is already started.");
+			return;
+		}
+
+		//Start the thread that checks and enforces dependencies at every clock tick
+		this.setupInferenceCallback();
+	}
+	
+	/**
+	 * Call this method to stop the thread that assigns new goals at every clock tick.
+	 */
+	public void stopInferenceCallback() {
+		if (stopInference) metaCSPLogger.severe("MRTA inference thread is not live.");
+		stopInference = true;
+	}
+
+	/**
+	 * Call this method to check if the thread that assigns new goals at every clock tick is live.
+	 */
+	public boolean isStartedInferenceCallback() {
+		return !stopInference;
+	}
 	
 	
+	protected void setupInferenceCallback() {
+		
+		//Start the trajectory envelope coordinator if not started yet.
+		if (!tec.isStartedInference()) tec.startInference();
+		
+		//Start the main task allocation loop
+		this.stopInference = false;
+		this.inference = new Thread("MRTA inference") {
+			private long threadLastUpdate = Calendar.getInstance().getTimeInMillis();
+			
+			@Override
+			public void run() {
+				while (!stopInference) {
+					
+					//FIXME cambiare il modi in cui vengono identificati i robot idle
+					//FIXME robot types e task individuali
+					
+					//se c'è qualche task e ci sono dei robot idle
+					if (!taskPool.isEmpty() && tec.getIdleRobots().length > 0) {
+						
+						//costruisci il problema di ottimo
+						//MPSolver solverOnline = buildOptimizationProblemWithBNormalized(coordinator);
+						
+						//risolvi il problema di ottimo
+											}
+
+					//Sleep a little...
+					if (CONTROL_PERIOD > 0) {
+						try { 
+							Thread.sleep(Math.max(0, CONTROL_PERIOD-Calendar.getInstance().getTimeInMillis()+threadLastUpdate)); }
+						catch (InterruptedException e) { e.printStackTrace(); }
+					}
+
+					EFFECTIVE_CONTROL_PERIOD = (int)(Calendar.getInstance().getTimeInMillis()-threadLastUpdate);
+					threadLastUpdate = Calendar.getInstance().getTimeInMillis();
+
+				}
+			}
+		};
+		//t.setPriority(Thread.MAX_PRIORITY);
+		this.inference.start();
+	}
 	
 	
 	private static void printLicense() {
