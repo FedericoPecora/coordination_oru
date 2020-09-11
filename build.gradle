@@ -75,6 +75,9 @@ dependencies {
   //For JSON file handling
   implementation 'com.google.code.gson:gson:2.8.5'
   
+  //For google ortools (required FIXME Federico for more updated versions of the library)
+  implementation 'io.github.oliviercailloux:google-or-tools:6.7.2'
+  
   // Add the following if you need to include jars that are not
   // in Maven Central and that you have places in the directory "lib"
   // (NOTE: you have to create this directory if you need it)

@@ -10,6 +10,8 @@ import java.util.logging.Logger;
 import org.apache.commons.collections.comparators.ComparatorChain;
 import org.metacsp.utility.logging.MetaCSPLogging;
 
+import com.google.ortools.linearsolver.MPSolver;
+
 import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeCoordinator;
 import se.oru.coordination.coordination_oru.SimpleNonCooperativeTask;
 import se.oru.coordination.coordination_oru.fleetmasterinterface.AbstractFleetMasterInterface;
@@ -345,10 +347,10 @@ public class MultiRobotTaskAllocator {
 					if (!taskPool.isEmpty() && tec.getIdleRobots().length > 0) {
 						
 						//costruisci il problema di ottimo
-						//MPSolver solverOnline = buildOptimizationProblemWithBNormalized(coordinator);
+						MPSolver solver = null;//buildOptimizationProblemWithBNormalized(coordinator);
+					}
 						
 						//risolvi il problema di ottimo
-											}
 
 					//Sleep a little...
 					if (CONTROL_PERIOD > 0) {
@@ -367,6 +369,66 @@ public class MultiRobotTaskAllocator {
 		this.inference.start();
 	}
 	
+	//////////////////////
+	/**
+	 * Builds the optimization problem complete with Objective Function. Define a decision variable X_ij as a binary variable in which i indicate
+	 * the robot id, j the tasks. Also constraints are defined:
+	 * the constraints considered are:
+	 * 1) Each Task can be assign only to a robot;
+	 * 2) Each Robot can perform only a task at time.
+	 * The objective function is defined as sum(c_ij * x_ij) for (i = 1...n)(j = 1...m)
+	 * with n = number of robot and m = number of tasks.
+	 * Only the B function is considered in this case, and each cost is normalized with the max path length considering
+	 * all missions.
+	 * @param tec -> An Abstract Trajectory Envelope Coordinator
+	 * @return A constrained optimization problem with the objective function and each cost is normalized
+	 */
+	/*public MPSolver buildOptimizationProblemWithBNormalized(AbstractTrajectoryEnvelopeCoordinator tec) {
+		this.initialTime = 	Calendar.getInstance().getTimeInMillis();
+		
+		
+		//Perform a check in order to avoid blocking
+		checkOnBlocking(tec);
+		//Take the number of tasks
+		numTask = taskQueue.size();
+		//Get free robots and their IDs
+		numRobot = tec.getIdleRobots().size();
+		IDsIdleRobots = tec.getIdleRobots();
+		//Evaluate dummy robot and dummy task
+		dummyRobotorTask(numRobot,numTask,tec);
+		getAllRobotIDs();
+		getAllTaskIDs();
+		double[][][] PAll = evaluatePAll(tec);
+		double[][][] BFunction = evaluateBFunction(PAll,tec);
+		//Build the solver and an objective function
+		MPSolver optimizationProblem = buildOptimizationProblem(numRobotAug,numTaskAug);
+		
+		MPVariable [][][] decisionVariable = tranformArray(optimizationProblem); 
+	    /////////////////////////////////
+	    //START OBJECTIVE FUNCTION		
+	    MPObjective objective = optimizationProblem.objective();
+    	 for (int i = 0; i < numRobotAug; i++) {
+			 for (int j = 0; j < numTaskAug; j++) {
+				 for(int s = 0; s < maxNumPaths; s++) {
+					 double pathLength  =  BFunction[i][j][s];
+					 if ( pathLength != MaxPathLength) {
+						 //Set the coefficient of the objective function with the normalized path length
+						 objective.setCoefficient(decisionVariable[i][j][s], pathLength); 
+					 }else { // if the path does not exists or the robot type is different from the task type 
+						//the path to reach the task not exists
+						//the decision variable is set to 0 -> this allocation is not valid
+						MPConstraint c3 = optimizationProblem.makeConstraint(0,0);
+						c3.setCoefficient(decisionVariable[i][j][s],1); 
+					 }
+				 }
+			 }			 
+		 }
+		//Define the problem as a minimization problem
+		objective.setMinimization();
+		//END OBJECTIVE FUNCTION
+		return optimizationProblem;	
+	}*/
+	////////////////////////////////
 	
 	private static void printLicense() {
 		System.out.println("\n"+MultiRobotTaskAllocator.TITLE);
