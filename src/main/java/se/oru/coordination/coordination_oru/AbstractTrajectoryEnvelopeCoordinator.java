@@ -46,18 +46,14 @@ import se.oru.coordination.coordination_oru.util.StringUtils;
 
 /**
  * This class provides coordination for a fleet of robots. An instantiatable {@link AbstractTrajectoryEnvelopeCoordinator}
- * must provide an implementation of the updateDependency function and of a time keeping method, a {@link TrajectoryEnvelope} tracker factory, and
- * a criteria with which robots are to be prioritized.
+ * must provide an implementation of the updateDependency function and of a time keeping method, a {@link TrajectoryEnvelope} tracker factory,
+ * a criteria with which robots are to be prioritized, and an implementation of the {@link RobotTypeInterface} class.
  * 
  * @author fpa
  *
  */
 public abstract class AbstractTrajectoryEnvelopeCoordinator {
-	
-	public static enum RobotType {
-	    NOT_SPECIFIED, KIVA_LIKE, FORKLIFT, MOBILE_MANIPULATOR, MANIPULATOR 
-	}
-	
+		
 	public static String TITLE = "coordination_oru - Robot-agnostic online coordination for multiple robots";
 	public static String COPYRIGHT = "Copyright \u00a9 2017-2020 Federico Pecora";
 
@@ -126,7 +122,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	//Robots knowledge
 	protected HashMap<Integer,ForwardModel> forwardModels = new HashMap<Integer, ForwardModel>();
 	protected HashMap<Integer,Coordinate[]> footprints = new HashMap<Integer, Coordinate[]>();
-	protected HashMap<Integer,RobotType> types = new HashMap<Integer, RobotType>();
+	protected HashMap<Integer,RobotTypeInterface> types = new HashMap<Integer, RobotTypeInterface>();
 	protected HashMap<Integer,Double> maxFootprintDimensions = new HashMap<Integer, Double>();
 
 	protected HashSet<Integer> muted = new HashSet<Integer>();
@@ -413,9 +409,9 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	/**
 	 * Set the {@link RobotType} of a given robot.
 	 * @param robotID The ID of the robot.
-	 * @param type The {@link RobotType} of the robot.
+	 * @param type The type of the robot.
 	 */
-	public void setRobotType(int robotID, RobotType type) {
+	public void setRobotType(int robotID, RobotTypeInterface type) {
 		this.types.put(robotID, type); 
 	}
 	
@@ -424,7 +420,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 * @param robotID The ID of the robot.
 	 * @return The {@link RobotType} of the robot (null in case of unknown robotID).
 	 */
-	public RobotType getRobotType(int robotID) {
+	public RobotTypeInterface getRobotType(int robotID) {
 		if (this.types.containsKey(robotID)) return this.types.get(robotID); 
 		metaCSPLogger.severe("Invalid robotID.");
 		return null;
