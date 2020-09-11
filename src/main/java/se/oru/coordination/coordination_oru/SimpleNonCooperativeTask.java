@@ -46,6 +46,8 @@ public class SimpleNonCooperativeTask implements Comparable<SimpleNonCooperative
 	 * @param toLocation The identifier of the destination location.
 	 * @param fromPose The pose of the source location.
 	 * @param toPose The pose of the destination location.
+	 * @param stoppingPoints Make the robot stop at the nearest location to the following set of poses.
+	 * @param stoppingPointsDurations Stopping time in milliseconds of each stopping point.
 	 * @param deadline The expected, absolute deadline to complete this task in millis (-1 if none).
 	 * @param compatibleRobotTypes List of robot types which can perform this task (all can if empty).
 	 */
@@ -54,8 +56,11 @@ public class SimpleNonCooperativeTask implements Comparable<SimpleNonCooperative
 		this.toLocation = toLocation;
 		this.fromPose = fromPose;
 		this.toPose = toPose;
-		this.stoppingPoints = new ArrayList<Pose>(stoppingPoints);
-		this.stoppingPointDurations = new ArrayList<Integer>(stoppingPointDurations);
+		if (stoppingPoints != null && stoppingPointsDurations == null || stoppingPoints == null && stoppingPointsDurations != null ||
+				stoppingPoints != null && stoppingPointsDurations != null && stoppingPoints.size() != stoppingPointsDurations.size()) 
+			throw new Error("Please specify the same number of stopping points and their duration.");
+		if (stoppingPoints != null) this.stoppingPoints = new ArrayList<Pose>(stoppingPoints);
+		if (stoppingPointsDurations != null) this.stoppingPointDurations = new ArrayList<Integer>(stoppingPointDurations);
 		this.deadline = deadline;
 		this.compatibleRobotTypes = compatibleRobotTypes;		
 	}
