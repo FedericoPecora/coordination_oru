@@ -13,8 +13,8 @@ import se.oru.coordination.coordination_oru.CriticalSection;
 import se.oru.coordination.coordination_oru.NetworkConfiguration;
 import se.oru.coordination.coordination_oru.RobotAtCriticalSection;
 import se.oru.coordination.coordination_oru.RobotReport;
+import se.oru.coordination.coordination_oru.RobotTypeInterface;
 import se.oru.coordination.coordination_oru.SimpleNonCooperativeTask;
-import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeCoordinator.RobotType;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TimedTrajectoryEnvelopeCoordinatorSimulation;
@@ -23,6 +23,10 @@ import se.oru.coordination.coordination_oru.util.BrowserVisualization;
 
 @DemoDescription(desc = "One-shot navigation of 3 robots coordinating on paths obtained with the ReedsSheppCarPlanner.")
 public class ThreeHomogeneousRobotsInALine {
+	
+	static enum RobotType implements RobotTypeInterface {
+		ROBOT1, ROBOT2, KIVA_LIKE
+	}
 	
 	public static void main(String[] args) throws InterruptedException {
 		
@@ -127,12 +131,12 @@ public class ThreeHomogeneousRobotsInALine {
 		boolean dynamic_size = false;
 		boolean propagateDelays = true;
 		boolean debug = false;
-		MultiRobotTaskAllocator mrta = new MultiRobotTaskAllocator(tec, null, interferenceWeight, pathLengthWeight, arrivalTimeWeight, tardinessWeight, 
+		MultiRobotTaskAllocator mrta = new MultiRobotTaskAllocator(5000, 1000, tec, null, interferenceWeight, pathLengthWeight, arrivalTimeWeight, tardinessWeight, 
 				maxNumberPathsPerTask, origin_x, origin_y, origin_theta, resolution, width, height, dynamic_size, propagateDelays, debug);
 				
 		//Add the defined tasks
 		for (int task = 0; task < taskStartAndGoal.size(); task++) 
-			 mrta.addTask(new SimpleNonCooperativeTask(taskStartAndGoal.get(task)[0], taskStartAndGoal.get(task)[1], null, null, -1, RobotType.NOT_SPECIFIED));
+			 mrta.addTask(new SimpleNonCooperativeTask(taskStartAndGoal.get(task)[0], taskStartAndGoal.get(task)[1], null, null, -1, RobotType.KIVA_LIKE));
 
 		
 		//Start the thread that revises precedences at every period
