@@ -346,17 +346,23 @@ public class MultiRobotTaskAllocator {
 					//FIXME cambiare il modi in cui vengono identificati i robot idle
 					//FIXME robot types e task individuali
 					
-					//se c'è qualche task e ci sono dei robot idle
-					if (!taskPool.isEmpty() && tec.getIdleRobots().length > 0) {
-						
-						//FIXME necessario sampling idle robots!!
-
-						
-						//costruisci il problema di ottimo
-						MPSolver solver = null;//buildOptimizationProblemWithBNormalized(coordinator);
+					//Sample the current robots' and tasks' status
+					Integer[] idleRobots = null;
+					synchronized (tec) {
+						idleRobots = tec.getIdleRobots().clone();
+					}
+					
+					TreeSet<SimpleNonCooperativeTask> currentTaskPool = null;
+					synchronized (taskPool) {
+						currentTaskPool = new TreeSet<SimpleNonCooperativeTask>(taskPool);
+					}
+					
+					if (!currentTaskPool.isEmpty() && idleRobots.length > 0) {						
+						//Setup and solve the MRTA optimization problem.
+						//TODO
 					}
 						
-						//risolvi il problema di ottimo
+					
 
 					//Sleep a little...
 					if (CONTROL_PERIOD > 0) {
@@ -375,16 +381,16 @@ public class MultiRobotTaskAllocator {
 		this.inference.start();
 	}
 	
-	private MPSolver setupOAP(int numberOfRobots, int numberOfTasks, Set<Integer> idleRobotIDs) {
+	private MPSolver setupOAP(int augmentedNumberOfRobots, int augmentedNumberOfTasks, Set<Integer> idleRobotIDs) {
 		
 		//Create the linear solver with the CBC backend.
 		MPSolver solver = new MPSolver(
 				"MRTA - Optimization problem", MPSolver.OptimizationProblemType.CBC_MIXED_INTEGER_PROGRAMMING);
 		
 		//Declare the set of decision variables 
-		MPVariable [][][] decisionVariables = new MPVariable[numberOfRobots][numberOfTasks][this.maxNumberPathsPerTask];
-		for (int i = 0; i < numberOfRobots; i++) {
-			 for (int j = 0; j < numberOfTasks; j++) {
+		MPVariable [][][] decisionVariables = new MPVariable[augmentedNumberOfRobots][augmentedNumberOfTasks][this.maxNumberPathsPerTask];
+		for (int i = 0; i < augmentedNumberOfRobots; i++) {
+			 for (int j = 0; j < augmentedNumberOfTasks; j++) {
 				 for(int s = 0; s < this.maxNumberPathsPerTask; s++) {
 					 decisionVariables[i][j][s] = solver.makeBoolVar("x"+"["+i+","+j+","+s+"]");
 				 }
@@ -399,10 +405,10 @@ public class MultiRobotTaskAllocator {
 		
 		//1. each robot may be assigned only to one task, i.e.,	
 		//   for each i, sum_j sum_s x_{ijs} == 1
-		 for (int i = 0; i < numberOfRobots; i++) {			 
+		 for (int i = 0; i < augmentedNumberOfRobots; i++) {			 
 			//Define the domain [lb, ub] of the constraint
 			 MPConstraint c = solver.makeConstraint(1, 1);
-			 for (int j = 0; j < numberOfTasks; j++)
+			 for (int j = 0; j < augmentedNumberOfTasks; j++)
 				 for(int s = 0; s < this.maxNumberPathsPerTask; s++) 
 					//Set the coefficient ai of the decision variable xi
 					 c.setCoefficient(decisionVariables[i][j][s], 1);//
@@ -410,9 +416,9 @@ public class MultiRobotTaskAllocator {
 		
 		//2. tasks are non-cooperative (they can be assigned to at most one robot), i.e.,
 		//   for each j, sum_i sum_s x_{ijs} == 1
-		 for (int j = 0; j < numberOfTasks; j++) {
+		 for (int j = 0; j < augmentedNumberOfTasks; j++) {
 			 MPConstraint c = solver.makeConstraint(1, 1); 
-			 for (int i = 0; i < numberOfRobots; i++) {
+			 for (int i = 0; i < augmentedNumberOfRobots; i++) {
 				 for(int s = 0; s < this.maxNumberPathsPerTask; s++) 
 					 c.setCoefficient(decisionVariables[i][j][s], 1); 
 			 }
@@ -427,11 +433,11 @@ public class MultiRobotTaskAllocator {
 		 //   if the robot and task types are not compatible.
 		 for (int robotID : idleRobotIDs) {
 				int i = IDsAllRobots.indexOf(robotID);
-				for (int taskID : IDsAllTasks ) {
+				for (int taskID : IDsAllTasks) {
 					int j = IDsAllTasks.indexOf(taskID);
 					for(int s = 0; s < this.maxNumberPathsPerTask; s++) {
 							 if (i < numRobot) { //i is not a dummy robot?
-								 if (pathsToTargetGoal.get(robotID*numberOfTasks*this.maxNumberPathsPerTask+taskID*this.maxNumberPathsPerTask+s) == null) {
+								 if (pathsToTargetGoal.get(robotID*augmentedNumberOfTasks*this.maxNumberPathsPerTask+taskID*this.maxNumberPathsPerTask+s) == null) {
 									 MPConstraint c3 = solver.makeConstraint(0,0);
 									 c3.setCoefficient(decisionVariables[i][j][s],1); 
 								 }
