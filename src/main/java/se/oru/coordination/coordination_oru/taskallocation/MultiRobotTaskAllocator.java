@@ -4,13 +4,16 @@ import java.util.Calendar;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Set;
 import java.util.TreeSet;
 import java.util.logging.Logger;
 
 import org.apache.commons.collections.comparators.ComparatorChain;
 import org.metacsp.utility.logging.MetaCSPLogging;
 
+import com.google.ortools.linearsolver.MPConstraint;
 import com.google.ortools.linearsolver.MPSolver;
+import com.google.ortools.linearsolver.MPVariable;
 
 import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeCoordinator;
 import se.oru.coordination.coordination_oru.SimpleNonCooperativeTask;
@@ -346,6 +349,9 @@ public class MultiRobotTaskAllocator {
 					//se c'è qualche task e ci sono dei robot idle
 					if (!taskPool.isEmpty() && tec.getIdleRobots().length > 0) {
 						
+						//FIXME necessario sampling idle robots!!
+
+						
 						//costruisci il problema di ottimo
 						MPSolver solver = null;//buildOptimizationProblemWithBNormalized(coordinator);
 					}
@@ -368,6 +374,94 @@ public class MultiRobotTaskAllocator {
 		//t.setPriority(Thread.MAX_PRIORITY);
 		this.inference.start();
 	}
+	
+	private MPSolver setupOAP(int numberOfRobots, int numberOfTasks, Set<Integer> idleRobotIDs) {
+		
+		//Create the linear solver with the CBC backend.
+		MPSolver solver = new MPSolver(
+				"MRTA - Optimization problem", MPSolver.OptimizationProblemType.CBC_MIXED_INTEGER_PROGRAMMING);
+		
+		//Declare the set of decision variables 
+		MPVariable [][][] decisionVariables = new MPVariable[numberOfRobots][numberOfTasks][this.maxNumberPathsPerTask];
+		for (int i = 0; i < numberOfRobots; i++) {
+			 for (int j = 0; j < numberOfTasks; j++) {
+				 for(int s = 0; s < this.maxNumberPathsPerTask; s++) {
+					 decisionVariables[i][j][s] = solver.makeBoolVar("x"+"["+i+","+j+","+s+"]");
+				 }
+				
+			 }
+		}
+		
+		//Declare the constraints of the OAP
+		//(tutorials and examples at https://github.com/google/or-tools/blob/stable/ortools/linear_solver/samples/SimpleMipProgram.java 
+		// and https://developers.google.com/optimization/examples). 
+		//Constraints are in the form a1*x1 + ...  + an*xn <= b (linear constraint), with xi being a decision variable.
+		
+		//1. each robot may be assigned only to one task, i.e.,	
+		//   for each i, sum_j sum_s x_{ijs} == 1
+		 for (int i = 0; i < numberOfRobots; i++) {			 
+			//Define the domain [lb, ub] of the constraint
+			 MPConstraint c = solver.makeConstraint(1, 1);
+			 for (int j = 0; j < numberOfTasks; j++)
+				 for(int s = 0; s < this.maxNumberPathsPerTask; s++) 
+					//Set the coefficient ai of the decision variable xi
+					 c.setCoefficient(decisionVariables[i][j][s], 1);//
+		 }
+		
+		//2. tasks are non-cooperative (they can be assigned to at most one robot), i.e.,
+		//   for each j, sum_i sum_s x_{ijs} == 1
+		 for (int j = 0; j < numberOfTasks; j++) {
+			 MPConstraint c = solver.makeConstraint(1, 1); 
+			 for (int i = 0; i < numberOfRobots; i++) {
+				 for(int s = 0; s < this.maxNumberPathsPerTask; s++) 
+					 c.setCoefficient(decisionVariables[i][j][s], 1); 
+			 }
+		 }
+		 
+		 ///////////////////////////////////////////////////////////
+		 //			The following code needs to be checked
+		 ///////////////////////////////////////////////////////////
+	
+		 //3. set to 0 the variables related to unfeasible assignments of robots to tasks.
+		 //   A pair is unfeasible either is no path from the starting location of the robot exists or 
+		 //   if the robot and task types are not compatible.
+		 for (int robotID : idleRobotIDs) {
+				int i = IDsAllRobots.indexOf(robotID);
+				for (int taskID : IDsAllTasks ) {
+					int j = IDsAllTasks.indexOf(taskID);
+					for(int s = 0; s < this.maxNumberPathsPerTask; s++) {
+							 if (i < numRobot) { //i is not a dummy robot?
+								 if (pathsToTargetGoal.get(robotID*numberOfTasks*this.maxNumberPathsPerTask+taskID*this.maxNumberPathsPerTask+s) == null) {
+									 MPConstraint c3 = solver.makeConstraint(0,0);
+									 c3.setCoefficient(decisionVariables[i][j][s],1); 
+								 }
+							 }
+					}
+				}
+		 }
+		 
+		//END CONSTRAINTS
+		//In case of having more task than robots, the task with a closest deadline are set with a higher priority
+		 if(taskPool.size() > idleRobotIDs) {
+			 checkOnTaskDeadline();
+			//Each task can be performed only by a robot
+			 for (int j = 0; j < taskPool.size(); j++) {
+				//Initialize the constraint
+				 if(taskPool.get(j).isPriority()) {
+					 MPConstraint c3 = solver.makeConstraint(1, 1); 
+					 for (int i = 0; i < idleRobotIDs.size(); i++) {
+						 for(int s = 0; s < this.maxNumberPathsPerTask; s++) {
+							 //Build the constraint
+							 c3.setCoefficient(decisionVariables[i][j][s], 1); 
+						 } 		
+					 }
+				 }
+			 }
+		 }
+		/////////////////////////////////////////////////
+		return solver;	
+	}
+	
 	
 	//////////////////////
 	/**
