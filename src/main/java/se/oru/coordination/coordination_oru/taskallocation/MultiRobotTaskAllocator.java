@@ -205,9 +205,11 @@ public class MultiRobotTaskAllocator {
 	 * @return <code>true</code> whether the task was correctly added.
 	 */
 	public boolean addTask(SimpleNonCooperativeTask task) {
-		boolean ret = this.taskPool.add(task);
-		if (!ret) metaCSPLogger.severe("Error. Task " + task.getID() +" was not correctly added to the task pool.");
-		return ret;
+		synchronized(taskPool) {
+			boolean ret = this.taskPool.add(task);
+			if (!ret) metaCSPLogger.severe("Error. Task " + task.getID() +" was not correctly added to the task pool.");
+			return ret;
+		}
 	}
 	
 	
@@ -217,9 +219,11 @@ public class MultiRobotTaskAllocator {
 	 * @return <code>true</code> whether the task was correctly removed.
 	 */
 	public boolean removeTask(SimpleNonCooperativeTask task) {
-		boolean ret = this.taskPool.remove(task);
-		if (!ret) metaCSPLogger.severe("Error. Task " + task.getID() + " was not correctly removed from the task pool.");
-		return ret;
+		synchronized(taskPool) {
+			boolean ret = this.taskPool.remove(task);
+			if (!ret) metaCSPLogger.severe("Error. Task " + task.getID() + " was not correctly removed from the task pool.");
+			return ret;
+		}
 	}
 	
 	
@@ -230,17 +234,19 @@ public class MultiRobotTaskAllocator {
 	 * @return <code>true</code> whether the task was correctly added.
 	 */
 	public boolean addTask(int robotID, SimpleNonCooperativeTask task) {
-		if (!tec.getAllRobotIDs().contains(robotID)) {
-			metaCSPLogger.severe("Task " + task.getID() + "cannot be assigned to robot " + robotID + " since robotID is not valid.");
-			return false;
+		synchronized(singleRobotTaskPools) {
+			if (!tec.getAllRobotIDs().contains(robotID)) {
+				metaCSPLogger.severe("Task " + task.getID() + "cannot be assigned to robot " + robotID + " since robotID is not valid.");
+				return false;
+			}
+			if (!task.isCompatible(tec.getRobotType(robotID))) {
+				metaCSPLogger.severe("Task " + task.getID() + "cannot be assigned to robot " + robotID + " since types are not compatible.");
+				return false;
+			}
+			if (!this.singleRobotTaskPools.containsKey(robotID)) this.singleRobotTaskPools.put(robotID, new TreeSet<SimpleNonCooperativeTask>());
+			boolean ret = this.singleRobotTaskPools.get(robotID).add(task);
+			return ret;
 		}
-		if (!task.isCompatible(tec.getRobotType(robotID))) {
-			metaCSPLogger.severe("Task " + task.getID() + "cannot be assigned to robot " + robotID + " since types are not compatible.");
-			return false;
-		}
-		if (!this.singleRobotTaskPools.containsKey(robotID)) this.singleRobotTaskPools.put(robotID, new TreeSet<SimpleNonCooperativeTask>());
-		boolean ret = this.singleRobotTaskPools.get(robotID).add(task);
-		return ret;
 	}
 	
 	
@@ -251,9 +257,11 @@ public class MultiRobotTaskAllocator {
 	 * @return <code>true</code> whether the task was correctly removed.
 	 */
 	public boolean removeTask(int robotID, SimpleNonCooperativeTask task) {
-		boolean ret = this.singleRobotTaskPools.containsKey(robotID) && this.singleRobotTaskPools.get(robotID).remove(task);
-		if (!ret) metaCSPLogger.severe("Error. Task " + task.getID() + " was not correctly removed from the task pool.");
-		return ret;
+		synchronized(singleRobotTaskPools) {
+			boolean ret = this.singleRobotTaskPools.containsKey(robotID) && this.singleRobotTaskPools.get(robotID).remove(task);
+			if (!ret) metaCSPLogger.severe("Error. Task " + task.getID() + " was not correctly removed from the task pool.");
+			return ret;
+		}
 	}
 	
 	/**
@@ -263,21 +271,25 @@ public class MultiRobotTaskAllocator {
 	 * @return <code>true</code> whether the deadline was correctly updated.
 	 */
 	public boolean updateDeadline(SimpleNonCooperativeTask task, long deadline) {
-		for (SimpleNonCooperativeTask _task : this.taskPool) {
-			if (_task.equals(task)) {
-				boolean ret = this.removeTask(task);
-				task.setDeadline(deadline);
-				ret &= this.addTask(task);
-				return ret;
+		synchronized(taskPool) {
+			for (SimpleNonCooperativeTask _task : this.taskPool) {
+				if (_task.equals(task)) {
+					boolean ret = this.removeTask(task);
+					task.setDeadline(deadline);
+					ret &= this.addTask(task);
+					return ret;
+				}
 			}
 		}
-		for (Integer robotID : this.singleRobotTaskPools.keySet()) {
-			for (SimpleNonCooperativeTask _task : this.singleRobotTaskPools.get(robotID)) {
-				if (_task.equals(task)) {
-					boolean ret = this.removeTask(robotID, task);
-					task.setDeadline(deadline);
-					ret &= this.addTask(robotID, task);
-					return ret;
+		synchronized(singleRobotTaskPools) {
+			for (Integer robotID : this.singleRobotTaskPools.keySet()) {
+				for (SimpleNonCooperativeTask _task : this.singleRobotTaskPools.get(robotID)) {
+					if (_task.equals(task)) {
+						boolean ret = this.removeTask(robotID, task);
+						task.setDeadline(deadline);
+						ret &= this.addTask(robotID, task);
+						return ret;
+					}
 				}
 			}
 		}
@@ -291,11 +303,15 @@ public class MultiRobotTaskAllocator {
 	 * ATTENTION. Use the method {@link updateDeadline} to update the task deadline.
 	 */
 	public SimpleNonCooperativeTask getTask(int taskID) {
-		for (SimpleNonCooperativeTask task : this.taskPool) 
-			if (task.getID() == taskID) return task;
-		for (Integer robotID : this.singleRobotTaskPools.keySet()) {
-			for (SimpleNonCooperativeTask task : this.singleRobotTaskPools.get(robotID)) 
+		synchronized(taskPool) {
+			for (SimpleNonCooperativeTask task : this.taskPool) 
 				if (task.getID() == taskID) return task;
+		}
+		synchronized(singleRobotTaskPools) {
+			for (Integer robotID : this.singleRobotTaskPools.keySet()) {
+				for (SimpleNonCooperativeTask task : this.singleRobotTaskPools.get(robotID)) 
+					if (task.getID() == taskID) return task;
+			}
 		}
 		return null;
 	}
@@ -348,12 +364,12 @@ public class MultiRobotTaskAllocator {
 					
 					//Sample the current robots' and tasks' status
 					Integer[] idleRobots = null;
-					synchronized (tec) {
+					synchronized(tec) {
 						idleRobots = tec.getIdleRobots().clone();
 					}
 					
 					TreeSet<SimpleNonCooperativeTask> currentTaskPool = null;
-					synchronized (taskPool) {
+					synchronized(taskPool) {
 						currentTaskPool = new TreeSet<SimpleNonCooperativeTask>(taskPool);
 					}
 					
@@ -363,7 +379,6 @@ public class MultiRobotTaskAllocator {
 					}
 						
 					
-
 					//Sleep a little...
 					if (CONTROL_PERIOD > 0) {
 						try { 
