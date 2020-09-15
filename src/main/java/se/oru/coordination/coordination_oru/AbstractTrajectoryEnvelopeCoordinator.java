@@ -427,6 +427,20 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	}
 	
 	/**
+	 * Get all the robot IDs which are compatible with a specific robot type.
+	 * @param type The robot type.
+	 * @return The robot IDs which are compatible with the specific robot type.
+	 */
+	public Integer[] getAllCompatibleRobotIDs(RobotTypeInterface type) {
+		ArrayList<Integer> compatibleIDs = new ArrayList<Integer>();
+		for (int robotID : this.getAllRobotIDs()) {
+			if (!this.types.containsKey(robotID)) metaCSPLogger.severe("Type of Robot" + robotID + " is not specified");
+			else if (this.types.get(robotID) == type) compatibleIDs.add(robotID);
+		}
+		return compatibleIDs.toArray(new Integer[compatibleIDs.size()]);
+	}
+	
+	/**
 	 * Return IDs of the robots which are currently idle.
 	 * @return The IDs the robots which are currently idle.
 	 * FIXME check better with respect to isParked/isDriving flags.
