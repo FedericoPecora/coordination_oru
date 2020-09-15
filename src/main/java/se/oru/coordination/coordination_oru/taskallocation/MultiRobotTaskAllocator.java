@@ -1,14 +1,18 @@
 package se.oru.coordination.coordination_oru.taskallocation;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.logging.Logger;
 
 import org.apache.commons.collections.comparators.ComparatorChain;
+import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 import org.metacsp.utility.logging.MetaCSPLogging;
 
 import com.google.ortools.linearsolver.MPConstraint;
@@ -16,7 +20,9 @@ import com.google.ortools.linearsolver.MPSolver;
 import com.google.ortools.linearsolver.MPVariable;
 
 import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeCoordinator;
+import se.oru.coordination.coordination_oru.Mission;
 import se.oru.coordination.coordination_oru.SimpleNonCooperativeTask;
+import se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator;
 import se.oru.coordination.coordination_oru.fleetmasterinterface.AbstractFleetMasterInterface;
 import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInterface;
 import se.oru.coordination.coordination_oru.util.Missions;
@@ -60,16 +66,12 @@ public class MultiRobotTaskAllocator {
 	
 	//A task queue (whenever a new task is posted, it is automatically added to the task queue).
 	protected TreeSet<SimpleNonCooperativeTask> taskPool = null;
-	protected HashMap<Integer,TreeSet<SimpleNonCooperativeTask>> singleRobotTaskPools = null;
 	protected ComparatorChain comparators = null;
 	
 	//Mission dispatcher for each robot (where to put the output of each instance).
 	
 	//Coordinator (to get informations about the current paths in execution and status of the robots).
 	protected AbstractTrajectoryEnvelopeCoordinator tec = null;
-	
-	//Use {@link Missions} class utilities to dispatch missions
-	protected Missions missionsDispatchers = null;
 	
 	//Fleetmaster: use a local instance instead of the coordination one.
 	protected AbstractFleetMasterInterface fleetMasterInterface = null;
@@ -122,6 +124,14 @@ public class MultiRobotTaskAllocator {
 		//TODO Capire come fare la query per F.
 	}
 	
+	
+	public void startMissionsDispatchers(int ... robotIDs) {
+		Missions.startMissionDispatchers(this.tec, false, robotIDs);
+	}
+	
+	public void stopMissionsDispatchers(int ... robotIDs) {
+		Missions.stopMissionDispatchers(robotIDs);
+	}
 	
 	public void setControlPeriod(int controlPeriod, int temporalResolution) {
 		if (controlPeriod <= 0 || temporalResolution <= 0) {
@@ -226,44 +236,6 @@ public class MultiRobotTaskAllocator {
 		}
 	}
 	
-	
-	/**
-	 * Add a {@link SimpleNonCooperativeTask} to a specific robot.
-	 * @param robotID ID of the robot which should perform this task
-	 * @param task The task to add.
-	 * @return <code>true</code> whether the task was correctly added.
-	 */
-	public boolean addTask(int robotID, SimpleNonCooperativeTask task) {
-		synchronized(singleRobotTaskPools) {
-			if (!tec.getAllRobotIDs().contains(robotID)) {
-				metaCSPLogger.severe("Task " + task.getID() + "cannot be assigned to robot " + robotID + " since robotID is not valid.");
-				return false;
-			}
-			if (!task.isCompatible(tec.getRobotType(robotID))) {
-				metaCSPLogger.severe("Task " + task.getID() + "cannot be assigned to robot " + robotID + " since types are not compatible.");
-				return false;
-			}
-			if (!this.singleRobotTaskPools.containsKey(robotID)) this.singleRobotTaskPools.put(robotID, new TreeSet<SimpleNonCooperativeTask>());
-			boolean ret = this.singleRobotTaskPools.get(robotID).add(task);
-			return ret;
-		}
-	}
-	
-	
-	/**
-	 * Remove a {@link SimpleNonCooperativeTask} assigned to a specific robot.
-	 * @param robotID ID of the robot.
-	 * @param task The task to be removed.
-	 * @return <code>true</code> whether the task was correctly removed.
-	 */
-	public boolean removeTask(int robotID, SimpleNonCooperativeTask task) {
-		synchronized(singleRobotTaskPools) {
-			boolean ret = this.singleRobotTaskPools.containsKey(robotID) && this.singleRobotTaskPools.get(robotID).remove(task);
-			if (!ret) metaCSPLogger.severe("Error. Task " + task.getID() + " was not correctly removed from the task pool.");
-			return ret;
-		}
-	}
-	
 	/**
 	 * Update the deadline of a previously added task.
 	 * @param task The task to be updated.
@@ -281,18 +253,6 @@ public class MultiRobotTaskAllocator {
 				}
 			}
 		}
-		synchronized(singleRobotTaskPools) {
-			for (Integer robotID : this.singleRobotTaskPools.keySet()) {
-				for (SimpleNonCooperativeTask _task : this.singleRobotTaskPools.get(robotID)) {
-					if (_task.equals(task)) {
-						boolean ret = this.removeTask(robotID, task);
-						task.setDeadline(deadline);
-						ret &= this.addTask(robotID, task);
-						return ret;
-					}
-				}
-			}
-		}
 		return false;
 	}
 	
@@ -307,14 +267,10 @@ public class MultiRobotTaskAllocator {
 			for (SimpleNonCooperativeTask task : this.taskPool) 
 				if (task.getID() == taskID) return task;
 		}
-		synchronized(singleRobotTaskPools) {
-			for (Integer robotID : this.singleRobotTaskPools.keySet()) {
-				for (SimpleNonCooperativeTask task : this.singleRobotTaskPools.get(robotID)) 
-					if (task.getID() == taskID) return task;
-			}
-		}
 		return null;
 	}
+	
+	//TODO get functions for missionPool
 	
 	/**
 	 * Call this method to start the thread that assigns new goals at every clock tick.
@@ -358,26 +314,39 @@ public class MultiRobotTaskAllocator {
 			@Override
 			public void run() {
 				while (!stopInference) {
-					
-					//FIXME cambiare il modi in cui vengono identificati i robot idle
-					//FIXME robot types e task individuali
-					
+															
 					//Sample the current robots' and tasks' status
-					Integer[] idleRobots = null;
+					HashSet<Integer> idleRobots = null;
 					synchronized(tec) {
-						idleRobots = tec.getIdleRobots().clone();
+						idleRobots = new HashSet<Integer>(Arrays.asList(tec.getIdleRobots()));
+						//FIXME filter out robots which will are already assigned to some missions
+						for (int robotID : idleRobots) {
+							if (Missions.getMissions(robotID) != null && !Missions.getMissions(robotID).isEmpty()) 
+								idleRobots.remove(robotID);
+						}
 					}
 					
 					TreeSet<SimpleNonCooperativeTask> currentTaskPool = null;
 					synchronized(taskPool) {
 						currentTaskPool = new TreeSet<SimpleNonCooperativeTask>(taskPool);
 					}
-					
-					if (!currentTaskPool.isEmpty() && idleRobots.length > 0) {						
+										
+					if (!currentTaskPool.isEmpty() && idleRobots.size() > 0) {
+						
 						//Setup and solve the MRTA optimization problem.
-						//TODO
+						
+						//1. Check on blocking
+						
+						//2. Compute dummy robots and tasks.
+						
+						//3. Evaluate all the paths to tasks and the related costs.
+						
+						//4. Setup the OAP.
+						
+						//5. Solve the OAP.
 					}
 						
+					//Dispatch (i.e., enqueue) missions to robots according to the decided assignment.
 					
 					//Sleep a little...
 					if (CONTROL_PERIOD > 0) {
@@ -395,6 +364,57 @@ public class MultiRobotTaskAllocator {
 		//t.setPriority(Thread.MAX_PRIORITY);
 		this.inference.start();
 	}
+	
+	private int[] evaluateDummyRobotsAndTasks() {
+		int[] dummyRobotsAndPaths = new int[] {0,0};
+		//TODO
+		
+		
+		return dummyRobotsAndPaths;
+	}
+	
+	/*
+	 * Evaluate the set of paths and related costs to achieve the current destinatiom 
+	 * @param augmentedIdleRobotIDs The set of robots' IDs augmented with dummy robots.
+	 * @param augmentedTaskIDs The set of tasks' IDs augmented with dummy task.
+	 * @param allPathsToTasks Variable to retrieve all the paths to the current set of tasks.
+	 * @return The matrix of interference-free costs.
+	 */
+	private double[][][] computeAllPathsToTasksAndTheirCosts(int[] augmentedIdleRobotIDs, int[] augmentedTaskIDs, ArrayList<PoseSteering[]> allPathsToTasks){
+		
+		//FIXME Controlla il codice qui sotto
+		synchronized(taskPool) {
+			if (augmentedIdleRobotIDs.length < Math.max(1, tec.getAllRobotIDs().size()) || augmentedTaskIDs.length < Math.max(1, taskPool.size())) {
+				metaCSPLogger.severe("Error in evaluating the number of robors and tasks.");
+				throw new Error("Error in evaluating the number of robors and tasks.");
+			}
+		}
+		
+		//Clear the variable storing all the paths to the current set of tasks.
+		allPathsToTasks.clear();
+		
+		//Initialize the matrix which stores all costs
+		double[][][] allPathsCosts = new double[augmentedIdleRobotIDs.length][augmentedTaskIDs.length][this.maxNumberPathsPerTask];
+		
+		//FIXME Handle the case of using a pre-loaded scenario
+
+		//Conversely paths are planned online if the roadmap is not pre-loaded.
+		for (int i = 0; i < augmentedIdleRobotIDs.length; i++) {
+			for (int j = 0; j < augmentedTaskIDs.length; j++) {
+				//Check if robot i is compatible with task j. If not, then allPathsToTasks.add(null);
+				
+				//Otherwise compute this.maxNumberPathsPerTask paths (if possible).
+				
+				//Evaluate its interference-cost and update the matrix.
+			}
+	
+		}
+		
+		//Eventually add the interference cost
+	
+		return allPathsCosts;
+	}
+	
 	
 	private MPSolver setupOAP(int augmentedNumberOfRobots, int augmentedNumberOfTasks, Set<Integer> idleRobotIDs) {
 		
@@ -446,7 +466,7 @@ public class MultiRobotTaskAllocator {
 		 //3. set to 0 the variables related to unfeasible assignments of robots to tasks.
 		 //   A pair is unfeasible either is no path from the starting location of the robot exists or 
 		 //   if the robot and task types are not compatible.
-		 for (int robotID : idleRobotIDs) {
+		 /*for (int robotID : idleRobotIDs) {
 				int i = IDsAllRobots.indexOf(robotID);
 				for (int taskID : IDsAllTasks) {
 					int j = IDsAllTasks.indexOf(taskID);
@@ -478,73 +498,11 @@ public class MultiRobotTaskAllocator {
 					 }
 				 }
 			 }
-		 }
+		 }*/
 		/////////////////////////////////////////////////
 		return solver;	
 	}
-	
-	
-	//////////////////////
-	/**
-	 * Builds the optimization problem complete with Objective Function. Define a decision variable X_ij as a binary variable in which i indicate
-	 * the robot id, j the tasks. Also constraints are defined:
-	 * the constraints considered are:
-	 * 1) Each Task can be assign only to a robot;
-	 * 2) Each Robot can perform only a task at time.
-	 * The objective function is defined as sum(c_ij * x_ij) for (i = 1...n)(j = 1...m)
-	 * with n = number of robot and m = number of tasks.
-	 * Only the B function is considered in this case, and each cost is normalized with the max path length considering
-	 * all missions.
-	 * @param tec -> An Abstract Trajectory Envelope Coordinator
-	 * @return A constrained optimization problem with the objective function and each cost is normalized
-	 */
-	/*public MPSolver buildOptimizationProblemWithBNormalized(AbstractTrajectoryEnvelopeCoordinator tec) {
-		this.initialTime = 	Calendar.getInstance().getTimeInMillis();
 		
-		
-		//Perform a check in order to avoid blocking
-		checkOnBlocking(tec);
-		//Take the number of tasks
-		numTask = taskQueue.size();
-		//Get free robots and their IDs
-		numRobot = tec.getIdleRobots().size();
-		IDsIdleRobots = tec.getIdleRobots();
-		//Evaluate dummy robot and dummy task
-		dummyRobotorTask(numRobot,numTask,tec);
-		getAllRobotIDs();
-		getAllTaskIDs();
-		double[][][] PAll = evaluatePAll(tec);
-		double[][][] BFunction = evaluateBFunction(PAll,tec);
-		//Build the solver and an objective function
-		MPSolver optimizationProblem = buildOptimizationProblem(numRobotAug,numTaskAug);
-		
-		MPVariable [][][] decisionVariable = tranformArray(optimizationProblem); 
-	    /////////////////////////////////
-	    //START OBJECTIVE FUNCTION		
-	    MPObjective objective = optimizationProblem.objective();
-    	 for (int i = 0; i < numRobotAug; i++) {
-			 for (int j = 0; j < numTaskAug; j++) {
-				 for(int s = 0; s < maxNumPaths; s++) {
-					 double pathLength  =  BFunction[i][j][s];
-					 if ( pathLength != MaxPathLength) {
-						 //Set the coefficient of the objective function with the normalized path length
-						 objective.setCoefficient(decisionVariable[i][j][s], pathLength); 
-					 }else { // if the path does not exists or the robot type is different from the task type 
-						//the path to reach the task not exists
-						//the decision variable is set to 0 -> this allocation is not valid
-						MPConstraint c3 = optimizationProblem.makeConstraint(0,0);
-						c3.setCoefficient(decisionVariable[i][j][s],1); 
-					 }
-				 }
-			 }			 
-		 }
-		//Define the problem as a minimization problem
-		objective.setMinimization();
-		//END OBJECTIVE FUNCTION
-		return optimizationProblem;	
-	}*/
-	////////////////////////////////
-	
 	private static void printLicense() {
 		System.out.println("\n"+MultiRobotTaskAllocator.TITLE);
 		System.out.println(MultiRobotTaskAllocator.COPYRIGHT+"\n");
