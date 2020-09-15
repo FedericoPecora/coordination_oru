@@ -231,7 +231,7 @@ public class SimpleNonCooperativeTask implements Comparable<SimpleNonCooperative
 
 	@Override
 	public int compareTo(SimpleNonCooperativeTask o) {
-		return this.taskID-o.taskID;
+		return (int)(this.deadline-o.deadline > 0 ? this.deadline-o.deadline : this.taskID-o.taskID);
 	}
 	
 	@Override
