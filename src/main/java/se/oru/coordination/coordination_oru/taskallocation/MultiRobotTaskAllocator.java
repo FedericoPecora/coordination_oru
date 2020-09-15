@@ -20,9 +20,12 @@ import org.metacsp.utility.logging.MetaCSPLogging;
 import com.google.ortools.linearsolver.MPConstraint;
 import com.google.ortools.linearsolver.MPSolver;
 import com.google.ortools.linearsolver.MPVariable;
+import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Geometry;
 
 import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeCoordinator;
 import se.oru.coordination.coordination_oru.Mission;
+import se.oru.coordination.coordination_oru.RobotTypeInterface;
 import se.oru.coordination.coordination_oru.SimpleNonCooperativeTask;
 import se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator;
 import se.oru.coordination.coordination_oru.fleetmasterinterface.AbstractFleetMasterInterface;
@@ -358,7 +361,7 @@ public class MultiRobotTaskAllocator {
 						//5. Solve the OAP.
 					}
 						
-					//Dispatch (i.e., enqueue) missions to robots according to the decided assignment.
+					//Dispatch (i.e., enqueue) missions to robots according to the decided assignment (only if feasible).
 					
 					//Sleep a little...
 					if (CONTROL_PERIOD > 0) {
@@ -378,7 +381,8 @@ public class MultiRobotTaskAllocator {
 	}
 	
 	/**
-	 * 
+	 * FIXME Forse va inserito come vincolo del problema di ottimo nell'assegnamento invece che come filtraggio a priori.
+	 * Da rivedere post chiacchierata con Federico.
 	 * @param toDelay
 	 * @param allCurrentDrivingEnvelopes
 	 * @param currentTaskPool
@@ -394,17 +398,41 @@ public class MultiRobotTaskAllocator {
 			//(i.e., the largest compatible footprint) 
 			//Check tasks with tasks
 			SimpleNonCooperativeTask task1 = currentTaskPoolList.get(i);
-			for (int j = i+1; j < currentTaskPoolList.size(); j++) {
-				SimpleNonCooperativeTask task2 = currentTaskPoolList.get(j);
-				Pose goal1 = task1.getToPose();
-				Pose goal2 = task2.getToPose();
-				//Robot1 in pose (w.c. footprint)
-				//Robot2 in pose (w.c. footprint)
-				//If intersect, then add to toDelay and continue
-				
-				//If not, check the task with respect to the current driving envelopes
-				
-				//TODO
+			Pose goal1 = task1.getToPose();
+			Geometry worstCaseFootprint1 = null;
+			for (RobotTypeInterface type : task1.getCompatibleRobotTypes()) {
+				for (int robotID : tec.getAllCompatibleRobotIDs(type)) {
+					Geometry footprint1 = tec.getCurrentParkingEnvelope(robotID).getEnvelopeBoundingBox();
+					//get the radius of the circle enclosing the footprint and update if bigger.
+					if (worstCaseFootprint1 == null || worstCaseFootprint1 != null && worstCaseFootprint1.getArea() < footprint1.getArea())
+						worstCaseFootprint1 = footprint1;
+				}
+			}
+			
+			//return the robot type tec.getRobotType(robotID)
+			//return the robot footprint tec.getFootprint(robotID)
+			if (worstCaseFootprint1 != null) {
+				for (int j = i+1; j < currentTaskPoolList.size(); j++) {
+					SimpleNonCooperativeTask task2 = currentTaskPoolList.get(j);
+					Pose goal2 = task2.getToPose();
+					Geometry worstCaseFootprint2 = null;
+					for (RobotTypeInterface type : task2.getCompatibleRobotTypes()) {
+						for (int robotID : tec.getAllCompatibleRobotIDs(type)) {
+							Geometry footprint2 = tec.getCurrentParkingEnvelope(robotID).getEnvelopeBoundingBox();
+							//get the radius of the circle enclosing the footprint and update if bigger.
+							if (worstCaseFootprint2 == null || worstCaseFootprint2 != null && worstCaseFootprint2.getArea() < footprint2.getArea()) 
+								worstCaseFootprint2 = footprint2;						
+						}
+					}
+					
+					//From geometry to coordinates
+					
+					//If intersect, then add to toDelay and continue
+					
+					//If not, check the task with respect to the current driving envelopes
+					
+					//TODO
+				}
 			}
 		}
 		
