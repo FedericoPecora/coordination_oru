@@ -110,8 +110,10 @@ public class MultiRobotTaskAllocator {
 		this.tec = tec;		
 		
 		//Initialize the task queue and its comparators.
-		this.comparators = new ComparatorChain(comparators);
-		if (comparators != null) this.taskPool = new TreeSet<SimpleNonCooperativeTask>(this.comparators);
+		if (comparators != null) {
+			this.comparators = new ComparatorChain(comparators);
+			this.taskPool = new TreeSet<SimpleNonCooperativeTask>(this.comparators);
+		}
 		else this.taskPool = new TreeSet<SimpleNonCooperativeTask>();
 		
 		//Initialize all the parameters
