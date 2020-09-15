@@ -12,7 +12,9 @@ import java.util.TreeSet;
 import java.util.logging.Logger;
 
 import org.apache.commons.collections.comparators.ComparatorChain;
+import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
+import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 import org.metacsp.utility.logging.MetaCSPLogging;
 
 import com.google.ortools.linearsolver.MPConstraint;
@@ -84,11 +86,7 @@ public class MultiRobotTaskAllocator {
 	double arrivalTimeWeight = 0;
 	double tardinessWeight = 0;
 	int maxNumberPathsPerTask = 1;
-	
-	//Start a periodic thread which checks for current posted goals and solves the MRTA problem at each instance.
-	//flow:
-	//
-	
+		
 	/**
 	 * Add a criterion for determining the order of tasks in the task queue. 
 	 * Comparators are considered in the order in which they are added.
@@ -123,7 +121,6 @@ public class MultiRobotTaskAllocator {
 		
 		//Instantiate the fleetmaster
 		instantiateFleetMaster(origin_x, origin_y, origin_theta, resolution, width, height, dynamic_size, propagateDelays, debug);
-		//TODO Capire come fare la query per F.
 	}
 	
 	
@@ -135,6 +132,11 @@ public class MultiRobotTaskAllocator {
 		Missions.stopMissionDispatchers(robotIDs);
 	}
 	
+	/**
+	 * Set the period of the task assignment loop.
+	 * @param controlPeriod The control period of the MRTA loop (in millis).
+	 * @param temporalResolution The temporal resolution at which the control period is specified (e.g., 1000 for millis).
+	 */
 	public void setControlPeriod(int controlPeriod, int temporalResolution) {
 		if (controlPeriod <= 0 || temporalResolution <= 0) {
 			metaCSPLogger.severe("Invalid control period or temporal resolution parameter. Restoring previously assigned parameters: control period " + this.CONTROL_PERIOD + " msec, temporal resolution " + this.TEMPORAL_RESOLUTION + ".");
@@ -318,26 +320,34 @@ public class MultiRobotTaskAllocator {
 				while (!stopInference) {
 															
 					//Sample the current robots' and tasks' status
-					HashSet<Integer> idleRobots = null;
+					HashSet<Integer> idleRobots = null;			
+					HashMap<Integer, TrajectoryEnvelope> allCurrentDrivingEnvelopes = new HashMap<Integer, TrajectoryEnvelope>();
 					synchronized(tec) {
+						//Sample the set of idle robots
 						idleRobots = new HashSet<Integer>(Arrays.asList(tec.getIdleRobots()));
-						//FIXME filter out robots which will are already assigned to some missions
-						for (int robotID : idleRobots) {
-							if (Missions.getMissions(robotID) != null && !Missions.getMissions(robotID).isEmpty()) 
-								idleRobots.remove(robotID);
+						
+						//Sample the set of driving envelopes
+						for (int robotID : tec.getAllRobotIDs()) {
+							allCurrentDrivingEnvelopes.put(robotID, tec.getCurrentDrivingEnvelope(robotID));
+							
+							//FIXME filter out idle robots which will be assigned to some missions
+							if (idleRobots.contains(robotID) && Missions.getMissions(robotID) != null && !Missions.getMissions(robotID).isEmpty()) idleRobots.remove(robotID);
 						}
 					}
 					
 					TreeSet<SimpleNonCooperativeTask> currentTaskPool = null;
 					synchronized(taskPool) {
-						currentTaskPool = new TreeSet<SimpleNonCooperativeTask>(taskPool);
+						currentTaskPool = new TreeSet<SimpleNonCooperativeTask>(taskPool); //FIXME!! Be carefull with TreeSet (we have natural ordering, so it should be fine)
 					}
 										
 					if (!currentTaskPool.isEmpty() && idleRobots.size() > 0) {
 						
 						//Setup and solve the MRTA optimization problem.
 						
-						//1. Check on blocking
+						//1. Check if the problem is solvable (i.e., all the end positions of the current set of tasks should not intersect).
+						//   This is a sufficient yet not necessary condition so that it will exists an ordering of robots which
+						//   ensures all may achieve their current goal.
+						//   If not, then one of the two tasks (the less critical) is delayed.
 						
 						//2. Compute dummy robots and tasks.
 						
@@ -366,6 +376,42 @@ public class MultiRobotTaskAllocator {
 		//t.setPriority(Thread.MAX_PRIORITY);
 		this.inference.start();
 	}
+	
+	/**
+	 * 
+	 * @param toDelay
+	 * @param allCurrentDrivingEnvelopes
+	 * @param currentTaskPool
+	 * @return <code>true</code> whether the current set of task is admissible
+	 */
+	private boolean checkAdmissibilityOfAllCurrentTasks(HashSet<SimpleNonCooperativeTask> toDelay, HashMap<Integer, TrajectoryEnvelope> allCurrentDrivingEnvelopes, TreeSet<SimpleNonCooperativeTask> currentTaskPool) {
+		
+		toDelay.clear();
+		
+		ArrayList<SimpleNonCooperativeTask> currentTaskPoolList = new ArrayList<SimpleNonCooperativeTask>(currentTaskPool);
+		for (int i = 0; i < currentTaskPoolList.size(); i++) {
+			//Consider the robot occupancy in the task end point in the worst case 
+			//(i.e., the largest compatible footprint) 
+			//Check tasks with tasks
+			SimpleNonCooperativeTask task1 = currentTaskPoolList.get(i);
+			for (int j = i+1; j < currentTaskPoolList.size(); j++) {
+				SimpleNonCooperativeTask task2 = currentTaskPoolList.get(j);
+				Pose goal1 = task1.getToPose();
+				Pose goal2 = task2.getToPose();
+				//Robot1 in pose (w.c. footprint)
+				//Robot2 in pose (w.c. footprint)
+				//If intersect, then add to toDelay and continue
+				
+				//If not, check the task with respect to the current driving envelopes
+				
+				//TODO
+			}
+		}
+		
+		return toDelay.isEmpty();
+	}
+	
+	
 	
 	private int[] evaluateDummyRobotsAndTasks() {
 		int[] dummyRobotsAndPaths = new int[] {0,0};
