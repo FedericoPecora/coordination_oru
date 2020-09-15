@@ -41,8 +41,8 @@ import com.google.gson.reflect.TypeToken;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 
+import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeCoordinator;
 import se.oru.coordination.coordination_oru.Mission;
-import se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator;
 import se.oru.coordination.coordination_oru.motionplanning.AbstractMotionPlanner;
 
 /**
@@ -955,18 +955,18 @@ public class Missions {
 	 * @param tec The {@link TrajectoryEnvelopeCoordinator} that coordinates the missions.
 	 * @param robotIDs The robot IDs for which a dispatching thread should be started.
 	 */
-	public static void startMissionDispatchers(final TrajectoryEnvelopeCoordinator tec, int ... robotIDs) {
+	public static void startMissionDispatchers(final AbstractTrajectoryEnvelopeCoordinator tec, int ... robotIDs) {
 		startMissionDispatchers(tec, true, robotIDs);
 	}
 	
 	/**
 	 * Start a thread for each robot that cycles through the known missions for that
 	 * robot and dispatches them when the robot is free.
-	 * @param tec The {@link TrajectoryEnvelopeCoordinator} that coordinates the missions.
+	 * @param tec The implementation of the {@link AbstractTrajectoryEnvelopeCoordinator} that coordinates the missions.
 	 * @param loop Set to <code>false</code> if missions should be de-queued once dispatched. 
 	 * @param robotIDs The robot IDs for which a dispatching thread should be started.
 	 */
-	public static void startMissionDispatchers(final TrajectoryEnvelopeCoordinator tec, final boolean loop, int ... robotIDs) {
+	public static void startMissionDispatchers(final AbstractTrajectoryEnvelopeCoordinator tec, final boolean loop, int ... robotIDs) {
 		//Start a mission dispatching thread for each robot, which will run forever
 		for (final int robotID : robotIDs) {
 			//For each robot, create a thread that dispatches the "next" mission when the robot is free 
