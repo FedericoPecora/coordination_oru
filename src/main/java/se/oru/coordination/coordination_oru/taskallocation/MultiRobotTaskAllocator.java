@@ -348,14 +348,14 @@ public class MultiRobotTaskAllocator {
 						
 						//Setup and solve the MRTA optimization problem.
 						
-						//1. Check if the problem is solvable (i.e., all the end positions of the current set of tasks should not intersect).
+						//1. FIXME Check if the problem is solvable (i.e., all the end positions of the current set of tasks should not intersect).
 						//   This is a sufficient yet not necessary condition so that it will exists an ordering of robots which
 						//   ensures all may achieve their current goal.
 						//   If not, then one of the two tasks (the less critical) is delayed.
 						
-						//2. Evaluate all the paths to tasks and the related costs.
+						//2. Evaluate all the paths to tasks and the related costs (via {@link computeAllPathsToTasksAndTheirCosts} function).
 						
-						//3. Setup the OAP.
+						//3. Setup the OAP (via {@link setupOAP} function.
 						
 						//4. Solve the OAP.
 					}
@@ -379,65 +379,7 @@ public class MultiRobotTaskAllocator {
 		this.inference.start();
 	}
 	
-	/**
-	 * FIXME Forse va inserito come vincolo del problema di ottimo nell'assegnamento invece che come filtraggio a priori.
-	 * Da rivedere post chiacchierata con Federico.
-	 * @param toDelay
-	 * @param allCurrentDrivingEnvelopes
-	 * @param currentTaskPool
-	 * @return <code>true</code> whether the current set of task is admissible
-	 */
-	private boolean checkAdmissibilityOfAllCurrentTasks(HashSet<SimpleNonCooperativeTask> toDelay, HashMap<Integer, TrajectoryEnvelope> allCurrentDrivingEnvelopes, TreeSet<SimpleNonCooperativeTask> currentTaskPool) {
-		
-		toDelay.clear();
-		
-		ArrayList<SimpleNonCooperativeTask> currentTaskPoolList = new ArrayList<SimpleNonCooperativeTask>(currentTaskPool);
-		for (int i = 0; i < currentTaskPoolList.size(); i++) {
-			//Consider the robot occupancy in the task end point in the worst case 
-			//(i.e., the largest compatible footprint) 
-			//Check tasks with tasks
-			SimpleNonCooperativeTask task1 = currentTaskPoolList.get(i);
-			Pose goal1 = task1.getToPose();
-			Geometry worstCaseFootprint1 = null;
-			for (RobotTypeInterface type : task1.getCompatibleRobotTypes()) {
-				for (int robotID : tec.getAllCompatibleRobotIDs(type)) {
-					Geometry footprint1 = tec.getCurrentParkingEnvelope(robotID).getEnvelopeBoundingBox();
-					//get the radius of the circle enclosing the footprint and update if bigger.
-					if (worstCaseFootprint1 == null || worstCaseFootprint1 != null && worstCaseFootprint1.getArea() < footprint1.getArea())
-						worstCaseFootprint1 = footprint1;
-				}
-			}
-			
-			//return the robot type tec.getRobotType(robotID)
-			//return the robot footprint tec.getFootprint(robotID)
-			if (worstCaseFootprint1 != null) {
-				for (int j = i+1; j < currentTaskPoolList.size(); j++) {
-					SimpleNonCooperativeTask task2 = currentTaskPoolList.get(j);
-					Pose goal2 = task2.getToPose();
-					Geometry worstCaseFootprint2 = null;
-					for (RobotTypeInterface type : task2.getCompatibleRobotTypes()) {
-						for (int robotID : tec.getAllCompatibleRobotIDs(type)) {
-							Geometry footprint2 = tec.getCurrentParkingEnvelope(robotID).getEnvelopeBoundingBox();
-							//get the radius of the circle enclosing the footprint and update if bigger.
-							if (worstCaseFootprint2 == null || worstCaseFootprint2 != null && worstCaseFootprint2.getArea() < footprint2.getArea()) 
-								worstCaseFootprint2 = footprint2;						
-						}
-					}
-					
-					//From geometry to coordinates
-					
-					//If intersect, then add to toDelay and continue
-					
-					//If not, check the task with respect to the current driving envelopes
-					
-					//TODO
-				}
-			}
-		}
-		
-		return toDelay.isEmpty();
-	}
-
+	
 	/*
 	 * Evaluate the set of paths and related costs to achieve the current destination 
 	 * @param augmentedIdleRobotIDs The set of robots' IDs augmented with dummy robots.
@@ -461,14 +403,16 @@ public class MultiRobotTaskAllocator {
 		allPathsToTasks.clear();
 		
 		//Initialize the matrix which stores all costs
-		double[][][] allPathsCosts = new double[augmentedIdleRobotIDs.size()][augmentedTaskIDs.size()][this.maxNumberPathsPerTask];
+		double[][][] allPathsCostsMatrix = new double[augmentedIdleRobotIDs.size()][augmentedTaskIDs.size()][this.maxNumberPathsPerTask];
+		ArrayList<Double> allPathsCosts = new ArrayList<Double>(Arrays.asList(new Double[augmentedIdleRobotIDs.size()*augmentedTaskIDs.size()*this.maxNumberPathsPerTask]));
+		HashMap<Integer, PoseSteering[]> paths = new HashMap<Integer,  PoseSteering[]>();
 		
 		//FIXME Handle the case of using a pre-loaded scenario
 
 		//Conversely paths are planned online if the roadmap is not pre-loaded.
 		int robotIndex = 0;
 		int taskIndex = 0;
-		HashMap<Integer,PoseSteering[]> paths = new HashMap<Integer,PoseSteering[]>();
+
 		
 		for (int robotID : augmentedIdleRobotIDs) {
 			for (SimpleNonCooperativeTask task : augmentedTaskIDs) {
@@ -506,8 +450,16 @@ public class MultiRobotTaskAllocator {
 								public void run() {
 									mp_.setStart(start_);
 									mp_.setGoals(goals_);
-									if (mp_.plan()) paths.put(key, mp_.getPath());
-									else paths.put(key, null);
+									if (mp_.plan()) {
+										paths.put(key, mp_.getPath());
+										//TODO evaluate the cost via interference-free function
+										double ifcost = 0; //call the function
+										allPathsCosts.add(key, ifcost);
+									}
+									else {
+										paths.put(key, null);
+										allPathsCosts.add(key, Double.POSITIVE_INFINITY);
+									}
 								}
 							};
 							t.start();
@@ -521,17 +473,15 @@ public class MultiRobotTaskAllocator {
 						for (int s = 0; s < this.maxNumberPathsPerTask; s++) {
 							int key = (robotIndex*augmentedTaskIDs.size()+taskIndex)*this.maxNumberPathsPerTask+s;
 							paths.put(key, null);
+							allPathsCosts.add(key, Double.POSITIVE_INFINITY);
 						}
 					}
 					else {
-						//the task is dummy;
+						//TODO the task is dummy;
 						
-						//the robot is dummy;
+						//TODO the robot is dummy;
 					}
 				}
-				//Check if robot i is compatible with task j. If not, then allPathsToTasks.add(null);
-				
-				//Otherwise compute this.maxNumberPathsPerTask paths (if possible).
 				
 				//Evaluate its interference-cost and update the matrix.
 			}
@@ -540,7 +490,7 @@ public class MultiRobotTaskAllocator {
 		
 		//Eventually add the interference cost
 	
-		return allPathsCosts;
+		return allPathsCostsMatrix;
 	}
 	
 	
