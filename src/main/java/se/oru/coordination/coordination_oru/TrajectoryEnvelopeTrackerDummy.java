@@ -35,6 +35,12 @@ public abstract class TrajectoryEnvelopeTrackerDummy extends AbstractTrajectoryE
 		this.th = new Thread(this, "Parking tracker " + te.getComponent());
 		this.th.start();
 	}
+
+	@Override
+	public int getStops() { return 0; }
+
+	@Override
+	public double getStoppageTime() { return 0.0; }
 	
 	@Override
 	protected void onTrajectoryEnvelopeUpdate(TrajectoryEnvelope te) { }

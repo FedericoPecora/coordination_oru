@@ -57,8 +57,7 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 	 * to the given solver representing when the robot transitions from one sub-envelope to the next. An optional
 	 * callback function will be called at every period.
 	 * @param te The {@link TrajectoryEnvelope} to track.
-	 * @param temporalResolution The temporal unit of measure in which the period is represented. 
-	 * @param solver The {@link TrajectoryEnvelopeSolver} to which temporal constraints will be posted.
+	 * @param temporalResolution The temporal unit of measure in which the period is represented.
 	 * @param trackingPeriodInMillis The tracking period.
 	 * @param cb An optional callback function.
 	 */
@@ -173,7 +172,7 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 	/**
 	 * This method should implement the mechanisms for notifying a robot of a new critical point, caring about network delays.
 	 * Critical point are "timestamped" so that only critical points more recent than the already known will be notified.
-	 * @param criticalPoint The critical point to set (index of pose along the reference trajectory
+	 * @param criticalPointToSet The critical point to set (index of pose along the reference trajectory
 	 * beyond which the robot may not navigate). 
 	 * @param externalCPCounter A counter related to the current notification ("timestamp").
 	 */
