@@ -164,18 +164,6 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	}
 	
 	/**
-	 * Return the current {@link TrajectoryEnvelope} of a given robot.
-	 * @param robotID The ID of the robot.
-	 * @return Its current {@link TrajectoryEnvelope}.
-	 */
-	public TrajectoryEnvelope getCurrentDrivingEnvelope(int robotID) {
-		if (trackers.containsKey(robotID)) return trackers.get(robotID).getTrajectoryEnvelope();
-		metaCSPLogger.severe("Invalid robotID.");
-		return null;
-	}
-	
-	
-	/**
 	 * Returning the number of messages required by each send to be effective
 	 * (i.e. the probability of unsuccessful delivery will be lower than the threshold maxFaultsProbability)
 	 */
