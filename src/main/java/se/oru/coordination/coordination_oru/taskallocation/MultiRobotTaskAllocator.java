@@ -30,6 +30,7 @@ import se.oru.coordination.coordination_oru.SimpleNonCooperativeTask;
 import se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator;
 import se.oru.coordination.coordination_oru.fleetmasterinterface.AbstractFleetMasterInterface;
 import se.oru.coordination.coordination_oru.fleetmasterinterface.FleetMasterInterface;
+import se.oru.coordination.coordination_oru.motionplanning.AbstractMotionPlanner;
 import se.oru.coordination.coordination_oru.util.Missions;
 import se.oru.coordination.coordination_oru.util.StringUtils;
 
@@ -331,7 +332,7 @@ public class MultiRobotTaskAllocator {
 						
 						//Sample the set of driving envelopes
 						for (int robotID : tec.getAllRobotIDs()) {
-							allCurrentDrivingEnvelopes.put(robotID, tec.getCurrentDrivingEnvelope(robotID));
+							allCurrentDrivingEnvelopes.put(robotID, tec.getCurrentTrajectoryEnvelope(robotID));
 							
 							//FIXME filter out idle robots which will be assigned to some missions
 							if (idleRobots.contains(robotID) && Missions.getMissions(robotID) != null && !Missions.getMissions(robotID).isEmpty()) idleRobots.remove(robotID);
@@ -352,13 +353,11 @@ public class MultiRobotTaskAllocator {
 						//   ensures all may achieve their current goal.
 						//   If not, then one of the two tasks (the less critical) is delayed.
 						
-						//2. Compute dummy robots and tasks.
+						//2. Evaluate all the paths to tasks and the related costs.
 						
-						//3. Evaluate all the paths to tasks and the related costs.
+						//3. Setup the OAP.
 						
-						//4. Setup the OAP.
-						
-						//5. Solve the OAP.
+						//4. Solve the OAP.
 					}
 						
 					//Dispatch (i.e., enqueue) missions to robots according to the decided assignment (only if feasible).
@@ -438,45 +437,98 @@ public class MultiRobotTaskAllocator {
 		
 		return toDelay.isEmpty();
 	}
-	
-	
-	
-	private int[] evaluateDummyRobotsAndTasks() {
-		int[] dummyRobotsAndPaths = new int[] {0,0};
-		//TODO
-		
-		
-		return dummyRobotsAndPaths;
-	}
-	
+
 	/*
-	 * Evaluate the set of paths and related costs to achieve the current destinatiom 
+	 * Evaluate the set of paths and related costs to achieve the current destination 
 	 * @param augmentedIdleRobotIDs The set of robots' IDs augmented with dummy robots.
 	 * @param augmentedTaskIDs The set of tasks' IDs augmented with dummy task.
 	 * @param allPathsToTasks Variable to retrieve all the paths to the current set of tasks.
 	 * @return The matrix of interference-free costs.
 	 */
-	private double[][][] computeAllPathsToTasksAndTheirCosts(int[] augmentedIdleRobotIDs, int[] augmentedTaskIDs, ArrayList<PoseSteering[]> allPathsToTasks){
+	private double[][][] computeAllPathsToTasksAndTheirCosts(HashSet<Integer> idleRobots, TreeSet<SimpleNonCooperativeTask> currentTasksPool, ArrayList<PoseSteering[]> allPathsToTasks){
 		
-		//FIXME Controlla il codice qui sotto
-		synchronized(taskPool) {
-			if (augmentedIdleRobotIDs.length < Math.max(1, tec.getAllRobotIDs().size()) || augmentedTaskIDs.length < Math.max(1, taskPool.size())) {
-				metaCSPLogger.severe("Error in evaluating the number of robors and tasks.");
-				throw new Error("Error in evaluating the number of robors and tasks.");
-			}
-		}
+		TreeSet<Integer> augmentedIdleRobotIDs = new TreeSet<Integer>(idleRobots);
+		//Add m-n "dummy robots" if the number of tasks m is greater than the number of idle robots n.
+		for (int i = 1; i < currentTasksPool.size()-idleRobots.size(); i++)
+			augmentedIdleRobotIDs.add(augmentedIdleRobotIDs.last()+1);
+		
+		TreeSet<SimpleNonCooperativeTask> augmentedTaskIDs = new TreeSet<SimpleNonCooperativeTask>(currentTasksPool);
+		//Initialize n-m "dummy tasks" if the number of idle robots n is greater than the number of posted tasks m.
+		for (int i = 1; i < idleRobots.size()-currentTasksPool.size(); i++)
+			augmentedTaskIDs.add(new SimpleNonCooperativeTask(null, null, null, null, null, null, -1));
 		
 		//Clear the variable storing all the paths to the current set of tasks.
 		allPathsToTasks.clear();
 		
 		//Initialize the matrix which stores all costs
-		double[][][] allPathsCosts = new double[augmentedIdleRobotIDs.length][augmentedTaskIDs.length][this.maxNumberPathsPerTask];
+		double[][][] allPathsCosts = new double[augmentedIdleRobotIDs.size()][augmentedTaskIDs.size()][this.maxNumberPathsPerTask];
 		
 		//FIXME Handle the case of using a pre-loaded scenario
 
 		//Conversely paths are planned online if the roadmap is not pre-loaded.
-		for (int i = 0; i < augmentedIdleRobotIDs.length; i++) {
-			for (int j = 0; j < augmentedTaskIDs.length; j++) {
+		int robotIndex = 0;
+		int taskIndex = 0;
+		HashMap<Integer,PoseSteering[]> paths = new HashMap<Integer,PoseSteering[]>();
+		
+		for (int robotID : augmentedIdleRobotIDs) {
+			for (SimpleNonCooperativeTask task : augmentedTaskIDs) {
+				
+				Pose start = null;
+				Pose[] targets = null;
+
+				//if both the robot and the task are not dummy and types are compatible, 
+				//then the path should start in the current starting pose of the robot
+				//and end in the ending pose of the task while passing through all the stopping points.
+				if (robotIndex < idleRobots.size() && taskIndex < currentTasksPool.size() && task.isCompatible(tec.getRobotType(robotID))) {
+					AbstractMotionPlanner mp = null;
+					synchronized(tec) {
+						Pose[] ste = tec.getCurrentTrajectoryEnvelope(robotID).getTrajectory().getPose();
+						start = ste[ste.length-1]; //FIXME Either like this or from the current robot report.
+						mp = tec.getMotionPlanner(robotID);
+					}
+					ArrayList<Pose> targetArray = new ArrayList<Pose>(task.getStoppingPoints().keySet());
+					targetArray.add(task.getToPose());
+					targets = (Pose[]) targetArray.toArray();
+					if (mp == null) {
+						metaCSPLogger.severe("Motion planner of Robot" + robotID + " is not initialized.");
+						throw new Error("Motion planner of Robot" + robotID + " is not initialized.");
+					}
+					else {
+						//FIXME In AbstractMotionPlanner class: we need a multi-path function for planning!
+						final AbstractMotionPlanner mp_ = mp;
+						final Pose start_ = start;
+						final Pose[] goals_ = targets;
+						for (int s = 0; s < this.maxNumberPathsPerTask; s++) {
+							final int key = (robotIndex*augmentedTaskIDs.size()+taskIndex)*this.maxNumberPathsPerTask+s;
+							//Start a thread for motion planning.
+							Thread t = new Thread("MRTA planner Robot" + robotID) {
+								@Override
+								public void run() {
+									mp_.setStart(start_);
+									mp_.setGoals(goals_);
+									if (mp_.plan()) paths.put(key, mp_.getPath());
+									else paths.put(key, null);
+								}
+							};
+							t.start();
+						}
+					}
+					
+				}
+				else {
+					//either types are not compatible or one between the robot and the task is dummy.
+					if (!task.isCompatible(tec.getRobotType(robotID))) {
+						for (int s = 0; s < this.maxNumberPathsPerTask; s++) {
+							int key = (robotIndex*augmentedTaskIDs.size()+taskIndex)*this.maxNumberPathsPerTask+s;
+							paths.put(key, null);
+						}
+					}
+					else {
+						//the task is dummy;
+						
+						//the robot is dummy;
+					}
+				}
 				//Check if robot i is compatible with task j. If not, then allPathsToTasks.add(null);
 				
 				//Otherwise compute this.maxNumberPathsPerTask paths (if possible).
