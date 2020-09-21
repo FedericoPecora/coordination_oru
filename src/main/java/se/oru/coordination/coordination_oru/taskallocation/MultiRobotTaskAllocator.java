@@ -355,6 +355,8 @@ public class MultiRobotTaskAllocator {
 						//   If not, then one of the two tasks (the less critical) is delayed.
 						
 						//2. Evaluate all the paths to tasks and the related costs (via {@link computeAllPathsToTasksAndTheirCosts} function).
+						ArrayList<PoseSteering[]> allPathsToTasks = null;
+						double[][][] costMatrix = computeAllPathsToTasksAndTheirCosts(allCurrentDrivingEnvelopes.keySet(), idleRobots, currentTaskPool, allPathsToTasks);
 						
 						//3. Setup the OAP (via {@link setupOAP} function.
 						
@@ -389,18 +391,18 @@ public class MultiRobotTaskAllocator {
 	 * @param allPathsToTasks Variable to return all the paths to the current set of tasks.
 	 * @return The matrix of interference-free costs.
 	 */
-	private double[][][] computeAllPathsToTasksAndTheirCosts(Set<Integer> allRobotIDs, Set<Integer> idleRobots, Set<SimpleNonCooperativeTask> currentTasksPool, ArrayList<PoseSteering[]> allPathsToTasks){
+	private double[][][] computeAllPathsToTasksAndTheirCosts(Set<Integer> allRobotIDs, Set<Integer> idleRobots, Set<SimpleNonCooperativeTask> currentTaskPool, ArrayList<PoseSteering[]> allPathsToTasks){
 		
 		//FIXME Handle empty cases ...
 		
 		//Add m-n "dummy robots" if the number of tasks m is greater than the number of idle robots n.
 		TreeSet<Integer> augmentedIdleRobotIDs = new TreeSet<Integer>(idleRobots);
-		for (int i = 1; i < currentTasksPool.size()-idleRobots.size(); i++)
+		for (int i = 1; i < currentTaskPool.size()-idleRobots.size(); i++)
 			augmentedIdleRobotIDs.add(augmentedIdleRobotIDs.last()+1);
 		
 		//Initialize n-m "dummy tasks" if the number of idle robots n is greater than the number of posted tasks m.
-		TreeSet<SimpleNonCooperativeTask> augmentedTaskSet = new TreeSet<SimpleNonCooperativeTask>(currentTasksPool);
-		for (int i = 1; i < idleRobots.size()-currentTasksPool.size(); i++)
+		TreeSet<SimpleNonCooperativeTask> augmentedTaskSet = new TreeSet<SimpleNonCooperativeTask>(currentTaskPool);
+		for (int i = 1; i < idleRobots.size()-currentTaskPool.size(); i++)
 			augmentedTaskSet.add(new SimpleNonCooperativeTask(null, null, null, null, null, null, -1));
 		
 		//Clear the variable storing all the paths to the current set of tasks.
@@ -412,8 +414,8 @@ public class MultiRobotTaskAllocator {
 		//FIXME Handle the case of using a pre-loaded scenario
 
 		//Conversely paths are planned online if the roadmap is not pre-loaded.
-		int robotIndex = 0;
-		int taskIndex = 0;
+		
+		//Initialize the cumulative variables to normalize costs
 		final AtomicReference<Double> pathLengthNormalizingFactor = new AtomicReference<Double>();
 		pathLengthNormalizingFactor.set(0.);
 		final AtomicReference<Double> arrivalTimeNormalizingFactor = new AtomicReference<Double>();
@@ -421,6 +423,9 @@ public class MultiRobotTaskAllocator {
 		final AtomicReference<Double> tardinessNormalizingFactor = new AtomicReference<Double>();
 		tardinessNormalizingFactor.set(0.);
 		
+		int robotIndex = 0;
+		int taskIndex = 0;
+
 		for (final int robotID : augmentedIdleRobotIDs) {
 			for (SimpleNonCooperativeTask task : augmentedTaskSet) {
 				//Initialize the starting and the target poses of the path. 
@@ -429,7 +434,7 @@ public class MultiRobotTaskAllocator {
 
 				//If both the robot and the task are not dummy and types are compatible, 
 				//then the start is the current starting pose of the robot and targets are the sequence of stopping point plus the task ending pose.
-				if (robotIndex < idleRobots.size() && taskIndex < currentTasksPool.size() && task.isCompatible(tec.getRobotType(robotID))) {
+				if (robotIndex < idleRobots.size() && taskIndex < currentTaskPool.size() && task.isCompatible(tec.getRobotType(robotID))) {
 					AbstractMotionPlanner mp = null;
 					synchronized(tec) {
 						Pose[] ste = tec.getCurrentTrajectoryEnvelope(robotID).getTrajectory().getPose();
@@ -472,8 +477,7 @@ public class MultiRobotTaskAllocator {
 					
 				}
 				else {
-					//FIXME Sampling here: tec.getAllRobotIDs().contains(robotID)
-					if (tec.getAllRobotIDs().contains(robotID) && !task.isCompatible(tec.getRobotType(robotID))) { //the robot is real but it is not compatible with the current task.
+					if (allRobotIDs.contains(robotID) && !task.isCompatible(tec.getRobotType(robotID))) { //the robot is real but it is not compatible with the current task.
 																		 //Note: dummy robots are compatible with any task. Dummy task are compatible with any robot.
 						for (int pathIndex = 0; pathIndex < this.maxNumberPathsPerTask; pathIndex++) {
 							int key = (robotIndex*augmentedTaskSet.size()+taskIndex)*this.maxNumberPathsPerTask+pathIndex;
@@ -481,7 +485,7 @@ public class MultiRobotTaskAllocator {
 						}
 					}
 					else {
-						if (taskIndex > currentTasksPool.size()) {
+						if (taskIndex > currentTaskPool.size()) {
 							if (robotIndex > idleRobots.size()) {
 								metaCSPLogger.severe("Error. Found pair (robot, task) where both the robot and the task are dummy.");
 								throw new Error("Error. Found pair (robot, task) where both the robot and the task are dummy.");
@@ -518,7 +522,7 @@ public class MultiRobotTaskAllocator {
 			robotIndex++;	
 		}
 		
-		//Eventually add the interference cost?
+		//TODO Add the interference cost
 	
 		return computeInterferenceFreeCosts(paths, augmentedIdleRobotIDs, augmentedTaskSet.size(), pathLengthNormalizingFactor.get(), arrivalTimeNormalizingFactor.get(), tardinessNormalizingFactor.get());
 	}
@@ -563,7 +567,7 @@ public class MultiRobotTaskAllocator {
 		return 0.0; //TODO
 	}
 	
-	private MPSolver setupOAP(int augmentedNumberOfRobots, int augmentedNumberOfTasks, Set<Integer> idleRobotIDs) {
+	private MPSolver setupOAP(int augmentedNumberOfRobots, int augmentedNumberOfTasks, ArrayList<PoseSteering[]> allPathsToTasks) {
 		
 		//Create the linear solver with the CBC backend.
 		MPSolver solver = new MPSolver(
@@ -586,7 +590,7 @@ public class MultiRobotTaskAllocator {
 		//Constraints are in the form a1*x1 + ...  + an*xn <= b (linear constraint), with xi being a decision variable.
 		
 		//1. each robot may be assigned only to one task, i.e.,	
-		//   for each i, sum_j sum_s x_{ijs} == 1
+		//   for each i (robotIndex), sum_j (taskIndex) sum_s (pathIndex) x_{ijs} == 1
 		 for (int i = 0; i < augmentedNumberOfRobots; i++) {			 
 			//Define the domain [lb, ub] of the constraint
 			 MPConstraint c = solver.makeConstraint(1, 1);
@@ -619,7 +623,7 @@ public class MultiRobotTaskAllocator {
 					int j = IDsAllTasks.indexOf(taskID);
 					for(int s = 0; s < this.maxNumberPathsPerTask; s++) {
 							 if (i < numRobot) { //i is not a dummy robot?
-								 if (pathsToTargetGoal.get(robotID*augmentedNumberOfTasks*this.maxNumberPathsPerTask+taskID*this.maxNumberPathsPerTask+s) == null) {
+								 if (allPathsToTasks.get(robotID*augmentedNumberOfTasks*this.maxNumberPathsPerTask+taskID*this.maxNumberPathsPerTask+s) == null) {
 									 MPConstraint c3 = solver.makeConstraint(0,0);
 									 c3.setCoefficient(decisionVariables[i][j][s],1); 
 								 }
