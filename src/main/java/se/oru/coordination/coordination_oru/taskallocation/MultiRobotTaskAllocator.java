@@ -490,10 +490,10 @@ public class MultiRobotTaskAllocator {
 							synchronized(tec) {
 								path = new PoseSteering[] {tec.getCurrentTrajectoryEnvelope(robotID).getTrajectory().getPoseSteering()[tec.getCurrentTrajectoryEnvelope(robotID).getTrajectory().getPoseSteering().length-1]};
 							}
-							task.setFromPose(new Pose(path[path.length].getX(),path[path.length].getY(),path[path.length].getTheta()));
-							task.setFromLocation(task.getFromPose().toString());
-							task.setToPose(new Pose(path[path.length].getX(),path[path.length].getY(),path[path.length].getTheta()));
-							task.setToLocation(task.getToPose().toString());
+							Pose fromPose = new Pose(path[path.length].getX(),path[path.length].getY(),path[path.length].getTheta());
+							task.setFromPoseAndLocation(fromPose, fromPose.toString());
+							Pose toPose = new Pose(fromPose.getX(), fromPose.getY(), fromPose.getTheta());
+							task.setToPoseAndLocation(toPose, toPose.toString());
 							for (int pathIndex = 0; pathIndex < this.maxNumberPathsPerTask; pathIndex++) {
 								int key = (robotIndex*augmentedTaskSet.size()+taskIndex)*this.maxNumberPathsPerTask+pathIndex;
 								paths.put(key, path);
