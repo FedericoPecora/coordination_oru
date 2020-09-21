@@ -9,6 +9,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Logger;
 
 import org.apache.commons.collections.comparators.ComparatorChain;
@@ -382,12 +383,15 @@ public class MultiRobotTaskAllocator {
 	
 	/*
 	 * Evaluate the set of paths and related costs to achieve the current destination 
+	 * @param allRobotIDs The current IDs of all the robots in the fleet.
 	 * @param idleRobots The set of idle robots' IDs at current time.
 	 * @param currentTasksPool The current set of tasks.
 	 * @param allPathsToTasks Variable to return all the paths to the current set of tasks.
 	 * @return The matrix of interference-free costs.
 	 */
-	private double[][][] computeAllPathsToTasksAndTheirCosts(HashSet<Integer> idleRobots, TreeSet<SimpleNonCooperativeTask> currentTasksPool, ArrayList<PoseSteering[]> allPathsToTasks){
+	private double[][][] computeAllPathsToTasksAndTheirCosts(Set<Integer> allRobotIDs, Set<Integer> idleRobots, Set<SimpleNonCooperativeTask> currentTasksPool, ArrayList<PoseSteering[]> allPathsToTasks){
+		
+		//FIXME Handle empty cases ...
 		
 		//Add m-n "dummy robots" if the number of tasks m is greater than the number of idle robots n.
 		TreeSet<Integer> augmentedIdleRobotIDs = new TreeSet<Integer>(idleRobots);
@@ -402,16 +406,20 @@ public class MultiRobotTaskAllocator {
 		//Clear the variable storing all the paths to the current set of tasks.
 		allPathsToTasks.clear();
 		
-		//Initialize the matrix which stores all costs
-		double[][][] allPathsCostsMatrix = new double[augmentedIdleRobotIDs.size()][augmentedTaskSet.size()][this.maxNumberPathsPerTask];
-		//ArrayList<Double> allPathsCosts = new ArrayList<Double>(Arrays.asList(new Double[augmentedIdleRobotIDs.size()*augmentedTaskIDs.size()*this.maxNumberPathsPerTask]));
-		HashMap<Integer, PoseSteering[]> paths = new HashMap<Integer,  PoseSteering[]>();
+		//Initialize the variable to store all the paths
+		HashMap<Integer, PoseSteering[]> paths = new HashMap<Integer, PoseSteering[]>();
 		
 		//FIXME Handle the case of using a pre-loaded scenario
 
 		//Conversely paths are planned online if the roadmap is not pre-loaded.
 		int robotIndex = 0;
 		int taskIndex = 0;
+		final AtomicReference<Double> pathLengthNormalizingFactor = new AtomicReference<Double>();
+		pathLengthNormalizingFactor.set(0.);
+		final AtomicReference<Double> arrivalTimeNormalizingFactor = new AtomicReference<Double>();
+		arrivalTimeNormalizingFactor.set(0.);
+		final AtomicReference<Double> tardinessNormalizingFactor = new AtomicReference<Double>();
+		tardinessNormalizingFactor.set(0.);
 		
 		for (final int robotID : augmentedIdleRobotIDs) {
 			for (SimpleNonCooperativeTask task : augmentedTaskSet) {
@@ -440,10 +448,7 @@ public class MultiRobotTaskAllocator {
 						final AbstractMotionPlanner mp_ = mp;
 						final Pose start_ = start;
 						final Pose[] goals_ = targets;
-						final int robotIndex_ = robotIndex;
-						final int taskIndex_ = taskIndex;
 						for (int pathIndex = 0; pathIndex < this.maxNumberPathsPerTask; pathIndex++) {
-							final int pathIndex_ = pathIndex;
 							final int key_ = (robotIndex*augmentedTaskSet.size()+taskIndex)*this.maxNumberPathsPerTask+pathIndex;
 							//Start a thread for motion planning.
 							Thread t = new Thread("MRTA planner Robot" + robotID) {
@@ -451,13 +456,14 @@ public class MultiRobotTaskAllocator {
 								public void run() {
 									mp_.setStart(start_);
 									mp_.setGoals(goals_);
-									if (mp_.plan()) paths.put(key_, mp_.getPath());
-									else {
-										paths.put(key_, null);
-										//allPathsCosts.add(key, Double.POSITIVE_INFINITY);
+									double pathLength = 0.;
+									if (mp_.plan()) {
+										paths.put(key_, mp_.getPath());
+										pathLength = computePathLength(paths.get(key_));
 									}
-									allPathsCostsMatrix[robotIndex_][taskIndex_][pathIndex_] = computeInterferenceFreeCost(paths.get(key_), robotID);
-									//allPathsCosts.add(key, computeInterferenceFreeCost(paths.get(key), robotID));
+									else paths.put(key_, null);
+									pathLengthNormalizingFactor.set(pathLengthNormalizingFactor.get() + pathLength);
+									//FIXME add arrival time computation and tardiness.
 								}
 							};
 							t.start();
@@ -472,9 +478,6 @@ public class MultiRobotTaskAllocator {
 						for (int pathIndex = 0; pathIndex < this.maxNumberPathsPerTask; pathIndex++) {
 							int key = (robotIndex*augmentedTaskSet.size()+taskIndex)*this.maxNumberPathsPerTask+pathIndex;
 							paths.put(key, null);
-							//allPathsCosts.add(key, Double.POSITIVE_INFINITY);
-							//allPathsCosts.add(key, computeInterferenceFreeCost(paths.get(key), robotID));
-							allPathsCostsMatrix[robotIndex][taskIndex][pathIndex] = computeInterferenceFreeCost(paths.get(key), robotID);
 						}
 					}
 					else {
@@ -497,9 +500,6 @@ public class MultiRobotTaskAllocator {
 							for (int pathIndex = 0; pathIndex < this.maxNumberPathsPerTask; pathIndex++) {
 								int key = (robotIndex*augmentedTaskSet.size()+taskIndex)*this.maxNumberPathsPerTask+pathIndex;
 								paths.put(key, path);
-								//allPathsCosts.add(key, 0.0);
-								//allPathsCosts.add(key, computeInterferenceFreeCost(paths.get(key), robotID));
-								allPathsCostsMatrix[robotIndex][taskIndex][pathIndex] = computeInterferenceFreeCost(paths.get(key), robotID);
 							}							
 						}
 						else  { //The task is real, robot and task are compatible but the robot is dummy.
@@ -508,9 +508,6 @@ public class MultiRobotTaskAllocator {
 							for (int pathIndex = 0; pathIndex < this.maxNumberPathsPerTask; pathIndex++) {
 								int key = (robotIndex*augmentedTaskSet.size()+taskIndex)*this.maxNumberPathsPerTask+pathIndex;
 								paths.put(key, new PoseSteering[] {new PoseSteering(task.getToPose(), 0)});
-								//allPathsCosts.add(key, Double.POSITIVE_INFINITY);
-								//allPathsCosts.add(key, computeInterferenceFreeCost(paths.get(key), robotID));
-								allPathsCostsMatrix[robotIndex][taskIndex][pathIndex] = computeInterferenceFreeCost(paths.get(key), robotID);
 							}
 						}
 					}
@@ -518,18 +515,35 @@ public class MultiRobotTaskAllocator {
 				taskIndex++;
 				taskIndex = taskIndex % augmentedTaskSet.size();
 			}
-			robotIndex++;
-			robotIndex = robotIndex % augmentedIdleRobotIDs.size();
-	
+			robotIndex++;	
 		}
 		
 		//Eventually add the interference cost?
 	
-		return allPathsCostsMatrix;
+		return computeInterferenceFreeCosts(paths, augmentedIdleRobotIDs, augmentedTaskSet.size(), pathLengthNormalizingFactor.get(), arrivalTimeNormalizingFactor.get(), tardinessNormalizingFactor.get());
+	}
+	
+	private double[][][] computeInterferenceFreeCosts(HashMap<Integer,PoseSteering[]> paths, Set<Integer> augmentedIdleRobotIDs, int numberOfAugmentedTasks, double pathLengthNormalizingFactor, double arrivalTimeNormalizingFactor, double tardinessNormalizingFactor) {
+		double[][][] ret = new double[augmentedIdleRobotIDs.size()][numberOfAugmentedTasks][this.maxNumberPathsPerTask];
+		for (int key : paths.keySet()) {
+			int robotIndex = key % (numberOfAugmentedTasks*this.maxNumberPathsPerTask);
+			int taskIndex = key % numberOfAugmentedTasks;
+			int pathIndex = key % this.maxNumberPathsPerTask;
+			ret[robotIndex][taskIndex][pathIndex] = this.pathLengthWeight*computePathLengthCost(paths.get(key), new ArrayList<Integer>(augmentedIdleRobotIDs).get(robotIndex))/pathLengthNormalizingFactor + 
+													this.arrivalTimeWeight*computeArrivalTimeCost(paths.get(key), new ArrayList<Integer>(augmentedIdleRobotIDs).get(robotIndex))/arrivalTimeNormalizingFactor + 
+													this.tardinessWeight*computeTardinessCost(paths.get(key), new ArrayList<Integer>(augmentedIdleRobotIDs).get(robotIndex))/tardinessNormalizingFactor;
+		}
+		return ret;
+	}
+	
+	private double computePathLength(PoseSteering[] path) {
+		double ret = 0;
+		for (int i = 1; i < path.length; i++) ret += path[i].getPose().distanceTo(path[i-1].getPose());
+		return ret;
 	}
 	
 	//TODO write down + fixme maxvalue and infinity
-	private double computeInterferenceFreeCost(PoseSteering[] path, int robotID) {
+	private double computePathLengthCost(PoseSteering[] path, int robotID) {
 		if (path == null) return Double.MAX_VALUE;
 		PoseSteering[] lastPose = null;
 		synchronized(tec) {
@@ -537,11 +551,17 @@ public class MultiRobotTaskAllocator {
 			lastPose = new PoseSteering[] {tec.getCurrentTrajectoryEnvelope(robotID).getTrajectory().getPoseSteering()
 					[tec.getCurrentTrajectoryEnvelope(robotID).getTrajectory().getPoseSteering().length-1]}; //FIXME: prenderla da robot report?
 		}
-		if (path.length == 1 && lastPose.equals(path[path.length-1])) return 0.;
-		double cost = 0;
-		return cost;
+		if (!path[0].equals(lastPose)) metaCSPLogger.severe("The starting pose of Robot" + robotID + "'s path differs from its current location!"); //FIXME warning
+		return computePathLength(path);
 	}
 	
+	private double computeArrivalTimeCost(PoseSteering[] path, int robotID) {
+		return 0.0; //TODO
+	}
+	
+	private double computeTardinessCost(PoseSteering[] path, int robotID) {
+		return 0.0; //TODO
+	}
 	
 	private MPSolver setupOAP(int augmentedNumberOfRobots, int augmentedNumberOfTasks, Set<Integer> idleRobotIDs) {
 		
