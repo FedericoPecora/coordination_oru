@@ -117,12 +117,13 @@ public class SimpleNonCooperativeTask implements Comparable<SimpleNonCooperative
 
 	/**
 	 * Set the {@link Pose} of source location of this {@link SimpleNonCooperativeTask}.
-	 * @param fromPose The {@link Pose} of source location of this {@link SimpleNonCooperativeTask}.
+	 * @param pose The {@link Pose} of source location of this {@link SimpleNonCooperativeTask}.
+	 * @param location The source of this {@link SimpleNonCooperativeTask}.
 	 */
-	public void setFromPose(Pose fromPose) {
-		this.fromPose = fromPose;
+	public void setFromPoseAndLocation(Pose pose, String location) {
+		this.fromPose = pose;
+		this.fromLocation = location;
 	}
-
 
 	/**
 	 * Get the {@link Pose} of destination location of this {@link SimpleNonCooperativeTask}.
@@ -131,13 +132,15 @@ public class SimpleNonCooperativeTask implements Comparable<SimpleNonCooperative
 	public Pose getToPose() {
 		return toPose;
 	}
-
+	
 	/**
 	 * Get the {@link Pose} of destination location of this {@link SimpleNonCooperativeTask}.
-	 * @param toPose The {@link Pose} of destination location of this {@link SimpleNonCooperativeTask}.
+	 * @param pose The {@link Pose} of destination location of this {@link SimpleNonCooperativeTask}.
+	 * @param location The destination of this {@link SimpleNonCooperativeTask}.
 	 */
-	public void setToPose(Pose toPose) {
-		this.toPose = toPose;
+	public void setToPoseAndLocation(Pose pose, String location) {
+		this.toPose = pose;
+		this.toLocation = location;
 	}
 	
 	/**
@@ -171,23 +174,7 @@ public class SimpleNonCooperativeTask implements Comparable<SimpleNonCooperative
 		return ret;
 		//return this.stoppingPoints;
 	}
-	
-	/**
-	 * Set the destination location for this {@link SimpleNonCooperativeTask}.
-	 * @param location The destination of this {@link SimpleNonCooperativeTask}.
-	 */
-	public void setToLocation(String location) {
-		this.toLocation = location;
-	}
-
-	/**
-	 * Set the source location for this {@link SimpleNonCooperativeTask}.
-	 * @param location The source of this {@link SimpleNonCooperativeTask}.
-	 */
-	public void setFromLocation(String location) {
-		this.fromLocation = location;
-	}
-	
+		
 	/**
 	 * Set the soft, expected, absolute deadline to complete this task.
 	 * @param deadline The soft, expected, absolute deadline to complete this task (in millis). 
