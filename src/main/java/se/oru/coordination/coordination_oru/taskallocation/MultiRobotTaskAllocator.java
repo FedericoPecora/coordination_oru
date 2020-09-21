@@ -382,29 +382,29 @@ public class MultiRobotTaskAllocator {
 	
 	/*
 	 * Evaluate the set of paths and related costs to achieve the current destination 
-	 * @param augmentedIdleRobotIDs The set of robots' IDs augmented with dummy robots.
-	 * @param augmentedTaskIDs The set of tasks' IDs augmented with dummy task.
-	 * @param allPathsToTasks Variable to retrieve all the paths to the current set of tasks.
+	 * @param idleRobots The set of idle robots' IDs at current time.
+	 * @param currentTasksPool The current set of tasks.
+	 * @param allPathsToTasks Variable to return all the paths to the current set of tasks.
 	 * @return The matrix of interference-free costs.
 	 */
 	private double[][][] computeAllPathsToTasksAndTheirCosts(HashSet<Integer> idleRobots, TreeSet<SimpleNonCooperativeTask> currentTasksPool, ArrayList<PoseSteering[]> allPathsToTasks){
 		
-		TreeSet<Integer> augmentedIdleRobotIDs = new TreeSet<Integer>(idleRobots);
 		//Add m-n "dummy robots" if the number of tasks m is greater than the number of idle robots n.
+		TreeSet<Integer> augmentedIdleRobotIDs = new TreeSet<Integer>(idleRobots);
 		for (int i = 1; i < currentTasksPool.size()-idleRobots.size(); i++)
 			augmentedIdleRobotIDs.add(augmentedIdleRobotIDs.last()+1);
 		
-		TreeSet<SimpleNonCooperativeTask> augmentedTaskIDs = new TreeSet<SimpleNonCooperativeTask>(currentTasksPool);
 		//Initialize n-m "dummy tasks" if the number of idle robots n is greater than the number of posted tasks m.
+		TreeSet<SimpleNonCooperativeTask> augmentedTaskSet = new TreeSet<SimpleNonCooperativeTask>(currentTasksPool);
 		for (int i = 1; i < idleRobots.size()-currentTasksPool.size(); i++)
-			augmentedTaskIDs.add(new SimpleNonCooperativeTask(null, null, null, null, null, null, -1));
+			augmentedTaskSet.add(new SimpleNonCooperativeTask(null, null, null, null, null, null, -1));
 		
 		//Clear the variable storing all the paths to the current set of tasks.
 		allPathsToTasks.clear();
 		
 		//Initialize the matrix which stores all costs
-		double[][][] allPathsCostsMatrix = new double[augmentedIdleRobotIDs.size()][augmentedTaskIDs.size()][this.maxNumberPathsPerTask];
-		ArrayList<Double> allPathsCosts = new ArrayList<Double>(Arrays.asList(new Double[augmentedIdleRobotIDs.size()*augmentedTaskIDs.size()*this.maxNumberPathsPerTask]));
+		double[][][] allPathsCostsMatrix = new double[augmentedIdleRobotIDs.size()][augmentedTaskSet.size()][this.maxNumberPathsPerTask];
+		//ArrayList<Double> allPathsCosts = new ArrayList<Double>(Arrays.asList(new Double[augmentedIdleRobotIDs.size()*augmentedTaskIDs.size()*this.maxNumberPathsPerTask]));
 		HashMap<Integer, PoseSteering[]> paths = new HashMap<Integer,  PoseSteering[]>();
 		
 		//FIXME Handle the case of using a pre-loaded scenario
@@ -412,17 +412,15 @@ public class MultiRobotTaskAllocator {
 		//Conversely paths are planned online if the roadmap is not pre-loaded.
 		int robotIndex = 0;
 		int taskIndex = 0;
-
 		
-		for (int robotID : augmentedIdleRobotIDs) {
-			for (SimpleNonCooperativeTask task : augmentedTaskIDs) {
-				
+		for (final int robotID : augmentedIdleRobotIDs) {
+			for (SimpleNonCooperativeTask task : augmentedTaskSet) {
+				//Initialize the starting and the target poses of the path. 
 				Pose start = null;
 				Pose[] targets = null;
 
-				//if both the robot and the task are not dummy and types are compatible, 
-				//then the path should start in the current starting pose of the robot
-				//and end in the ending pose of the task while passing through all the stopping points.
+				//If both the robot and the task are not dummy and types are compatible, 
+				//then the start is the current starting pose of the robot and targets are the sequence of stopping point plus the task ending pose.
 				if (robotIndex < idleRobots.size() && taskIndex < currentTasksPool.size() && task.isCompatible(tec.getRobotType(robotID))) {
 					AbstractMotionPlanner mp = null;
 					synchronized(tec) {
@@ -442,24 +440,24 @@ public class MultiRobotTaskAllocator {
 						final AbstractMotionPlanner mp_ = mp;
 						final Pose start_ = start;
 						final Pose[] goals_ = targets;
-						for (int s = 0; s < this.maxNumberPathsPerTask; s++) {
-							final int key = (robotIndex*augmentedTaskIDs.size()+taskIndex)*this.maxNumberPathsPerTask+s;
+						final int robotIndex_ = robotIndex;
+						final int taskIndex_ = taskIndex;
+						for (int pathIndex = 0; pathIndex < this.maxNumberPathsPerTask; pathIndex++) {
+							final int pathIndex_ = pathIndex;
+							final int key_ = (robotIndex*augmentedTaskSet.size()+taskIndex)*this.maxNumberPathsPerTask+pathIndex;
 							//Start a thread for motion planning.
 							Thread t = new Thread("MRTA planner Robot" + robotID) {
 								@Override
 								public void run() {
 									mp_.setStart(start_);
 									mp_.setGoals(goals_);
-									if (mp_.plan()) {
-										paths.put(key, mp_.getPath());
-										//TODO evaluate the cost via interference-free function
-										double ifcost = 0; //call the function
-										allPathsCosts.add(key, ifcost);
-									}
+									if (mp_.plan()) paths.put(key_, mp_.getPath());
 									else {
-										paths.put(key, null);
-										allPathsCosts.add(key, Double.POSITIVE_INFINITY);
+										paths.put(key_, null);
+										//allPathsCosts.add(key, Double.POSITIVE_INFINITY);
 									}
+									allPathsCostsMatrix[robotIndex_][taskIndex_][pathIndex_] = computeInterferenceFreeCost(paths.get(key_), robotID);
+									//allPathsCosts.add(key, computeInterferenceFreeCost(paths.get(key), robotID));
 								}
 							};
 							t.start();
@@ -468,29 +466,80 @@ public class MultiRobotTaskAllocator {
 					
 				}
 				else {
-					//either types are not compatible or one between the robot and the task is dummy.
-					if (!task.isCompatible(tec.getRobotType(robotID))) {
-						for (int s = 0; s < this.maxNumberPathsPerTask; s++) {
-							int key = (robotIndex*augmentedTaskIDs.size()+taskIndex)*this.maxNumberPathsPerTask+s;
+					//FIXME Sampling here: tec.getAllRobotIDs().contains(robotID)
+					if (tec.getAllRobotIDs().contains(robotID) && !task.isCompatible(tec.getRobotType(robotID))) { //the robot is real but it is not compatible with the current task.
+																		 //Note: dummy robots are compatible with any task. Dummy task are compatible with any robot.
+						for (int pathIndex = 0; pathIndex < this.maxNumberPathsPerTask; pathIndex++) {
+							int key = (robotIndex*augmentedTaskSet.size()+taskIndex)*this.maxNumberPathsPerTask+pathIndex;
 							paths.put(key, null);
-							allPathsCosts.add(key, Double.POSITIVE_INFINITY);
+							//allPathsCosts.add(key, Double.POSITIVE_INFINITY);
+							//allPathsCosts.add(key, computeInterferenceFreeCost(paths.get(key), robotID));
+							allPathsCostsMatrix[robotIndex][taskIndex][pathIndex] = computeInterferenceFreeCost(paths.get(key), robotID);
 						}
 					}
 					else {
-						//TODO the task is dummy;
-						
-						//TODO the robot is dummy;
+						if (taskIndex > currentTasksPool.size()) {
+							if (robotIndex > idleRobots.size()) {
+								metaCSPLogger.severe("Error. Found pair (robot, task) where both the robot and the task are dummy.");
+								throw new Error("Error. Found pair (robot, task) where both the robot and the task are dummy.");
+							}
+							
+							//The task is dummy, that is, it will require the robot to stay in its current position.
+							//Note: all robots are compatible with dummy tasks by definition.
+							PoseSteering[] path = null;
+							synchronized(tec) {
+								path = new PoseSteering[] {tec.getCurrentTrajectoryEnvelope(robotID).getTrajectory().getPoseSteering()[tec.getCurrentTrajectoryEnvelope(robotID).getTrajectory().getPoseSteering().length-1]};
+							}
+							task.setFromPose(new Pose(path[path.length].getX(),path[path.length].getY(),path[path.length].getTheta()));
+							task.setFromLocation(task.getFromPose().toString());
+							task.setToPose(new Pose(path[path.length].getX(),path[path.length].getY(),path[path.length].getTheta()));
+							task.setToLocation(task.getToPose().toString());
+							for (int pathIndex = 0; pathIndex < this.maxNumberPathsPerTask; pathIndex++) {
+								int key = (robotIndex*augmentedTaskSet.size()+taskIndex)*this.maxNumberPathsPerTask+pathIndex;
+								paths.put(key, path);
+								//allPathsCosts.add(key, 0.0);
+								//allPathsCosts.add(key, computeInterferenceFreeCost(paths.get(key), robotID));
+								allPathsCostsMatrix[robotIndex][taskIndex][pathIndex] = computeInterferenceFreeCost(paths.get(key), robotID);
+							}							
+						}
+						else  { //The task is real, robot and task are compatible but the robot is dummy.
+							
+							//Dummy robots are already located in the task ending pose.
+							for (int pathIndex = 0; pathIndex < this.maxNumberPathsPerTask; pathIndex++) {
+								int key = (robotIndex*augmentedTaskSet.size()+taskIndex)*this.maxNumberPathsPerTask+pathIndex;
+								paths.put(key, new PoseSteering[] {new PoseSteering(task.getToPose(), 0)});
+								//allPathsCosts.add(key, Double.POSITIVE_INFINITY);
+								//allPathsCosts.add(key, computeInterferenceFreeCost(paths.get(key), robotID));
+								allPathsCostsMatrix[robotIndex][taskIndex][pathIndex] = computeInterferenceFreeCost(paths.get(key), robotID);
+							}
+						}
 					}
 				}
-				
-				//Evaluate its interference-cost and update the matrix.
+				taskIndex++;
+				taskIndex = taskIndex % augmentedTaskSet.size();
 			}
+			robotIndex++;
+			robotIndex = robotIndex % augmentedIdleRobotIDs.size();
 	
 		}
 		
-		//Eventually add the interference cost
+		//Eventually add the interference cost?
 	
 		return allPathsCostsMatrix;
+	}
+	
+	//TODO write down + fixme maxvalue and infinity
+	private double computeInterferenceFreeCost(PoseSteering[] path, int robotID) {
+		if (path == null) return Double.MAX_VALUE;
+		PoseSteering[] lastPose = null;
+		synchronized(tec) {
+			if (!tec.getAllRobotIDs().contains(robotID)) return Double.MAX_VALUE; //the robot is dummy. Thus, by definition, it can be assigned to any task with infinite costs. 
+			lastPose = new PoseSteering[] {tec.getCurrentTrajectoryEnvelope(robotID).getTrajectory().getPoseSteering()
+					[tec.getCurrentTrajectoryEnvelope(robotID).getTrajectory().getPoseSteering().length-1]}; //FIXME: prenderla da robot report?
+		}
+		if (path.length == 1 && lastPose.equals(path[path.length-1])) return 0.;
+		double cost = 0;
+		return cost;
 	}
 	
 	
