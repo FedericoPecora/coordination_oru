@@ -30,6 +30,10 @@ public class ThreeHomogeneousRobotsInALine {
 	
 	public static void main(String[] args) throws InterruptedException {
 		
+		System.out.print("MAX_VALUE: " + Double.MAX_VALUE);
+		System.out.print("MAX_VALUE + 1: " + Double.MAX_VALUE + 1);
+		System.out.print("2*MAX_VALUE: " + Double.MAX_VALUE*2);
+		
 		//FIXME Add robots is available. Remove!!
 		
 		//Maximum acceleration/deceleration and speed for all robots
@@ -132,7 +136,7 @@ public class ThreeHomogeneousRobotsInALine {
 		boolean propagateDelays = true;
 		boolean debug = false;
 		MultiRobotTaskAllocator mrta = new MultiRobotTaskAllocator(5000, 1000, tec, null, interferenceWeight, pathLengthWeight, arrivalTimeWeight, tardinessWeight, 
-				maxNumberPathsPerTask, origin_x, origin_y, origin_theta, resolution, width, height, dynamic_size, propagateDelays, debug);
+				maxNumberPathsPerTask, origin_x, origin_y, origin_theta, resolution, width, height, dynamic_size, propagateDelays, debug, null, 0.5);
 				
 		//Add the defined tasks
 		for (int task = 0; task < taskStartAndGoal.size(); task++) 

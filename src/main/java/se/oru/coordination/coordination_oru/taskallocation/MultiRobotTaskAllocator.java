@@ -86,12 +86,19 @@ public class MultiRobotTaskAllocator {
 	
 	//Visualization on Rviz? (Non completely useful).
 	
-	//Parameters: use_scenario, weights for the B function, alpha, period of the main loop
-	double interferenceWeight = 0;
-	double pathLengthWeight = 1;
-	double arrivalTimeWeight = 0;
-	double tardinessWeight = 0;
-	int maxNumberPathsPerTask = 1;
+	protected String scenarioName = null;
+	
+	//Weights of the optimal task assignment problem
+	protected double interferenceWeight = 0;
+	protected double pathLengthWeight = 1;
+	protected double arrivalTimeWeight = 0;
+	protected double tardinessWeight = 0;
+	
+	//Maximum number of alternative paths to the task be evaluated.
+	protected int maxNumberPathsPerTask = 1;
+	
+	//Percentage of the control period for solving the OAP problem
+	protected double timeoutOAP = 0.5;
 		
 	/**
 	 * Add a criterion for determining the order of tasks in the task queue. 
@@ -103,7 +110,7 @@ public class MultiRobotTaskAllocator {
 	}
 	
 	public MultiRobotTaskAllocator(int controlPeriod, int temporalResolution, AbstractTrajectoryEnvelopeCoordinator tec, ComparatorChain comparators, double interferenceWeight, double pathLengthWeight, double arrivalTimeWeight, double tardinessWeight, int maxNumberPathsPerTask, 
-			double origin_x, double origin_y, double origin_theta, double resolution, long width, long height, boolean dynamic_size, boolean propagateDelays, boolean debug) {
+			double origin_x, double origin_y, double origin_theta, double resolution, long width, long height, boolean dynamic_size, boolean propagateDelays, boolean debug, String scenarioName, double timeoutOAP) {
 		
 		setControlPeriod(controlPeriod, temporalResolution);
 		
@@ -121,9 +128,11 @@ public class MultiRobotTaskAllocator {
 		else this.taskPool = new TreeSet<SimpleNonCooperativeTask>();
 		
 		//Initialize all the parameters
+		loadScenario(scenarioName);
 		setInterferenceWeight(interferenceWeight);
 		setInterferenceFreeWeights(pathLengthWeight, arrivalTimeWeight, tardinessWeight);
 		setMaxNumberPathsPerTask(maxNumberPathsPerTask);
+		setTimeoutOAP(timeoutOAP);
 		
 		//Instantiate the fleetmaster
 		instantiateFleetMaster(origin_x, origin_y, origin_theta, resolution, width, height, dynamic_size, propagateDelays, debug);
@@ -195,6 +204,26 @@ public class MultiRobotTaskAllocator {
 	public void setMaxNumberPathsPerTask(int value) {
 		this.maxNumberPathsPerTask = value;
 		metaCSPLogger.info("Updated the maximum number of paths for each tasks parameter to " + this.maxNumberPathsPerTask + ".");
+	}
+	
+	
+	/**
+	 * Set the current roadmap to be used for path planning (see also the {@link loadScenario} function of the {@ Missions} class). 
+	 * Use a null value if paths should be computed online.
+	 * @param scenarioName Either the name of the scenario to be load or null if paths should be computed online. 
+	 */
+	public void loadScenario(String scenarioName) {
+		this.scenarioName = scenarioName;
+		if (scenarioName != null) Missions.loadScenario(scenarioName);
+	}
+	
+	
+	/**
+	 * Set the ratio of the control period (in [0.1,1]) to be used for solving the optimal task assignment problem.
+	 */
+	public void setTimeoutOAP(double timeout) {
+		this.timeoutOAP = Math.max(0.1, Math.min(timeout, 1));
+		metaCSPLogger.info("Updated the ratio of the control period for solving the task assigment problem to " + this.timeoutOAP + ".");
 	}
 	
 	
@@ -580,6 +609,9 @@ public class MultiRobotTaskAllocator {
 	 * @param costMatrix The max(n,m) x max(n,m) x maxNumberPathsPerTask matrix storing the costs of performing
 	 * 					 a task j with robot i through the path p_{ijs}.
 	 * @return The OAP.
+	 * 
+	 * NOTE: Further tutorials and examples at https://github.com/google/or-tools/blob/stable/ortools/linear_solver/samples/SimpleMipProgram.java 
+	 * and https://developers.google.com/optimization/examples. 
 	 */
 	private MPSolver setupOAP(ArrayList<PoseSteering[]> allPathsToTasks, Set<Integer> idleRobotIDs, double[][][] costMatrix) {
 		
@@ -601,8 +633,6 @@ public class MultiRobotTaskAllocator {
 		}
 		
 		//Set the CONSTRAINTS of the OAP
-		//(tutorials and examples at https://github.com/google/or-tools/blob/stable/ortools/linear_solver/samples/SimpleMipProgram.java 
-		// and https://developers.google.com/optimization/examples). 
 		//Constraints are in the form a1*x1 + ...  + an*xn <= b (linear constraint), with xi being a decision variable.
 		
 		//1. each robot may be assigned only to one task, i.e.,	
@@ -656,6 +686,7 @@ public class MultiRobotTaskAllocator {
 
 		 return solver;	
 	}
+	
 		
 	private static void printLicense() {
 		System.out.println("\n"+MultiRobotTaskAllocator.TITLE);
