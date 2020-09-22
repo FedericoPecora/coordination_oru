@@ -19,6 +19,7 @@ import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 import org.metacsp.utility.logging.MetaCSPLogging;
 
 import com.google.ortools.linearsolver.MPConstraint;
+import com.google.ortools.linearsolver.MPObjective;
 import com.google.ortools.linearsolver.MPSolver;
 import com.google.ortools.linearsolver.MPVariable;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -356,10 +357,10 @@ public class MultiRobotTaskAllocator {
 						
 						//2. Evaluate all the paths to tasks and the related costs (via {@link computeAllPathsToTasksAndTheirCosts} function).
 						ArrayList<PoseSteering[]> allPathsToTasks = null;
-						double[][][] costMatrix = computeAllPathsToTasksAndTheirCosts(allCurrentDrivingEnvelopes.keySet(), idleRobotIDs, currentTaskPool, allPathsToTasks, );
+						double[][][] costMatrix = computeAllPathsToTasksAndTheirCosts(allCurrentDrivingEnvelopes.keySet(), idleRobotIDs, currentTaskPool, allPathsToTasks);
 						
 						//3. Setup the OAP (via {@link setupOAP} function.
-						setupOAP(costMatrix[0].length, costMatrix[1].length, allPathsToTasks, idleRobotIDs);
+						setupOAP(allPathsToTasks, idleRobotIDs, costMatrix);
 						
 						//4. Solve the OAP.
 					}
@@ -572,24 +573,34 @@ public class MultiRobotTaskAllocator {
 		return 0.0; //TODO
 	}
 	
-	private MPSolver setupOAP(int augmentedNumberOfRobots, int augmentedNumberOfTasks, ArrayList<PoseSteering[]> allPathsToTasks, Set<Integer> idleRobotIDs) {
+	/**
+	 * Setup the optimal assignment problem (OAP) related to the current set of robots/tasks.
+	 * @param allPathsToTasks The current set of paths to perform the current set of tasks with the current idle robots.
+	 * @param idleRobotIDs The set of idle robots at current time
+	 * @param costMatrix The max(n,m) x max(n,m) x maxNumberPathsPerTask matrix storing the costs of performing
+	 * 					 a task j with robot i through the path p_{ijs}.
+	 * @return The OAP.
+	 */
+	private MPSolver setupOAP(ArrayList<PoseSteering[]> allPathsToTasks, Set<Integer> idleRobotIDs, double[][][] costMatrix) {
+		
+		int augmentedNumberOfRobots = costMatrix[0].length;
+		int augmentedNumberOfTasks = costMatrix[1].length;
 		
 		//Create the linear solver with the CBC backend.
 		MPSolver solver = new MPSolver(
 				"MRTA - Optimization problem", MPSolver.OptimizationProblemType.CBC_MIXED_INTEGER_PROGRAMMING);
 		
 		//Declare the set of decision variables 
-		MPVariable [][][] decisionVariables = new MPVariable[augmentedNumberOfRobots][augmentedNumberOfTasks][this.maxNumberPathsPerTask];
+		MPVariable [][][] dv = new MPVariable[augmentedNumberOfRobots][augmentedNumberOfTasks][this.maxNumberPathsPerTask];
 		for (int i = 0; i < augmentedNumberOfRobots; i++) {
 			 for (int j = 0; j < augmentedNumberOfTasks; j++) {
-				 for(int s = 0; s < this.maxNumberPathsPerTask; s++) {
-					 decisionVariables[i][j][s] = solver.makeBoolVar("x"+"["+i+","+j+","+s+"]");
-				 }
+				 for (int s = 0; s < this.maxNumberPathsPerTask; s++) 
+					 dv[i][j][s] = solver.makeBoolVar("x"+"["+i+","+j+","+s+"]");
 				
 			 }
 		}
 		
-		//Declare the constraints of the OAP
+		//Set the CONSTRAINTS of the OAP
 		//(tutorials and examples at https://github.com/google/or-tools/blob/stable/ortools/linear_solver/samples/SimpleMipProgram.java 
 		// and https://developers.google.com/optimization/examples). 
 		//Constraints are in the form a1*x1 + ...  + an*xn <= b (linear constraint), with xi being a decision variable.
@@ -602,7 +613,7 @@ public class MultiRobotTaskAllocator {
 			 for (int j = 0; j < augmentedNumberOfTasks; j++)
 				 for(int s = 0; s < this.maxNumberPathsPerTask; s++) 
 					//Set the coefficient ai of the decision variable xi
-					 c.setCoefficient(decisionVariables[i][j][s], 1);//
+					 c.setCoefficient(dv[i][j][s], 1);//
 		 }
 		
 		//2. tasks are non-cooperative (they can be assigned to at most one robot), i.e.,
@@ -611,7 +622,7 @@ public class MultiRobotTaskAllocator {
 			 MPConstraint c = solver.makeConstraint(1, 1); 
 			 for (int i = 0; i < augmentedNumberOfRobots; i++) {
 				 for(int s = 0; s < this.maxNumberPathsPerTask; s++) 
-					 c.setCoefficient(decisionVariables[i][j][s], 1); 
+					 c.setCoefficient(dv[i][j][s], 1); 
 			 }
 		 }
 		 	
@@ -624,12 +635,24 @@ public class MultiRobotTaskAllocator {
 							 if (i < idleRobotIDs.size()) { //i is not a dummy robot?
 								 if (allPathsToTasks.get((i*augmentedNumberOfTasks+j)*this.maxNumberPathsPerTask+s) == null) {
 									 MPConstraint c = solver.makeConstraint(0,0);
-									 c.setCoefficient(decisionVariables[i][j][s], 1); 
+									 c.setCoefficient(dv[i][j][s], 1); 
 								 }
 							 }
 					}
 			 }
 		 }
+		 
+		 //Set the OPTIMIZATION FUNCTION
+		 MPObjective obj = solver.objective();
+		 for (int i = 0; i < augmentedNumberOfRobots; i++) {
+				 for (int j = 0; j < augmentedNumberOfTasks; j++) {
+					 for (int s = 0; s < this.maxNumberPathsPerTask; s++)
+							 //Set the coefficient of the objective function with the normalized path length
+							 obj.setCoefficient(dv[i][j][s], costMatrix[i][j][s]); 
+				 }
+		 }
+		 //Set the problem as a minimization problem
+		 obj.setMinimization();
 
 		 return solver;	
 	}
