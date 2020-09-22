@@ -63,42 +63,42 @@ public class MultiRobotTaskAllocator {
 	//Force printing of (c) and license upon class loading
 	static { printLicense(); }
 	
-	protected int CONTROL_PERIOD = 5000;
-	protected double TEMPORAL_RESOLUTION = 1000;
+	private int CONTROL_PERIOD = 5000;
+	private double TEMPORAL_RESOLUTION = 1000;
 	public static int EFFECTIVE_CONTROL_PERIOD = 0;
-	protected Thread inference = null;
-	protected volatile Boolean stopInference = new Boolean(true);
+	private Thread inference = null;
+	private volatile Boolean stopInference = new Boolean(true);
 	
 	//Logging
-	protected static Logger metaCSPLogger = MetaCSPLogging.getLogger(MultiRobotTaskAllocator.class);
+	private static Logger metaCSPLogger = MetaCSPLogging.getLogger(MultiRobotTaskAllocator.class);
 	
 	//A task queue (whenever a new task is posted, it is automatically added to the task queue).
-	protected TreeSet<SimpleNonCooperativeTask> taskPool = null;
-	protected ComparatorChain comparators = null;
+	private TreeSet<SimpleNonCooperativeTask> taskPool = null;
+	private ComparatorChain comparators = null;
 	
 	//Mission dispatcher for each robot (where to put the output of each instance).
 	
 	//Coordinator (to get informations about the current paths in execution and status of the robots).
-	protected AbstractTrajectoryEnvelopeCoordinator tec = null;
+	private AbstractTrajectoryEnvelopeCoordinator tec = null;
 	
 	//Fleetmaster: use a local instance instead of the coordination one.
-	protected AbstractFleetMasterInterface fleetMasterInterface = null;
+	private AbstractFleetMasterInterface fleetMasterInterface = null;
 	
 	//Visualization on Rviz? (Non completely useful).
 	
-	protected String scenarioName = null;
+	private String scenarioName = null;
 	
 	//Weights of the optimal task assignment problem
-	protected double interferenceWeight = 0;
-	protected double pathLengthWeight = 1;
-	protected double arrivalTimeWeight = 0;
-	protected double tardinessWeight = 0;
+	private double interferenceWeight = 0;
+	private double pathLengthWeight = 1;
+	private double arrivalTimeWeight = 0;
+	private double tardinessWeight = 0;
 	
 	//Maximum number of alternative paths to the task be evaluated.
-	protected int maxNumberPathsPerTask = 1;
+	private int maxNumberPathsPerTask = 1;
 	
 	//Percentage of the control period for solving the OAP problem
-	protected double timeoutOAP = 0.5;
+	private double timeoutOAP = 0.5;
 		
 	/**
 	 * Add a criterion for determining the order of tasks in the task queue. 
@@ -340,7 +340,7 @@ public class MultiRobotTaskAllocator {
 	}
 	
 	
-	protected void setupInferenceCallback() {
+	private void setupInferenceCallback() {
 		
 		//Start the trajectory envelope coordinator if not started yet.
 		if (!tec.isStartedInference()) tec.startInference();
@@ -399,7 +399,7 @@ public class MultiRobotTaskAllocator {
 					//Sleep a little...
 					if (CONTROL_PERIOD > 0) {
 						try { 
-							Thread.sleep(Math.max(0, CONTROL_PERIOD-Calendar.getInstance().getTimeInMillis()+threadLastUpdate)); }
+							Thread.sleep(Math.max(500, CONTROL_PERIOD-Calendar.getInstance().getTimeInMillis()+threadLastUpdate)); }
 						catch (InterruptedException e) { e.printStackTrace(); }
 					}
 
@@ -445,11 +445,7 @@ public class MultiRobotTaskAllocator {
 		
 		//Initialize the variable to store all the paths
 		HashMap<Integer, PoseSteering[]> paths = new HashMap<Integer, PoseSteering[]>();
-		
-		//FIXME Handle the case of using a pre-loaded scenario
-
-		//Conversely paths are planned online if the roadmap is not pre-loaded.
-		
+				
 		//Initialize the cumulative variables to normalize costs
 		final AtomicReference<Double> pathLengthNormalizingFactor = new AtomicReference<Double>();
 		pathLengthNormalizingFactor.set(0.);
@@ -470,6 +466,10 @@ public class MultiRobotTaskAllocator {
 				//If both the robot and the task are not dummy and types are compatible, 
 				//then the start is the current starting pose of the robot and targets are the sequence of stopping point plus the task ending pose.
 				if (robotIndex < idleRobots.size() && taskIndex < currentTaskPool.size() && task.isCompatible(tec.getRobotType(robotID))) {
+					
+					//FIXME Handle the case of using a pre-loaded scenario (scenarioName != null)
+
+					//Conversely paths are planned online if the roadmap is not pre-loaded.
 					AbstractMotionPlanner mp = null;
 					synchronized(tec) {
 						Pose[] ste = tec.getCurrentTrajectoryEnvelope(robotID).getTrajectory().getPose();
@@ -685,6 +685,84 @@ public class MultiRobotTaskAllocator {
 		 obj.setMinimization();
 
 		 return solver;	
+	}
+	
+	private double [][][] solveOAP(MPSolver solver, double[][][] costMatrix) {
+			
+		int augmentedNumberOfRobots = costMatrix[0].length;
+		int augmentedNumberOfTasks = costMatrix[1].length;
+		
+		//Setup a timer to enforce the timeout.
+		long startTime = Calendar.getInstance().getTimeInMillis();
+		boolean firstTime = true;
+		
+		MPSolver.ResultStatus resultStatus = null;
+		double [][][] assignmentMatrix = null;
+		
+		while (resultStatus != MPSolver.ResultStatus.INFEASIBLE && (!firstTime || Calendar.getInstance().getTimeInMillis()-startTime < this.timeoutOAP*this.CONTROL_PERIOD)) {
+
+			firstTime = false;
+			resultStatus = solver.solve();
+
+			//Evaluate the Assignment Matrix
+			/*double [][][] AssignmentMatrix = saveAssignmentMatrix(augmentedNumberOfRobots, augmentedNumberOfTasks, solver);
+			//Initialize cost of objective value
+			double costofAssignment = 0;
+			double costofAssignmentForConstraint = 0;
+			double costF = 0;
+
+			//Take time to understand how much time require this function
+			for (int robotID : IDsAllRobots ) {
+				int i = IDsAllRobots.indexOf(robotID);
+				for (int taskID : IDsAllTasks ) {
+					int j = IDsAllTasks.indexOf(taskID);
+					for(int s = 0; s < maxNumPaths; s++) {
+						if ( AssignmentMatrix[i][j][s] > 0) {
+							if (linearWeight != 1) {
+								//Evaluate cost of F function only if alpha is not equal to 1
+								double costB = solver.objective().getCoefficient(solver.variables()[i*numTaskAug*maxNumPaths+j*maxNumPaths+s]);
+								costF = evaluatePathDelay(robotID,taskID,s,AssignmentMatrix,tec)/sumArrivalTime;
+								costofAssignment = linearWeight*costB + (1-linearWeight)*costF + costofAssignment ;
+								costofAssignmentForConstraint = costValuesMatrix[i][j][s] + costF + costofAssignmentForConstraint;
+							}
+							else {
+								double costB = solver.objective().getCoefficient(solver.variables()[i*numTaskAug*maxNumPaths+j*maxNumPaths+s]);
+								costofAssignment = Math.pow(linearWeight*costB, 2) + costofAssignment ;
+								costofAssignmentForConstraint = costValuesMatrix[i][j][s]  + costofAssignmentForConstraint;
+							}
+
+						}
+					}
+									
+				}		
+			}
+
+			//Compare actual solution and optimal solution finds so far
+			if (costofAssignment < objectiveOptimalValue && resultStatus != MPSolver.ResultStatus.INFEASIBLE) {
+				objectiveOptimalValue = costofAssignment;
+				for(int i=0; i< AssignmentMatrix.length;i ++) {
+					for(int j = 0 ; j <AssignmentMatrix[0].length; j++) {
+						for(int s = 0; s < maxNumPaths; s++) {
+							optimalAssignmentMatrix[i][j][s] = AssignmentMatrix[i][j][s];
+	
+						}
+					}
+				}
+				costBOptimal = solver.objective().value();
+				costFOptimal =  costofAssignmentForConstraint- costBOptimal;
+			}
+			
+			//Add the constraint on cost for next solution
+			solver = constraintOnCostSolution(solver,costofAssignmentForConstraint);
+			//Add the constraint to actual solution in order to consider this solution as already found  
+			solver = constraintOnPreviousSolution(solver,AssignmentMatrix);
+			long timeOffsetFinal = Calendar.getInstance().getTimeInMillis();
+			timeOffset = timeOffsetFinal - timeOffsetInitial;
+			cont +=1;*/
+			
+		}
+
+		return assignmentMatrix;    
 	}
 	
 		
