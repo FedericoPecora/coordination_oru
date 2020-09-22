@@ -325,18 +325,18 @@ public class MultiRobotTaskAllocator {
 				while (!stopInference) {
 															
 					//Sample the current robots' and tasks' status
-					HashSet<Integer> idleRobots = null;			
+					HashSet<Integer> idleRobotIDs = null;			
 					HashMap<Integer, TrajectoryEnvelope> allCurrentDrivingEnvelopes = new HashMap<Integer, TrajectoryEnvelope>();
 					synchronized(tec) {
 						//Sample the set of idle robots
-						idleRobots = new HashSet<Integer>(Arrays.asList(tec.getIdleRobots()));
+						idleRobotIDs = new HashSet<Integer>(Arrays.asList(tec.getIdleRobotIDs()));
 						
 						//Sample the set of driving envelopes
 						for (int robotID : tec.getAllRobotIDs()) {
 							allCurrentDrivingEnvelopes.put(robotID, tec.getCurrentTrajectoryEnvelope(robotID));
 							
 							//FIXME filter out idle robots which will be assigned to some missions
-							if (idleRobots.contains(robotID) && Missions.getMissions(robotID) != null && !Missions.getMissions(robotID).isEmpty()) idleRobots.remove(robotID);
+							if (idleRobotIDs.contains(robotID) && Missions.getMissions(robotID) != null && !Missions.getMissions(robotID).isEmpty()) idleRobotIDs.remove(robotID);
 						}
 					}
 					
@@ -345,7 +345,7 @@ public class MultiRobotTaskAllocator {
 						currentTaskPool = new TreeSet<SimpleNonCooperativeTask>(taskPool); //FIXME!! Be carefull with TreeSet (we have natural ordering, so it should be fine)
 					}
 										
-					if (!currentTaskPool.isEmpty() && idleRobots.size() > 0) {
+					if (!currentTaskPool.isEmpty() && idleRobotIDs.size() > 0) {
 						
 						//Setup and solve the MRTA optimization problem.
 						
@@ -356,9 +356,10 @@ public class MultiRobotTaskAllocator {
 						
 						//2. Evaluate all the paths to tasks and the related costs (via {@link computeAllPathsToTasksAndTheirCosts} function).
 						ArrayList<PoseSteering[]> allPathsToTasks = null;
-						double[][][] costMatrix = computeAllPathsToTasksAndTheirCosts(allCurrentDrivingEnvelopes.keySet(), idleRobots, currentTaskPool, allPathsToTasks);
+						double[][][] costMatrix = computeAllPathsToTasksAndTheirCosts(allCurrentDrivingEnvelopes.keySet(), idleRobotIDs, currentTaskPool, allPathsToTasks, );
 						
 						//3. Setup the OAP (via {@link setupOAP} function.
+						setupOAP(costMatrix[0].length, costMatrix[1].length, allPathsToTasks, idleRobotIDs);
 						
 						//4. Solve the OAP.
 					}
@@ -396,11 +397,15 @@ public class MultiRobotTaskAllocator {
 		//FIXME Handle empty cases ...
 		
 		//Add m-n "dummy robots" if the number of tasks m is greater than the number of idle robots n.
+		//Dummy robots will be associated with unique IDs which starts from the maximum ID of real idle robots + 1.  
 		TreeSet<Integer> augmentedIdleRobotIDs = new TreeSet<Integer>(idleRobots);
 		for (int i = 1; i < currentTaskPool.size()-idleRobots.size(); i++)
 			augmentedIdleRobotIDs.add(augmentedIdleRobotIDs.last()+1);
 		
 		//Initialize n-m "dummy tasks" if the number of idle robots n is greater than the number of posted tasks m.
+		//Dummy tasks will be automatically associated unique increasing IDs, can be performed by all the robots and
+		//do not have a deadline. Starting and target poses will be defined later in the code since they consist in 
+		//the current position of the robot which are assigned.
 		TreeSet<SimpleNonCooperativeTask> augmentedTaskSet = new TreeSet<SimpleNonCooperativeTask>(currentTaskPool);
 		for (int i = 1; i < idleRobots.size()-currentTaskPool.size(); i++)
 			augmentedTaskSet.add(new SimpleNonCooperativeTask(null, null, null, null, null, null, -1));
@@ -567,7 +572,7 @@ public class MultiRobotTaskAllocator {
 		return 0.0; //TODO
 	}
 	
-	private MPSolver setupOAP(int augmentedNumberOfRobots, int augmentedNumberOfTasks, ArrayList<PoseSteering[]> allPathsToTasks) {
+	private MPSolver setupOAP(int augmentedNumberOfRobots, int augmentedNumberOfTasks, ArrayList<PoseSteering[]> allPathsToTasks, Set<Integer> idleRobotIDs) {
 		
 		//Create the linear solver with the CBC backend.
 		MPSolver solver = new MPSolver(
@@ -609,49 +614,24 @@ public class MultiRobotTaskAllocator {
 					 c.setCoefficient(decisionVariables[i][j][s], 1); 
 			 }
 		 }
-		 
-		 ///////////////////////////////////////////////////////////
-		 //			The following code needs to be checked
-		 ///////////////////////////////////////////////////////////
-	
-		 //3. set to 0 the variables related to unfeasible assignments of robots to tasks.
-		 //   A pair is unfeasible either is no path from the starting location of the robot exists or 
+		 	
+		 //3. remove unfeasible assignments of robots to tasks.
+		 //   Assignments are unfeasible either if there not exists a feasible path leading the robot to the task locations or 
 		 //   if the robot and task types are not compatible.
-		 /*for (int robotID : idleRobotIDs) {
-				int i = IDsAllRobots.indexOf(robotID);
-				for (int taskID : IDsAllTasks) {
-					int j = IDsAllTasks.indexOf(taskID);
+		 for (int i = 0; i < augmentedNumberOfRobots; i++) {
+			 for (int j = 0; j < augmentedNumberOfTasks; j++) {
 					for(int s = 0; s < this.maxNumberPathsPerTask; s++) {
-							 if (i < numRobot) { //i is not a dummy robot?
-								 if (allPathsToTasks.get(robotID*augmentedNumberOfTasks*this.maxNumberPathsPerTask+taskID*this.maxNumberPathsPerTask+s) == null) {
-									 MPConstraint c3 = solver.makeConstraint(0,0);
-									 c3.setCoefficient(decisionVariables[i][j][s],1); 
+							 if (i < idleRobotIDs.size()) { //i is not a dummy robot?
+								 if (allPathsToTasks.get((i*augmentedNumberOfTasks+j)*this.maxNumberPathsPerTask+s) == null) {
+									 MPConstraint c = solver.makeConstraint(0,0);
+									 c.setCoefficient(decisionVariables[i][j][s], 1); 
 								 }
 							 }
 					}
-				}
-		 }
-		 
-		//END CONSTRAINTS
-		//In case of having more task than robots, the task with a closest deadline are set with a higher priority
-		 if(taskPool.size() > idleRobotIDs) {
-			 checkOnTaskDeadline();
-			//Each task can be performed only by a robot
-			 for (int j = 0; j < taskPool.size(); j++) {
-				//Initialize the constraint
-				 if(taskPool.get(j).isPriority()) {
-					 MPConstraint c3 = solver.makeConstraint(1, 1); 
-					 for (int i = 0; i < idleRobotIDs.size(); i++) {
-						 for(int s = 0; s < this.maxNumberPathsPerTask; s++) {
-							 //Build the constraint
-							 c3.setCoefficient(decisionVariables[i][j][s], 1); 
-						 } 		
-					 }
-				 }
 			 }
-		 }*/
-		/////////////////////////////////////////////////
-		return solver;	
+		 }
+
+		 return solver;	
 	}
 		
 	private static void printLicense() {
