@@ -433,7 +433,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 * @return The IDs the robots which are currently idle.
 	 * FIXME check better with respect to isParked/isDriving flags.
 	 */
-	public Integer[] getIdleRobots() {
+	public Integer[] getIdleRobotIDs() {
 		ArrayList<Integer> ret = new ArrayList<Integer>();
 		synchronized (trackers) {
 			for (int robotID : trackers.keySet()) 
