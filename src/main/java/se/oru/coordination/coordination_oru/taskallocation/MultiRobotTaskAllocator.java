@@ -580,7 +580,7 @@ public class MultiRobotTaskAllocator {
 			int taskIndex = key / this.maxNumberPathsPerTask;
 			int pathIndex = key % this.maxNumberPathsPerTask;
 			//FIXME
-			int robotID = robotIndex < idleRobotIDs.size() ? idleRobotIDsAsList.get(robotIndex) : maxIdleRobotID + robotIndex % idleRobotIDs.size();
+			int robotID = robotIndex < idleRobotIDs.size() ? idleRobotIDsAsList.get(robotIndex) : maxIdleRobotID + robotIndex - idleRobotIDs.size() + 1;
 			ret[robotIndex][taskIndex][pathIndex] = this.pathLengthWeight*computePathLengthCost(paths.get(key), robotID) / pathLengthNormalizingFactor + 
 													this.arrivalTimeWeight*computeArrivalTimeCost(paths.get(key), robotID) / arrivalTimeNormalizingFactor + 
 													this.tardinessWeight*computeTardinessCost(paths.get(key), robotID) / tardinessNormalizingFactor;
