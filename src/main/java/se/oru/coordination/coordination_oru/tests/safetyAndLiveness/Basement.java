@@ -96,9 +96,9 @@ public class Basement {
 		tec.startInference();
 
 		//Robot IDs can be non-sequential (but must be unique)
-		int[] robotIDs = new int[] {1,2};//,3,4,5,6,7};
+		int[] robotIDs = new int[] {1,2,3,4,5,6,7};
 		
-		double xl = .5;
+		double xl = 1.;
 		double yl = .5;
 		Coordinate footprint1 = new Coordinate(-xl,yl);
 		Coordinate footprint2 = new Coordinate(xl,yl);
@@ -110,30 +110,52 @@ public class Basement {
 		HashMap<Integer,Pose> startPose = new HashMap<Integer,Pose>();
 		startPose.put(1, new Pose(33.0,6.0,Math.PI));
 		startPose.put(2, new Pose(3.0,28.0,0.0));
-		/*startPose.put(3, new Pose(3.0,20.0,0.0));
+		startPose.put(3, new Pose(3.0,20.0,0.0));
 		startPose.put(4, new Pose(3.0,25.0,0.0));
-		startPose.put(5, new Pose(8.0,3.0,Math.PI/2));
-		startPose.put(6, new Pose(11.0,2.0,Math.PI/2));
-		startPose.put(7, new Pose(20.0,3.0,Math.PI/2));*/
+		startPose.put(5, new Pose(8.0,2.8,Math.PI/2));
+		startPose.put(6, new Pose(11.0,2.8,Math.PI/2));
+		startPose.put(7, new Pose(20.0,2.8,Math.PI/2));
 		
 		HashMap<Integer, ArrayList<Pose>> goalPoses = new HashMap<Integer,ArrayList<Pose>>();
 		goalPoses.put(1, new ArrayList<Pose>());
 		goalPoses.get(1).add(new Pose(7.0,7.0,Math.PI/2));
-		goalPoses.get(1).add(new Pose(6.0,15.0,Math.PI/2));
+		goalPoses.get(1).add(new Pose(6.0,15.5,Math.PI/2));
+		
 		goalPoses.put(2, new ArrayList<Pose>());
 		goalPoses.get(2).add(new Pose(13.0,20.0,0.0));
 		goalPoses.get(2).add(new Pose(3.0,23,0.0));
 		
+		goalPoses.put(3, new ArrayList<Pose>());
+		goalPoses.get(3).add(new Pose(13.0,24.25,0.0));
+		goalPoses.get(3).add(new Pose(20.0,24.25,0.0));
+		
+		goalPoses.put(4, new ArrayList<Pose>());
+		goalPoses.get(4).add(new Pose(25.0,5.0,0.0));
+		goalPoses.get(4).add(new Pose(30.5,7.0,Math.PI/2));
+		
+		goalPoses.put(5, new ArrayList<Pose>());
+		goalPoses.get(5).add(new Pose(18.0,15.0,0.0));
+		goalPoses.get(5).add(new Pose(25.0,15.0,0.0));
+		
+		goalPoses.put(6, new ArrayList<Pose>());
+		goalPoses.get(6).add(new Pose(11.0,5.0,Math.PI/2));
+		goalPoses.get(6).add(new Pose(3.0,23.0,0.0));
+		
+		goalPoses.put(7, new ArrayList<Pose>());
+		goalPoses.get(7).add(new Pose(20.0,11.0,0.0));
+		goalPoses.get(7).add(new Pose(24.0,11.0,0.0));
+				
 		//set the map yalm file
 		String yamlFile = new String("maps/basement.yaml");
 		
 		//Set the default motion planner
 		ReedsSheppCarPlanner rsp_ = new ReedsSheppCarPlanner();
-		rsp_.setRadius(0.2);
+		rsp_.setRadius(0.1);
 		rsp_.setTurningRadius(4.0);
 		rsp_.setDistanceBetweenPathPoints(0.5);
 		rsp_.setFootprint(tec.getDefaultFootprint());
 		rsp_.setMap(yamlFile);
+		rsp_.setPlanningTimeInSecs(10);
 
 		for (int robotID : robotIDs) {
 			
@@ -147,14 +169,7 @@ public class Basement {
 			tec.placeRobot(robotID, startPose.get(robotID));
 
 			//Path planner for each robot (with empty map)
-			//ReedsSheppCarPlanner rsp = (ReedsSheppCarPlanner) rsp_.getCopy();
-			ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
-			rsp.setRadius(0.1);
-			rsp.setTurningRadius(4.0);
-			rsp.setDistanceBetweenPathPoints(0.1);
-			rsp.setFootprint(tec.getDefaultFootprint());
-			rsp.setMap(yamlFile);
-			rsp.setPlanningTimeInSecs(5);
+			ReedsSheppCarPlanner rsp = (ReedsSheppCarPlanner) rsp_.getCopy(false);
 			
 			//Plan path from start to goal and vice-versa
 			rsp.setStart(startPose.get(robotID));
