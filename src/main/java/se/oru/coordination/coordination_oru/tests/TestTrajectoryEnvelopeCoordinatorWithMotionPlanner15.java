@@ -98,7 +98,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner15 {
 		rsp.setGoals(goalRobot2);
 		if (!rsp.plan()) throw new Error("No path found!");
 		Missions.enqueueMission(new Mission(2,rsp.getPath()));
-		tec.setMotionPlanner(2, rsp.getCopy());
+		tec.setMotionPlanner(2, rsp.getCopy(false));
 		
 		System.out.println("Added missions " + Missions.getMissions());
 

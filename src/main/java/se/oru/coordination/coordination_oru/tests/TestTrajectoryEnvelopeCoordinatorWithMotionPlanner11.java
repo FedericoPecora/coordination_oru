@@ -100,7 +100,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner11 {
 		for (int i = 1; i <= 3; i++) {
 			final int robotID = i;
 			//Set each robot motion planner
-			tec.setMotionPlanner(robotID, rsp.getCopy());
+			tec.setMotionPlanner(robotID, rsp.getCopy(false));
 			
 			//For each robot, create a thread that dispatches the "next" mission when the robot is free 
 			Thread t = new Thread() {
