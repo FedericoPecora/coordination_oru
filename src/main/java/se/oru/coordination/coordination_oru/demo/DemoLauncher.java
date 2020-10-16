@@ -64,15 +64,19 @@ public class DemoLauncher {
 		
 		//Forces to loads the class so that license and (c) are printed even if no demo is invoked
 		Class.forName("se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator");
-		
-		if (args.length != 1) printUsage();
+
+		if (args.length != 2 && args.length != 1) printUsage();
 		else {
 			String className = args[0];
 			try {
 				Class<?> cl = Class.forName(testsPackage+"."+className);
 				Method meth = cl.getMethod("main", String[].class);
-			    String[] params = null;
-			    meth.invoke(null, (Object) params);
+				String[] params = null;
+				if(args.length > 1) {
+					params = new String[1];
+					params[0] = args[1];
+				}
+				meth.invoke(null, (Object) params);
 			}
 			catch (IllegalAccessException e) { e.printStackTrace(); }
 			catch (ClassNotFoundException e) { e.printStackTrace(); }

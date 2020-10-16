@@ -86,4 +86,7 @@ run {
     if (project.hasProperty("demo")) {
         args(demo)
     }
+    if(project.hasProperty("num")) {
+        args(num)
+    }
 }
