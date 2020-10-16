@@ -16,6 +16,7 @@ import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeTracker;
 import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.TrackingCallback;
 import se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator;
+import se.oru.coordination.coordination_oru.util.ColorPrint;
 
 public class TrajectoryEnvelopeTrackerPedestrian extends AbstractTrajectoryEnvelopeTracker implements Runnable {
 
@@ -194,6 +195,8 @@ public class TrajectoryEnvelopeTrackerPedestrian extends AbstractTrajectoryEnvel
 		boolean atCP = false;
 		int myRobotID = te.getRobotID();
 		int myTEID = te.getID();
+
+		ColorPrint.positive("Pedestrian " + this.getRobotReport().getRobotID() + " is being tracked...");
 
 		while (true) {
 

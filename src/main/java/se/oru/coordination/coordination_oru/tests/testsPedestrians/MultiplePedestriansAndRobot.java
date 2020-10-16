@@ -114,6 +114,13 @@ public class MultiplePedestriansAndRobot {
             }
         });
 
+        // Set up infrastructure that maintains the representation
+        tec.setupSolver(0, 100000000);
+
+        // Start the thread that revises precedences at every period
+        tec.startInference();
+
+        // Don't solve deadlocks
         tec.setBreakDeadlocks(true, false, false);
 
         // Pedestrian Footprints
@@ -137,9 +144,6 @@ public class MultiplePedestriansAndRobot {
         Coordinate f2 = new Coordinate(0.5, -0.2);
         Coordinate f3 = new Coordinate(-0.2, -0.2);
         Coordinate f4 = new Coordinate(-0.2, 0.2);
-
-        //Need to setup infrastructure that maintains the representation
-        tec.setupSolver(0, 100000000);
 
         final ArrayList<Integer> nums = new ArrayList<Integer>();
         // Filter names
@@ -218,7 +222,7 @@ public class MultiplePedestriansAndRobot {
                 if (nums.get(i) != 1729 && timeNow > startTime + pI.getStartTime() * 1000) {
                     tec.placeRobot(nums.get(i), pI.getPose(0));
                     ColorPrint.info("Adding mission for Pedestrian " + nums.get(i));
-                    ColorPrint.info("timeNow: " + timeNow + ", startTime: " + startTime + ", first stamp: " + pI.getTimeStamps().get(0) * 1000);
+                    ColorPrint.info("timeNow: " + timeNow + ", startTime: " + startTime + ", first stamp: " + pI.getStartTime() * 1000);
                     addedMissions.add(nums.get(i));
                     Missions.startMissionDispatchers(tec, nums.get(i));
                 }
