@@ -11,12 +11,8 @@ import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 
 import com.vividsolutions.jts.geom.Coordinate;
 
-import se.oru.coordination.coordination_oru.ConstantAccelerationForwardModel;
-import se.oru.coordination.coordination_oru.CriticalSection;
-import se.oru.coordination.coordination_oru.Mission;
-import se.oru.coordination.coordination_oru.RobotAtCriticalSection;
-import se.oru.coordination.coordination_oru.RobotReport;
-import se.oru.coordination.coordination_oru.TrackingCallback;
+import org.metacsp.multi.spatioTemporal.paths.Trajectory;
+import se.oru.coordination.coordination_oru.*;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.simulation2D.*;
 import se.oru.coordination.coordination_oru.util.*;
@@ -82,6 +78,8 @@ public class MultiplePedestriansAndRobot {
                 CriticalSection cs = o1.getCriticalSection();
                 RobotReport robotReport1 = o1.getRobotReport();
                 RobotReport robotReport2 = o2.getRobotReport();
+
+                Trajectory traj1 = tec.getCurrentTrajectoryEnvelope(o2.getRobotReport().getRobotID()).getTrajectory();
 
                 if (tec.isUncontrollable(o2.getCriticalSection().getTe1().getRobotID())) {
                     double o2DistToCP = ((TrajectoryEnvelopeTrackerPedestrian) o2.getTrajectoryEnvelopeTracker()).computeDistance(robotReport2.getPathIndex(), cs.getTe2Start());
@@ -204,9 +202,10 @@ public class MultiplePedestriansAndRobot {
                 tec.setForwardModel(nums.get(i), new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
                 tec.placeRobot(nums.get(i), robotPath[0].getPose());
                 Missions.enqueueMission(new Mission(nums.get(i), robotPath));
-                Missions.startMissionDispatchers(tec, nums.get(i));
             }
         }
+
+        Missions.startMissionDispatchers(tec, 1729);
 
         startTime = tec.getCurrentTimeInMillis();
 
