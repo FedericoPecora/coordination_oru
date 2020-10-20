@@ -41,7 +41,7 @@ configurations.all {
     resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
 }
 
-version = '0.0.0-SNAPSHOT'
+version = '0.6.2'//'0.0.0-SNAPSHOT'
 // Call your group something meaninful, e.g., '<inverse-url>.<project-name>'
 group = 'se.oru.coordination'
 
