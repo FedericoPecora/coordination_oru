@@ -162,7 +162,7 @@ public class TrajectoryEnvelopeCoordinatorSimulationWithPedestrians extends Traj
 
 		// This needs to change later. For now all uncontrollable entities are pedestrians. 
 		if(this.pedestrianTrajectoryMap.containsKey(te.getRobotID()))  {
-			ret = new TrajectoryEnvelopeTrackerPedestrian(te, trackingPeriodInMillis, TEMPORAL_RESOLUTION, this, cb, this.pedestrianTrajectoryMap.get(te.getRobotID())); }
+			ret = new TrajectoryEnvelopeTrackerPedestrianOLD(te, trackingPeriodInMillis, TEMPORAL_RESOLUTION, this, cb, this.pedestrianTrajectoryMap.get(te.getRobotID())); }
 		else {
 			ret = new TrajectoryEnvelopeTrackerRK4(te, trackingPeriodInMillis, TEMPORAL_RESOLUTION, MAX_VELOCITY, MAX_ACCELERATION, this, cb) {
 
