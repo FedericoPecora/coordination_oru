@@ -221,75 +221,9 @@ public abstract class TrajectoryEnvelopeTrackerPedestrian extends AbstractTrajec
 
 	@Override
 	public RobotReport getRobotReport() {
-		if (state == null) return null;
+		if (this.currentPose == null) return null;
 		if (!this.th.isAlive()) return new RobotReport(te.getRobotID(), traj.getPose()[0], -1, 0.0, 0.0, -1);
-		synchronized(state) {
-			Pose pose = null;
-			int currentPathIndex = -1;
-			double accumulatedDist = 0.0;
-			Pose[] poses = traj.getPose();
-			for (int i = 0; i < poses.length-1; i++) {
-				double deltaS = poses[i].distanceTo(poses[i+1]);
-				accumulatedDist += deltaS;
-				if (accumulatedDist > state.getPosition()) {
-					double ratio = 1.0-(accumulatedDist-state.getPosition())/deltaS;
-					pose = poses[i].interpolate(poses[i+1], ratio);
-					currentPathIndex = i;
-					break;
-				}
-			}
-			if (currentPathIndex == -1) {
-				currentPathIndex = poses.length-1;
-				pose = poses[currentPathIndex];
-			}
-			return new RobotReport(te.getRobotID(), pose, currentPathIndex, state.getVelocity(), state.getPosition(), this.criticalPoint);
-		}
-	}
-
-	private static RobotReport getRobotReport(Trajectory traj, State auxState) {
-		if (auxState == null) return null;
-		Pose pose = null;
-		int currentPathIndex = -1;
-		double accumulatedDist = 0.0;
-		Pose[] poses = traj.getPose();
-		for (int i = 0; i < poses.length-1; i++) {
-			double deltaS = poses[i].distanceTo(poses[i+1]);
-			accumulatedDist += deltaS;
-			if (accumulatedDist > auxState.getPosition()) {
-				double ratio = 1.0-(accumulatedDist-auxState.getPosition())/deltaS;
-				pose = poses[i].interpolate(poses[i+1], ratio);
-				currentPathIndex = i;
-				break;
-			}
-		}
-		if (currentPathIndex == -1) {
-			currentPathIndex = poses.length-1;
-			pose = poses[currentPathIndex];
-		}
-		return new RobotReport(-1, pose, currentPathIndex, auxState.getVelocity(), auxState.getPosition(), -1);
-	}
-
-	public RobotReport getRobotReport(State auxState) {
-		if (auxState == null) return null;
-		Pose pose = null;
-		int currentPathIndex = -1;
-		double accumulatedDist = 0.0;
-		Pose[] poses = traj.getPose();
-		for (int i = 0; i < poses.length-1; i++) {
-			double deltaS = poses[i].distanceTo(poses[i+1]);
-			accumulatedDist += deltaS;
-			if (accumulatedDist > auxState.getPosition()) {
-				double ratio = 1.0-(accumulatedDist-auxState.getPosition())/deltaS;
-				pose = poses[i].interpolate(poses[i+1], ratio);
-				currentPathIndex = i;
-				break;
-			}
-		}
-		if (currentPathIndex == -1) {
-			currentPathIndex = poses.length-1;
-			pose = poses[currentPathIndex];
-		}
-		return new RobotReport(te.getRobotID(), pose, currentPathIndex, auxState.getVelocity(), auxState.getPosition(), -1);
+		return new RobotReport(te.getRobotID(), this.currentPose, this.currentPathIndex, this.currentSpeed, this.computeCurrentDistanceFromStart(), this.criticalPoint);
 	}
 
 	public void delayIntegrationThread(int maxDelayInMillis) {
