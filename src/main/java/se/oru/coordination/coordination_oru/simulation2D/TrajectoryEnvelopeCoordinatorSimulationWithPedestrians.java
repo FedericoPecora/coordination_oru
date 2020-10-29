@@ -12,7 +12,6 @@ import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeTracker;
 import se.oru.coordination.coordination_oru.Mission;
 import se.oru.coordination.coordination_oru.TrackingCallback;
 import se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator;
-import se.oru.coordination.coordination_oru.util.ColorPrint;
 
 
 public class TrajectoryEnvelopeCoordinatorSimulationWithPedestrians extends TrajectoryEnvelopeCoordinator {
@@ -163,7 +162,6 @@ public class TrajectoryEnvelopeCoordinatorSimulationWithPedestrians extends Traj
 
 		// This needs to change later. For now all uncontrollable entities are pedestrians. 
 		if(this.pedestrianTrajectoryMap.containsKey(te.getRobotID()))  {
-			ColorPrint.info("Starting new pedestrian Tracker!");
 			ret = new TrajectoryEnvelopeTrackerPedestrian(te, trackingPeriodInMillis, TEMPORAL_RESOLUTION, this, cb, this.pedestrianTrajectoryMap.get(te.getRobotID())) {
 				//Method for measuring time in the trajectory envelope tracker
 				@Override

@@ -558,7 +558,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				currentReports.put(robotID, robotReport);
 				synchronized(stoppingPoints) {
 					if (stoppingPoints.containsKey(robotID)) {
-						metaCSPLogger.info("Stopping points Robot"+robotID+": "+stoppingPoints.get(robotID).toString());
+						metaCSPLogger.fine("Stopping points Robot"+robotID+": "+stoppingPoints.get(robotID).toString());
 						for (int i = 0; i < stoppingPoints.get(robotID).size(); i++) {
 							int stoppingPoint = stoppingPoints.get(robotID).get(i);
 							int duration = stoppingTimes.get(robotID).get(i);
@@ -1571,7 +1571,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				currentReports.put(robotID, robotReport);
 				synchronized(stoppingPoints) {
 					if (stoppingPoints.containsKey(robotID)) {
-						metaCSPLogger.info("Stopping points Robot"+robotID+": "+stoppingPoints.get(robotID).toString());
+						metaCSPLogger.fine("Stopping points Robot"+robotID+": "+stoppingPoints.get(robotID).toString());
 						for (int i = 0; i < stoppingPoints.get(robotID).size(); i++) {
 							int stoppingPoint = stoppingPoints.get(robotID).get(i);
 							int duration = stoppingTimes.get(robotID).get(i);

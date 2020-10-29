@@ -83,6 +83,72 @@ public abstract class TrajectoryEnvelopeTrackerPedestrian extends AbstractTrajec
 	private double computeDistance(int startIndex, int endIndex) {
 		return computeDistance(this.traj, startIndex, endIndex);
 	}
+
+	@Override
+	public void setCriticalPoint(int criticalPointToSet, int extCPCounter) {
+
+		final int criticalPoint = criticalPointToSet;
+		final int externalCPCount = extCPCounter;
+		final int numberOfReplicas = tec.getNumberOfReplicas();
+
+		//Define a thread that will send the information
+		Thread waitToTXThread = new Thread("Wait to TX thread for robot " + te.getRobotID()) {
+			public void run() {
+
+				int delayTx = 0;
+				if (NetworkConfiguration.getMaximumTxDelay() > 0) {
+					//the real delay
+					int delay = (NetworkConfiguration.getMaximumTxDelay()-NetworkConfiguration.getMinimumTxDelay() > 0) ? rand.nextInt(NetworkConfiguration.getMaximumTxDelay()-NetworkConfiguration.getMinimumTxDelay()) : 0;
+					delayTx = NetworkConfiguration.getMinimumTxDelay() + delay;
+				}
+
+				//Sleep for delay in communication
+				try { Thread.sleep(delayTx); }
+				catch (InterruptedException e) { e.printStackTrace(); }
+
+				//if possible (according to packet loss, send
+				synchronized (externalCPCounter)
+				{
+					boolean send = false;
+					int trial = 0;
+					//while(!send && trial < numberOfReplicas) {
+					while(trial < numberOfReplicas) {
+						if (rand.nextDouble() < (1-NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS)) //the real one
+							send = true;
+						else {
+							TrajectoryEnvelopeCoordinatorSimulation tc = (TrajectoryEnvelopeCoordinatorSimulation)tec;
+							tc.incrementLostPacketsCounter();
+						}
+						trial++;
+					}
+					if (send) {
+						//metaCSPLogger.info("PACKET to Robot" + te.getRobotID() + " SENT, criticalPoint: " + criticalPoint + ", externalCPCounter: " + externalCPCount);
+						if (
+								(externalCPCount < externalCPCounter && externalCPCount-externalCPCounter > Integer.MAX_VALUE/2.0) ||
+										(externalCPCounter > externalCPCount && externalCPCounter-externalCPCount < Integer.MAX_VALUE/2.0)) {
+							metaCSPLogger.info("Ignored critical point " + criticalPoint + " related to counter " + externalCPCount + " because counter is already at " + externalCPCounter + ".");
+						}
+						else {
+							setCriticalPoint(criticalPoint);
+							externalCPCounter = externalCPCount;
+						}
+
+						if (!canStartTracking()) {
+							setCanStartTracking();
+						}
+					}
+					else {
+						TrajectoryEnvelopeCoordinatorSimulation tc = (TrajectoryEnvelopeCoordinatorSimulation)tec;
+						tc.incrementLostMsgsCounter();
+						metaCSPLogger.info("PACKET to Robot" + te.getRobotID() + " LOST, criticalPoint: " + criticalPoint + ", externalCPCounter: " + externalCPCount);
+					}
+				}
+			}
+		};
+		//let's start the thread
+		waitToTXThread.start();
+
+	}
 		
 	private void enqueueOneReport() {
 			
@@ -175,7 +241,7 @@ public abstract class TrajectoryEnvelopeTrackerPedestrian extends AbstractTrajec
 
 	@Override
 	public void setCriticalPoint(int criticalPointToSet) {
-		metaCSPLogger.warning("%%%%%%%% setCriticalPoint called for Pedestrian %%%%%%%%");
+		//metaCSPLogger.warning("%%%%%%%% setCriticalPoint called for Pedestrian %%%%%%%%");
 		if (this.criticalPoint != criticalPointToSet) {
 
 			//A new intermediate index to stop at has been given
