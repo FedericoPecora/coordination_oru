@@ -121,7 +121,7 @@ public class nRobotsDeadlock {
 		double theta = 0.0;
 		for (int i = 0; i < NUMBER_ROBOTS; i++) {
 			//In case deadlocks occur, we make the coordinator capable of re-planning on the fly (experimental, not working properly yet)
-			tec.setMotionPlanner(robotIDs[i], rsp.getCopy());
+			tec.setMotionPlanner(robotIDs[i], rsp.getCopy(false));
 			//Place robots.
 			double alpha = theta + i*Math.PI/NUMBER_ROBOTS;
 			startPoses.put(robotIDs[i], new Pose(radius*Math.cos(alpha), radius*Math.sin(alpha), alpha));

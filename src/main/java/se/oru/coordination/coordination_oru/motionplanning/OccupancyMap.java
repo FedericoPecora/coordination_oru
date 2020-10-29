@@ -93,23 +93,22 @@ public class OccupancyMap {
 	/**
 	 * Create a new occupancy map that is identical to a given occupancy map.
 	 * @param om The occupancy map to copy.
+	 * @param copyObstacles <code>true</code> whether obstacles of the given map should be copied in the new map.
 	 */
-	public OccupancyMap(OccupancyMap om) {
+	public OccupancyMap(OccupancyMap om, boolean copyObstacles) {
 		if (om == null) throw new Error("Null occupancy map passed as parameter.");
 		this.mapWidth = om.mapWidth;
 		this.mapHeight= om.mapHeight;
 		this.mapOrigin = new Coordinate(om.mapOrigin.x, om.mapOrigin.y);
 		this.threshold = om.threshold;
 		this.mapResolution = om.mapResolution;
-		this.obstacles = new ArrayList<Geometry>(om.obstacles);
-		this.bimg = new BufferedImage(this.mapWidth, this.mapHeight, BufferedImage.TYPE_INT_RGB);
-		Graphics2D g2 = bimg.createGraphics();
-		g2.setPaint(Color.white);
-		g2.fillRect(0, 0, this.mapWidth, this.mapHeight);
-		g2.dispose();
-		//--
+		if (copyObstacles) {
+			this.obstacles = new ArrayList<Geometry>(om.obstacles);
+			this.bimg = deepCopy(om.bimg);
+		}
+		else this.bimg = deepCopy(om.bimg_original);
 		this.createOccupancyMap();
-		this.bimg_original = deepCopy(this.bimg);
+		this.bimg_original = deepCopy(om.bimg_original);
 	}
 	
 	/**

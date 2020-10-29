@@ -134,7 +134,7 @@ public class Circle {
 		for (int i = 0; i < initialLocations.length; i++) {
 			int robotID = robotIDs[i];
 			//In case deadlocks occur, we make the coordinator capable of re-planning on the fly (experimental, not working properly yet)
-			tec.setMotionPlanner(robotID, rsp.getCopy());
+			tec.setMotionPlanner(robotID, rsp.getCopy(false));
 			
 			String initialLocation = initialLocations[i];
 			tec.placeRobot(robotID, Missions.getLocation(initialLocation));

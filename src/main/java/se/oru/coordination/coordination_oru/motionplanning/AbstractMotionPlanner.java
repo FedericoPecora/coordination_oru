@@ -30,7 +30,7 @@ public abstract class AbstractMotionPlanner {
 	
 	protected PoseSteering[] pathPS = null;
 
-	public abstract AbstractMotionPlanner getCopy();
+	public abstract AbstractMotionPlanner getCopy(boolean copyObstacles);
 	
 	public void setFootprint(Coordinate ... coords) {
 		this.footprintCoords = coords;
@@ -191,8 +191,8 @@ public abstract class AbstractMotionPlanner {
 	    return dir.delete();
 	}
 	
-	public boolean isFree(Pose p) {
-		AbstractMotionPlanner planner = this.getCopy();
+	public boolean isFree(Pose p, boolean copyObstacles) {
+		AbstractMotionPlanner planner = this.getCopy(copyObstacles);
 		planner.setStart(p);
 		planner.setGoals(p);
 		return planner.plan();

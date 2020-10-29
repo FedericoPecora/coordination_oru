@@ -123,7 +123,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner12 {
 		if (!rsp1.plan()) throw new Error ("No path between " + startPoseRobot1 + " and " + goalPoseRobot1);
 		PoseSteering[] pss1 = rsp1.getPath();
 
-		final ReedsSheppCarPlanner rsp2 = (ReedsSheppCarPlanner) rsp1.getCopy();
+		final ReedsSheppCarPlanner rsp2 = (ReedsSheppCarPlanner) rsp1.getCopy(false);
 		tec.setMotionPlanner(2, rsp2);
 		rsp2.setFootprint(fp2);
 		rsp2.setStart(startPoseRobot2);
@@ -131,7 +131,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner12 {
 		if (!rsp2.plan()) throw new Error ("No path between " + startPoseRobot2 + " and " + goalPoseRobot2);
 		PoseSteering[] pss2 = rsp2.getPath();
 
-		final ReedsSheppCarPlanner rsp3 = (ReedsSheppCarPlanner) rsp1.getCopy();
+		final ReedsSheppCarPlanner rsp3 = (ReedsSheppCarPlanner) rsp1.getCopy(false);
 		tec.setMotionPlanner(3, rsp3);
 		rsp3.setFootprint(fp3);
 		rsp3.setStart(startPoseRobot3);

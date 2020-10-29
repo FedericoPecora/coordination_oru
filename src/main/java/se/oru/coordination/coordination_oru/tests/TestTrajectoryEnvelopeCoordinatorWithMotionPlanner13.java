@@ -99,7 +99,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner13 {
 		if (!rsp1.plan()) throw new Error("No path found");
 		Missions.enqueueMission(new Mission(1,rsp1.getPath()));
 		
-		final ReedsSheppCarPlanner rsp2 = (ReedsSheppCarPlanner) rsp1.getCopy();
+		final ReedsSheppCarPlanner rsp2 = (ReedsSheppCarPlanner) rsp1.getCopy(false);
 		tec.setMotionPlanner(2, rsp2);
 		rsp2.setStart(startRobot2);
 		rsp2.setGoals(goalRobot2);

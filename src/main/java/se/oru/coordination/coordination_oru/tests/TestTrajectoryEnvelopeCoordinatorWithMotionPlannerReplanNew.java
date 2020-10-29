@@ -73,7 +73,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlannerReplanNew {
 
 		//Set private planners for each robot
 		tec.setMotionPlanner(1, rsp);
-		tec.setMotionPlanner(2, rsp.getCopy());
+		tec.setMotionPlanner(2, rsp.getCopy(false));
 		
 		
 		//Need to setup infrastructure that maintains the representation

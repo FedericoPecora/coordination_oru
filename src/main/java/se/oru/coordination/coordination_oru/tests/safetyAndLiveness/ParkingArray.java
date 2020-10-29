@@ -178,7 +178,7 @@ public class ParkingArray {
 		//Set the goals such that two paths cannot overlap
 		for (int i = 0; i < initialLocations.length; i++) {
 			//In case deadlocks occur, we make the coordinator capable of re-planning on the fly (experimental, not working properly yet)
-			tec.setMotionPlanner(robotIDs[i], rsp.getCopy());
+			tec.setMotionPlanner(robotIDs[i], rsp.getCopy(false));
 			
 			tec.placeRobot(robotIDs[i], Missions.getLocation(initialLocations[i]));
 			Mission mFW = new Mission(robotIDs[i], Missions.getShortestPath(initialLocations[i],finalLocations[i]));

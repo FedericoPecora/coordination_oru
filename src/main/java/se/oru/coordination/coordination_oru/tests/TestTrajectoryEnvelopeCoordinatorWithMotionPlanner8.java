@@ -85,8 +85,8 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner8 {
 		
 		//Set private motion planners for each robot
 		tec.setMotionPlanner(1, rsp);
-		tec.setMotionPlanner(2, rsp.getCopy());
-		tec.setMotionPlanner(3, rsp.getCopy());
+		tec.setMotionPlanner(2, rsp.getCopy(false));
+		tec.setMotionPlanner(3, rsp.getCopy(false));
 	
 		Pose startPoseRobot1 = new Pose(4.0,6.0,0.0);
 		Pose goalPoseRobot1 = new Pose(16.0,15.0,Math.PI/4);
