@@ -71,7 +71,7 @@ public class MultiplePedestriansAndRobot {
         // -- the getCurrentTimeInMillis() method, which is used by the coordinator to keep time
         //You still need to add one or more comparators to determine robot orderings thru critical sections (comparators are evaluated in the order in which they are added)
         final TrajectoryEnvelopeCoordinatorSimulationWithPedestrians tec = new TrajectoryEnvelopeCoordinatorSimulationWithPedestrians(MAX_VEL, MAX_ACCEL);
-        /*tec.addComparator(new Comparator<RobotAtCriticalSection>() {
+        tec.addComparator(new Comparator<RobotAtCriticalSection>() {
             @Override
             public int compare(RobotAtCriticalSection o1, RobotAtCriticalSection o2) {
                 int returnValue = 1;
@@ -82,12 +82,12 @@ public class MultiplePedestriansAndRobot {
                 Trajectory traj1 = tec.getCurrentTrajectoryEnvelope(o2.getRobotReport().getRobotID()).getTrajectory();
 
                 if (tec.isUncontrollable(o2.getCriticalSection().getTe1().getRobotID())) {
-                    double o2DistToCP = ((TrajectoryEnvelopeTrackerPedestrian) o2.getTrajectoryEnvelopeTracker()).computeDistance(robotReport2.getPathIndex(), cs.getTe2Start());
+                    double o2DistToCP = TrajectoryEnvelopeTrackerPedestrian.computeDistance(traj1, robotReport2.getPathIndex(), cs.getTe2Start());
                     if (o2DistToCP < threshold) returnValue = 1;
                     else
                         returnValue = ((cs.getTe1Start() - robotReport1.getPathIndex()) - (cs.getTe2Start() - robotReport2.getPathIndex()));
-                } else if (tec.isUncontrollable(o1.getTrajectoryEnvelopeTracker().getTrajectoryEnvelope().getRobotID())) {
-                    double o1DistToCP = ((TrajectoryEnvelopeTrackerPedestrian) o1.getTrajectoryEnvelopeTracker()).computeDistance(robotReport1.getPathIndex(), cs.getTe1Start());
+                } else if (tec.isUncontrollable(o1.getRobotReport().getRobotID())) {
+                    double o1DistToCP = TrajectoryEnvelopeTrackerPedestrian.computeDistance(traj1, robotReport1.getPathIndex(), cs.getTe1Start());
                     if (o1DistToCP < threshold) returnValue = -1;
                     else
                         returnValue = ((cs.getTe1Start() - robotReport1.getPathIndex()) - (cs.getTe2Start() - robotReport2.getPathIndex()));
@@ -100,9 +100,9 @@ public class MultiplePedestriansAndRobot {
 
                 return returnValue;
             }
-        });*/
+        });
 
-        tec.addComparator(new Comparator<RobotAtCriticalSection> () {
+        /*tec.addComparator(new Comparator<RobotAtCriticalSection> () {
             @Override
             public int compare(RobotAtCriticalSection o1, RobotAtCriticalSection o2) {
                 CriticalSection cs = o1.getCriticalSection();
@@ -110,7 +110,7 @@ public class MultiplePedestriansAndRobot {
                 RobotReport robotReport2 = o2.getRobotReport();
                 return ((cs.getTe1Start()-robotReport1.getPathIndex())-(cs.getTe2Start()-robotReport2.getPathIndex()));
             }
-        });
+        });*/
 
         // Set up infrastructure that maintains the representation
         tec.setupSolver(0, 100000000);

@@ -99,7 +99,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlanner9 {
 		
 		//Set private motion planners for each robot
 		tec.setMotionPlanner(1, rsp);
-		tec.setMotionPlanner(2, rsp.getCopy());
+		tec.setMotionPlanner(2, rsp.getCopy(false));
 
 		//Place robots in their initial locations (looked up in the data file that was loaded above)
 		// -- creates a trajectory envelope for each location, representing the fact that the robot is parked

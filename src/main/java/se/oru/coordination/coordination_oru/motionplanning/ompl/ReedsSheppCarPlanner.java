@@ -40,13 +40,14 @@ public class ReedsSheppCarPlanner extends AbstractMotionPlanner {
 	}
 
 	@Override
-	public AbstractMotionPlanner getCopy() {
-		ReedsSheppCarPlanner ret = new ReedsSheppCarPlanner();
+	public AbstractMotionPlanner getCopy(boolean copyObstacles) {
+		ReedsSheppCarPlanner ret = new ReedsSheppCarPlanner(this.algo);
 		ret.setRadius(this.robotRadius);
 		ret.setDistanceBetweenPathPoints(this.distanceBetweenPathPoints);
 		ret.setTurningRadius(this.turningRadius);
 		ret.setFootprint(this.footprintCoords);
-		if (this.om != null) ret.om = new OccupancyMap(this.om);
+		ret.setPlanningTimeInSecs(planningTimeInSecs);
+		if (this.om != null) ret.om = new OccupancyMap(this.om, copyObstacles);
 		return ret;
 	}
 	

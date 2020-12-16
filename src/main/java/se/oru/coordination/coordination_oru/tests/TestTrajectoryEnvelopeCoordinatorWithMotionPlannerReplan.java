@@ -103,7 +103,7 @@ public class TestTrajectoryEnvelopeCoordinatorWithMotionPlannerReplan {
 		Missions.enqueueMission(new Mission(1,rsp.getPath()));
 
 		//and for robot 2
-		final ReedsSheppCarPlanner rsp2 = (ReedsSheppCarPlanner) rsp.getCopy();
+		final ReedsSheppCarPlanner rsp2 = (ReedsSheppCarPlanner) rsp.getCopy(false);
 		tec.setMotionPlanner(2, rsp2);
 		
 		rsp2.setStart(startRobot2);

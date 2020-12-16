@@ -1,34 +1,31 @@
 package se.oru.coordination.coordination_oru.simulation2D;
 
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.List;
-import java.util.Random;
-import java.util.Scanner;
-
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.Trajectory;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
-
-import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeTracker;
-import se.oru.coordination.coordination_oru.RobotReport;
-import se.oru.coordination.coordination_oru.TrackingCallback;
-import se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator;
+import se.oru.coordination.coordination_oru.*;
 import se.oru.coordination.coordination_oru.util.ColorPrint;
 
-public class TrajectoryEnvelopeTrackerPedestrian extends AbstractTrajectoryEnvelopeTracker implements Runnable {
+import java.util.*;
+
+public abstract class TrajectoryEnvelopeTrackerPedestrian extends AbstractTrajectoryEnvelopeTracker implements Runnable {
+
+
+	private Thread th = null;
+	protected State state = null;
+	private Random rand = new Random(Calendar.getInstance().getTimeInMillis());
+	protected ArrayList<RobotReport> reportsList = new ArrayList<RobotReport>();
+	protected ArrayList<Long> reportTimeLists = new ArrayList<Long>();
+	private HashMap<Integer,Integer> userCPReplacements = null;
 
 	protected static final long WAIT_AMOUNT_AT_END = 3000;
 	protected static final double EPSILON = 0.01;
-
 	protected double totalDistance = 0.0;
-
 	protected double elapsedTrackingTime = 0.0;
 
 	protected Pose currentPose;
 	protected int currentPathIndex = 0;
+	private int maxDelayInMillis = 0;
 	protected double currentSpeed;
 
 	protected double stoppageTime = 0.0;
@@ -37,9 +34,11 @@ public class TrajectoryEnvelopeTrackerPedestrian extends AbstractTrajectoryEnvel
 
 	protected PedestrianTrajectory pedestrianTraj;
 
-	private Thread th = null;
-	private int maxDelayInMilis = 0;
-	private Random rand = new Random();
+	@Override
+	public double getStoppageTime() { return stoppageTime; }
+
+	@Override
+	public int getStops() { return stops; }
 
 	public TrajectoryEnvelopeTrackerPedestrian(TrajectoryEnvelope te, int timeStep, double temporalResolution, TrajectoryEnvelopeCoordinator tec, TrackingCallback cb, PedestrianTrajectory pedestrianTraj) {
 		super(te, temporalResolution, tec, timeStep, cb);
@@ -65,14 +64,6 @@ public class TrajectoryEnvelopeTrackerPedestrian extends AbstractTrajectoryEnvel
 		this.th.start();
 	}
 
-	public static double computeDistance(Trajectory traj, int startIndex, int endIndex) {
-		double ret = 0.0;
-		for (int i = startIndex; i < endIndex; i++) {
-			ret += traj.getPose()[i].distanceTo(traj.getPose()[i+1]);
-		}
-		return ret;
-	}
-
 	public double computeCurrentDistanceFromStart() {
 		double ret = 0.0;
 		for (int i = 0; i < currentPathIndex; i++) {
@@ -81,14 +72,176 @@ public class TrajectoryEnvelopeTrackerPedestrian extends AbstractTrajectoryEnvel
 		return ret;
 	}
 
-	public double computeDistance(int startIndex, int endIndex) {
-		if(startIndex == -1) startIndex = 0;
+	public static double computeDistance(Trajectory traj, int startIndex, int endIndex) {
+		double ret = 0.0;
+		for (int i = startIndex; i < Math.min(endIndex,traj.getPoseSteering().length-1); i++) {
+			ret += traj.getPose()[i].distanceTo(traj.getPose()[i+1]);
+		}
+		return ret;
+	}
+
+	private double computeDistance(int startIndex, int endIndex) {
 		return computeDistance(this.traj, startIndex, endIndex);
 	}
 
 	@Override
+	public void setCriticalPoint(int criticalPointToSet, int extCPCounter) {
+
+		final int criticalPoint = criticalPointToSet;
+		final int externalCPCount = extCPCounter;
+		final int numberOfReplicas = tec.getNumberOfReplicas();
+
+		//Define a thread that will send the information
+		Thread waitToTXThread = new Thread("Wait to TX thread for robot " + te.getRobotID()) {
+			public void run() {
+
+				int delayTx = 0;
+				if (NetworkConfiguration.getMaximumTxDelay() > 0) {
+					//the real delay
+					int delay = (NetworkConfiguration.getMaximumTxDelay()-NetworkConfiguration.getMinimumTxDelay() > 0) ? rand.nextInt(NetworkConfiguration.getMaximumTxDelay()-NetworkConfiguration.getMinimumTxDelay()) : 0;
+					delayTx = NetworkConfiguration.getMinimumTxDelay() + delay;
+				}
+
+				//Sleep for delay in communication
+				try { Thread.sleep(delayTx); }
+				catch (InterruptedException e) { e.printStackTrace(); }
+
+				//if possible (according to packet loss, send
+				synchronized (externalCPCounter)
+				{
+					boolean send = false;
+					int trial = 0;
+					//while(!send && trial < numberOfReplicas) {
+					while(trial < numberOfReplicas) {
+						if (rand.nextDouble() < (1-NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS)) //the real one
+							send = true;
+						else {
+							TrajectoryEnvelopeCoordinatorSimulation tc = (TrajectoryEnvelopeCoordinatorSimulation)tec;
+							tc.incrementLostPacketsCounter();
+						}
+						trial++;
+					}
+					if (send) {
+						//metaCSPLogger.info("PACKET to Robot" + te.getRobotID() + " SENT, criticalPoint: " + criticalPoint + ", externalCPCounter: " + externalCPCount);
+						if (
+								(externalCPCount < externalCPCounter && externalCPCount-externalCPCounter > Integer.MAX_VALUE/2.0) ||
+										(externalCPCounter > externalCPCount && externalCPCounter-externalCPCount < Integer.MAX_VALUE/2.0)) {
+							metaCSPLogger.info("Ignored critical point " + criticalPoint + " related to counter " + externalCPCount + " because counter is already at " + externalCPCounter + ".");
+						}
+						else {
+							setCriticalPoint(criticalPoint);
+							externalCPCounter = externalCPCount;
+						}
+
+						if (!canStartTracking()) {
+							setCanStartTracking();
+						}
+					}
+					else {
+						TrajectoryEnvelopeCoordinatorSimulation tc = (TrajectoryEnvelopeCoordinatorSimulation)tec;
+						tc.incrementLostMsgsCounter();
+						metaCSPLogger.info("PACKET to Robot" + te.getRobotID() + " LOST, criticalPoint: " + criticalPoint + ", externalCPCounter: " + externalCPCount);
+					}
+				}
+			}
+		};
+		//let's start the thread
+		waitToTXThread.start();
+
+	}
+		
+	private void enqueueOneReport() {
+			
+		synchronized (reportsList) {
+			
+			//Before start, initialize the position
+			if (reportsList.isEmpty()) {
+				if (getRobotReport() != null) {
+					reportsList.add(0, getRobotReport());
+					reportTimeLists.add(0, Calendar.getInstance().getTimeInMillis());
+				}
+				return;
+			}
+			
+			long timeNow = Calendar.getInstance().getTimeInMillis();
+			final int numberOfReplicasReceiving = Math.max(1, (int)Math.ceil(tec.getNumberOfReplicas()*(double)trackingPeriodInMillis/tec.getControlPeriod()));
+				
+			timeNow = Calendar.getInstance().getTimeInMillis();
+			long timeOfArrival = timeNow;
+			if (NetworkConfiguration.getMaximumTxDelay() > 0) {
+				//the real delay
+				int delay = (NetworkConfiguration.getMaximumTxDelay()-NetworkConfiguration.getMinimumTxDelay() > 0) ? rand.nextInt(NetworkConfiguration.getMaximumTxDelay()-NetworkConfiguration.getMinimumTxDelay()) : 0;
+				timeOfArrival = timeOfArrival + NetworkConfiguration.getMinimumTxDelay() + delay;
+			}
+				
+			//Get the message according to packet loss probability (numberOfReplicas trials)
+			boolean received = (NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS > 0) ? false : true;
+			int trial = 0;
+			while(!received && trial < numberOfReplicasReceiving) {
+				if (rand.nextDouble() < (1-NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS)) //the real packet loss probability
+					received = true;
+				trial++;
+			}
+			if (received) {		
+				//Delete old messages that, due to the communication delay, will arrive after this one.			
+				ArrayList<Long> reportTimeToRemove = new ArrayList<Long>();
+				ArrayList<RobotReport> reportToRemove = new ArrayList<RobotReport>();
+				
+				for (int index = 0; index < reportTimeLists.size(); index++) {
+					if (reportTimeLists.get(index) < timeOfArrival) break;
+					if (reportTimeLists.get(index) >= timeOfArrival) {
+						reportToRemove.add(reportsList.get(index));
+						reportTimeToRemove.add(reportTimeLists.get(index));
+					}	
+				}
+				
+				for (Long time : reportTimeToRemove) reportTimeLists.remove(time);
+				for (RobotReport report : reportToRemove) reportsList.remove(report);
+				
+				reportsList.add(0, getRobotReport()); //The new one is the one that will arrive later and is added in front of the queue.
+				reportTimeLists.add(0, timeOfArrival); //The oldest is in the end.
+			}
+			
+			//Keep alive just the most recent message before now.
+			if (reportTimeLists.get(reportTimeLists.size()-1) > timeNow) {
+				metaCSPLogger.severe("* ERROR * Unknown status Robot"+te.getRobotID());
+				//FIXME add a function for stopping pausing the fleet and eventually restart
+			}
+			else {
+				ArrayList<Long> reportTimeToRemove = new ArrayList<Long>();
+				ArrayList<RobotReport> reportToRemove = new ArrayList<RobotReport>();
+				
+				for (int index = reportTimeLists.size()-1; index > 0; index--) {
+					if (reportTimeLists.get(index) > timeNow) break; //the first in the future
+					if (reportTimeLists.get(index) < timeNow && reportTimeLists.get(index-1) <= timeNow) {
+						reportToRemove.add(reportsList.get(index));
+						reportTimeToRemove.add(reportTimeLists.get(index));
+					}
+				}
+	
+				for (Long time : reportTimeToRemove) reportTimeLists.remove(time);
+				for (RobotReport report : reportToRemove) reportsList.remove(report);
+			}
+			
+			//Check if the current status message is too old.
+			if (timeNow - reportTimeLists.get(reportTimeLists.size()-1) > tec.getControlPeriod() + TrajectoryEnvelopeCoordinator.MAX_TX_DELAY) { //the known delay
+				metaCSPLogger.severe("* ERROR * Status of Robot"+ te.getRobotID() + " is too old.");
+				//FIXME add a function for stopping pausing the fleet and eventually restart
+				}
+		}
+	}
+	
+	@Override
+	public RobotReport getLastRobotReport() {
+		synchronized (reportsList) {
+			if (reportsList.isEmpty()) return getRobotReport();
+			return reportsList.get(reportsList.size()-1);
+		}
+	}
+
+	@Override
 	public void setCriticalPoint(int criticalPointToSet) {
-		metaCSPLogger.warning("%%%%%%%% setCriticalPoint called for Pedestrian %%%%%%%%");
+		//metaCSPLogger.warning("%%%%%%%% setCriticalPoint called for Pedestrian %%%%%%%%");
 		if (this.criticalPoint != criticalPointToSet) {
 
 			//A new intermediate index to stop at has been given
@@ -139,16 +292,8 @@ public class TrajectoryEnvelopeTrackerPedestrian extends AbstractTrajectoryEnvel
 		return new RobotReport(te.getRobotID(), this.currentPose, this.currentPathIndex, this.currentSpeed, this.computeCurrentDistanceFromStart(), this.criticalPoint);
 	}
 
-	@Override
-	public double getStoppageTime() {
-		return stoppageTime;
-	}
-
-	@Override
-	public int getStops() { return stops; }
-
-	public void delayIntegrationThread(int maxDelayInmillis) {
-		this.maxDelayInMilis = maxDelayInmillis;
+	public void delayIntegrationThread(int maxDelayInMillis) {
+		this.maxDelayInMillis = maxDelayInMillis;
 	}
 
 	protected void updatePedestrianState(boolean stopping) {
@@ -187,7 +332,7 @@ public class TrajectoryEnvelopeTrackerPedestrian extends AbstractTrajectoryEnvel
 		double ratio = diffTime / deltaTime;
 		this.currentPose = this.pedestrianTraj.getPose(index).interpolate(this.pedestrianTraj.getPose(index + 1), ratio);
 	}
-
+	
 	@Override
 	public void run() {
 		this.elapsedTrackingTime = this.pedestrianTraj.getTimeStamp(0);
@@ -233,13 +378,14 @@ public class TrajectoryEnvelopeTrackerPedestrian extends AbstractTrajectoryEnvel
 				if(computeCurrentDistanceFromStart() >= this.positionToStop) {stopping = true;}
 				updatePedestrianState(stopping);
 			}
-
+			
 			//Do some user function on position update
 			onPositionUpdate();
+			enqueueOneReport();
 
 			//Sleep for tracking period
 			int delay = trackingPeriodInMillis;
-			if (maxDelayInMilis > 0) delay += rand.nextInt(maxDelayInMilis);
+			if (maxDelayInMillis > 0) delay += rand.nextInt(maxDelayInMillis);
 			try { Thread.sleep(delay); }
 			catch (InterruptedException e) { e.printStackTrace(); }
 
@@ -250,7 +396,15 @@ public class TrajectoryEnvelopeTrackerPedestrian extends AbstractTrajectoryEnvel
 			// If we have skipped integration, add this to stoppage time.
 			if(skipIntegration)	this.stoppageTime += deltaTime;
 		}
-
+		
+		//continue transmitting until the coordinator will be informed of having reached the last position.
+		while (tec.getRobotReport(te.getRobotID()).getPathIndex() != -1)
+		{
+			enqueueOneReport();
+			try { Thread.sleep(trackingPeriodInMillis); }
+			catch (InterruptedException e) { e.printStackTrace(); }
+		}
+		
 		//persevere with last path point in case listeners didn't catch it!
 		long timerStart = getCurrentTimeInMillis();
 		while (getCurrentTimeInMillis()-timerStart < WAIT_AMOUNT_AT_END) {
@@ -258,12 +412,6 @@ public class TrajectoryEnvelopeTrackerPedestrian extends AbstractTrajectoryEnvel
 			try { Thread.sleep(trackingPeriodInMillis); }
 			catch (InterruptedException e) { e.printStackTrace(); }
 		}
-		metaCSPLogger.info("Pedestrian tracking thread terminates (Robot " + myRobotID + ", TrajectoryEnvelope " + myTEID + ")");
+		metaCSPLogger.info("RK4 tracking thread terminates (Robot " + myRobotID + ", TrajectoryEnvelope " + myTEID + ")");
 	}
-
-	@Override
-	public long getCurrentTimeInMillis() {
-		return this.tec.getCurrentTimeInMillis();
-	}
-
 }
