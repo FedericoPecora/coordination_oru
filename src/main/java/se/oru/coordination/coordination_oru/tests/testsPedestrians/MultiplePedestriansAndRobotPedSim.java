@@ -25,8 +25,8 @@ public class MultiplePedestriansAndRobotPedSim {
         double MAX_ACCEL = 1.0;
         double MAX_VEL = 1.0;
 
-        String scenarioName = "corridor" + "/t1/";
-        String robotPathDir = "chitt_tests/" + scenarioName;
+        String robotPathDir = "chitt_tests/robot/ellipse/scene1/";
+        String pedestrianPathDir = "chitt_tests/pedestrians/warehouse/" + "test10_90";
         Vector<String> robotPathFilesName = new Vector<String>();
 
         FilenameFilter matchingRobotPathNameFilter = new FilenameFilter() {
@@ -59,8 +59,6 @@ public class MultiplePedestriansAndRobotPedSim {
 
         String pathFileName = robotPathFilesName.get(Integer.parseInt(args[0]));
 
-        String pedestrianPathDir = "chitt_tests/";
-
         ColorPrint.positive("RUNNING TEST FOR: " + pathFileName);
 
         final double threshold = 2.0;
@@ -71,7 +69,7 @@ public class MultiplePedestriansAndRobotPedSim {
         // -- the getCurrentTimeInMillis() method, which is used by the coordinator to keep time
         //You still need to add one or more comparators to determine robot orderings thru critical sections (comparators are evaluated in the order in which they are added)
         final TrajectoryEnvelopeCoordinatorSimulationWithPedestrians tec = new TrajectoryEnvelopeCoordinatorSimulationWithPedestrians(MAX_VEL, MAX_ACCEL);
-        /*tec.addComparator(new Comparator<RobotAtCriticalSection>() {
+        tec.addComparator(new Comparator<RobotAtCriticalSection>() {
             @Override
             public int compare(RobotAtCriticalSection o1, RobotAtCriticalSection o2) {
                 int returnValue = 1;
@@ -100,8 +98,9 @@ public class MultiplePedestriansAndRobotPedSim {
 
                 return returnValue;
             }
-        });*/
+        });
 
+        /*
         tec.addComparator(new Comparator<RobotAtCriticalSection> () {
             @Override
             public int compare(RobotAtCriticalSection o1, RobotAtCriticalSection o2) {
@@ -111,6 +110,7 @@ public class MultiplePedestriansAndRobotPedSim {
                 return ((cs.getTe1Start()-robotReport1.getPathIndex())-(cs.getTe2Start()-robotReport2.getPathIndex()));
             }
         });
+         */
 
         // Set up infrastructure that maintains the representation
         tec.setupSolver(0, 100000000);
