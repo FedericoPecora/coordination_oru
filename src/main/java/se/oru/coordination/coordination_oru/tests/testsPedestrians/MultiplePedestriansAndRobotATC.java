@@ -25,7 +25,7 @@ public class MultiplePedestriansAndRobot {
         double MAX_ACCEL = 1.0;
         double MAX_VEL = 1.0;
 
-        String scenarioName = "LongPathNew/T1_1352866100";
+        String scenarioName = "corridor" + "/t1/";
         String robotPathDir = "chitt_tests/" + scenarioName;
         Vector<String> robotPathFilesName = new Vector<String>();
 
@@ -59,7 +59,7 @@ public class MultiplePedestriansAndRobot {
 
         String pathFileName = robotPathFilesName.get(Integer.parseInt(args[0]));
 
-        String pedestrianPathDir = "chitt_tests/pedestrians_atc_testing_1114_1352866100";
+        String pedestrianPathDir = "chitt_tests/";
 
         ColorPrint.positive("RUNNING TEST FOR: " + pathFileName);
 
