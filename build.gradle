@@ -22,7 +22,7 @@ apply plugin: 'java'
 apply plugin: 'eclipse'
 
 // The Maven publish plugin is only required if your package is used as a library.
-apply plugin: 'maven'//'maven-publish'
+apply plugin: 'maven'
 
 // The Application plugin and mainClassName attribute are only required if
 // your package is used as a binary.
@@ -41,7 +41,7 @@ configurations.all {
     resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
 }
 
-version = '0.6.2'//'0.0.0-SNAPSHOT'
+version = '0.6.3'//'0.0.0-SNAPSHOT'
 // Call your group something meaninful, e.g., '<inverse-url>.<project-name>'
 group = 'se.oru.coordination'
 
