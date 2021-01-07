@@ -18,7 +18,7 @@ import se.oru.coordination.coordination_oru.simulation2D.*;
 import se.oru.coordination.coordination_oru.util.*;
 
 @DemoDescription(desc = "One-shot navigation of several pedestrians and a robot coordinating on static paths that overlap in a straight portion.")
-public class MultiplePedestriansAndRobot {
+public class MultiplePedestriansAndRobotATC {
 
     public static void main(String[] args) throws InterruptedException {
 

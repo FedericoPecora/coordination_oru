@@ -6,6 +6,7 @@ import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 import se.oru.coordination.coordination_oru.*;
 import se.oru.coordination.coordination_oru.util.ColorPrint;
 
+import java.awt.*;
 import java.util.*;
 
 public abstract class TrajectoryEnvelopeTrackerPedestrian extends AbstractTrajectoryEnvelopeTracker implements Runnable {

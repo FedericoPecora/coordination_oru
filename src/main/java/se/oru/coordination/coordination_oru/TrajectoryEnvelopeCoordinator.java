@@ -33,6 +33,7 @@ import com.vividsolutions.jts.geom.Geometry;
 
 import aima.core.util.datastructure.Pair;
 import se.oru.coordination.coordination_oru.motionplanning.AbstractMotionPlanner;
+import se.oru.coordination.coordination_oru.util.ColorPrint;
 
 
 /**
@@ -70,10 +71,14 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	protected boolean isBlocked = false;
 
 	public double getRobotStoppageTime(int robotID) {
+		if(trackers.get(robotID) == null) { return 0.0; }
+
 		return trackers.get(robotID).getStoppageTime();
 	}
 
 	public int getRobotStops(int robotID) {
+		if(trackers.get(robotID) == null) { return 0; }
+
 		return trackers.get(robotID).getStops();
 	}
 

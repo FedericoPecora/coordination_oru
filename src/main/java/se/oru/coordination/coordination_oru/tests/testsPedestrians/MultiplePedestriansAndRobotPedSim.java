@@ -2,15 +2,18 @@ package se.oru.coordination.coordination_oru.tests.testsPedestrians;
 
 import com.vividsolutions.jts.geom.Coordinate;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
+import org.metacsp.multi.spatioTemporal.paths.Trajectory;
 import se.oru.coordination.coordination_oru.*;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.simulation2D.PedestrianForwardModel;
 import se.oru.coordination.coordination_oru.simulation2D.PedestrianTrajectory;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulationWithPedestrians;
+import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeTrackerPedestrian;
 import se.oru.coordination.coordination_oru.util.BrowserVisualization;
 import se.oru.coordination.coordination_oru.util.ColorPrint;
 import se.oru.coordination.coordination_oru.util.Missions;
 
+import java.awt.*;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.util.ArrayList;
@@ -25,8 +28,10 @@ public class MultiplePedestriansAndRobotPedSim {
         double MAX_ACCEL = 1.0;
         double MAX_VEL = 1.0;
 
-        String robotPathDir = "chitt_tests/robot/ellipse/scene1/";
-        String pedestrianPathDir = "chitt_tests/pedestrians/warehouse/" + "test10_90";
+        String scenarioName = "hall1-t1/";
+        String robotPathDir = "chitt_tests/robot/atc/corridor/t1";
+        String pedestrianPathDir = "chitt_tests/pedestrians/atc/" + "1114_1352866100";
+
         Vector<String> robotPathFilesName = new Vector<String>();
 
         FilenameFilter matchingRobotPathNameFilter = new FilenameFilter() {
@@ -80,12 +85,12 @@ public class MultiplePedestriansAndRobotPedSim {
                 Trajectory traj1 = tec.getCurrentTrajectoryEnvelope(o2.getRobotReport().getRobotID()).getTrajectory();
 
                 if (tec.isUncontrollable(o2.getCriticalSection().getTe1().getRobotID())) {
-                    double o2DistToCP = ((TrajectoryEnvelopeTrackerPedestrian) o2.getTrajectoryEnvelopeTracker()).computeDistance(robotReport2.getPathIndex(), cs.getTe2Start());
+                    double o2DistToCP = TrajectoryEnvelopeTrackerPedestrian.computeDistance(traj1, Math.max(0, robotReport2.getPathIndex()), cs.getTe2Start());
                     if (o2DistToCP < threshold) returnValue = 1;
                     else
                         returnValue = ((cs.getTe1Start() - robotReport1.getPathIndex()) - (cs.getTe2Start() - robotReport2.getPathIndex()));
-                } else if (tec.isUncontrollable(o1.getTrajectoryEnvelopeTracker().getTrajectoryEnvelope().getRobotID())) {
-                    double o1DistToCP = ((TrajectoryEnvelopeTrackerPedestrian) o1.getTrajectoryEnvelopeTracker()).computeDistance(robotReport1.getPathIndex(), cs.getTe1Start());
+                } else if (tec.isUncontrollable(o1.getRobotReport().getRobotID())) {
+                    double o1DistToCP = TrajectoryEnvelopeTrackerPedestrian.computeDistance(traj1, Math.max(0, robotReport1.getPathIndex()), cs.getTe1Start());
                     if (o1DistToCP < threshold) returnValue = -1;
                     else
                         returnValue = ((cs.getTe1Start() - robotReport1.getPathIndex()) - (cs.getTe2Start() - robotReport2.getPathIndex()));
@@ -100,8 +105,7 @@ public class MultiplePedestriansAndRobotPedSim {
             }
         });
 
-        /*
-        tec.addComparator(new Comparator<RobotAtCriticalSection> () {
+        /*tec.addComparator(new Comparator<RobotAtCriticalSection> () {
             @Override
             public int compare(RobotAtCriticalSection o1, RobotAtCriticalSection o2) {
                 CriticalSection cs = o1.getCriticalSection();
@@ -109,8 +113,7 @@ public class MultiplePedestriansAndRobotPedSim {
                 RobotReport robotReport2 = o2.getRobotReport();
                 return ((cs.getTe1Start()-robotReport1.getPathIndex())-(cs.getTe2Start()-robotReport2.getPathIndex()));
             }
-        });
-         */
+        });*/
 
         // Set up infrastructure that maintains the representation
         tec.setupSolver(0, 100000000);
@@ -155,8 +158,8 @@ public class MultiplePedestriansAndRobotPedSim {
         File pedestrianDir = new File(pedestrianPathDir);
         for (final File f : pedestrianDir.listFiles(matchingNameFilter)) {
             nums.add(Integer.parseInt(f.getName().split("person")[1].split(".txt")[0]));
-            if(nums.size() == 20) {
-                ColorPrint.info("READ 20 Pedestrians...");
+            if(nums.size() == 40) {
+                ColorPrint.info("READ " + nums.size() + "pedestrians...");
                 break;
             }
         }
@@ -165,17 +168,17 @@ public class MultiplePedestriansAndRobotPedSim {
         nums.add(1729);
 
         //JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
-        BrowserVisualization viz = new BrowserVisualization();
+        //BrowserVisualization viz = new BrowserVisualization();
         //RVizVisualization viz = new RVizVisualization();
-        viz.setMap("maps/atc.yaml");
+        //viz.setMap("maps/atc.yaml");
         int[] nums_primitive = new int[nums.size()];
         for (int i = 0; i < nums_primitive.length; i++) {
             nums_primitive[i] = nums.get(i);
         }
         //RVizVisualization.writeRVizConfigFile(nums_primitive);
-
-        viz.setInitialTransform(40, -10, 30);
-        tec.setVisualization(viz);
+        //viz.setInitialTransform(40, 3, -10);
+        //viz.setInitialTransform(40, -10, 30);
+        //tec.setVisualization(viz);
 
         ArrayList<Integer> addedMissions = new ArrayList<Integer>();
 
@@ -249,6 +252,7 @@ public class MultiplePedestriansAndRobotPedSim {
                             if(thisRobotReport.getPose().distanceTo(robotPath[robotPath.length-1].getPose()) < 0.01) {
                                 ColorPrint.positive("Ending Experiment: Robot has reached it's destination.");
                                 for(int a = 0; a < nums.size(); a++) {
+                                    ColorPrint.positive("Waiting time for robot " + nums.get(a) + ": " + tec.getRobotStoppageTime(nums.get(a)));
                                     MyTrackingCallback.writeToLogFile(String.valueOf(nums.get(a)) + ", " + tec.getRobotStoppageTime(nums.get(a)) + ", " + tec.getRobotStops(nums.get(a)) + "\n", scenarioName + "/" + pathFileName + "_waiting_times.txt");
                                 }
                                 System.exit(0);
