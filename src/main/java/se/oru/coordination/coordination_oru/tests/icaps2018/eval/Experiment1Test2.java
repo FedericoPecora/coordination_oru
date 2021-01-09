@@ -131,7 +131,7 @@ public class Experiment1Test2 {
 			double period = 18;
 			double mag = deltaY;
 
-			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
+			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getRobotTrackingPeriodInMillis(robotID)));
 			Pose from = new Pose(0.0,index*deltaY,0.0);
 			Pose to = new Pose(5*period,index*deltaY,0.0);
 

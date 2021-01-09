@@ -76,6 +76,13 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 	}
 	
 	/**
+	 * Return the tracking period in milli-seconds.
+	 */
+	public int getTrackingPeriod() {
+		return this.trackingPeriodInMillis;
+	}
+	
+	/**
 	 * Return the coordination time (in milli-seconds) at which the tracker has started its mission.
 	 */
 	public long getStartingTimeInMillis() {

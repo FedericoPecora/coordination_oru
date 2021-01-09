@@ -163,7 +163,7 @@ public class Basement {
 			tec.setFootprint(robotID, tec.getDefaultFootprint());
 			
 			//Set a forward model (all robots have the same here)
-			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
+			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getRobotTrackingPeriodInMillis(robotID)));
 		
 			//Place the robot in the start pose
 			tec.placeRobot(robotID, startPose.get(robotID));

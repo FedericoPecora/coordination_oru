@@ -123,6 +123,12 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 
 	protected HashMap<Integer,Coordinate[]> footprints = new HashMap<Integer, Coordinate[]>();
 	protected HashMap<Integer,Double> maxFootprintDimensions = new HashMap<Integer, Double>();
+	
+	/**
+	 * Default robot tracking period in millis
+	 */
+	protected int DEFAULT_ROBOT_TRACKING_PERIOD = 30;
+	protected HashMap<Integer, Integer> robotTrackingPeriodInMillis = new HashMap<Integer, Integer>();
 
 	protected HashSet<Integer> muted = new HashSet<Integer>();
 
@@ -327,7 +333,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		Geometry fpGeom = TrajectoryEnvelope.createFootprintPolygon(DEFAULT_FOOTPRINT);
 		return fpGeom;
 	}
-
+	
 	/**
 	 * Get a {@link Geometry} representing the footprint of a given robot.
 	 * @param robotID the ID of the robot
@@ -367,6 +373,27 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			}
 		};
 	}
+	
+	/**
+	 * Set the tracking period of a given robot in millis.
+	 * @param robotID The ID of the robot.
+	 * @param trackingPeriodInMillis The tracking period of the robot.
+	 */
+	public void setRobotTrackingPeriodInMillis(int robotID, int trackingPeriodInMillis) {
+		this.robotTrackingPeriodInMillis.put(robotID, trackingPeriodInMillis);
+	}
+	
+	/**
+	 * Get the tracking period of a given robot in millis.
+	 * @param robotID The ID of the robot.
+	 * @return The tracking period of the robot.
+	 */
+	public int getRobotTrackingPeriodInMillis(int robotID) {
+		if (this.robotTrackingPeriodInMillis.containsKey(robotID)) 
+			return this.robotTrackingPeriodInMillis.get(robotID);
+		else return DEFAULT_ROBOT_TRACKING_PERIOD;
+	}
+
 
 	protected void setupLogging() {
 		//logDirName = "log-" + Calendar.getInstance().getTimeInMillis();
@@ -1877,7 +1904,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 * @return An instance of a trajectory envelope tracker.
 	 */
 	public abstract AbstractTrajectoryEnvelopeTracker getNewTracker(TrajectoryEnvelope te, TrackingCallback cb);
-
+	
 	/**
 	 * Determine if a robot is free to accept a new mission (that is, the robot is in state WAITING_FOR_TASK).
 	 * @param robotID The ID of the robot.

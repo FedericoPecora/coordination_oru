@@ -34,7 +34,6 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	protected static final long START_TIME = Calendar.getInstance().getTimeInMillis();
 	protected double MAX_VELOCITY;
 	protected double MAX_ACCELERATION;
-	protected int trackingPeriodInMillis;
 	protected boolean useInternalCPs = true;
 	
 	protected boolean fake = false;
@@ -75,10 +74,6 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 		this.totalPacketsLost.incrementAndGet();
 	}
 	
-	public int getTrackingPeriod() {
-		return trackingPeriodInMillis;
-	}
-
 	public double getTemporalResolution() {
 		return 1000.0;
 	}
@@ -186,13 +181,13 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	 * @param TEMPORAL_RESOLUTION The temporal resolution at which the control period is specified (e.g., 1000)
 	 * @param MAX_VELOCITY The maximum speed of a robot (used to appropriately instantiate the {@link TrajectoryEnvelopeTrackerRK4} instances).
 	 * @param MAX_ACCELERATION The maximum acceleration/deceleration of a robot (used to appropriately instantiate the {@link TrajectoryEnvelopeTrackerRK4} instances).
-	 * @param trackingPeriodInMillis The tracking period in milliseconds (used to appropriately instantiate the {@link TrajectoryEnvelopeTrackerRK4} instances).
+	 * @param DEFAULT_ROBOT_TRACKING_PERIOD The default tracking period in milliseconds (used to appropriately instantiate the {@link TrajectoryEnvelopeTrackerRK4} instances).
 	 */
-	public TrajectoryEnvelopeCoordinatorSimulation(int CONTROL_PERIOD, double TEMPORAL_RESOLUTION, double MAX_VELOCITY, double MAX_ACCELERATION, int trackingPeriodInMillis) {
+	public TrajectoryEnvelopeCoordinatorSimulation(int CONTROL_PERIOD, double TEMPORAL_RESOLUTION, double MAX_VELOCITY, double MAX_ACCELERATION, int DEFAULT_ROBOT_TRACKING_PERIOD) {
 		super(CONTROL_PERIOD, TEMPORAL_RESOLUTION);
 		this.MAX_VELOCITY = MAX_VELOCITY;
 		this.MAX_ACCELERATION = MAX_ACCELERATION;
-		this.trackingPeriodInMillis = trackingPeriodInMillis;
+		this.DEFAULT_ROBOT_TRACKING_PERIOD = DEFAULT_ROBOT_TRACKING_PERIOD;
 	}
 
 	/**
@@ -205,8 +200,7 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 
 	@Override
 	public AbstractTrajectoryEnvelopeTracker getNewTracker(TrajectoryEnvelope te, TrackingCallback cb) {
-
-		TrajectoryEnvelopeTrackerRK4 ret = new TrajectoryEnvelopeTrackerRK4(te, trackingPeriodInMillis, TEMPORAL_RESOLUTION, MAX_VELOCITY, MAX_ACCELERATION, this, cb) {
+		TrajectoryEnvelopeTrackerRK4 ret = new TrajectoryEnvelopeTrackerRK4(te, this.getRobotTrackingPeriodInMillis(te.getRobotID()), TEMPORAL_RESOLUTION, MAX_VELOCITY, MAX_ACCELERATION, this, cb) {
 
 			//Method for measuring time in the trajectory envelope tracker
 			@Override

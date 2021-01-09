@@ -201,7 +201,7 @@ public class ParkingArrayNew {
 		
 		for (final int robotID : robotIDs) {
 			if (inactiveRobots.contains(robotID)) continue;
-			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
+			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getRobotTrackingPeriodInMillis(robotID)));
 			//In case deadlocks occur, we make the coordinator capable of re-planning on the fly (experimental, not working properly yet)
 			ReedsSheppCarPlanner rsp_ = new ReedsSheppCarPlanner();
 			//rsp_.setMap(yamlFile);

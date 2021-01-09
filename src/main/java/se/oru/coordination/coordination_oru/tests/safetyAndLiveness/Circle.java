@@ -68,7 +68,7 @@ public class Circle {
 		final int[] robotIDs = new int[numRobots];
 		for (int i = 0; i < numRobots; i++) {
 			robotIDs[i] = i+1;
-			tec.setForwardModel(i+1, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
+			tec.setForwardModel(i+1, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getRobotTrackingPeriodInMillis(i+1)));
 		}
 		
 		//Set a map
