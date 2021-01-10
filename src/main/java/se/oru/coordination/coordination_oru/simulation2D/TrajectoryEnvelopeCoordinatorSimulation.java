@@ -17,7 +17,6 @@ import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.util.AffineTransformation;
 
-import geometry_msgs.Point;
 import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeTracker;
 import se.oru.coordination.coordination_oru.CollisionEvent;
 import se.oru.coordination.coordination_oru.CriticalSection;
@@ -74,10 +73,6 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 		this.totalPacketsLost.incrementAndGet();
 	}
 	
-	public double getTemporalResolution() {
-		return 1000.0;
-	}
-
 	/**
 	 * Create a new {@link TrajectoryEnvelopeCoordinatorSimulation} with the following default values:
 	 * <ul>

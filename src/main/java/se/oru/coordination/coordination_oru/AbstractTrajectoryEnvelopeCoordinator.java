@@ -177,6 +177,13 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		return numberOfReplicas;
 	}
 	
+	/**
+	 * Return the temporal resolution of the control period.
+	 * @return The temporal resolution of the control period, e.g., 1000 for milliseconds.
+	 */
+	public double getTemporalResolution() {
+		return TEMPORAL_RESOLUTION;
+	}
 	
 	/**
 	 * Utility method to treat internal resources from this library as filenames.
