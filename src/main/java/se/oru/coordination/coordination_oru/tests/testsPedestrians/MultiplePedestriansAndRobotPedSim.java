@@ -23,14 +23,16 @@ import java.util.Vector;
 @DemoDescription(desc = "One-shot navigation of several pedestrians and a robot coordinating on static paths that overlap in a straight portion.")
 public class MultiplePedestriansAndRobotPedSim {
 
+    static final int totalAgentsToLoad = 15;
+
     public static void main(String[] args) throws InterruptedException {
 
         double MAX_ACCEL = 1.0;
         double MAX_VEL = 1.0;
 
-        String scenarioName = "hall1-t1/";
-        String robotPathDir = "chitt_tests/robot/atc/corridor/t1";
-        String pedestrianPathDir = "chitt_tests/pedestrians/atc/" + "1114_1352866100";
+        String scenarioName = "corridor-t2/";
+        String robotPathDir = "chitt_tests/robot/atc/corridor/t2";
+        String pedestrianPathDir = "chitt_tests/pedestrians/atc/" + "1114_1352883600";
 
         Vector<String> robotPathFilesName = new Vector<String>();
 
@@ -158,7 +160,7 @@ public class MultiplePedestriansAndRobotPedSim {
         File pedestrianDir = new File(pedestrianPathDir);
         for (final File f : pedestrianDir.listFiles(matchingNameFilter)) {
             nums.add(Integer.parseInt(f.getName().split("person")[1].split(".txt")[0]));
-            if(nums.size() == 40) {
+            if(nums.size() == totalAgentsToLoad) {
                 ColorPrint.info("READ " + nums.size() + "pedestrians...");
                 break;
             }
