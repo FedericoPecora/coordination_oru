@@ -18,10 +18,11 @@ import java.io.File;
 import java.io.FilenameFilter;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Map;
 import java.util.Vector;
 
 @DemoDescription(desc = "One-shot navigation of several pedestrians and a robot coordinating on static paths that overlap in a straight portion.")
-public class MultiplePedestriansAndRobotPedSim {
+public class MultiplePedestriansAndRobot {
 
     static final int totalAgentsToLoad = 15;
 
@@ -30,9 +31,18 @@ public class MultiplePedestriansAndRobotPedSim {
         double MAX_ACCEL = 1.0;
         double MAX_VEL = 1.0;
 
-        String scenarioName = "corridor-t2/";
-        String robotPathDir = "chitt_tests/robot/atc/corridor/t2";
-        String pedestrianPathDir = "chitt_tests/pedestrians/atc/" + "1114_1352883600";
+        String timeStr = "t2";
+        String scenarioType = "corridor";
+
+
+        Map<String, String> environmentVariables = System.getenv();
+        if(environmentVariables.containsKey("P_TIME")) { timeStr = environmentVariables.get("P_TIME"); }
+        if(environmentVariables.containsKey("S_TYPE")) { scenarioType = environmentVariables.get("S_TYPE"); }
+
+        String scenarioStr = "atc/" + scenarioType;
+        String scenarioName =  scenarioType + "-" + timeStr;
+        String robotPathDir = "chitt_tests/robot/" + scenarioStr + "/" + timeStr;
+        String pedestrianPathDir = "chitt_tests/pedestrians/atc/" + timeStr;
 
         Vector<String> robotPathFilesName = new Vector<String>();
 
