@@ -10,8 +10,11 @@ import java.io.IOException;
 
 public class MyTrackingCallback {
 
-    static int criticalSections = 0;
-    static String pathFileName;
+    public static synchronized void createLogDirectory(String folderName) {
+        File file = new File("journal_logs/colab/" + folderName);
+        if(file.mkdir()) { ColorPrint.positive("Directory was created anew."); }
+    }
+
 
     public static synchronized void writeToLogFile(String token, String fileName) {
         File file = new File("journal_logs/" + fileName);

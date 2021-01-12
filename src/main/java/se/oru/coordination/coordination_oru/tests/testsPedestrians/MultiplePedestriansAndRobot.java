@@ -24,7 +24,7 @@ import java.util.Vector;
 @DemoDescription(desc = "One-shot navigation of several pedestrians and a robot coordinating on static paths that overlap in a straight portion.")
 public class MultiplePedestriansAndRobot {
 
-    static final int totalAgentsToLoad = 15;
+    static final int totalAgentsToLoad = 40;
 
     public static void main(String[] args) throws InterruptedException {
 
@@ -86,7 +86,7 @@ public class MultiplePedestriansAndRobot {
         // -- the getCurrentTimeInMillis() method, which is used by the coordinator to keep time
         //You still need to add one or more comparators to determine robot orderings thru critical sections (comparators are evaluated in the order in which they are added)
         final TrajectoryEnvelopeCoordinatorSimulationWithPedestrians tec = new TrajectoryEnvelopeCoordinatorSimulationWithPedestrians(MAX_VEL, MAX_ACCEL);
-        tec.addComparator(new Comparator<RobotAtCriticalSection>() {
+        /*tec.addComparator(new Comparator<RobotAtCriticalSection>() {
             @Override
             public int compare(RobotAtCriticalSection o1, RobotAtCriticalSection o2) {
                 int returnValue = 1;
@@ -115,9 +115,9 @@ public class MultiplePedestriansAndRobot {
 
                 return returnValue;
             }
-        });
+        });*/
 
-        /*tec.addComparator(new Comparator<RobotAtCriticalSection> () {
+        tec.addComparator(new Comparator<RobotAtCriticalSection> () {
             @Override
             public int compare(RobotAtCriticalSection o1, RobotAtCriticalSection o2) {
                 CriticalSection cs = o1.getCriticalSection();
@@ -125,7 +125,7 @@ public class MultiplePedestriansAndRobot {
                 RobotReport robotReport2 = o2.getRobotReport();
                 return ((cs.getTe1Start()-robotReport1.getPathIndex())-(cs.getTe2Start()-robotReport2.getPathIndex()));
             }
-        });*/
+        });
 
         // Set up infrastructure that maintains the representation
         tec.setupSolver(0, 100000000);
