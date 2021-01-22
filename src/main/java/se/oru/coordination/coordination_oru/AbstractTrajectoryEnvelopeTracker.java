@@ -362,7 +362,7 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 	
 	
 	
-	private TrajectoryEnvelope[] getAllSubEnvelopes() {
+	protected TrajectoryEnvelope[] getAllSubEnvelopes() {
 		Variable[] allVars = te.getRecursivelyDependentVariables();
 		TrajectoryEnvelope[] allSubEnvelopes = new TrajectoryEnvelope[allVars.length];
 		for (int i = 0; i < allVars.length; i++) {
