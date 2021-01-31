@@ -2,6 +2,7 @@ package se.oru.coordination.coordination_oru.tests.safetyAndLiveness;
 
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 
@@ -19,14 +20,13 @@ import se.oru.coordination.coordination_oru.util.JTSDrawingPanelVisualization;
 import se.oru.coordination.coordination_oru.util.Missions;
 
 public class Diameter {
-	
-	protected static final int NUMBER_ROBOTS = 80;
 
 	public static void main(String[] args) throws InterruptedException {
 		
 		double MAX_ACCEL = 1.0;
 		double MAX_VEL = 4.0;
 		double radius = 40;
+		int NUMBER_ROBOTS = 80;
 		
 		//Instantiate a trajectory envelope coordinator.
 		//The TrajectoryEnvelopeCoordinatorSimulation implementation provides
@@ -55,10 +55,10 @@ public class Diameter {
 		
 		//You probably also want to provide a non-trivial forward model
 		//(the default assumes that robots can always stop)
-		int[] robotIDs =  new int[NUMBER_ROBOTS];
-		for (int i = 1; i <= nRobotsDeadlock.NUMBER_ROBOTS; i++) {
-			robotIDs[i-1] = i;
-			tec.setForwardModel(i, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getRobotTrackingPeriodInMillis(i)));
+		HashSet<Integer> robotIDs =  new HashSet<Integer>();
+		for (int robotID = 0; robotID < NUMBER_ROBOTS; robotID++) {
+			robotIDs.add(robotID);
+			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getRobotTrackingPeriodInMillis(robotID)));
 		}
 		
 		//comment out following (or set to true) to make the coordinator attempt to break the deadlock
@@ -102,28 +102,28 @@ public class Diameter {
 		HashMap<Integer,Pose> goalPoses = new HashMap<Integer,Pose>();
 		
 		double theta = 0.0;
-		for (int i = 0; i < NUMBER_ROBOTS; i++) {
+		for (int robotID : robotIDs) {
 			//In case deadlocks occur, we make the coordinator capable of re-planning on the fly (experimental, not working properly yet)
-			tec.setMotionPlanner(robotIDs[i], rsp.getCopy(false));
+			tec.setMotionPlanner(robotID, rsp.getCopy(false));
 			
 			//Place robots.
-			double alpha = theta + i*Math.PI/NUMBER_ROBOTS;
-			startPoses.put(robotIDs[i], new Pose(radius*Math.cos(alpha), radius*Math.sin(alpha), alpha));
-			goalPoses.put(robotIDs[i], new Pose(radius*Math.cos(alpha+Math.PI), radius*Math.sin(alpha+Math.PI), alpha));
-			tec.placeRobot(robotIDs[i], startPoses.get(robotIDs[i]));
+			double alpha = theta + robotID*Math.PI/NUMBER_ROBOTS;
+			startPoses.put(robotID, new Pose(radius*Math.cos(alpha), radius*Math.sin(alpha), alpha));
+			goalPoses.put(robotID, new Pose(radius*Math.cos(alpha+Math.PI), radius*Math.sin(alpha+Math.PI), alpha));
+			tec.placeRobot(robotID, startPoses.get(robotID));
 			
 			//Plan the path and enqueue the mission
-			rsp.setStart(startPoses.get(robotIDs[i]));
-			rsp.setGoals(goalPoses.get(robotIDs[i]));
-			if (!rsp.plan()) throw new Error ("No path between " + startPoses.get(robotIDs[i]) + " and " + goalPoses.get(robotIDs[i]));
-			Missions.enqueueMission(new Mission(robotIDs[i], rsp.getPath()));
+			rsp.setStart(startPoses.get(robotID));
+			rsp.setGoals(goalPoses.get(robotID));
+			if (!rsp.plan()) throw new Error ("No path between " + startPoses.get(robotID) + " and " + goalPoses.get(robotID));
+			Missions.enqueueMission(new Mission(robotID, rsp.getPath()));
 		}
 		
 		//Wait for all robots ...
-		Thread.sleep(5000);
+		Thread.sleep(10000);
 		
 		//Start a mission dispatching thread for each robot, which will run forever
-		Missions.startMissionDispatchers(tec, false, robotIDs);
+		Missions.startMissionDispatchers(tec, false, robotIDs.stream().mapToInt(Integer::intValue).toArray());
 		
 		Thread t = new Thread() {
 			@Override
