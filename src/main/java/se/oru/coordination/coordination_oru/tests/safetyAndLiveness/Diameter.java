@@ -130,7 +130,7 @@ public class Diameter {
 			public void run() {
 				while (true) {
 					boolean allCompleted = true;
-					for (int robotID : robotIDs) allCompleted &= !Missions.hasMissions(robotID);
+					for (int robotID : robotIDs) allCompleted &= (tec.isFree(robotID) && !Missions.hasMissions(robotID));
 					if (allCompleted) {
 						tec.stopInference();
 						break;
