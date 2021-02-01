@@ -1,5 +1,9 @@
 package se.oru.coordination.coordination_oru.tests.safetyAndLiveness;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.PrintWriter;
+import java.util.Calendar;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -13,10 +17,12 @@ import se.oru.coordination.coordination_oru.CriticalSection;
 import se.oru.coordination.coordination_oru.Mission;
 import se.oru.coordination.coordination_oru.RobotAtCriticalSection;
 import se.oru.coordination.coordination_oru.RobotReport;
+import se.oru.coordination.coordination_oru.TrackingCallback;
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
 import se.oru.coordination.coordination_oru.util.BrowserVisualization;
 import se.oru.coordination.coordination_oru.util.JTSDrawingPanelVisualization;
+import se.oru.coordination.coordination_oru.util.MissionDispatchingCallback;
 import se.oru.coordination.coordination_oru.util.Missions;
 
 public class Diameter {
@@ -93,8 +99,6 @@ public class Diameter {
 		
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
-		//Start the thread that checks and enforces dependencies at every clock tick
-		tec.startInference();
 		
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		//RVizVisualization viz = new RVizVisualization();
@@ -143,7 +147,14 @@ public class Diameter {
 			rsp.setStart(startPoses.get(robotID));
 			rsp.setGoals(goalPoses.get(robotID));
 			if (!rsp.plan()) throw new Error ("No path between " + startPoses.get(robotID) + " and " + goalPoses.get(robotID));
-			Missions.enqueueMission(new Mission(robotID, rsp.getPath()));
+			
+			/**@ATTENTION Use either line 152 (synchronous goal posting) or line 154 (asynchronous goal posting). 
+			 * Remember to change value of MAX_ADDED_MISSIONS to NUMBER_ROBOTS in line 1027 of the TrajectoryEnvelopeCoordinator 
+			 * class in case of synchronous goal posting.  */
+			//Missions.enqueueMission(new Mission(robotID, rsp.getPath()));
+			tec.addMissions(new Mission(robotID, rsp.getPath()));
+			
+			//Add a callback to log the execution time of each mission
 			tec.addTrackingCallback(robotID, new TrackingCallback() {
 
 				long startTime = -1;
@@ -195,10 +206,14 @@ public class Diameter {
 		//Wait for all robots ...
 		Thread.sleep(10000);
 		
-		//Start a mission dispatching thread for each robot, which will run forever
-		Missions.startMissionDispatchers(tec, false, statFilename, robotIDs.stream().mapToInt(Integer::intValue).toArray());
+		//Start the thread that checks and enforces dependencies at every clock tick
+		tec.startInference();
+		
+		//Start a mission dispatching thread for each robot (if asynchronous goal posting) 
+		//Missions.startMissionDispatchers(tec, false, statFilename, robotIDs.stream().mapToInt(Integer::intValue).toArray());
 		
 		Thread t = new Thread() {
+			
 			@Override
 			public void run() {
 				while (true) {
