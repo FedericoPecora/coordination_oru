@@ -20,6 +20,26 @@ import se.oru.coordination.coordination_oru.util.JTSDrawingPanelVisualization;
 import se.oru.coordination.coordination_oru.util.Missions;
 
 public class Diameter {
+	
+	private static void initStat(String fileName, String stat) {
+        try {
+        	//Append to file
+            PrintWriter writer = new PrintWriter(new FileOutputStream(new File(fileName), false)); 
+            writer.println(stat);
+            writer.close();
+        }
+        catch (Exception e) { e.printStackTrace(); }
+	}
+	
+	static public void writeStat(String fileName, String stat) {
+        try {
+        	//Append to file
+            PrintWriter writer = new PrintWriter(new FileOutputStream(new File(fileName), true)); 
+            writer.println(stat);
+            writer.close();
+        }
+        catch (Exception e) { e.printStackTrace(); }
+	}
 
 	public static void main(String[] args) throws InterruptedException {
 		
@@ -101,8 +121,15 @@ public class Diameter {
 		HashMap<Integer,Pose> startPoses = new HashMap<Integer,Pose>();
 		HashMap<Integer,Pose> goalPoses = new HashMap<Integer,Pose>();
 		
+		//Set the file to track elapsed times
+		final String statFilename = System.getProperty("user.home")+File.separator+"stats.txt";
+		String header = "#";
+		for (int robotID : robotIDs) header += (robotID + "\t");
+		initStat(statFilename, header);
+
+		
 		double theta = 0.0;
-		for (int robotID : robotIDs) {
+		for (final int robotID : robotIDs) {
 			//In case deadlocks occur, we make the coordinator capable of re-planning on the fly (experimental, not working properly yet)
 			tec.setMotionPlanner(robotID, rsp.getCopy(false));
 			
@@ -117,13 +144,59 @@ public class Diameter {
 			rsp.setGoals(goalPoses.get(robotID));
 			if (!rsp.plan()) throw new Error ("No path between " + startPoses.get(robotID) + " and " + goalPoses.get(robotID));
 			Missions.enqueueMission(new Mission(robotID, rsp.getPath()));
+			tec.addTrackingCallback(robotID, new TrackingCallback() {
+
+				long startTime = -1;
+				
+				@Override
+				public void beforeTrackingStart() {
+					// TODO Auto-generated method stub
+					
+				}
+
+				@Override
+				public void onTrackingStart() {
+					// TODO Auto-generated method stub
+					startTime = Calendar.getInstance().getTimeInMillis();
+				}
+
+				@Override
+				public String[] onPositionUpdate() {
+					// TODO Auto-generated method stub
+					return null;
+				}
+
+				@Override
+				public void beforeTrackingFinished() {
+					// TODO Auto-generated method stub
+					
+				}
+
+				@Override
+				public void onTrackingFinished() {
+					// TODO Auto-generated method stub
+					long elapsed = Calendar.getInstance().getTimeInMillis()-startTime;
+					String stat = "";
+					for (int i = 0; i < robotID; i++) stat += "\t";
+					stat += elapsed;
+					writeStat(statFilename, stat);
+				}
+
+				@Override
+				public void onNewGroundEnvelope() {
+					// TODO Auto-generated method stub
+					
+				}
+				
+			}
+			);
 		}
 		
 		//Wait for all robots ...
 		Thread.sleep(10000);
 		
 		//Start a mission dispatching thread for each robot, which will run forever
-		Missions.startMissionDispatchers(tec, false, robotIDs.stream().mapToInt(Integer::intValue).toArray());
+		Missions.startMissionDispatchers(tec, false, statFilename, robotIDs.stream().mapToInt(Integer::intValue).toArray());
 		
 		Thread t = new Thread() {
 			@Override
