@@ -12,6 +12,7 @@ import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeTrack
 import se.oru.coordination.coordination_oru.util.BrowserVisualization;
 import se.oru.coordination.coordination_oru.util.ColorPrint;
 import se.oru.coordination.coordination_oru.util.Missions;
+import org.metacsp.utility.logging.MetaCSPLogging;
 
 import java.awt.*;
 import java.io.File;
@@ -20,13 +21,17 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.Vector;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @DemoDescription(desc = "One-shot navigation of several pedestrians and a robot coordinating on static paths that overlap in a straight portion.")
 public class MultiplePedestriansAndRobot {
 
-    static final int totalAgentsToLoad = 40;
+    static final int totalAgentsToLoad = 20;
 
     public static void main(String[] args) throws InterruptedException {
+
+        Logger metaCSPLogger = MetaCSPLogging.getLogger(MultiplePedestriansAndRobot.class);
 
         double MAX_ACCEL = 1.0;
         double MAX_VEL = 1.0;
@@ -134,10 +139,13 @@ public class MultiplePedestriansAndRobot {
         tec.startInference();
 
         // Don't solve deadlocks
-        tec.setBreakDeadlocks(true, false, false);
+        tec.setBreakDeadlocks(true, true, false);
+
+        // Set up Finest logging
+        MetaCSPLogging.setLevel(tec.getClass().getSuperclass(), Level.INFO);
 
         // Pedestrian Footprints
-        // A small circle of radius 0.3m
+        // A small circle of diameter 0.3m
         Coordinate[] pedestrianFootprint = {
                 new Coordinate(0.3000, 0.0000),
                 new Coordinate(0.2427, 0.1763),
