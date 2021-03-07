@@ -36,8 +36,8 @@ public class MultiplePedestriansAndRobot {
         double MAX_ACCEL = 1.0;
         double MAX_VEL = 1.0;
 
-        String timeStr = "t2";
-        String scenarioType = "corridor";
+        String timeStr = "t3";
+        String scenarioType = "corridor2";
 
 
         Map<String, String> environmentVariables = System.getenv();
@@ -139,7 +139,7 @@ public class MultiplePedestriansAndRobot {
         tec.startInference();
 
         // Don't solve deadlocks
-        tec.setBreakDeadlocks(true, true, false);
+        tec.setBreakDeadlocks(false, false, false);
 
         // Set up Finest logging
         MetaCSPLogging.setLevel(tec.getClass().getSuperclass(), Level.INFO);
@@ -228,7 +228,7 @@ public class MultiplePedestriansAndRobot {
             }
         }
 
-        Missions.startMissionDispatchers(tec, 1729);
+        Missions.startMissionDispatchers(tec, false, 1729);
 
         startTime = tec.getCurrentTimeInMillis();
 
@@ -241,12 +241,12 @@ public class MultiplePedestriansAndRobot {
                 PedestrianTrajectory pI = pedestrianTrajectories[i];
                 // One robot. Others behave as pedestrians.
                 // When the current time is greater than the start time of a pedestrian, we start that pedestrian
-                if (nums.get(i) != 1729 && timeNow > startTime + pI.getStartTime() * 1000) {
+                if (nums.get(i) != 1729 && timeNow > startTime + pI.getStartTime() * 1000 && !addedMissions.contains(i)) {
                     tec.placeRobot(nums.get(i), pI.getPose(0));
                     ColorPrint.info("Adding mission for Pedestrian " + nums.get(i));
                     ColorPrint.info("timeNow: " + timeNow + ", startTime: " + startTime + ", first stamp: " + pI.getStartTime() * 1000);
+                    Missions.startMissionDispatchers(tec, false, nums.get(i));
                     addedMissions.add(nums.get(i));
-                    Missions.startMissionDispatchers(tec, nums.get(i));
                 }
 
                 if(nums.get(i) == 1729) {
