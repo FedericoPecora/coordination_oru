@@ -31,3 +31,5 @@ hs_err_pid*
 # temporary maps
 .temp*/
 logs/
+journal_logs/
+.idea/
