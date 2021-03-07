@@ -142,7 +142,7 @@ public class MultiplePedestriansAndRobot {
         tec.setBreakDeadlocks(false, false, false);
 
         // Set up Finest logging
-        MetaCSPLogging.setLevel(tec.getClass().getSuperclass(), Level.INFO);
+        MetaCSPLogging.setLevel(tec.getClass().getSuperclass(), Level.WARNING);
 
         // Pedestrian Footprints
         // A small circle of diameter 0.3m
