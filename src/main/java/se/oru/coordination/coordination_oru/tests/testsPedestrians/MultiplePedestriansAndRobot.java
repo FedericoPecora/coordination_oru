@@ -132,7 +132,7 @@ public class MultiplePedestriansAndRobot {
             }
         });
 
-        // Set up infrastructure that maintains the representation
+        // Set up infrastructure that maintains the represetation
         tec.setupSolver(0, 100000000);
 
         // Start the thread that revises precedences at every period
@@ -142,7 +142,7 @@ public class MultiplePedestriansAndRobot {
         tec.setBreakDeadlocks(false, false, false);
 
         // Set up Finest logging
-        MetaCSPLogging.setLevel(tec.getClass().getSuperclass(), Level.WARNING);
+        MetaCSPLogging.setLevel(tec.getClass().getSuperclass(), Level.INFO);
 
         // Pedestrian Footprints
         // A small circle of diameter 0.3m
@@ -232,7 +232,9 @@ public class MultiplePedestriansAndRobot {
 
         startTime = tec.getCurrentTimeInMillis();
 
-        while (addedMissions.size() != nums_primitive.length) {
+        ColorPrint.positive("Total Missions to add: " + nums_primitive.length);
+
+        while (addedMissions.size() < nums_primitive.length) {
             long timeNow = tec.getCurrentTimeInMillis();
 
             for (int i = 0; i < nums.size(); i++) {
@@ -247,6 +249,7 @@ public class MultiplePedestriansAndRobot {
                     ColorPrint.info("timeNow: " + timeNow + ", startTime: " + startTime + ", first stamp: " + pI.getStartTime() * 1000);
                     Missions.startMissionDispatchers(tec, false, nums.get(i));
                     addedMissions.add(nums.get(i));
+                    ColorPrint.info("Added " + addedMissions.size() + " / " + nums_primitive.length + " missions");
                 }
 
                 if(nums.get(i) == 1729) {
