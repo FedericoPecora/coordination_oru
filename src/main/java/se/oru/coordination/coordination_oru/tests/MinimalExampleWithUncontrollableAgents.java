@@ -103,7 +103,7 @@ public class MinimalExampleWithUncontrollableAgents {
 			tec.setFootprint(robotID,fp);
 			
 			//Set a forward model (all robots have the same here)
-			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
+			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getRobotTrackingPeriodInMillis(robotID)));
 
 			//Define start and goal poses for the robot
 			Pose[] startAndGoal = makeRandomStartGoalPair(robotIDs.length, 1.5*maxRobotRadius, 1.1*maxRobotRadius, 1.1*maxRobotRadius);
