@@ -175,7 +175,7 @@ public class Waves {
 			double period = 18; //10
 			double mag = deltaY; //2*deltaY
 
-			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
+			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getRobotTrackingPeriodInMillis(robotID)));
 			Pose from = new Pose(0.0,index*deltaY,0.0);
 			Pose to = new Pose(2*period,index*deltaY,0.0); //new Pose(5*period,index*deltaY,0.0);
 			tec.placeRobot(robotID, from);

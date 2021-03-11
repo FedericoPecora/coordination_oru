@@ -75,6 +75,13 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 	}
 	
 	/**
+	 * Return the tracking period in milli-seconds.
+	 */
+	public int getTrackingPeriod() {
+		return this.trackingPeriodInMillis;
+	}
+	
+	/**
 	 * Return the coordination time (in milli-seconds) at which the tracker has started its mission.
 	 */
 	public long getStartingTimeInMillis() {
@@ -358,7 +365,7 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 	
 	
 	
-	private TrajectoryEnvelope[] getAllSubEnvelopes() {
+	protected TrajectoryEnvelope[] getAllSubEnvelopes() {
 		Variable[] allVars = te.getRecursivelyDependentVariables();
 		TrajectoryEnvelope[] allSubEnvelopes = new TrajectoryEnvelope[allVars.length];
 		for (int i = 0; i < allVars.length; i++) {

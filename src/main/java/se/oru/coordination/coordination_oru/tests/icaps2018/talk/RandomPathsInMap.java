@@ -194,7 +194,7 @@ public class RandomPathsInMap {
 			//In case deadlocks occur, we make the coordinator capable of re-planning on the fly (experimental, not working properly yet)
 			tec.setMotionPlanner(robotID, rsp);
 			
-			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
+			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getRobotTrackingPeriodInMillis(robotID)));
 			String startLocName = startsNames.get(robotID);
 			Pose startLoc = startsPoses.get(robotID);
 			String endLocName = endsNames.get(robotID);
