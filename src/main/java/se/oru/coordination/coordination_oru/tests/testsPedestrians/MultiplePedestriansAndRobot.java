@@ -17,17 +17,14 @@ import org.metacsp.utility.logging.MetaCSPLogging;
 import java.awt.*;
 import java.io.File;
 import java.io.FilenameFilter;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Map;
-import java.util.Vector;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 @DemoDescription(desc = "One-shot navigation of several pedestrians and a robot coordinating on static paths that overlap in a straight portion.")
 public class MultiplePedestriansAndRobot {
 
-    static final int totalAgentsToLoad = 20;
+    static final int totalAgentsToLoad = 1;
 
     public static void main(String[] args) throws InterruptedException {
 
@@ -91,7 +88,7 @@ public class MultiplePedestriansAndRobot {
         // -- the getCurrentTimeInMillis() method, which is used by the coordinator to keep time
         //You still need to add one or more comparators to determine robot orderings thru critical sections (comparators are evaluated in the order in which they are added)
         final TrajectoryEnvelopeCoordinatorSimulationWithPedestrians tec = new TrajectoryEnvelopeCoordinatorSimulationWithPedestrians(MAX_VEL, MAX_ACCEL);
-        /*tec.addComparator(new Comparator<RobotAtCriticalSection>() {
+        tec.addComparator(new Comparator<RobotAtCriticalSection>() {
             @Override
             public int compare(RobotAtCriticalSection o1, RobotAtCriticalSection o2) {
                 int returnValue = 1;
@@ -120,9 +117,9 @@ public class MultiplePedestriansAndRobot {
 
                 return returnValue;
             }
-        });*/
+        });
 
-        tec.addComparator(new Comparator<RobotAtCriticalSection> () {
+        /*tec.addComparator(new Comparator<RobotAtCriticalSection> () {
             @Override
             public int compare(RobotAtCriticalSection o1, RobotAtCriticalSection o2) {
                 CriticalSection cs = o1.getCriticalSection();
@@ -130,7 +127,7 @@ public class MultiplePedestriansAndRobot {
                 RobotReport robotReport2 = o2.getRobotReport();
                 return ((cs.getTe1Start()-robotReport1.getPathIndex())-(cs.getTe2Start()-robotReport2.getPathIndex()));
             }
-        });
+        });*/
 
         // Set up infrastructure that maintains the represetation
         tec.setupSolver(0, 100000000);
@@ -225,28 +222,38 @@ public class MultiplePedestriansAndRobot {
                 tec.setForwardModel(nums.get(i), new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getTrackingPeriod()));
                 tec.placeRobot(nums.get(i), robotPath[0].getPose());
                 Missions.enqueueMission(new Mission(nums.get(i), robotPath));
+                Missions.startMissionDispatchers(tec, false, 1729);
             }
         }
-
-        Missions.startMissionDispatchers(tec, false, 1729);
 
         startTime = tec.getCurrentTimeInMillis();
 
         ColorPrint.positive("Total Missions to add: " + nums_primitive.length);
 
+        Timer timeoutTimer = new Timer();
+        timeoutTimer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                ColorPrint.positive("Ending Experiment: Time limit exceeded.");
+                System.exit(0);
+            }
+        }, 600000);
+
         while (addedMissions.size() < nums_primitive.length) {
             long timeNow = tec.getCurrentTimeInMillis();
 
             for (int i = 0; i < nums.size(); i++) {
-                if (addedMissions.contains(nums.get(i)))
+                if (addedMissions.contains(nums.get(i))) {
+                    Thread.sleep(100);
                     continue;
+                }
                 PedestrianTrajectory pI = pedestrianTrajectories[i];
                 // One robot. Others behave as pedestrians.
                 // When the current time is greater than the start time of a pedestrian, we start that pedestrian
-                if (nums.get(i) != 1729 && timeNow > startTime + pI.getStartTime() * 1000 && !addedMissions.contains(i)) {
+                if (nums.get(i) != 1729 && timeNow > startTime + pI.getStartTime() * 1000 && !addedMissions.contains(nums.get(i))) {
                     tec.placeRobot(nums.get(i), pI.getPose(0));
                     ColorPrint.info("Adding mission for Pedestrian " + nums.get(i));
-                    ColorPrint.info("timeNow: " + timeNow + ", startTime: " + startTime + ", first stamp: " + pI.getStartTime() * 1000);
+                    ColorPrint.info("timeNow: " + timeNow/1000.0 + ", startTime: " + startTime/1000.0 + ", first stamp: " + pI.getStartTime());
                     Missions.startMissionDispatchers(tec, false, nums.get(i));
                     addedMissions.add(nums.get(i));
                     ColorPrint.info("Added " + addedMissions.size() + " / " + nums_primitive.length + " missions");
@@ -320,15 +327,8 @@ public class MultiplePedestriansAndRobot {
                 });
             }
             Thread.sleep(100);
+            ColorPrint.info("SLEEPING...");
         }
         ColorPrint.info("All pedestrians added.");
-
-        while(true) {
-            Thread.sleep(50);
-            if(tec.getCurrentTimeInMillis() - startTime > 600000) {
-                ColorPrint.positive("Ending Experiment: Time limit exceeded.");
-                System.exit(0);
-            }
-        }
     }
 }
