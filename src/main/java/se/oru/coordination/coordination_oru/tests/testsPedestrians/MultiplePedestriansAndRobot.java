@@ -132,7 +132,7 @@ public class MultiplePedestriansAndRobot {
         tec.startInference();
 
         // Don't solve deadlocks
-        tec.setBreakDeadlocks(false, false, false);
+        tec.setBreakDeadlocks(false, true, false);
 
         // Set up Finest logging
         MetaCSPLogging.setLevel(tec.getClass().getSuperclass(), Level.INFO);
@@ -181,17 +181,17 @@ public class MultiplePedestriansAndRobot {
         nums.add(1729);
 
         //JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
-        BrowserVisualization viz = new BrowserVisualization();
+        //BrowserVisualization viz = new BrowserVisualization();
         //RVizVisualization viz = new RVizVisualization();
-        viz.setMap("maps/atc.yaml");
+        //viz.setMap("maps/atc.yaml");
         int[] nums_primitive = new int[nums.size()];
         for (int i = 0; i < nums_primitive.length; i++) {
             nums_primitive[i] = nums.get(i);
         }
         //RVizVisualization.writeRVizConfigFile(nums_primitive);
         //viz.setInitialTransform(40, 3, -10);  // Ellipse / warehouse map
-        viz.setInitialTransform(40, -10, 30); // ATC map
-        tec.setVisualization(viz);
+        //viz.setInitialTransform(40, -10, 30); // ATC map
+        //tec.setVisualization(viz);
 
         ArrayList<Integer> addedMissions = new ArrayList<Integer>();
 
