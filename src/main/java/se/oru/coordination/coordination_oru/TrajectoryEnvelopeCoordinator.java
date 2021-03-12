@@ -1317,50 +1317,42 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 * @return <code>true</code> iff the envelope is successfully truncated.
 	 */
 	public boolean truncateEnvelope(int robotID) {
-		return this.truncateEnvelope(robotID, true);
-	}
-
-	/**
-	 * Truncate the {@link TrajectoryEnvelope} of a given robot. 
-	 * @param robotID The ID of the robot whose {@link TrajectoryEnvelope} should be truncated.
-	 * @param ensureDynamicFeasibility If <code>true</code>, truncate at the closest dynamically-feasible path point, which is computed via the robot's {@link ForwardModel}; if <code>false</code>, truncate at the current path index.
-	 * @return <code>true</code> iff the envelope is successfully truncated.
-	 */
-	public boolean truncateEnvelope(int robotID, boolean ensureDynamicFeasibility) {
-
-		//This does not seem necessary - why would you need a motion planner if you are just truncating?
-		//		if(!this.motionPlanners.containsKey(robotID) && this.getDefaultMotionPlanner() == null) {
-		//			metaCSPLogger.severe("Motion planner not initialized (neither specific for Robot" + robotID + ", nor a default one).");
-		//			return false;
-		//		}
-
+		
 		synchronized (solver) {
-
+			
 			synchronized (lockedRobots) {
 				if (lockedRobots.containsKey(robotID)) return false;
 			}
-
+			
 			TrajectoryEnvelope te = this.getCurrentTrajectoryEnvelope(robotID);
 			AbstractTrajectoryEnvelopeTracker tet = this.trackers.get(robotID); 
-
+			
 			if (!(tet instanceof TrajectoryEnvelopeTrackerDummy)) {
-
+				
 				int earliestStoppingPathIndex = -1;
-				if (ensureDynamicFeasibility) earliestStoppingPathIndex = this.getForwardModel(robotID).getEarliestStoppingPathIndex(te, this.getRobotReport(robotID));
-				else earliestStoppingPathIndex = this.getRobotReport(robotID).getPathIndex();
-
+				earliestStoppingPathIndex = this.getForwardModel(robotID).getEarliestStoppingPathIndex(te, this.getRobotReport(robotID));
+				
 				if (earliestStoppingPathIndex != -1) {
+					
+					//Check if you were already slowing down to stop in your critical point.
+					int lastCommunicatedCP = -1;
+					synchronized (trackers) {
+						//if (breakingPathIndex == 0) trackers.get(robotID).resetStartingTimeInMillis();
+						lastCommunicatedCP = communicatedCPs.get(trackers.get(robotID)).getFirst();
+					}
+					if (lastCommunicatedCP != -1) earliestStoppingPathIndex = Math.min(lastCommunicatedCP, earliestStoppingPathIndex);
+					
 					metaCSPLogger.info("Truncating " + te + " at " + earliestStoppingPathIndex);
-
+					
 					//Compute and add new TE, remove old TE (both driving and final parking)
 					PoseSteering[] truncatedPath = Arrays.copyOf(te.getTrajectory().getPoseSteering(), earliestStoppingPathIndex+1);
-
+					
 					//replace the path of this robot (will compute new envelope)
-					replacePath(robotID, truncatedPath, truncatedPath.length-1, new HashSet<Integer>(robotID),false);
-
+					replacePath(robotID, truncatedPath, truncatedPath.length, new HashSet<Integer>(robotID),false);
+					
 				}
 			}
-
+			
 			return true;
 		}
 	}
