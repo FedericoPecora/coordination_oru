@@ -14,6 +14,7 @@ import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Scanner;
@@ -58,7 +59,6 @@ public class Missions {
 	protected static HashMap<String,PoseSteering[]> paths = new HashMap<String, PoseSteering[]>();
 	private static Logger metaCSPLogger = MetaCSPLogging.getLogger(Missions.class);
 	protected static HashMap<Integer,ArrayList<Mission>> missions = new HashMap<Integer, ArrayList<Mission>>();
-	protected static HashMap<Integer,Boolean> missionDispatcherFlags = new HashMap<Integer,Boolean>();
 	protected static HashMap<Integer,MissionDispatchingCallback> mdcs = new HashMap<Integer, MissionDispatchingCallback>();
 	protected static HashMap<Mission,ArrayList<Mission>> concatenatedMissions = new HashMap<Mission, ArrayList<Mission>>();
 	//protected static String pathPrefix = "";
@@ -70,6 +70,10 @@ public class Missions {
 	protected static Coordinate mapOrigin = null;
 
 	protected static double minPathDistance = -1;
+	
+	protected static Thread missionDispatchThread = null;
+	protected static HashSet<Integer> dispatchableRobots = new HashSet<Integer>();
+	protected static HashMap<Integer,Boolean> loopMissions = new HashMap<Integer,Boolean>();
 	
 	/**
 	 * Set the minimum acceptable distance between path poses. This is used to re-sample paths
@@ -877,16 +881,16 @@ public class Missions {
 	}
 
 	/**
-	 * Kill the dispatching threads for a given set of robots.
-	 * @param robotIDs The robots for which the dispatching thread should be killed.
+	 * Exclude the given robots from the dispatching thread.
+	 * @param robotIDs The IDs of the robots to be excluded.
 	 */
 	public static void stopMissionDispatchers(int ... robotIDs) {
 		for (int robotID : robotIDs) {
-			missionDispatcherFlags.put(robotID, false);
+			dispatchableRobots.remove(robotID);
 			mdcs.remove(robotID);
 		}
 	}
-	
+
 	/**
 	 * Save a path to a file.
 	 * @param fileName The name of the file.
@@ -945,70 +949,77 @@ public class Missions {
 	}
 	
 	/**
-	 * Start a thread for each robot that cycles through the known missions for that
-	 * robot and dispatches them when the robot is free. This method will loop through all missions forever.
+	 * Include the given robots in the periodic mission dispatching thread (and start the thread if it is not started).
+	 * The thread cycles through the known missions for each robot and dispatches as soon as the robot is free.
+	 * This method will loop through all mission forever.
 	 * @param tec The {@link TrajectoryEnvelopeCoordinator} that coordinates the missions.
-	 * @param robotIDs The robot IDs for which a dispatching thread should be started.
+	 * @param robotIDs The robot IDs which should be considered dispatchable.
 	 */
 	public static void startMissionDispatchers(final TrajectoryEnvelopeCoordinator tec, int ... robotIDs) {
 		startMissionDispatchers(tec, true, robotIDs);
 	}
 	
 	/**
-	 * Start a thread for each robot that cycles through the known missions for that
-	 * robot and dispatches them when the robot is free.
+	 * Include the given robots in the periodic mission dispatching thread (and start the thread if it is not started).
+	 * The thread cycles through the known missions for each robot and dispatches as soon as the robot is free.
 	 * @param tec The {@link TrajectoryEnvelopeCoordinator} that coordinates the missions.
 	 * @param loop Set to <code>false</code> if missions should be de-queued once dispatched. 
-	 * @param robotIDs The robot IDs for which a dispatching thread should be started.
+	 * @param robotIDs The robot IDs which should be considered dispatchable.
 	 */
 	public static void startMissionDispatchers(final TrajectoryEnvelopeCoordinator tec, final boolean loop, int ... robotIDs) {
-		//Start a mission dispatching thread for each robot, which will run forever
-		for (final int robotID : robotIDs) {
-			//For each robot, create a thread that dispatches the "next" mission when the robot is free 
-			Thread t = new Thread() {
+		
+		for (int robotID : robotIDs) {
+			dispatchableRobots.add(robotID);
+			loopMissions.put(robotID, loop);
+		}
+		
+		if (missionDispatchThread == null) {
+			missionDispatchThread = new Thread() {
 				@Override
 				public void run() {
-					while (missionDispatcherFlags.get(robotID)) {
-						if (Missions.hasMissions(robotID)) {
-							Mission m = Missions.peekMission(robotID);
-							if (m != null) {								
-								synchronized(tec) {
-									if (tec.isFree(m.getRobotID())) {
-										//cat with future missions if necessary
-										if (concatenatedMissions.containsKey(m)) {
-											ArrayList<Mission> catMissions = concatenatedMissions.get(m);
-											m = new Mission(m.getRobotID(), m.getFromLocation(), catMissions.get(catMissions.size()-1).getToLocation(), m.getFromPose(), catMissions.get(catMissions.size()-1).getToPose());
-											ArrayList<PoseSteering> path = new ArrayList<PoseSteering>();
-											for (int i = 0; i < catMissions.size(); i++) {
-												Mission oneMission = catMissions.get(i);
-												if (mdcs.containsKey(robotID)) mdcs.get(robotID).beforeMissionDispatch(oneMission);
-												if (i == 0) path.add(oneMission.getPath()[0]);
-												for (int j = 1; j < oneMission.getPath().length-1; j++) {
-													path.add(oneMission.getPath()[j]);
+					while (true) {
+						for (int robotID : dispatchableRobots) {
+							if (Missions.hasMissions(robotID)) {
+								Mission m = Missions.peekMission(robotID);
+								if (m != null) {								
+									synchronized(tec) {
+										if (tec.isFree(m.getRobotID())) {
+											//cat with future missions if necessary
+											if (concatenatedMissions.containsKey(m)) {
+												ArrayList<Mission> catMissions = concatenatedMissions.get(m);
+												m = new Mission(m.getRobotID(), m.getFromLocation(), catMissions.get(catMissions.size()-1).getToLocation(), m.getFromPose(), catMissions.get(catMissions.size()-1).getToPose());
+												ArrayList<PoseSteering> path = new ArrayList<PoseSteering>();
+												for (int i = 0; i < catMissions.size(); i++) {
+													Mission oneMission = catMissions.get(i);
+													if (mdcs.containsKey(robotID)) mdcs.get(robotID).beforeMissionDispatch(oneMission);
+													if (i == 0) path.add(oneMission.getPath()[0]);
+													for (int j = 1; j < oneMission.getPath().length-1; j++) {
+														path.add(oneMission.getPath()[j]);
+													}
+													if (i == catMissions.size()-1) path.add(oneMission.getPath()[oneMission.getPath().length-1]);
 												}
-												if (i == catMissions.size()-1) path.add(oneMission.getPath()[oneMission.getPath().length-1]);
+												m.setPath(path.toArray(new PoseSteering[path.size()]));
 											}
-											m.setPath(path.toArray(new PoseSteering[path.size()]));
+											else if (mdcs.containsKey(robotID)) mdcs.get(robotID).beforeMissionDispatch(m);							
 										}
-										else if (mdcs.containsKey(robotID)) mdcs.get(robotID).beforeMissionDispatch(m);							
-									}
-		
-									//addMission returns true iff the robot was free to accept a new mission
-									if (tec.addMissions(m)) {
-										//tec.computeCriticalSectionsAndStartTrackingAddedMission();
-										if (mdcs.containsKey(robotID)) mdcs.get(robotID).afterMissionDispatch(m);
-										if (!loop) {
-											Missions.removeMissions(m);
-											System.out.println("Removed mission " + m);
-											if (concatenatedMissions.get(m) != null) {
-												for (Mission cm : concatenatedMissions.get(m)) {
-													Missions.removeMissions(cm);
+			
+										//addMission returns true iff the robot was free to accept a new mission
+										if (tec.addMissions(m)) {
+											//tec.computeCriticalSectionsAndStartTrackingAddedMission();
+											if (mdcs.containsKey(robotID)) mdcs.get(robotID).afterMissionDispatch(m);
+											if (!loopMissions.get(robotID)) {
+												Missions.removeMissions(m);
+												System.out.println("Removed mission " + m);
+												if (concatenatedMissions.get(m) != null) {
+													for (Mission cm : concatenatedMissions.get(m)) {
+														Missions.removeMissions(cm);
+													}
 												}
 											}
-										}
-										else {
-											Missions.dequeueMission(m.getRobotID());
-											Missions.enqueueMission(m);
+											else {
+												Missions.dequeueMission(m.getRobotID());
+												Missions.enqueueMission(m);
+											}
 										}
 									}
 								}
@@ -1018,16 +1029,12 @@ public class Missions {
 						try { Thread.sleep(2000); }
 						catch (InterruptedException e) { e.printStackTrace(); }
 					}
-					missionDispatcherFlags.remove(robotID);
 				}
 			};
-			missionDispatcherFlags.put(robotID, true);
-			//Start the thread!
-			t.start();
+			missionDispatchThread.start();
 		}
 	}
-
-
+	
 	/**
 	 * Read a path from a file.
 	 * @param fileName The name of the file containing the path
