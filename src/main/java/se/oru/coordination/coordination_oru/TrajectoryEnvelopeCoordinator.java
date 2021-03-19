@@ -1332,7 +1332,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						//if (breakingPathIndex == 0) trackers.get(robotID).resetStartingTimeInMillis();
 						lastCommunicatedCP = communicatedCPs.get(trackers.get(robotID)).getFirst();
 					}
-					if (lastCommunicatedCP != -1) earliestStoppingPathIndex = Math.min(lastCommunicatedCP, earliestStoppingPathIndex);
+					if (lastCommunicatedCP != -1 && ensureDynamicFeasibility) earliestStoppingPathIndex = Math.min(lastCommunicatedCP, earliestStoppingPathIndex);
 					
 					metaCSPLogger.info("Truncating " + te + " at " + earliestStoppingPathIndex);
 					
