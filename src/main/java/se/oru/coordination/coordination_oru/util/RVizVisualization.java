@@ -1,5 +1,6 @@
 package se.oru.coordination.coordination_oru.util;
 
+import java.awt.*;
 import java.awt.color.ColorSpace;
 import java.awt.geom.AffineTransform;
 import java.awt.image.AffineTransformOp;
@@ -158,11 +159,12 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 		this.boxMarkerPublishers = new HashMap<String,Publisher<visualization_msgs.MarkerArray>>();
 		this.boxMarkerMarkers = new HashMap<String,ArrayList<visualization_msgs.Marker>>();
 		
+
+		NodeConfiguration nodeConfiguration = NodeConfiguration.newPublic("localhost");
+		NodeMainExecutor executor = DefaultNodeMainExecutor.newDefault();
+		executor.execute(this, nodeConfiguration);
+
 		if (startROSCore) {
-			NodeConfiguration nodeConfiguration = NodeConfiguration.newPublic("localhost");
-			NodeMainExecutor executor = DefaultNodeMainExecutor.newDefault();
-			executor.execute(this, nodeConfiguration);
-	
 			RosCore mRosCore = RosCore.newPublic("localhost", 11311);
 			mRosCore.start();
 			try {
