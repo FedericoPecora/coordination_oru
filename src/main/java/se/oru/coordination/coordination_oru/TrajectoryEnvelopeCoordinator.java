@@ -1290,13 +1290,23 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			}
 		}
 	}
-
+	
 	/**
 	 * Truncate the {@link TrajectoryEnvelope} of a given robot at the closest dynamically-feasible path point. This path point is computed via the robot's {@link ForwardModel}.
 	 * @param robotID The ID of the robot whose {@link TrajectoryEnvelope} should be truncated.
 	 * @return the earliestStoppingIndex CP if the envelope is successfully truncated, -2 otherwise.
 	 */
 	public int truncateEnvelope(int robotID) {
+		return truncateEnvelope(robotID, true);
+	}
+	
+	/**
+	 * Truncate the {@link TrajectoryEnvelope} of a given robot at the closest dynamically-feasible path point. This path point is computed via the robot's {@link ForwardModel}.
+	 * @param robotID The ID of the robot whose {@link TrajectoryEnvelope} should be truncated.
+	 * @param ensureDynamicFeasibility If <code>true</code>, truncate at the closest dynamically-feasible path point, which is computed via the robot's {@link ForwardModel}; if <code>false</code>, truncate at the current path index.
+	 * @return the earliestStoppingIndex CP if the envelope is successfully truncated, -2 otherwise.
+	 */
+	public int truncateEnvelope(int robotID, boolean ensureDynamicFeasibility) {
 		
 		synchronized (solver) {
 			
@@ -1312,9 +1322,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 			if (!(tet instanceof TrajectoryEnvelopeTrackerDummy)) {
 				
-				earliestStoppingPathIndex = this.getForwardModel(robotID).getEarliestStoppingPathIndex(te, this.getRobotReport(robotID));
+				earliestStoppingPathIndex = ensureDynamicFeasibility ? this.getForwardModel(robotID).getEarliestStoppingPathIndex(te, this.getRobotReport(robotID)) : trackers.get(robotID).getLastRobotReport().getPathIndex();
 				
-				if (earliestStoppingPathIndex != -1) {
+				if (earliestStoppingPathIndex != -1 && ensureDynamicFeasibility) {
 					
 					//Check if you were already slowing down to stop in your critical point.
 					int lastCommunicatedCP = -1;
