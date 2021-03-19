@@ -1324,7 +1324,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				
 				earliestStoppingPathIndex = ensureDynamicFeasibility ? this.getForwardModel(robotID).getEarliestStoppingPathIndex(te, this.getRobotReport(robotID)) : trackers.get(robotID).getLastRobotReport().getPathIndex();
 				
-				if (earliestStoppingPathIndex != -1 && ensureDynamicFeasibility) {
+				if (earliestStoppingPathIndex != -1) {
 					
 					//Check if you were already slowing down to stop in your critical point.
 					int lastCommunicatedCP = -1;
