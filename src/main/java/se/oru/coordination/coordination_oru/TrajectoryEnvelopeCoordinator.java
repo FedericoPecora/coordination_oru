@@ -1322,7 +1322,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 			if (!(tet instanceof TrajectoryEnvelopeTrackerDummy)) {
 				
-				earliestStoppingPathIndex = ensureDynamicFeasibility ? this.getForwardModel(robotID).getEarliestStoppingPathIndex(te, this.getRobotReport(robotID)) : trackers.get(robotID).getLastRobotReport().getPathIndex();
+				earliestStoppingPathIndex = ensureDynamicFeasibility ? this.getForwardModel(robotID).getEarliestStoppingPathIndex(te, this.getRobotReport(robotID)) : this.getRobotReport(robotID).getPathIndex();
+				if (earliestStoppingPathIndex == te.getTrajectory().getPoseSteering().length-1) earliestStoppingPathIndex = -1;
 				
 				if (earliestStoppingPathIndex != -1) {
 					
