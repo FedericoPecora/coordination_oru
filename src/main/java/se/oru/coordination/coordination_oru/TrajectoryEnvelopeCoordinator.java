@@ -1372,6 +1372,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			
 			if (!(tet instanceof TrajectoryEnvelopeTrackerDummy)) {
 				earliestStoppingPathIndex = this.getForwardModel(robotID).getEarliestStoppingPathIndex(te, this.getRobotReport(robotID));
+				if (earliestStoppingPathIndex == te.getTrajectory().getPoseSteering().length-1) earliestStoppingPathIndex = -1;
 				
 				//Check if you were already slowing down to stop in your critical point.
 				int lastCommunicatedCP = -1;
@@ -1392,7 +1393,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 					//replace the path of this robot (will compute new envelope)
 					replacePath(robotID, overallPath, truncatedPath.length-1, new HashSet<Integer>(robotID),false);
-					ret = (earliestStoppingPathIndex == overallPath.length-1) ? -1 : earliestStoppingPathIndex;
+					ret = earliestStoppingPathIndex;
 				}
 			}
 
