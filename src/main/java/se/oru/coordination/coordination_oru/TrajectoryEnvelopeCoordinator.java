@@ -1324,7 +1324,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			if (!(tet instanceof TrajectoryEnvelopeTrackerDummy)) {
 				
 				earliestStoppingPathIndex = ensureDynamicFeasibility ? this.getForwardModel(robotID).getEarliestStoppingPathIndex(te, this.getRobotReport(robotID)) : this.getRobotReport(robotID).getPathIndex();
-				if (earliestStoppingPathIndex + lastCPToGoalDistance > te.getTrajectory().getPoseSteering().length-1) earliestStoppingPathIndex = -1;
+				if (earliestStoppingPathIndex + lastCPToGoalDistance > te.getTrajectory().getPoseSteering().length) earliestStoppingPathIndex = -1;
 				
 				if (earliestStoppingPathIndex != -1) {
 					
@@ -1342,7 +1342,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					PoseSteering[] truncatedPath = Arrays.copyOf(te.getTrajectory().getPoseSteering(), earliestStoppingPathIndex+1);
 					
 					//replace the path of this robot (will compute new envelope)
-					replacePath(robotID, truncatedPath, truncatedPath.length-1, new HashSet<Integer>(robotID),false);
+					replacePath(robotID, truncatedPath, truncatedPath.length-1, new HashSet<Integer>(robotID), false);
 					ret = earliestStoppingPathIndex;
 				}
 			}
