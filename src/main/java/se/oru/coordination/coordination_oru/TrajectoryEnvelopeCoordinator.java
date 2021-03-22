@@ -1341,8 +1341,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					PoseSteering[] truncatedPath = Arrays.copyOf(te.getTrajectory().getPoseSteering(), earliestStoppingPathIndex+1);
 					
 					//replace the path of this robot (will compute new envelope)
-					replacePath(robotID, truncatedPath, truncatedPath.length, new HashSet<Integer>(robotID),false);
-					ret = (earliestStoppingPathIndex == truncatedPath.length-1) ? -1 : earliestStoppingPathIndex;
+					replacePath(robotID, truncatedPath, truncatedPath.length-1, new HashSet<Integer>(robotID),false);
+					ret = earliestStoppingPathIndex;
 				}
 			}
 			
