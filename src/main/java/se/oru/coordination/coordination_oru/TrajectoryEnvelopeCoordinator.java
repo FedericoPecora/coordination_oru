@@ -1334,8 +1334,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						//if (breakingPathIndex == 0) trackers.get(robotID).resetStartingTimeInMillis();
 						lastCommunicatedCP = communicatedCPs.get(trackers.get(robotID)).getFirst();
 					}
-					if (lastCommunicatedCP != -1) ret = Math.min(lastCommunicatedCP, earliestStoppingPathIndex);
-					else ret = earliestStoppingPathIndex;
+					ret = (lastCommunicatedCP != -1) ? Math.min(lastCommunicatedCP, earliestStoppingPathIndex) : earliestStoppingPathIndex;
 					
 					metaCSPLogger.info("Truncating " + te + " at " + earliestStoppingPathIndex);
 					
@@ -1344,7 +1343,6 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					
 					//replace the path of this robot (will compute new envelope)
 					replacePath(robotID, truncatedPath, truncatedPath.length-1, new HashSet<Integer>(robotID), false);
-					
 				}
 			}
 			
