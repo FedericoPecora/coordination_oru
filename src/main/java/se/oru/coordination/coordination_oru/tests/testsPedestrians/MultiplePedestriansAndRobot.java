@@ -22,8 +22,6 @@ import java.util.logging.Logger;
 @DemoDescription(desc = "One-shot navigation of several pedestrians and a robot coordinating on static paths that overlap in a straight portion.")
 public class MultiplePedestriansAndRobot {
 
-    static final int totalAgentsToLoad = 20;
-
     public static void main(String[] args) throws InterruptedException {
 
         Logger metaCSPLogger = MetaCSPLogging.getLogger(MultiplePedestriansAndRobot.class);
@@ -31,6 +29,8 @@ public class MultiplePedestriansAndRobot {
         double MAX_ACCEL = 1.0;
         double MAX_VEL = 1.0;
 
+
+        Integer totalAgentsToLoad = 20;
         String timeStr = "t3";
         String scenarioType = "corridor2";
 
@@ -38,6 +38,7 @@ public class MultiplePedestriansAndRobot {
         Map<String, String> environmentVariables = System.getenv();
         if(environmentVariables.containsKey("P_TIME")) { timeStr = environmentVariables.get("P_TIME"); }
         if(environmentVariables.containsKey("S_TYPE")) { scenarioType = environmentVariables.get("S_TYPE"); }
+        if(environmentVariables.containsKey("NUM_AGENTS")) { totalAgentsToLoad = Integer.parseInt(environmentVariables.get("NUM_AGENTS")); }
 
         String scenarioStr = "atc/" + scenarioType;
         String scenarioName =  scenarioType + "-" + timeStr;
@@ -75,6 +76,8 @@ public class MultiplePedestriansAndRobot {
         ColorPrint.info("Sorted values: " + robotPathFilesName.toString());
 
         String pathFileName = robotPathFilesName.get(Integer.parseInt(args[0]));
+
+        ColorPrint.info("We will use this file: " + pathFileName);
 
         final double threshold = 2.0;
 
@@ -182,18 +185,16 @@ public class MultiplePedestriansAndRobot {
 
         //JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
         //BrowserVisualization viz = new BrowserVisualization();
-        //RVizVisualization viz = new RVizVisualization();
-        //viz.setMap("maps/atc.yaml");
+        RVizVisualization viz = new RVizVisualization(false);
+        viz.setMap("maps/atc.yaml");
         int[] nums_primitive = new int[nums.size()];
         for (int i = 0; i < nums_primitive.length; i++) {
             nums_primitive[i] = nums.get(i);
         }
-        //RVizVisualization.writeRVizConfigFile(nums_primitive);
+        RVizVisualization.writeRVizConfigFile(nums_primitive);
         //viz.setInitialTransform(40, 3, -10);  // Ellipse / warehouse map
         //viz.setInitialTransform(40, -10, 30); // ATC map
-        //tec.setVisualization(viz);
-
-        ArrayList<Integer> addedMissions = new ArrayList<Integer>();
+        tec.setVisualization(viz);
 
         PedestrianTrajectory[] pedestrianTrajectories = new PedestrianTrajectory[nums_primitive.length];
 
@@ -299,7 +300,7 @@ public class MultiplePedestriansAndRobot {
                 System.exit(0);
             }
         }, 600000);
-        ColorPrint.positive("Will sleep for 5 seconds and then start ...");
+        ColorPrint.positive("Will sleep for 5 secondsFINEST and then start ...");
         Thread.sleep(5000);
         ColorPrint.info("STARTING EXPERIMENT: " + pathFileName);
     }
