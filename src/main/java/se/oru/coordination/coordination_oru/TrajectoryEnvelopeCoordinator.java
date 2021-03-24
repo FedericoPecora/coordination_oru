@@ -590,7 +590,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			}
 
 
-
+			long startDbg = Calendar.getInstance().getTimeInMillis();
+			long maxelapsed = 0;
+			CriticalSection maxCS = null;
+			
 			//Make deps from critical sections, and remove obsolete critical sections
 			synchronized(allCriticalSections) {
 				
@@ -601,9 +604,17 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 				depsToCS.clear();			
 				this.isBlocked = false;
-
+				
+				
 				HashSet<CriticalSection> toRemove = new HashSet<CriticalSection>();
 				for (CriticalSection cs : this.allCriticalSections) {
+					
+					long currentelapsed = Calendar.getInstance().getTimeInMillis()-startDbg;
+					startDbg = Calendar.getInstance().getTimeInMillis();
+					if (maxelapsed < currentelapsed) {
+						maxelapsed = currentelapsed;
+						maxCS = cs;
+					}
 
 					//Will be assigned depending on current situation of robot reports...
 					AbstractTrajectoryEnvelopeTracker waitingTracker = null;
@@ -862,8 +873,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				//increment the counter
 				this.criticalSectionCounter.addAndGet(toRemove.size());
 			}
-
-
+			
 			//get current dependencies
 			synchronized(currentDependencies) {
 
@@ -901,6 +911,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					}
 				}
 			}
+			ColorPrint.warning("TIME ELAPSED: " + (Calendar.getInstance().getTimeInMillis()-startDbg));
+			ColorPrint.warning(">>>> max is: " + maxelapsed);
+			ColorPrint.warning(">>>> associated CS is: " + maxCS);
 		}
 	}
 

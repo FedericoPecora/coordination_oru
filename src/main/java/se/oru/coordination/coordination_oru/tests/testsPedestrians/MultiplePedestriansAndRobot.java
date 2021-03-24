@@ -138,8 +138,10 @@ public class MultiplePedestriansAndRobot {
         tec.setBreakDeadlocks(false, true, false);
 
         // Set up Finest logging
-        MetaCSPLogging.setLevel(tec.getClass().getSuperclass(), Level.INFO);
+        MetaCSPLogging.setLevel(tec.getClass().getSuperclass(), Level.FINEST);
 
+        tec.setUseInternalCriticalPoints(false);
+        
         // Pedestrian Footprints
         // A small circle of diameter 0.3m
         Coordinate[] pedestrianFootprint = {
@@ -184,16 +186,16 @@ public class MultiplePedestriansAndRobot {
         nums.add(1729);
 
         //JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
-        //BrowserVisualization viz = new BrowserVisualization();
-        RVizVisualization viz = new RVizVisualization(false);
-        viz.setMap("maps/atc.yaml");
+        BrowserVisualization viz = new BrowserVisualization();
+        //RVizVisualization viz = new RVizVisualization(false);
+        //viz.setMap("maps/atc.yaml");
         int[] nums_primitive = new int[nums.size()];
         for (int i = 0; i < nums_primitive.length; i++) {
             nums_primitive[i] = nums.get(i);
         }
-        RVizVisualization.writeRVizConfigFile(nums_primitive);
+        //RVizVisualization.writeRVizConfigFile(nums_primitive);
         //viz.setInitialTransform(40, 3, -10);  // Ellipse / warehouse map
-        //viz.setInitialTransform(40, -10, 30); // ATC map
+        viz.setInitialTransform(40, -10, 30); // ATC map
         tec.setVisualization(viz);
 
         PedestrianTrajectory[] pedestrianTrajectories = new PedestrianTrajectory[nums_primitive.length];
