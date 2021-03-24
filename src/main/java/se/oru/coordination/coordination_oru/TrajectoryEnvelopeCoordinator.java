@@ -1324,28 +1324,25 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			if (!(tet instanceof TrajectoryEnvelopeTrackerDummy)) {
 				
 				earliestStoppingPathIndex = ensureDynamicFeasibility ? this.getForwardModel(robotID).getEarliestStoppingPathIndex(te, this.getRobotReport(robotID)) : this.getRobotReport(robotID).getPathIndex();
-				if (earliestStoppingPathIndex + lastCPToGoalDistance > te.getTrajectory().getPoseSteering().length) earliestStoppingPathIndex = -1;
 				
-				if (earliestStoppingPathIndex != -1) {
-					
-					//Check if you were already slowing down to stop in your critical point.
-					int lastCommunicatedCP = -1;
-					synchronized (trackers) {
-						//if (breakingPathIndex == 0) trackers.get(robotID).resetStartingTimeInMillis();
-						lastCommunicatedCP = communicatedCPs.get(trackers.get(robotID)).getFirst();
-					}
-					ret = (lastCommunicatedCP != -1) ? Math.min(lastCommunicatedCP, earliestStoppingPathIndex) : earliestStoppingPathIndex;
-					
-					metaCSPLogger.info("Truncating " + te + " at " + earliestStoppingPathIndex);
-					
-					//Compute and add new TE, remove old TE (both driving and final parking)
-					PoseSteering[] truncatedPath = Arrays.copyOf(te.getTrajectory().getPoseSteering(), earliestStoppingPathIndex+1);
-					
-					//replace the path of this robot (will compute new envelope)
-					replacePath(robotID, truncatedPath, truncatedPath.length-1, new HashSet<Integer>(robotID), false);
+				//Check if you were already slowing down to stop in your critical point.
+				int lastCommunicatedCP = -1;
+				synchronized (trackers) {
+					//if (breakingPathIndex == 0) trackers.get(robotID).resetStartingTimeInMillis();
+					lastCommunicatedCP = communicatedCPs.get(trackers.get(robotID)).getFirst();
 				}
+				ret = (lastCommunicatedCP != -1) ? Math.min(lastCommunicatedCP, earliestStoppingPathIndex) : earliestStoppingPathIndex;
+				
+				metaCSPLogger.info("Truncating " + te + " at " + earliestStoppingPathIndex);
+				
+				//Compute and add new TE, remove old TE (both driving and final parking)
+				PoseSteering[] truncatedPath = Arrays.copyOf(te.getTrajectory().getPoseSteering(), earliestStoppingPathIndex+1);
+				
+				//replace the path of this robot (will compute new envelope)
+				replacePath(robotID, truncatedPath, truncatedPath.length-1, new HashSet<Integer>(robotID), false);
+				if (ret + lastCPToGoalDistance > truncatedPath.length) ret = -1;
 			}
-			
+
 			return ret;
 		}
 	}
@@ -1383,14 +1380,13 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			
 			if (!(tet instanceof TrajectoryEnvelopeTrackerDummy)) {
 				earliestStoppingPathIndex = this.getForwardModel(robotID).getEarliestStoppingPathIndex(te, this.getRobotReport(robotID));
-				if (earliestStoppingPathIndex + lastCPToGoalDistance > te.getTrajectory().getPoseSteering().length-1) earliestStoppingPathIndex = -1;
 				//Check if you were already slowing down to stop in your critical point.
 				int lastCommunicatedCP = -1;
 				synchronized (trackers) {
 					//if (breakingPathIndex == 0) trackers.get(robotID).resetStartingTimeInMillis();
 					lastCommunicatedCP = communicatedCPs.get(trackers.get(robotID)).getFirst();
 				}
-				if (lastCommunicatedCP != -1) earliestStoppingPathIndex = Math.min(lastCommunicatedCP, earliestStoppingPathIndex);
+				ret = (lastCommunicatedCP != -1) ? Math.min(lastCommunicatedCP, earliestStoppingPathIndex) : earliestStoppingPathIndex;
 				
 				if (earliestStoppingPathIndex != -1) {
 					metaCSPLogger.info("Reversing " + te + " at " + earliestStoppingPathIndex);
@@ -1402,8 +1398,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					for (int i = 1; i < truncatedPath.length; i++) overallPath[truncatedPath.length-1+i] = truncatedPath[truncatedPath.length-i];
 
 					//replace the path of this robot (will compute new envelope)
-					replacePath(robotID, overallPath, truncatedPath.length-1, new HashSet<Integer>(robotID),false);
-					ret = earliestStoppingPathIndex;
+					replacePath(robotID, overallPath, truncatedPath.length-1, new HashSet<Integer>(robotID), false);
+					if (ret + lastCPToGoalDistance > truncatedPath.length) ret = -1;
 				}
 			}
 
