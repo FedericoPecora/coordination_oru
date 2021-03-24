@@ -1332,15 +1332,15 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					lastCommunicatedCP = communicatedCPs.get(trackers.get(robotID)).getFirst();
 				}
 				ret = (lastCommunicatedCP != -1) ? Math.min(lastCommunicatedCP, earliestStoppingPathIndex) : earliestStoppingPathIndex;
-				
-				metaCSPLogger.info("Truncating " + te + " at " + earliestStoppingPathIndex);
-				
+								
 				//Compute and add new TE, remove old TE (both driving and final parking)
 				PoseSteering[] truncatedPath = Arrays.copyOf(te.getTrajectory().getPoseSteering(), earliestStoppingPathIndex+1);
 				
 				//replace the path of this robot (will compute new envelope)
 				replacePath(robotID, truncatedPath, truncatedPath.length-1, new HashSet<Integer>(robotID), false);
 				if (ret + lastCPToGoalDistance > truncatedPath.length) ret = -1;
+				
+				metaCSPLogger.info("Truncating " + te + " at " + earliestStoppingPathIndex + ", sending CP: " + ret);
 			}
 
 			return ret;
