@@ -1291,35 +1291,34 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		}
 	}
 	
+
 	/**
 	 * Truncate the {@link TrajectoryEnvelope} of a given robot at the closest dynamically-feasible path point. This path point is computed via the robot's {@link ForwardModel}.
 	 * @param robotID The ID of the robot whose {@link TrajectoryEnvelope} should be truncated.
-	 * @return the earliestStoppingIndex CP if the envelope is successfully truncated, -2 otherwise.
+	 * @return <code>true</code> iff the envelope is successfully truncated.
 	 */
-	public int truncateEnvelope(int robotID) {
-		return truncateEnvelope(robotID, true, 0);
+	public boolean truncateEnvelope(int robotID) {
+		return truncateEnvelope(robotID, true);
 	}
 	
 	/**
 	 * Truncate the {@link TrajectoryEnvelope} of a given robot at the closest dynamically-feasible path point. This path point is computed via the robot's {@link ForwardModel}.
 	 * @param robotID The ID of the robot whose {@link TrajectoryEnvelope} should be truncated.
 	 * @param ensureDynamicFeasibility If <code>true</code>, truncate at the closest dynamically-feasible path point, which is computed via the robot's {@link ForwardModel}; if <code>false</code>, truncate at the current path index.
-	 * @param lastCPToGoalDistance Distance (in path indices) between the last critical point before the goal.
-	 * @return the earliestStoppingIndex CP if the envelope is successfully truncated, -2 otherwise.
+	 * @return <code>true</code> iff the envelope is successfully truncated.
 	 */
-	public int truncateEnvelope(int robotID, boolean ensureDynamicFeasibility, int lastCPToGoalDistance) {
+	public boolean truncateEnvelope(int robotID, boolean ensureDynamicFeasibility) {
 		
 		synchronized (solver) {
 			
 			synchronized (lockedRobots) {
-				if (lockedRobots.containsKey(robotID)) return -2;
+				if (lockedRobots.containsKey(robotID)) return false;
 			}
 			
 			TrajectoryEnvelope te = this.getCurrentTrajectoryEnvelope(robotID);
 			AbstractTrajectoryEnvelopeTracker tet = this.trackers.get(robotID); 
 			
 			int earliestStoppingPathIndex = -1;
-			int ret = -1;
 
 			if (!(tet instanceof TrajectoryEnvelopeTrackerDummy)) {
 				
@@ -1331,19 +1330,18 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					//if (breakingPathIndex == 0) trackers.get(robotID).resetStartingTimeInMillis();
 					lastCommunicatedCP = communicatedCPs.get(trackers.get(robotID)).getFirst();
 				}
-				ret = (lastCommunicatedCP != -1) ? Math.min(lastCommunicatedCP, earliestStoppingPathIndex) : earliestStoppingPathIndex;
+				earliestStoppingPathIndex = (lastCommunicatedCP != -1) ? Math.min(lastCommunicatedCP, earliestStoppingPathIndex) : earliestStoppingPathIndex;
 								
 				//Compute and add new TE, remove old TE (both driving and final parking)
 				PoseSteering[] truncatedPath = Arrays.copyOf(te.getTrajectory().getPoseSteering(), earliestStoppingPathIndex+1);
 				
 				//replace the path of this robot (will compute new envelope)
 				replacePath(robotID, truncatedPath, truncatedPath.length-1, new HashSet<Integer>(robotID), false);
-				if (ret + lastCPToGoalDistance > truncatedPath.length) ret = -1;
 				
-				metaCSPLogger.info("Truncating " + te + " at " + earliestStoppingPathIndex + ", sending CP: " + ret);
+				metaCSPLogger.info("Truncating " + te + " at " + earliestStoppingPathIndex + ".");
 			}
 
-			return ret;
+			return true;
 		}
 	}
 
@@ -1351,32 +1349,19 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 * Reverse the {@link TrajectoryEnvelope} of a given robot at the closest dynamically-feasible path point.
 	 * This path point is computed via the robot's {@link ForwardModel}.
 	 * @param robotID The ID of the robot whose {@link TrajectoryEnvelope} should be reversed.
-	 * @return the earliestStoppingIndex CP if the envelope is successfully truncated, -2 otherwise.
+	 * @return <code>true</code> iff the envelope is successfully truncated.
 	 */
-	public int reverseEnvelope(int robotID) {
-		return reverseEnvelope(robotID, 0);
-	}
-	
-	/**
-	 * Reverse the {@link TrajectoryEnvelope} of a given robot at the closest dynamically-feasible path point.
-	 * This path point is computed via the robot's {@link ForwardModel}.
-	 * @param robotID The ID of the robot whose {@link TrajectoryEnvelope} should be reversed.
-	 * @param lastCPToGoalDistance Distance (in path indices) between the last critical point before the goal.
-	 * @return the earliestStoppingIndex CP if the envelope is successfully truncated, -2 otherwise.
-	 */
-	public int reverseEnvelope(int robotID, int lastCPToGoalDistance) {
-
+	public boolean reverseEnvelope(int robotID) {
 		synchronized (solver) {
 
 			synchronized (lockedRobots) {
-				if (lockedRobots.containsKey(robotID)) return -2;
+				if (lockedRobots.containsKey(robotID)) return false;
 			}
 
 			TrajectoryEnvelope te = this.getCurrentTrajectoryEnvelope(robotID);
 			AbstractTrajectoryEnvelopeTracker tet = this.trackers.get(robotID);
 			
 			int earliestStoppingPathIndex = -1;
-			int ret = -1;
 			
 			if (!(tet instanceof TrajectoryEnvelopeTrackerDummy)) {
 				earliestStoppingPathIndex = this.getForwardModel(robotID).getEarliestStoppingPathIndex(te, this.getRobotReport(robotID));
@@ -1386,10 +1371,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					//if (breakingPathIndex == 0) trackers.get(robotID).resetStartingTimeInMillis();
 					lastCommunicatedCP = communicatedCPs.get(trackers.get(robotID)).getFirst();
 				}
-				ret = (lastCommunicatedCP != -1) ? Math.min(lastCommunicatedCP, earliestStoppingPathIndex) : earliestStoppingPathIndex;
+				earliestStoppingPathIndex = (lastCommunicatedCP != -1) ? Math.min(lastCommunicatedCP, earliestStoppingPathIndex) : earliestStoppingPathIndex;
 				
 				if (earliestStoppingPathIndex != -1) {
-					metaCSPLogger.info("Reversing " + te + " at " + earliestStoppingPathIndex);
 
 					//Compute and add new TE, remove old TE (both driving and final parking)
 					PoseSteering[] truncatedPath = Arrays.copyOf(te.getTrajectory().getPoseSteering(), earliestStoppingPathIndex+1);
@@ -1399,11 +1383,12 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 					//replace the path of this robot (will compute new envelope)
 					replacePath(robotID, overallPath, truncatedPath.length-1, new HashSet<Integer>(robotID), false);
-					if (ret + lastCPToGoalDistance > truncatedPath.length) ret = -1;
+					
+					metaCSPLogger.info("Reversing " + te + " at " + earliestStoppingPathIndex + ".");
 				}
 			}
 
-			return ret;
+			return true;
 		}
 	}
 
