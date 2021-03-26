@@ -65,8 +65,6 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 	//True if waiting for deadlocks to happen.
 	protected boolean staticReplan = false;
-
-	protected boolean isDeadlocked = false;
 	protected boolean isBlocked = false;
 
 
@@ -288,7 +286,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 * such that a deadlock will occur (non-live state).
 	 */
 	public boolean isDeadlocked() {
-		return this.isDeadlocked;
+		return this.nonliveStatesDetected.get() > 0;
 	}
 
 	private HashMap<Integer,HashSet<Dependency>> findCurrentCycles(HashMap<Integer,HashSet<Dependency>> currentDeps, HashMap<Integer,HashSet<Dependency>> artificialDeps, HashSet<Dependency> reversibleDeps, HashMap<Integer,RobotReport> currentReports, Set<Integer> robotIDs) {
@@ -313,14 +311,12 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 		SimpleDirectedGraph<Integer,Dependency> g = depsToGraph(currentDependencies);
 		List<List<Integer>> nonliveCycles = findSimpleNonliveCycles(g);
-
-		this.isDeadlocked = nonliveCycles.size() > 0;
-
+		nonliveStatesDetected.addAndGet(nonliveCycles.size());
+		
 		// ... keep tracks of size and old cycles for statistics
 		List<List<Integer>> nonliveCyclesNew = new ArrayList<List<Integer>>();
 		nonliveCyclesNew.addAll(nonliveCycles);
 		nonliveCyclesNew.removeAll(nonliveCyclesOld);
-		nonliveStatesDetected.addAndGet(nonliveCyclesNew.size());
 		nonliveCyclesOld.clear();
 		nonliveCyclesOld.addAll(nonliveCycles);
 
