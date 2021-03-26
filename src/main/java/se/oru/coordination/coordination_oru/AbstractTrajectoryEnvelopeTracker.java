@@ -175,7 +175,7 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 	 * @param criticalPoint The critical point to set (index of pose along the reference trajectory
 	 * beyond which the robot may not navigate). 
 	 */
-	protected abstract void setCriticalPoint(int criticalPoint);
+	public abstract void setCriticalPoint(int criticalPoint);
 	
 	/**
 	 * This method should implement the mechanisms for notifying a robot of a new critical point, caring about network delays.

@@ -416,7 +416,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 			
 	
 	@Override
-	protected void setCriticalPoint(int criticalPointToSet) {
+	public void setCriticalPoint(int criticalPointToSet) {
 				
 		if (this.criticalPoint != criticalPointToSet) {
 			
