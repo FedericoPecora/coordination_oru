@@ -1316,7 +1316,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			}
 			
 			TrajectoryEnvelope te = this.getCurrentTrajectoryEnvelope(robotID);
-			AbstractTrajectoryEnvelopeTracker tet = this.trackers.get(robotID); 
+			AbstractTrajectoryEnvelopeTracker tet = null;
+			synchronized(trackers) {
+				tet = this.trackers.get(robotID); 
+			}
 			
 			int earliestStoppingPathIndex = -1;
 
@@ -1326,10 +1329,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				
 				//Check if you were already slowing down to stop in your critical point.
 				int lastCommunicatedCP = -1;
-				synchronized (trackers) {
-					//if (breakingPathIndex == 0) trackers.get(robotID).resetStartingTimeInMillis();
-					lastCommunicatedCP = communicatedCPs.get(trackers.get(robotID)).getFirst();
-				}
+				lastCommunicatedCP = communicatedCPs.get(tet).getFirst();
 				earliestStoppingPathIndex = (lastCommunicatedCP != -1) ? Math.min(lastCommunicatedCP, earliestStoppingPathIndex) : earliestStoppingPathIndex;
 								
 				//Compute and add new TE, remove old TE (both driving and final parking)
@@ -1359,7 +1359,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			}
 
 			TrajectoryEnvelope te = this.getCurrentTrajectoryEnvelope(robotID);
-			AbstractTrajectoryEnvelopeTracker tet = this.trackers.get(robotID);
+			AbstractTrajectoryEnvelopeTracker tet = null;
+			synchronized(trackers) {
+				tet = this.trackers.get(robotID); 
+			}
 			
 			int earliestStoppingPathIndex = -1;
 			
@@ -1367,10 +1370,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				earliestStoppingPathIndex = this.getForwardModel(robotID).getEarliestStoppingPathIndex(te, this.getRobotReport(robotID));
 				//Check if you were already slowing down to stop in your critical point.
 				int lastCommunicatedCP = -1;
-				synchronized (trackers) {
-					//if (breakingPathIndex == 0) trackers.get(robotID).resetStartingTimeInMillis();
-					lastCommunicatedCP = communicatedCPs.get(trackers.get(robotID)).getFirst();
-				}
+				lastCommunicatedCP = communicatedCPs.get(tet).getFirst();
 				earliestStoppingPathIndex = (lastCommunicatedCP != -1) ? Math.min(lastCommunicatedCP, earliestStoppingPathIndex) : earliestStoppingPathIndex;
 				
 				if (earliestStoppingPathIndex != -1) {
