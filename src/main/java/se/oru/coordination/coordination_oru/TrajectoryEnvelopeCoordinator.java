@@ -591,6 +591,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 
 			long startDbg = Calendar.getInstance().getTimeInMillis();
+			long startDbg2 = Calendar.getInstance().getTimeInMillis();
+			long startDbg3 = Calendar.getInstance().getTimeInMillis();
 			long maxelapsed = 0;
 			CriticalSection maxCS = null;
 			
@@ -609,12 +611,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				HashSet<CriticalSection> toRemove = new HashSet<CriticalSection>();
 				for (CriticalSection cs : this.allCriticalSections) {
 					
-					long currentelapsed = Calendar.getInstance().getTimeInMillis()-startDbg;
-					startDbg = Calendar.getInstance().getTimeInMillis();
-					if (maxelapsed < currentelapsed) {
-						maxelapsed = currentelapsed;
-						maxCS = cs;
-					}
+
 
 					//Will be assigned depending on current situation of robot reports...
 					AbstractTrajectoryEnvelopeTracker waitingTracker = null;
@@ -861,7 +858,14 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							metaCSPLogger.severe("Waiting point < 0 for critical section " + cs);
 							throw new Error("Waiting point < 0 for critical section " + cs);
 						}
-					}						
+					}
+
+					long currentelapsed = Calendar.getInstance().getTimeInMillis()-startDbg;
+					startDbg = Calendar.getInstance().getTimeInMillis();
+					if (maxelapsed < currentelapsed) {
+						maxelapsed = currentelapsed;
+						maxCS = cs;
+					}
 				}
 
 				//Remove obsolete critical sections
@@ -873,7 +877,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				//increment the counter
 				this.criticalSectionCounter.addAndGet(toRemove.size());
 			}
-			
+
+
 			//get current dependencies
 			synchronized(currentDependencies) {
 
@@ -911,9 +916,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					}
 				}
 			}
-			ColorPrint.warning("TIME ELAPSED: " + (Calendar.getInstance().getTimeInMillis()-startDbg));
-			ColorPrint.warning(">>>> max is: " + maxelapsed);
-			ColorPrint.warning(">>>> associated CS is: " + maxCS);
+			ColorPrint.warning("TIME ELAPSED 2: " + (Calendar.getInstance().getTimeInMillis() - startDbg2) + "\n");
+			ColorPrint.warning("TIME ELAPSED 3: " + (Calendar.getInstance().getTimeInMillis()-startDbg3) + "\n");
+			ColorPrint.warning(">>>> max is: " + maxelapsed + "\n");
+			ColorPrint.warning(">>>> associated CS is: " + maxCS + "\n");
 		}
 	}
 
