@@ -612,6 +612,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				for (CriticalSection cs : this.allCriticalSections) {
 					
 
+					long t1Debug = Calendar.getInstance().getTimeInMillis();
 
 					//Will be assigned depending on current situation of robot reports...
 					AbstractTrajectoryEnvelopeTracker waitingTracker = null;
@@ -709,6 +710,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 								drivingTracker = robotTracker1;
 								waitingTracker = robotTracker2;
 								metaCSPLogger.finest("Both-can-stop (1) and Robot" + drivingTracker.getTrajectoryEnvelope().getRobotID() + " ahead of Robot" + waitingTracker.getTrajectoryEnvelope().getRobotID() + " and CS is: " + cs);
+								ColorPrint.warning("CASE 0\n");
 							}
 
 							//If robot 2 has priority over robot 1
@@ -717,6 +719,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 								drivingTracker = robotTracker2;
 								waitingTracker = robotTracker1;
 								metaCSPLogger.finest("Both-can-stop (2) and Robot" + drivingTracker.getTrajectoryEnvelope().getRobotID() + " ahead of Robot" + waitingTracker.getTrajectoryEnvelope().getRobotID() + " and CS is: " + cs);
+								ColorPrint.warning("CASE 1\n");
 							}	
 						}
 
@@ -725,7 +728,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							drivingCurrentIndex = robotReport2.getPathIndex();
 							drivingTracker = robotTracker2;
 							waitingTracker = robotTracker1;
-							metaCSPLogger.finest("One-can-one-can't-stop (1) and Robot" + drivingTracker.getTrajectoryEnvelope().getRobotID() + " (can't) is ahead of Robot" + waitingTracker.getTrajectoryEnvelope().getRobotID() + " (can) and CS is: " + cs);						
+							metaCSPLogger.finest("One-can-one-can't-stop (1) and Robot" + drivingTracker.getTrajectoryEnvelope().getRobotID() + " (can't) is ahead of Robot" + waitingTracker.getTrajectoryEnvelope().getRobotID() + " (can) and CS is: " + cs);
+							ColorPrint.warning("CASE 2\n");
 						}
 
 						//Robot 2 can stop before entering critical section, robot 1 can't --> robot 2 waits
@@ -734,10 +738,11 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							drivingTracker = robotTracker1;
 							waitingTracker = robotTracker2;
 							metaCSPLogger.finest("One-can-one-can't-stop (2) and Robot" + drivingTracker.getTrajectoryEnvelope().getRobotID() + " (can't) ahead of Robot" + waitingTracker.getTrajectoryEnvelope().getRobotID() + " (can) and CS is: " + cs);
+							ColorPrint.warning("CASE 3\n");
 						}
 
 						else {			
-
+							ColorPrint.warning("OOOOOOOOOOOOOOO PROOOOOOOOOOOOOOOOOBLEM? OOOOOOOOOOOOOOO\n");
 							//Both robots in critical section --> re-impose previously decided dependency if possible
 							int drivingRobotID = -1;
 							int waitingRobotID = -1;
@@ -916,8 +921,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					}
 				}
 			}
-			ColorPrint.warning("TIME ELAPSED 2: " + (Calendar.getInstance().getTimeInMillis() - startDbg2) + "\n");
-			ColorPrint.warning("TIME ELAPSED 3: " + (Calendar.getInstance().getTimeInMillis()-startDbg3) + "\n");
+
 			ColorPrint.warning(">>>> max is: " + maxelapsed + "\n");
 			ColorPrint.warning(">>>> associated CS is: " + maxCS + "\n");
 		}
@@ -1688,6 +1692,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						}
 
 						if (createAParkingDep) {
+
+							ColorPrint.warning("CASE PARKED");
 							int drivingCSEnd = drivingTracker.getTrajectoryEnvelope().getRobotID() == cs.getTe1().getRobotID() ? cs.getTe1End() : cs.getTe2End();
 							metaCSPLogger.finest("Robot" + drivingTracker.getTrajectoryEnvelope().getRobotID() + " is parked, so Robot" + waitingTracker.getTrajectoryEnvelope().getRobotID() + " will have to wait");
 							if (!currentDeps.containsKey(waitingTracker.getTrajectoryEnvelope().getRobotID())) currentDeps.put(waitingTracker.getTrajectoryEnvelope().getRobotID(), new HashSet<Dependency>());
