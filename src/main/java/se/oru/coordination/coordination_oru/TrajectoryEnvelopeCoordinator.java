@@ -191,10 +191,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			ArrayList<Dependency> edgesAlongCycle = new ArrayList<Dependency>();
 			Collections.reverse(cycle);
 			for (int i = 0; i < cycle.size(); i++) {
-				Dependency dep = null;
-				if (i < cycle.size()-1) dep = g.getEdge(cycle.get(i), cycle.get(i+1));
-				else dep = g.getEdge(cycle.get(i), cycle.get(0));
-				edgesAlongCycle.add(dep);
+				Dependency dep = g.getEdge(cycle.get(i), cycle.get(i < cycle.size()-1 ? i+1 : 0));
+				if (dep != null) edgesAlongCycle.add(dep);
 			}
 			//[1,2], [2,1]
 
@@ -318,7 +316,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		if (breakDeadlocksByReordering) allDeps = callLocalReordering(nonliveCycles, artificialDeps, g, reversibleDeps, allDeps, currentReports);
 
 		//3. OTHERWISE, IF RE-PLAN IS ENABLED, TRY REPLANNING
-		if (breakDeadlocksByReplanning) callReplanning(nonliveCycles, g);		
+		if (breakDeadlocksByReplanning)
+			for (List<Integer> cycle : nonliveCycles) callReplanning(cycle, g);		
 
 		return allDeps;
 	}
@@ -424,48 +423,43 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		return allDeps;
 	}
 	
-	private void callReplanning(List<List<Integer>> nonliveCycles, SimpleDirectedGraph<Integer,Dependency> g) {
-		for (List<Integer> cycle : nonliveCycles) {
-
-			//Get edges along the cycle...
-			ArrayList<Dependency> depsAlongCycle = new ArrayList<Dependency>();
-			HashSet<Integer> deadlockedRobots = new HashSet<Integer>();
-			for (int i = 0; i < cycle.size(); i++) {
-				Dependency dep = null;
-				if (i < cycle.size()-1) dep = g.getEdge(cycle.get(i), cycle.get(i+1));
-				else dep = g.getEdge(cycle.get(i), cycle.get(0));
-				depsAlongCycle.add(dep);
-				deadlockedRobots.add(dep.getWaitingRobotID());
-			}
-
-			//Get other robots (all the robot in the maximum connected set of a deadlocked one)
-
-			/*------------------------------------------------------------------------------------------
-			 * Notes on connectivity: example code. While strongly connected components are useful for 
-			 * computing cycles, connected components are used to get the set of robots to be considered 
-			 * as obstacles when replanning.
-			 * -----------------------------------------------------------------------------------------
-			 * 
-			 * 	SimpleDirectedGraph<Integer,Integer> g = new SimpleDirectedGraph(Integer.class);
-				for (int v=1; v< 6; v++) g.addVertex(v);
-				g.addEdge(1,2,1);
-				g.addEdge(2,3,2);
-				g.addEdge(3,1,3);
-				g.addEdge(4,2,4);
-				g.addEdge(3,5,5);
-				ConnectivityInspector<Integer,Integer> connInsp = new ConnectivityInspector<Integer,Integer>(g);
-				KosarajuStrongConnectivityInspector<Integer,Integer> kconnInsp = new KosarajuStrongConnectivityInspector<Integer,Integer>(g);
-				Set<Integer> cc2 = connInsp.connectedSetOf(2);
-				Set<Integer> cc3 = connInsp.connectedSetOf(3);
-				List<Set<Integer>> scc = kconnInsp.stronglyConnectedSets();
-				System.out.println("cc2: " + cc2.toString() + ", cc3: " + cc3.toString() + ", scc: " + scc.toString());
-				//Result: cc2: [1, 2, 3, 4, 5], cc3: [1, 2, 3, 4, 5], scc: [[4], [1, 2, 3], [5]]
-				---------------------------------------------------------------------------------------
-			 */
-			ConnectivityInspector<Integer,Dependency> connInsp = new ConnectivityInspector<Integer,Dependency>(g);
-			HashSet<Integer> allConnectedRobots = (HashSet<Integer>) connInsp.connectedSetOf(cycle.get(0));
-			spawnReplanning(depsAlongCycle, allConnectedRobots);
+	private void callReplanning(List<Integer> cycle, SimpleDirectedGraph<Integer,Dependency> g) {
+		//Get edges along the cycle...
+		ArrayList<Dependency> depsAlongCycle = new ArrayList<Dependency>();
+		HashSet<Integer> deadlockedRobots = new HashSet<Integer>();
+		for (int i = 0; i < cycle.size(); i++) {
+			Dependency dep = g.getEdge(cycle.get(i), cycle.get(i < cycle.size()-1 ? i+1 : 0));
+			if (dep != null) depsAlongCycle.add(dep);
+			deadlockedRobots.add(dep.getWaitingRobotID());
 		}
+
+		//Get other robots (all the robot in the maximum connected set of a deadlocked one)
+
+		/*------------------------------------------------------------------------------------------
+		 * Notes on connectivity: example code. While strongly connected components are useful for 
+		 * computing cycles, connected components are used to get the set of robots to be considered 
+		 * as obstacles when replanning.
+		 * -----------------------------------------------------------------------------------------
+		 * 
+		 * 	SimpleDirectedGraph<Integer,Integer> g = new SimpleDirectedGraph(Integer.class);
+			for (int v=1; v< 6; v++) g.addVertex(v);
+			g.addEdge(1,2,1);
+			g.addEdge(2,3,2);
+			g.addEdge(3,1,3);
+			g.addEdge(4,2,4);
+			g.addEdge(3,5,5);
+			ConnectivityInspector<Integer,Integer> connInsp = new ConnectivityInspector<Integer,Integer>(g);
+			KosarajuStrongConnectivityInspector<Integer,Integer> kconnInsp = new KosarajuStrongConnectivityInspector<Integer,Integer>(g);
+			Set<Integer> cc2 = connInsp.connectedSetOf(2);
+			Set<Integer> cc3 = connInsp.connectedSetOf(3);
+			List<Set<Integer>> scc = kconnInsp.stronglyConnectedSets();
+			System.out.println("cc2: " + cc2.toString() + ", cc3: " + cc3.toString() + ", scc: " + scc.toString());
+			//Result: cc2: [1, 2, 3, 4, 5], cc3: [1, 2, 3, 4, 5], scc: [[4], [1, 2, 3], [5]]
+			---------------------------------------------------------------------------------------
+		 */
+		ConnectivityInspector<Integer,Dependency> connInsp = new ConnectivityInspector<Integer,Dependency>(g);
+		HashSet<Integer> allConnectedRobots = (HashSet<Integer>) connInsp.connectedSetOf(cycle.get(0));
+		spawnReplanning(depsAlongCycle, allConnectedRobots);
 	}
 
 	//returns true if robot1 should go before robot2
@@ -2117,7 +2111,6 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				List<List<Integer>> nonliveCycles = findSimpleNonliveCycles(g);
 				nonliveStatesDetected.addAndGet(nonliveCycles.size());
 
-				HashSet<Integer> spawnedThreadRobotSet = new HashSet<Integer>();
 				for (List<Integer> cycle : nonliveCycles) {
 					int robotID = -1;
 					for (int ID : askForReplan) {
@@ -2129,21 +2122,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					if (robotID == -1) continue;
 
 					//the cycle contains a robot that is asking for re-plan.
-					//Find all the deps along the cycle
-					boolean spawnThread = true;
-					metaCSPLogger.info("Try re-plan for Robot" + robotID+ ".");
-					ArrayList<Dependency> depsAlongCycle = new ArrayList<Dependency>();
-					for (int i = 0; i < cycle.size(); i++) {
-						Dependency dep = g.getEdge(cycle.get(i), cycle.get(i < cycle.size()-1 ? i+1 : 0));
-						if (dep != null) depsAlongCycle.add(dep);
-						if (spawnedThreadRobotSet.contains(dep.getWaitingRobotID()) || spawnedThreadRobotSet.contains(dep.getDrivingRobotID())) spawnThread = false;
-					}
-					if (spawnThread) {
-						ConnectivityInspector<Integer,Dependency> connInsp = new ConnectivityInspector<Integer,Dependency>(g);
-						HashSet<Integer> allConnectedRobots = (HashSet<Integer>) connInsp.connectedSetOf(robotID);
-						spawnReplanning(depsAlongCycle, allConnectedRobots);
-						spawnedThreadRobotSet.addAll(cycle);
-					}
+					callReplanning(cycle, g);
 				}
 
 				//send revised dependencies
