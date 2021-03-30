@@ -317,7 +317,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 		//3. OTHERWISE, IF RE-PLAN IS ENABLED, TRY REPLANNING
 		if (breakDeadlocksByReplanning)
-			for (List<Integer> cycle : nonliveCycles) callReplanning(cycle, g);		
+			for (List<Integer> cycle : nonliveCycles) callOnePathReplan(cycle, g);		
 
 		return allDeps;
 	}
@@ -423,14 +423,57 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		return allDeps;
 	}
 	
-	private void callReplanning(List<Integer> cycle, SimpleDirectedGraph<Integer,Dependency> g) {
+	private void callPathsReplan(Set<Integer> robotIDs, boolean onlyIfDeadlocks) { //TODO change the returned value
+		synchronized (currentDependencies) {
+			SimpleDirectedGraph<Integer,Dependency> g = depsToGraph(currentDependencies);
+			List<List<Integer>> nonliveCycles = null;
+			
+			if (onlyIfDeadlocks) {
+				//find the nonlive cycles and spawn the replanning thread only if the robots are in deadlocks
+				nonliveCycles = findSimpleNonliveCycles(g);
+				nonliveStatesDetected.addAndGet(nonliveCycles.size());
+				
+				for (List<Integer> cycle : nonliveCycles) {
+					int robotID = -1;
+					for (int ID : robotIDs) {
+						if (cycle.contains(ID)) {
+							robotID = ID;
+							break;
+						}
+					}
+					if (robotID == -1) continue;
+					
+					//the cycle contains a robot that is asking for re-plan.
+					callOnePathReplan(cycle, g);
+				}
+			}
+			//TODO else
+		}
+	}
+	
+	/**
+	 * 
+	 * @param cycle
+	 * @param g
+	 * @return
+	 */
+	private boolean callOnePathReplan(List<Integer> cycle, SimpleDirectedGraph<Integer,Dependency> g) {
 		//Get edges along the cycle...
 		ArrayList<Dependency> depsAlongCycle = new ArrayList<Dependency>();
-		HashSet<Integer> deadlockedRobots = new HashSet<Integer>();
+		Set<Integer> robotsToReplan = new HashSet<Integer>();
 		for (int i = 0; i < cycle.size(); i++) {
 			Dependency dep = g.getEdge(cycle.get(i), cycle.get(i < cycle.size()-1 ? i+1 : 0));
 			if (dep != null) depsAlongCycle.add(dep);
-			deadlockedRobots.add(dep.getWaitingRobotID());
+			robotsToReplan.add(dep.getWaitingRobotID());
+			robotsToReplan.add(dep.getDrivingRobotID());
+			RobotReport rrWaiting = getRobotReport(dep.getWaitingRobotID());
+
+			//avoid to re-plan if one of the robots is parked.
+			//In case of static re-plan, wait for a deadlock to happen before starting it
+			if (inParkingPose(dep.getDrivingRobotID()) || inParkingPose(dep.getWaitingRobotID())
+					|| staticReplan && ((dep.getWaitingPoint() == 0 ? (rrWaiting.getPathIndex() < 0) : (rrWaiting.getPathIndex() < dep.getWaitingPoint()-1)))) {
+				return false;
+			}
 		}
 
 		//Get other robots (all the robot in the maximum connected set of a deadlocked one)
@@ -459,7 +502,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		 */
 		ConnectivityInspector<Integer,Dependency> connInsp = new ConnectivityInspector<Integer,Dependency>(g);
 		HashSet<Integer> allConnectedRobots = (HashSet<Integer>) connInsp.connectedSetOf(cycle.get(0));
-		spawnReplanning(depsAlongCycle, allConnectedRobots);
+		return spawnReplanning(robotsToReplan, allConnectedRobots);
 	}
 
 	//returns true if robot1 should go before robot2
@@ -865,39 +908,26 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 	/**
 	 * Spawn a re-planning thread to remove the nonlive set of dependencies deadlockedDeps.
-	 * @param deadlockedDeps A nonlive set of dependencies which may cause a future deadlock.
+	 * @param robotsToReplan The set of robots which may attempt to re-plan the path.
 	 * @param allConnectedRobots Set of robots in the same weakly connected component of the analyzed nonlive set.
+	 * @return <code>true</code> if the replanning thread is correctly spawned.
 	 */
-	private void spawnReplanning(ArrayList<Dependency> deadlockedDeps, final HashSet<Integer> allConnectedRobots) {
-
-		final HashSet<Integer> deadlockedRobots = new HashSet<Integer>();
+	private boolean spawnReplanning(final Set<Integer> robotsToReplan, final HashSet<Integer> allConnectedRobots) {
 		
-		//collect the set of robots for which the re-plan will eventually tried
-		for (Dependency dep : deadlockedDeps) {
-			deadlockedRobots.add(dep.getWaitingRobotID());
-			deadlockedRobots.add(dep.getDrivingRobotID());
-			RobotReport rrWaiting = getRobotReport(dep.getWaitingRobotID());
-
-			//avoid to re-plan if one of the robots is parked.
-			//In case of static re-plan, wait for a deadlock to happen before starting it
-			if (inParkingPose(dep.getDrivingRobotID()) || inParkingPose(dep.getWaitingRobotID())
-					|| staticReplan && ((dep.getWaitingPoint() == 0 ? (rrWaiting.getPathIndex() < 0) : (rrWaiting.getPathIndex() < dep.getWaitingPoint()-1)))) {
-				return;
-			}
-		}
-
 		//You should lock the robots if you want to start re-planning. 
 		//In this way, the last critical point communicated when the re-plan is started is forced not to be updated
 		synchronized (replanningStoppingPoints) {
-			if (setMaxCPDependencies(deadlockedRobots)) {
-				metaCSPLogger.info("Will re-plan for one of the following deadlocked robots: " + deadlockedRobots + " (" + allConnectedRobots + ")...");
+			if (setMaxCPDependencies(robotsToReplan)) {
+				metaCSPLogger.info("Will re-plan for one of the following deadlocked robots: " + robotsToReplan + " (" + allConnectedRobots + ")...");
 				new Thread() {
 					public void run() {
-						rePlanPath(deadlockedRobots, allConnectedRobots);
+						rePlanPath(robotsToReplan, allConnectedRobots);
 					}
 				}.start();
+				return true;
 
 			}
+			return false;
 		}
 	}
 	
@@ -937,7 +967,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 * @param robotsAsObstacles The set of robots to consider as additional obstacles while re-planning.
 	 * @param useStaticReplan <code>true</code> iff all robotsToReplan should yield in their current critical point before starting the re-plan.
 	 */
-	protected void rePlanPath(HashSet<Integer> robotsToReplan, HashSet<Integer> robotsAsObstacles) {
+	protected void rePlanPath(Set<Integer> robotsToReplan, HashSet<Integer> robotsAsObstacles) {
 		for (int robotID : robotsToReplan) {
 			int currentWaitingIndex = -1;
 			Pose currentWaitingPose = null;
@@ -1147,7 +1177,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 * @param lockedRobotIDs The set of robots which have been locked when the re-plan started.
 	 * @param <code>true</code> whether the robot should be at the current critical point before starting a re-plan.
 	 */
-	public void replacePath(int robotID, PoseSteering[] newPath, int breakingPathIndex, HashSet<Integer> lockedRobotIDs) {
+	public void replacePath(int robotID, PoseSteering[] newPath, int breakingPathIndex, Set<Integer> lockedRobotIDs) {
 
 		synchronized (solver) {
 
@@ -2097,33 +2127,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				//If this is not the case, them pre-loading may bring to nonlive cycles. 
 				//To handle this case, switch to a local strategy whenever a robot is starting from a critical section and cannot
 				//exit from it.
-				/*if (!artificialDependencies.isEmpty()) {
-					this.breakDeadlocksByReplanning = true;
-
-					//find cycles and revise dependencies if necessary
-					findAndRepairNonliveCycles(currentDeps, artificialDependencies, new HashSet<Dependency>(), currentReports, robotIDs);
-
-					this.breakDeadlocksByReplanning = false;
-				}*/
-
-				//re-plan for the set of robots that are currently in a critical section
-				SimpleDirectedGraph<Integer,Dependency> g = depsToGraph(currentDependencies);
-				List<List<Integer>> nonliveCycles = findSimpleNonliveCycles(g);
-				nonliveStatesDetected.addAndGet(nonliveCycles.size());
-
-				for (List<Integer> cycle : nonliveCycles) {
-					int robotID = -1;
-					for (int ID : askForReplan) {
-						if (cycle.contains(ID)) {
-							robotID = ID;
-							break;
-						}
-					}
-					if (robotID == -1) continue;
-
-					//the cycle contains a robot that is asking for re-plan.
-					callReplanning(cycle, g);
-				}
+				callPathsReplan(askForReplan, true);
 
 				//send revised dependencies
 				HashMap<Integer,Dependency> constrainedRobotIDs = new HashMap<Integer,Dependency>();
