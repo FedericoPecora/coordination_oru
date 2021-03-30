@@ -224,9 +224,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	}
 
 
-	private SimpleDirectedGraph<Integer,Dependency> depsToGraph(HashSet<Dependency> deps) {
+	private SimpleDirectedGraph<Integer,Dependency> depsToGraph(HashMap<Integer, Dependency> deps) {
 		SimpleDirectedGraph<Integer,Dependency> g = new SimpleDirectedGraph<Integer,Dependency>(Dependency.class);
-		for (Dependency dep : deps) {
+		for (int key : deps.keySet()) {
+			Dependency dep = deps.get(key);
 			g.addVertex(dep.getWaitingRobotID());
 			g.addVertex(dep.getDrivingRobotID());
 			if (!g.addEdge(dep.getWaitingRobotID(), dep.getDrivingRobotID(), dep))
@@ -235,9 +236,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		return g;
 	}
 
-	private HashSet<Dependency> computeClosestDependencies(HashMap<Integer,HashSet<Dependency>> allDeps, HashMap<Integer, HashSet<Dependency>> artificialDeps) {
+	private HashMap<Integer, Dependency> computeClosestDependencies(HashMap<Integer,HashSet<Dependency>> allDeps, HashMap<Integer, HashSet<Dependency>> artificialDeps) {
 
-		HashSet<Dependency> closestDeps = new HashSet<Dependency>();
+		HashMap<Integer, Dependency> closestDeps = new HashMap<Integer, Dependency>();
 
 		if (allDeps == null && artificialDeps == null || allDeps.isEmpty() && artificialDeps.isEmpty()) {
 			return closestDeps;
@@ -271,9 +272,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				Dependency depToSend = null; 
 				if (firstDep != null)
 					depToSend = firstArtificialDep != null ? (firstDep.compareTo(firstArtificialDep) < 0 ? firstDep : firstArtificialDep) : firstDep;
-					else
-						depToSend = firstArtificialDep;
-				closestDeps.add(depToSend);
+				else depToSend = firstArtificialDep;
+				closestDeps.put(depToSend.getWaitingRobotID(), depToSend);
 			}
 		}
 		return closestDeps;
@@ -388,7 +388,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					depsToCSTmp.put(revDep, cs);
 
 					//update currentDeps
-					HashSet<Dependency> currentDepsTmp = computeClosestDependencies(allDepsTmp, artificialDeps);
+					HashMap<Integer, Dependency> currentDepsTmp = computeClosestDependencies(allDepsTmp, artificialDeps);
 					SimpleDirectedGraph<Integer,Dependency> gTmp = depsToGraph(currentDepsTmp);
 
 					//compute cycles again. If the number of cycles is lower, keep this solution
@@ -403,7 +403,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						//update all the variables according to the new choice
 						g = gTmp;
 						currentDependencies.clear();
-						currentDependencies.addAll(currentDepsTmp);				
+						currentDependencies.putAll(currentDepsTmp);				
 						allDeps = allDepsTmp;
 						nonliveCycles = nonliveCyclesTmp;					
 						CSToDepsOrder.clear();
@@ -423,8 +423,17 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		return allDeps;
 	}
 	
-	private boolean callReplan(int robotID, boolean onlyIfDeadlocks) { //TODO change the returned value
-		synchronized (currentDependencies) {
+	/**
+	 * Re-plan the path for a given robot.
+	 * @param robotID The robot which path should be re-planned.
+	 * @return <code>true</code> if re-planning is correctly spawned.
+	 */
+	public boolean callReplan(int robotID) {
+		return replanEnvelope(robotID, false);
+	}
+	
+	private boolean replanEnvelope(int robotID, boolean onlyIfDeadlocks) {
+		synchronized (solver) {
 			SimpleDirectedGraph<Integer,Dependency> g = depsToGraph(currentDependencies);
 			List<List<Integer>> nonliveCycles = null;
 			
@@ -438,33 +447,45 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					if (cycle.contains(robotID)) return callOnePathReplan(cycle, g);
 				}
 			}
-			return callOnePathReplan(new ArrayList<Integer>(robotID), g);
+			List<Integer> cycle = new ArrayList<Integer>();
+			cycle.add(robotID);
+			return callOnePathReplan(cycle, g);
 		}
 	}
 	
-	/**
-	 * 
-	 * @param cycle
-	 * @param g
-	 * @return
-	 */
 	private boolean callOnePathReplan(List<Integer> cycle, SimpleDirectedGraph<Integer,Dependency> g) {
+		
 		//Get edges along the cycle...
-		ArrayList<Dependency> depsAlongCycle = new ArrayList<Dependency>();
 		Set<Integer> robotsToReplan = new HashSet<Integer>();
-		for (int i = 0; i < cycle.size(); i++) {
-			Dependency dep = g.getEdge(cycle.get(i), cycle.get(i < cycle.size()-1 ? i+1 : 0));
-			if (dep != null) depsAlongCycle.add(dep);
-			robotsToReplan.add(dep.getWaitingRobotID());
-			robotsToReplan.add(dep.getDrivingRobotID());
-			RobotReport rrWaiting = getRobotReport(dep.getWaitingRobotID());
-
-			//avoid to re-plan if one of the robots is parked.
-			//In case of static re-plan, wait for a deadlock to happen before starting it
-			if (inParkingPose(dep.getDrivingRobotID()) || inParkingPose(dep.getWaitingRobotID())
-					|| staticReplan && ((dep.getWaitingPoint() == 0 ? (rrWaiting.getPathIndex() < 0) : (rrWaiting.getPathIndex() < dep.getWaitingPoint()-1)))) {
-				return false;
+		boolean isReplanForDeadlock = cycle.size() > 1;
+		
+		if (isReplanForDeadlock) {
+			for (int i = 0; i < cycle.size(); i++) {
+				Dependency dep = g.getEdge(cycle.get(i), cycle.get(i < cycle.size()-1 ? i+1 : 0));
+				if (dep == null) {
+					metaCSPLogger.warning("Called re-plan path for deadlock handling but missing cyclic dependencies!");
+					return false;
+				}
+				robotsToReplan.add(dep.getDrivingRobotID());
+				robotsToReplan.add(dep.getWaitingRobotID());
+				RobotReport rrWaiting = getRobotReport(dep.getWaitingRobotID());
+	
+	
+				//avoid to re-plan if one of the robots is parked.
+				//In case of static re-plan, wait for a deadlock to happen before starting it
+				if (inParkingPose(dep.getDrivingRobotID()) || inParkingPose(dep.getWaitingRobotID())
+						|| staticReplan && ((dep.getWaitingPoint() == 0 ? (rrWaiting.getPathIndex() < 0) : (rrWaiting.getPathIndex() < dep.getWaitingPoint()-1)))) {
+					return false;
+				}
 			}
+		}
+		else {
+			int robotID = cycle.get(0);
+			HashMap<Integer, Dependency> currentDeps = getCurrentDependencies();
+			Dependency currentDep = currentDeps.containsKey(robotID) ? currentDeps.get(robotID) : null;
+			//if (currentDep == null) currentDep = new Dependency
+			//CONTINUE HERE
+			
 		}
 
 		//Get other robots (all the robot in the maximum connected set of a deadlocked one)
@@ -492,7 +513,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			---------------------------------------------------------------------------------------
 		 */
 		ConnectivityInspector<Integer,Dependency> connInsp = new ConnectivityInspector<Integer,Dependency>(g);
-		HashSet<Integer> allConnectedRobots = (HashSet<Integer>) connInsp.connectedSetOf(cycle.get(0));
+		HashSet<Integer> allConnectedRobots = g.containsVertex(cycle.get(0)) ? (HashSet<Integer>) connInsp.connectedSetOf(cycle.get(0)) : new HashSet<Integer>(); //it may be empty if the robot has no dependency
 		return spawnReplanning(robotsToReplan, allConnectedRobots);
 	}
 
@@ -861,18 +882,16 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			synchronized(currentDependencies) {
 
 				//FIXME: already synchronized (so maybe is ok currentDependencies = computeClosestDependencies(currentDeps, artificialDependencies);)
-				HashSet<Dependency> closestDeps  = computeClosestDependencies(currentDeps, artificialDependencies);
+				HashMap<Integer, Dependency> closestDeps  = computeClosestDependencies(currentDeps, artificialDependencies);
 				currentDependencies.clear();
-				currentDependencies.addAll(closestDeps);
+				currentDependencies.putAll(closestDeps);
 
 				//find nonlive cycles and revise dependencies if necessary
 				currentDeps = findAndRepairNonliveCycles(currentDeps, artificialDependencies, currentReversibleDependencies, currentReports, robotIDs);
 
 				//send revised dependencies
 				HashMap<Integer,Dependency> constrainedRobotIDs = new HashMap<Integer,Dependency>();
-				for (Dependency dep : currentDependencies) {
-					constrainedRobotIDs.put(dep.getWaitingRobotID(),dep);				
-				}
+				constrainedRobotIDs.putAll(currentDependencies);
 				for (int robotID : robotIDs) {
 					AbstractTrajectoryEnvelopeTracker tracker = null;
 					synchronized (trackers) {
@@ -932,13 +951,13 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				}
 			}
 			if (tryLocking) {
-				int count = 0;
-				for (Dependency dep : getCurrentDependencies()) {
-					if (robotsIDs.contains(dep.getWaitingRobotID())) {
+				//FIXME Here it assumes all robots in robotsIDs has a dependency but it may not be true.
+				HashMap<Integer, Dependency> currentDeps = getCurrentDependencies();
+				for (int robotID : robotsIDs) {
+					if (currentDeps.containsKey(robotID)) {
+						Dependency dep = currentDeps.get(robotID);
 						replanningStoppingPoints.put(dep.getWaitingRobotID(), new Dependency(dep.getWaitingTrajectoryEnvelope(), null, dep.getWaitingPoint(), 0));
-						count++;
 					}
-					if (count == robotsIDs.size()) break;
 				}
 				metaCSPLogger.finest("Add maximum CP dependency (re-plan) for robots: " + robotsIDs.toString());
 			}
@@ -969,16 +988,15 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			Geometry[] obstacles = null;
 			int[] otherRobotIDs = null;
 			synchronized (getCurrentDependencies()) {
-				for (Dependency dep : getCurrentDependencies()) {
-					if (dep.getWaitingRobotID() == robotID) {
-						currentWaitingIndex = dep.getWaitingPoint();
-						currentWaitingPose = dep.getWaitingPose();
-						if (currentWaitingPose == null) throw new Error("Waiting pose should not be null in dep: " + dep);
-						Trajectory traj = dep.getWaitingTrajectoryEnvelope().getTrajectory();
-						oldPath = traj.getPoseSteering();
-						currentWaitingGoal = oldPath[oldPath.length-1].getPose();
-						break;
-					}
+				HashMap<Integer, Dependency> currentDeps = getCurrentDependencies();
+				Dependency dep = currentDeps.containsKey(robotID) ? currentDeps.get(robotID) : null;
+				if (dep != null) { //FIXME what if null??
+					currentWaitingIndex = dep.getWaitingPoint();
+					currentWaitingPose = dep.getWaitingPose();
+					if (currentWaitingPose == null) throw new Error("Waiting pose should not be null in dep: " + dep);
+					Trajectory traj = dep.getWaitingTrajectoryEnvelope().getTrajectory();
+					oldPath = traj.getPoseSteering();
+					currentWaitingGoal = oldPath[oldPath.length-1].getPose();
 				}
 
 				otherRobotIDs = new int[robotsAsObstacles.size()-1];
@@ -2110,21 +2128,20 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			synchronized(currentDependencies) {
 
 				//FIXME: already synchronized (so maybe is ok currentDependencies = computeClosestDependencies(currentDeps, artificialDependencies);)
-				HashSet<Dependency> closestDeps  = computeClosestDependencies(currentDeps, artificialDependencies);
+				HashMap<Integer, Dependency> closestDeps  = computeClosestDependencies(currentDeps, artificialDependencies);
 				currentDependencies.clear();
-				currentDependencies.addAll(closestDeps);
+				currentDependencies.putAll(closestDeps);
 
 				//The global strategy builds upon the assumption that robots do not start from critical section. 
 				//If this is not the case, them pre-loading may bring to nonlive cycles. 
 				//To handle this case, switch to a local strategy whenever a robot is starting from a critical section and cannot
 				//exit from it.
-				for (int robotID : askForReplan) callReplan(robotID, true);
+				for (int robotID : askForReplan) replanEnvelope(robotID, true);
 
 				//send revised dependencies
 				HashMap<Integer,Dependency> constrainedRobotIDs = new HashMap<Integer,Dependency>();
-				for (Dependency dep : currentDependencies) {
-					constrainedRobotIDs.put(dep.getWaitingRobotID(),dep);				
-				}
+				constrainedRobotIDs.putAll(currentDependencies);
+				
 				for (int robotID : robotIDs) {
 					AbstractTrajectoryEnvelopeTracker tracker = null;
 					synchronized (trackers) {
@@ -2154,4 +2171,4 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 }//end class
 
 
-//FIXME Strating from critical section with checkAndRevise
+//FIXME Starting from critical section with checkAndRevise
