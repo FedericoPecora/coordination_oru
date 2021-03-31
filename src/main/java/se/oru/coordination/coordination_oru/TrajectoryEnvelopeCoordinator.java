@@ -62,6 +62,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	protected List<List<Integer>> nonliveCyclesOld = new ArrayList<List<Integer>>();
 	protected AtomicInteger replanningTrialsCounter = new AtomicInteger(0);
 	protected AtomicInteger successfulReplanningTrialsCounter = new AtomicInteger(0);
+	protected HashMap<Integer, Boolean> forceCriticalPointReTransmission = new HashMap <Integer, Boolean>();
 
 	//True if waiting for deadlocks to happen.
 	protected boolean staticReplan = false;
@@ -1310,6 +1311,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					metaCSPLogger.finest("Unlocking robots: " + lockedRobotIDs.toString());
 				}
 
+				forceCriticalPointReTransmission.put(robotID, true);
 				updateDependencies();											
 
 			}
@@ -2148,19 +2150,21 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						tracker = trackers.get(robotID);
 					}
 					int maxDelay = 2*(MAX_TX_DELAY+CONTROL_PERIOD+tracker.getTrackingPeriodInMillis()) + CONTROL_PERIOD; //add an extra control period to the theoretical upperbound to handle the case o equality
+					boolean retransmitt = forceCriticalPointReTransmission.containsKey(robotID) && forceCriticalPointReTransmission.get(robotID);
 					if (constrainedRobotIDs.containsKey(robotID)) {
 						Dependency dep = constrainedRobotIDs.get(robotID);
 						metaCSPLogger.finest("Set critical point " + dep.getWaitingPoint() + " to Robot" + dep.getWaitingRobotID() +".");
-						boolean retransmitt = communicatedCPs.containsKey(tracker) && communicatedCPs.get(tracker).getFirst() == dep.getWaitingPoint() && currentReports.get(robotID).getCriticalPoint() != dep.getWaitingPoint()
+						retransmitt = retransmitt || communicatedCPs.containsKey(tracker) && communicatedCPs.get(tracker).getFirst() == dep.getWaitingPoint() && currentReports.get(robotID).getCriticalPoint() != dep.getWaitingPoint()
 								&& ((int)(Calendar.getInstance().getTimeInMillis()-communicatedCPs.get(tracker).getSecond().longValue()) > maxDelay);
 						setCriticalPoint(dep.getWaitingRobotID(), dep.getWaitingPoint(), retransmitt);
 
 					}
 					else {
-						boolean retransmitt = communicatedCPs.containsKey(tracker) && communicatedCPs.get(tracker).getFirst() == -1 && currentReports.get(robotID).getCriticalPoint() != -1
+						retransmitt = retransmitt || communicatedCPs.containsKey(tracker) && communicatedCPs.get(tracker).getFirst() == -1 && currentReports.get(robotID).getCriticalPoint() != -1
 								&& ((int)(Calendar.getInstance().getTimeInMillis()-communicatedCPs.get(tracker).getSecond().longValue()) > maxDelay);
 						setCriticalPoint(robotID, -1, retransmitt);
 					}
+					forceCriticalPointReTransmission.put(robotID, false);
 				}				
 			}
 
