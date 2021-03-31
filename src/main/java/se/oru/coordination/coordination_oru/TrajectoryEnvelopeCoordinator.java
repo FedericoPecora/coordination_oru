@@ -428,7 +428,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 * @param robotID The robot which path should be re-planned.
 	 * @return <code>true</code> if re-planning is correctly spawned.
 	 */
-	public boolean callReplan(int robotID) {
+	public boolean replanEnvelope(int robotID) {
 		return replanEnvelope(robotID, false);
 	}
 	
