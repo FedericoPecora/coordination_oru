@@ -28,6 +28,7 @@ import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 import org.metacsp.multi.spatioTemporal.paths.Trajectory;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 import org.metacsp.utility.PermutationsWithRepetition;
+import org.metacsp.utility.UI.Callback;
 
 import com.vividsolutions.jts.geom.Geometry;
 
@@ -68,6 +69,13 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	protected boolean staticReplan = false;
 	protected boolean isBlocked = false;
 	protected boolean isDeadlocked = false;
+	
+	protected Callback deadlockedCallback = new Callback() {
+		@Override
+		public void performOperation() {
+			metaCSPLogger.info("Detected some deadlocks.");
+		}
+	};
 
 
 	/**
@@ -96,6 +104,14 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		this.avoidDeadlockGlobally.getAndSet(global);
 		this.breakDeadlocksByReordering = reorder;
 		this.breakDeadlocksByReplanning = replan;
+	}
+	
+	
+	/**Add a {@link Callback} that will be called when a deadlock is detected.
+	 * @param cb A callback object.
+	 */
+	public void setDeadlockedCallback(Callback cb) {
+		this.deadlockedCallback = cb;
 	}
 
 
@@ -286,6 +302,28 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 * such that a deadlock will occur (non-live state).
 	 */
 	public boolean isDeadlocked() {
+		synchronized(solver) {
+			SimpleDirectedGraph<Integer,Dependency> g = depsToGraph(currentDependencies);
+			List<List<Integer>> nonliveCycles = findSimpleNonliveCycles(g);
+			for (List<Integer> cycle : nonliveCycles) {
+				//Check if all robots in the cycle are waiting at their current critical point.
+				this.isDeadlocked = true;
+				for (int i = 0; i < cycle.size(); i++) {
+					int robotID = cycle.get(i);
+					AbstractTrajectoryEnvelopeTracker tracker = trackers.get(robotID);
+					RobotReport rr = tracker.getLastRobotReport();
+					if (!(communicatedCPs.containsKey(tracker) && communicatedCPs.get(tracker).getFirst() == rr.getCriticalPoint() && rr.getCriticalPoint() == rr.getPathIndex())) {
+						this.isDeadlocked = false;
+						break;
+					}
+				}
+				if (this.isDeadlocked) {
+					if (breakDeadlocksByReplanning) metaCSPLogger.info("The deadlock may be solved via replanning.");
+					break;
+				}
+			}
+		}
+		if (this.deadlockedCallback != null) this.deadlockedCallback.performOperation();
 		return this.isDeadlocked;
 	}
 
@@ -317,8 +355,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		if (breakDeadlocksByReordering) allDeps = callLocalReordering(nonliveCycles, artificialDeps, g, reversibleDeps, allDeps, currentReports);
 
 		//3. OTHERWISE, IF RE-PLAN IS ENABLED, TRY REPLANNING
-		if (breakDeadlocksByReplanning)
-			for (List<Integer> cycle : nonliveCycles) callOnePathReplan(cycle, g);		
+		if (breakDeadlocksByReplanning) {
+			for (List<Integer> cycle : nonliveCycles) callOnePathReplan(cycle, g);	
+		}
 
 		return allDeps;
 	}
@@ -418,12 +457,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				}
 			}
 		}
-		//Update the status (FIXME Nonlive cycles MAY end up in a deadlock, but may also be solved at the next iteration).
-		isDeadlocked = nonliveCycles.size() > 0;
 		
 		return allDeps;
 	}
-	
+		
 	/**
 	 * Re-plan the path for a given robot.
 	 * @param robotID The robot which path should be re-planned.
@@ -889,6 +926,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 				//send revised dependencies
 				for (int robotID : robotIDs) sendCriticalPoint(robotID, currentReports);
+				
+				//Check if the robots are in deadlocks
+				isDeadlocked();
 			}
 		}
 	}
@@ -2121,6 +2161,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 				//send revised dependencies
 				for (int robotID : robotIDs) sendCriticalPoint(robotID, currentReports);
+				
+				//Check if the robots are in deadlocks
+				isDeadlocked();
 			}
 
 		}//end synchronized(solver)
