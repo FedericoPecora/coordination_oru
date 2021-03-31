@@ -457,36 +457,33 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		
 		//Get edges along the cycle...
 		Set<Integer> robotsToReplan = new HashSet<Integer>();
-		boolean isReplanForDeadlock = cycle.size() > 1;
-		
-		if (isReplanForDeadlock) {
-			for (int i = 0; i < cycle.size(); i++) {
-				Dependency dep = g.getEdge(cycle.get(i), cycle.get(i < cycle.size()-1 ? i+1 : 0));
-				if (dep == null) {
-					metaCSPLogger.warning("Called re-plan path for deadlock handling but missing cyclic dependencies!");
-					return false;
+		for (int i = 0; i < cycle.size(); i++) {
+			int robotID = cycle.get(i);
+			Dependency dep = g.getEdge(cycle.get(i), cycle.get(i < cycle.size()-1 ? i+1 : 0));
+			if (dep == null) {
+				AbstractTrajectoryEnvelopeTracker tracker = null;
+				synchronized (trackers) {
+					tracker = trackers.get(robotID);
 				}
-				robotsToReplan.add(dep.getDrivingRobotID());
-				robotsToReplan.add(dep.getWaitingRobotID());
-				RobotReport rrWaiting = getRobotReport(dep.getWaitingRobotID());
-	
-	
-				//avoid to re-plan if one of the robots is parked.
-				//In case of static re-plan, wait for a deadlock to happen before starting it
-				if (inParkingPose(dep.getDrivingRobotID()) || inParkingPose(dep.getWaitingRobotID())
-						|| staticReplan && ((dep.getWaitingPoint() == 0 ? (rrWaiting.getPathIndex() < 0) : (rrWaiting.getPathIndex() < dep.getWaitingPoint()-1)))) {
-					return false;
-				}
+				if (tracker instanceof TrajectoryEnvelopeTrackerDummy) return false;
+				TrajectoryEnvelope te = tracker.getTrajectoryEnvelope();
+				int stoppingPoint = getForwardModel(robotID).getEarliestStoppingPathIndex(te, tracker.getLastRobotReport());
+				dep = new Dependency(te, null, stoppingPoint, 0);
+				currentDependencies.put(robotID, dep);
+				setCriticalPoint(robotID, stoppingPoint, false);
 			}
+			if (dep.getDrivingTrajectoryEnvelope() != null) robotsToReplan.add(dep.getDrivingRobotID());
+			robotsToReplan.add(dep.getWaitingRobotID());
+			RobotReport rrWaiting = getRobotReport(dep.getWaitingRobotID());
+
+
+			//avoid to re-plan if one of the robots is parked.
+			//In case of static re-plan, wait for a deadlock to happen before starting it
+			if (dep.getDrivingTrajectoryEnvelope() != null && inParkingPose(dep.getDrivingRobotID()) || inParkingPose(dep.getWaitingRobotID())
+					|| staticReplan && ((dep.getWaitingPoint() == 0 ? (rrWaiting.getPathIndex() < 0) : (rrWaiting.getPathIndex() < dep.getWaitingPoint()-1)))) 
+				return false;
 		}
-		else {
-			int robotID = cycle.get(0);
-			HashMap<Integer, Dependency> currentDeps = getCurrentDependencies();
-			Dependency currentDep = currentDeps.containsKey(robotID) ? currentDeps.get(robotID) : null;
-			//if (currentDep == null) currentDep = new Dependency
-			//CONTINUE HERE
-			
-		}
+
 
 		//Get other robots (all the robot in the maximum connected set of a deadlocked one)
 
@@ -999,12 +996,15 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					currentWaitingGoal = oldPath[oldPath.length-1].getPose();
 				}
 
-				otherRobotIDs = new int[robotsAsObstacles.size()-1];
-				int counter = 0;
-				for (int otherRobotID : robotsAsObstacles) if (otherRobotID != robotID) otherRobotIDs[counter++] = otherRobotID;
+				if (robotsAsObstacles.size() > 0) {
+					otherRobotIDs = new int[robotsAsObstacles.size()-1];
+					int counter = 0;
+					for (int otherRobotID : robotsAsObstacles) if (otherRobotID != robotID) otherRobotIDs[counter++] = otherRobotID;
 
-				//FIXME not synchronized on current dependencies
-				obstacles = getObstaclesInCriticalPoints(otherRobotIDs);
+					//FIXME not synchronized on current dependencies
+					obstacles = getObstaclesInCriticalPoints(otherRobotIDs);
+
+				}
 			}
 
 			metaCSPLogger.info("Attempting to re-plan path of Robot" + robotID + " (with obstacles for robots " + Arrays.toString(otherRobotIDs) + ")...");
