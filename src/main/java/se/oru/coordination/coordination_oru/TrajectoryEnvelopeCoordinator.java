@@ -70,12 +70,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	protected boolean isBlocked = false;
 	protected boolean isDeadlocked = false;
 	
-	protected Callback deadlockedCallback = new Callback() {
-		@Override
-		public void performOperation() {
-			metaCSPLogger.info("Detected some deadlocks.");
-		}
-	};
+	protected Callback deadlockedCallback = null;
 
 
 	/**
