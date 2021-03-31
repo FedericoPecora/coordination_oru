@@ -154,7 +154,7 @@ public class TestTrajectoryEnvelopeThreeRobotsReplanOnRequest {
 		Thread.sleep(12000);
 		isPaused.put(2, true);
 		
-		boolean result = tec.callReplan(2);
+		boolean result = tec.replanEnvelope(2);
 		System.out.println("Replanning path for Robot2. Spawned thread succeeded: " + result + ".");
 
 	}
