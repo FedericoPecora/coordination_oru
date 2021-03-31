@@ -201,7 +201,9 @@ public class MultiplePedestriansAndRobot {
         PedestrianTrajectory[] pedestrianTrajectories = new PedestrianTrajectory[nums_primitive.length];
 
         // Robot Path
-        PoseSteering[] robotPath = Missions.loadPathFromFile(robotPathDir + "/" + pathFileName + ".path");;
+        PoseSteering[] robotPathAux = Missions.loadPathFromFile(robotPathDir + "/" + pathFileName + ".path");
+        Missions.setMinPathDistance(0.2);
+        final PoseSteering[] robotPath = Missions.resamplePath(robotPathAux);
 
         for (int i = 0; i < nums.size(); i++) {
 

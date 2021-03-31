@@ -94,7 +94,7 @@ public class Missions {
 		}
 	}
 	
-	private static PoseSteering[] resamplePath(PoseSteering[] path) {
+	public static PoseSteering[] resamplePath(PoseSteering[] path) {
 		if (minPathDistance < 0) return path;
 		ArrayList<PoseSteering> ret = new ArrayList<PoseSteering>();
 		PoseSteering lastAdded = path[0];

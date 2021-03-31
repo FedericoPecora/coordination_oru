@@ -590,7 +590,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			}
 
 
-			long startDbg = Calendar.getInstance().getTimeInMillis();
+			
 			long startDbg2 = Calendar.getInstance().getTimeInMillis();
 			long startDbg3 = Calendar.getInstance().getTimeInMillis();
 			long maxelapsed = 0;
@@ -611,6 +611,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				HashSet<CriticalSection> toRemove = new HashSet<CriticalSection>();
 				for (CriticalSection cs : this.allCriticalSections) {
 					
+					long startDbg = Calendar.getInstance().getTimeInMillis();
 
 					long t1Debug = Calendar.getInstance().getTimeInMillis();
 
@@ -866,7 +867,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					}
 
 					long currentelapsed = Calendar.getInstance().getTimeInMillis()-startDbg;
-					startDbg = Calendar.getInstance().getTimeInMillis();
+
 					if (maxelapsed < currentelapsed) {
 						maxelapsed = currentelapsed;
 						maxCS = cs;
