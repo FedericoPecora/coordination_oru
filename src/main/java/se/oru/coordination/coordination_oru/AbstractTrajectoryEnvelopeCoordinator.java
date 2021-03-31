@@ -469,16 +469,6 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			}
 		}
 	}
-
-	/**
-	 * Instruct a given robot's tracker that it may not navigate beyond a given 
-	 * path index. Retransmission of critical points is disabled by default. 
-	 * @param robotID The ID of the robot.
-	 * @param criticalPoint The index of the path pose beyond which the robot should not navigate.
-	 */
-	public void setCriticalPoint(int robotID, int criticalPoint) {
-		setCriticalPoint(robotID, criticalPoint, false);
-	}
 	
 	/**
 	 * Get the current state of a given robot.
