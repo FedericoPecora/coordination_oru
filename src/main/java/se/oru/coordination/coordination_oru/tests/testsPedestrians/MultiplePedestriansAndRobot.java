@@ -3,6 +3,7 @@ package se.oru.coordination.coordination_oru.tests.testsPedestrians;
 import com.vividsolutions.jts.geom.Coordinate;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 import org.metacsp.multi.spatioTemporal.paths.Trajectory;
+import org.metacsp.utility.UI.Callback;
 import se.oru.coordination.coordination_oru.*;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.simulation2D.PedestrianForwardModel;
@@ -268,6 +269,12 @@ public class MultiplePedestriansAndRobot {
             }
         });
 
+        tec.setDeadlockedCallback(new Callback() {
+            @Override
+            public void performOperation() {
+                ColorPrint.error("Deadlock has happened. Replanning is necessary.");
+            }
+        });
 
         /* For each pedestrian, create a TimerTask that would despatch that robot. */
 
