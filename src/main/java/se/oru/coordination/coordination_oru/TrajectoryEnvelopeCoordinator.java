@@ -333,11 +333,11 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				}
 				if (this.isDeadlocked) {
 					if (breakDeadlocksByReplanning) metaCSPLogger.info("The deadlock may be solved via replanning.");
+					if (this.deadlockedCallback != null) this.deadlockedCallback.performOperation();
 					break;
 				}
 			}
 		}
-		if (this.deadlockedCallback != null) this.deadlockedCallback.performOperation();
 		return this.isDeadlocked;
 	}
 
