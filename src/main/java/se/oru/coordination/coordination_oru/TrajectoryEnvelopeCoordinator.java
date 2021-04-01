@@ -28,6 +28,7 @@ import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 import org.metacsp.multi.spatioTemporal.paths.Trajectory;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 import org.metacsp.utility.PermutationsWithRepetition;
+import org.metacsp.utility.UI.Callback;
 
 import com.vividsolutions.jts.geom.Geometry;
 
@@ -62,11 +63,14 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	protected List<List<Integer>> nonliveCyclesOld = new ArrayList<List<Integer>>();
 	protected AtomicInteger replanningTrialsCounter = new AtomicInteger(0);
 	protected AtomicInteger successfulReplanningTrialsCounter = new AtomicInteger(0);
+	protected HashMap<Integer, Boolean> forceCriticalPointReTransmission = new HashMap <Integer, Boolean>();
 
 	//True if waiting for deadlocks to happen.
 	protected boolean staticReplan = false;
 	protected boolean isBlocked = false;
 	protected boolean isDeadlocked = false;
+	
+	protected Callback deadlockedCallback = null;
 
 	public double getRobotStoppageTime(int robotID) {
 		if(trackers.get(robotID) == null) { return 0.0; }
@@ -114,6 +118,14 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		this.avoidDeadlockGlobally.getAndSet(global);
 		this.breakDeadlocksByReordering = reorder;
 		this.breakDeadlocksByReplanning = replan;
+	}
+	
+	
+	/**Add a {@link Callback} that will be called when a deadlock is detected.
+	 * @param cb A callback object.
+	 */
+	public void setDeadlockedCallback(Callback cb) {
+		this.deadlockedCallback = cb;
 	}
 
 
@@ -188,7 +200,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			ret.add(CONNECTOR_BRANCH + "Dependencies ... " + currentDependencies);
 		}
 		ret.add(CONNECTOR_BRANCH + "Total number of obsolete critical sections ... " + criticalSectionCounter.get() + ".");
-		ret.add(CONNECTOR_BRANCH + "Total messages sent: ... " + totalMsgsSent.get() + ",, retransmitted: " + totalMsgsReTx.get() + ", number of replicas: " + numberOfReplicas + ".");
+		ret.add(CONNECTOR_BRANCH + "Total messages sent: ... " + totalMsgsSent.get() + ", retransmitted: " + totalMsgsReTx.get() + ", number of replicas: " + numberOfReplicas + ".");
 		ret.add(CONNECTOR_BRANCH + "Total nonlive states detected: ... " + nonliveStatesDetected.get() + ", avoided: " + nonliveStatesAvoided.get() + ", revised according to heuristic: " + currentOrdersHeurusticallyDecided.get() + ".");
 		ret.add(CONNECTOR_LEAF + "Total re-planned path: ... " + replanningTrialsCounter.get() + ", successful: " + successfulReplanningTrialsCounter.get() + ".");
 		return ret.toArray(new String[ret.size()]);
@@ -304,6 +316,28 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 * such that a deadlock will occur (non-live state).
 	 */
 	public boolean isDeadlocked() {
+		synchronized(solver) {
+			SimpleDirectedGraph<Integer,Dependency> g = depsToGraph(currentDependencies);
+			List<List<Integer>> nonliveCycles = findSimpleNonliveCycles(g);
+			for (List<Integer> cycle : nonliveCycles) {
+				//Check if all robots in the cycle are waiting at their current critical point.
+				this.isDeadlocked = true;
+				for (int i = 0; i < cycle.size(); i++) {
+					int robotID = cycle.get(i);
+					AbstractTrajectoryEnvelopeTracker tracker = trackers.get(robotID);
+					RobotReport rr = tracker.getLastRobotReport();
+					if (!(communicatedCPs.containsKey(tracker) && communicatedCPs.get(tracker).getFirst() == rr.getCriticalPoint() && rr.getCriticalPoint() == rr.getPathIndex())) {
+						this.isDeadlocked = false;
+						break;
+					}
+				}
+				if (this.isDeadlocked) {
+					if (breakDeadlocksByReplanning) metaCSPLogger.info("The deadlock may be solved via replanning.");
+					break;
+				}
+			}
+		}
+		if (this.deadlockedCallback != null) this.deadlockedCallback.performOperation();
 		return this.isDeadlocked;
 	}
 
@@ -335,8 +369,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		if (breakDeadlocksByReordering) allDeps = callLocalReordering(nonliveCycles, artificialDeps, g, reversibleDeps, allDeps, currentReports);
 
 		//3. OTHERWISE, IF RE-PLAN IS ENABLED, TRY REPLANNING
-		if (breakDeadlocksByReplanning)
-			for (List<Integer> cycle : nonliveCycles) callOnePathReplan(cycle, g);		
+		if (breakDeadlocksByReplanning) {
+			for (List<Integer> cycle : nonliveCycles) callOnePathReplan(cycle, g);	
+		}
 
 		return allDeps;
 	}
@@ -436,12 +471,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				}
 			}
 		}
-		//Update the status (FIXME Nonlive cycles MAY end up in a deadlock, but may also be solved at the next iteration).
-		isDeadlocked = nonliveCycles.size() > 0;
 		
 		return allDeps;
 	}
-	
+		
 	/**
 	 * Re-plan the path for a given robot.
 	 * @param robotID The robot which path should be re-planned.
@@ -489,7 +522,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				int stoppingPoint = getForwardModel(robotID).getEarliestStoppingPathIndex(te, tracker.getLastRobotReport());
 				dep = new Dependency(te, null, stoppingPoint, 0);
 				currentDependencies.put(robotID, dep);
-				setCriticalPoint(robotID, stoppingPoint, false);
+				setCriticalPoint(robotID, stoppingPoint, true);
 			}
 			if (dep.getDrivingTrajectoryEnvelope() != null) robotsToReplan.add(dep.getDrivingRobotID());
 			robotsToReplan.add(dep.getWaitingRobotID());
@@ -922,28 +955,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				currentDeps = findAndRepairNonliveCycles(currentDeps, artificialDependencies, currentReversibleDependencies, currentReports, robotIDs);
 
 				//send revised dependencies
-				HashMap<Integer,Dependency> constrainedRobotIDs = new HashMap<Integer,Dependency>();
-				constrainedRobotIDs.putAll(currentDependencies);
-				for (int robotID : robotIDs) {
-					AbstractTrajectoryEnvelopeTracker tracker = null;
-					synchronized (trackers) {
-						tracker = trackers.get(robotID);
-					}
-					int maxDelay = 2*(MAX_TX_DELAY+CONTROL_PERIOD+tracker.getTrackingPeriodInMillis());
-					if (constrainedRobotIDs.containsKey(robotID)) {
-						Dependency dep = constrainedRobotIDs.get(robotID);
-						metaCSPLogger.finest("Set critical point " + dep.getWaitingPoint() + " to Robot" + dep.getWaitingRobotID() +".");
-						boolean retransmitt = communicatedCPs.containsKey(tracker) && communicatedCPs.get(tracker).getFirst() == dep.getWaitingPoint() && currentReports.get(robotID).getCriticalPoint() != dep.getWaitingPoint()
-								&& ((int)(Calendar.getInstance().getTimeInMillis()-communicatedCPs.get(tracker).getSecond()) > maxDelay);
-						setCriticalPoint(dep.getWaitingRobotID(), dep.getWaitingPoint(), retransmitt);
-
-					}
-					else {
-						boolean retransmitt = communicatedCPs.containsKey(tracker) && communicatedCPs.get(tracker).getFirst() == -1 && currentReports.get(robotID).getCriticalPoint() != -1
-								&& ((int)(Calendar.getInstance().getTimeInMillis()-communicatedCPs.get(tracker).getSecond()) > maxDelay);
-						setCriticalPoint(robotID, -1, retransmitt);
-					}
-				}
+				for (int robotID : robotIDs) sendCriticalPoint(robotID, currentReports);
+				
+				//Check if the robots are in deadlocks
+				isDeadlocked();
 			}
 		}
 	}
@@ -1345,6 +1360,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					metaCSPLogger.finest("Unlocking robots: " + lockedRobotIDs.toString());
 				}
 
+				forceCriticalPointReTransmission.put(robotID, true);
 				updateDependencies();											
 
 			}
@@ -2175,36 +2191,45 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				for (int robotID : askForReplan) replanEnvelope(robotID, true);
 
 				//send revised dependencies
-				HashMap<Integer,Dependency> constrainedRobotIDs = new HashMap<Integer,Dependency>();
-				constrainedRobotIDs.putAll(currentDependencies);
+				for (int robotID : robotIDs) sendCriticalPoint(robotID, currentReports);
 				
-				for (int robotID : robotIDs) {
-					AbstractTrajectoryEnvelopeTracker tracker = null;
-					synchronized (trackers) {
-						tracker = trackers.get(robotID);
-					}
-					int maxDelay = 2*(MAX_TX_DELAY+CONTROL_PERIOD+tracker.getTrackingPeriodInMillis()) + CONTROL_PERIOD; //add an extra control period to the theoretical upperbound to handle the case o equality
-					if (constrainedRobotIDs.containsKey(robotID)) {
-						Dependency dep = constrainedRobotIDs.get(robotID);
-						metaCSPLogger.finest("Set critical point " + dep.getWaitingPoint() + " to Robot" + dep.getWaitingRobotID() +".");
-						boolean retransmitt = communicatedCPs.containsKey(tracker) && communicatedCPs.get(tracker).getFirst() == dep.getWaitingPoint() && currentReports.get(robotID).getCriticalPoint() != dep.getWaitingPoint()
-								&& ((int)(Calendar.getInstance().getTimeInMillis()-communicatedCPs.get(tracker).getSecond().longValue()) > maxDelay);
-						setCriticalPoint(dep.getWaitingRobotID(), dep.getWaitingPoint(), retransmitt);
-
-					}
-					else {
-						boolean retransmitt = communicatedCPs.containsKey(tracker) && communicatedCPs.get(tracker).getFirst() == -1 && currentReports.get(robotID).getCriticalPoint() != -1
-								&& ((int)(Calendar.getInstance().getTimeInMillis()-communicatedCPs.get(tracker).getSecond().longValue()) > maxDelay);
-						setCriticalPoint(robotID, -1, retransmitt);
-					}
-				}				
+				//Check if the robots are in deadlocks
+				isDeadlocked();
 			}
 
 		}//end synchronized(solver)
 
 	}//end checkAndRevise
+	
+	private void sendCriticalPoint(int robotID, HashMap<Integer, RobotReport> currentReports) {
+		AbstractTrajectoryEnvelopeTracker tracker = null;
+		synchronized (trackers) {
+			tracker = trackers.get(robotID);
+		}
+		int maxDelay = 2*(MAX_TX_DELAY+CONTROL_PERIOD+tracker.getTrackingPeriodInMillis()) + CONTROL_PERIOD; //add an extra control period to the theoretical upperbound to handle the case o equality
+		boolean retransmitt = forceCriticalPointReTransmission.containsKey(robotID) && forceCriticalPointReTransmission.get(robotID);
+		synchronized (currentDependencies) {
+			if (currentDependencies.containsKey(robotID)) {
+				Dependency dep = currentDependencies.get(robotID);
+				metaCSPLogger.finest("Set critical point " + dep.getWaitingPoint() + " to Robot" + dep.getWaitingRobotID() +".");
+				retransmitt = retransmitt || communicatedCPs.containsKey(tracker) && communicatedCPs.get(tracker).getFirst() == dep.getWaitingPoint() && currentReports.get(robotID).getCriticalPoint() != dep.getWaitingPoint()
+						&& ((int)(Calendar.getInstance().getTimeInMillis()-communicatedCPs.get(tracker).getSecond().longValue()) > maxDelay);
+				setCriticalPoint(dep.getWaitingRobotID(), dep.getWaitingPoint(), retransmitt);
+	
+			}
+			else {
+				retransmitt = retransmitt || communicatedCPs.containsKey(tracker) && communicatedCPs.get(tracker).getFirst() == -1 && currentReports.get(robotID).getCriticalPoint() != -1
+						&& ((int)(Calendar.getInstance().getTimeInMillis()-communicatedCPs.get(tracker).getSecond().longValue()) > maxDelay);
+				setCriticalPoint(robotID, -1, retransmitt);
+			}
+			forceCriticalPointReTransmission.put(robotID, false);
+		}
+		
+	}
 
 }//end class
+
+
 
 
 //FIXME Starting from critical section with checkAndRevise

@@ -58,8 +58,6 @@ public class MultiplePedestriansAndRobot {
             robotPathFilesName.add(f.getName().split(".path")[0]);
         }
 
-        ColorPrint.info("un-sorted values: " + robotPathFilesName.toString());
-
         robotPathFilesName.sort(new Comparator<String>() {
             @Override
             public int compare(String s, String t1) {
@@ -72,11 +70,9 @@ public class MultiplePedestriansAndRobot {
             }
         });
 
-        ColorPrint.info("Sorted values: " + robotPathFilesName.toString());
-
         String pathFileName = robotPathFilesName.get(Integer.parseInt(args[0]));
 
-        ColorPrint.info("We will use this file: " + pathFileName);
+        ColorPrint.info("Robot Path file is: " + pathFileName);
 
         final double threshold = 2.0;
 
@@ -287,7 +283,7 @@ public class MultiplePedestriansAndRobot {
                 @Override
                 public void run() {
                     tec.placeRobot(pedID, pI.getPose(0));
-                    ColorPrint.info("DISPATCHING MISSION FOR PEDESTRIAN: " + pedID);
+                    ColorPrint.info(" ********** DISPATCHING MISSION FOR PEDESTRIAN: " + pedID + " ********** ");
                     Missions.startMissionDispatchers(tec, false, pedID);
                 }
             }, (long) (pI.getStartTime()) * 1000L);
@@ -303,8 +299,6 @@ public class MultiplePedestriansAndRobot {
                 System.exit(0);
             }
         }, 600000);
-        ColorPrint.positive("Will sleep for 5 secondsFINEST and then start ...");
-        Thread.sleep(5000);
-        ColorPrint.info("STARTING EXPERIMENT: " + pathFileName);
+        ColorPrint.info(" ********** STARTING EXPERIMENT: " + pathFileName + " ********** ");
     }
 }
