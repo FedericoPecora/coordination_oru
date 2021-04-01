@@ -318,7 +318,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				}
 			}
 		}
-		if (this.deadlockedCallback != null) this.deadlockedCallback.performOperation();
+		if (this.deadlockedCallback != null && this.isDeadlocked) this.deadlockedCallback.performOperation();
 		return this.isDeadlocked;
 	}
 
