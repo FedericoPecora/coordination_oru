@@ -182,17 +182,17 @@ public class MultiplePedestriansAndRobot {
         nums.add(1729);
 
         //JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
-        BrowserVisualization viz = new BrowserVisualization();
+        //BrowserVisualization viz = new BrowserVisualization();
         //RVizVisualization viz = new RVizVisualization(false);
-        viz.setMap("maps/atc.yaml");
+        //viz.setMap("maps/atc.yaml");
         int[] nums_primitive = new int[nums.size()];
         for (int i = 0; i < nums_primitive.length; i++) {
             nums_primitive[i] = nums.get(i);
         }
         //RVizVisualization.writeRVizConfigFile(nums_primitive);
         //viz.setInitialTransform(40, 3, -10);  // Ellipse / warehouse map
-        viz.setInitialTransform(10, -10, 30); // ATC map
-        tec.setVisualization(viz);
+        //viz.setInitialTransform(10, -10, 30); // ATC map
+        //tec.setVisualization(viz);
 
         PedestrianTrajectory[] pedestrianTrajectories = new PedestrianTrajectory[nums_primitive.length];
 
