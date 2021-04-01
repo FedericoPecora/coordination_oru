@@ -29,7 +29,6 @@ public class MultiplePedestriansAndRobot {
         double MAX_ACCEL = 1.0;
         double MAX_VEL = 1.0;
 
-
         Integer totalAgentsToLoad = 20;
         String timeStr = "t3";
         String scenarioType = "corridor2";
