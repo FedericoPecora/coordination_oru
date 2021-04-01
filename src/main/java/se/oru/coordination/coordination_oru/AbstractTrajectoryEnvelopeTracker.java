@@ -174,7 +174,7 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 	 * @param criticalPoint The critical point to set (index of pose along the reference trajectory
 	 * beyond which the robot may not navigate). 
 	 */
-	protected abstract void setCriticalPoint(int criticalPoint);
+	public abstract void setCriticalPoint(int criticalPoint);
 	
 	/**
 	 * This method should implement the mechanisms for notifying a robot of a new critical point, caring about network delays.
@@ -262,7 +262,8 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 			//Draw an arrow if there is a critical point
 			RobotReport rrWaiting = getRobotReport();
 			synchronized (tec.getCurrentDependencies()) {
-				for (Dependency dep : tec.getCurrentDependencies()) {
+				for (int robotID : tec.getCurrentDependencies().keySet()) {
+					Dependency dep = tec.getCurrentDependencies().get(robotID);
 					synchronized (tec.trackers) {
 						AbstractTrajectoryEnvelopeTracker waitingTrackers = tec.trackers.get(dep.getWaitingRobotID());
 						AbstractTrajectoryEnvelopeTracker drivingTrackers = tec.trackers.get(dep.getDrivingRobotID());

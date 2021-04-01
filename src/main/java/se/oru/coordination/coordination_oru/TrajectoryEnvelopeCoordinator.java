@@ -51,7 +51,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	
 	//Robots currently involved in a re-plan which critical point cannot increase beyond the one used for re-plan
 	//till the re-plan has not finished yet.
-	protected HashMap<Integer,Dependency> lockedRobots = new HashMap<Integer,Dependency>();
+	protected HashMap<Integer,Dependency> replanningStoppingPoints = new HashMap<Integer,Dependency>();
 
 	protected boolean breakDeadlocksByReordering = true;
 	protected boolean breakDeadlocksByReplanning = true;
@@ -65,9 +65,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 	//True if waiting for deadlocks to happen.
 	protected boolean staticReplan = false;
-
-	protected boolean isDeadlocked = false;
 	protected boolean isBlocked = false;
+	protected boolean isDeadlocked = false;
 
 	public double getRobotStoppageTime(int robotID) {
 		if(trackers.get(robotID) == null) { return 0.0; }
@@ -211,10 +210,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			ArrayList<Dependency> edgesAlongCycle = new ArrayList<Dependency>();
 			Collections.reverse(cycle);
 			for (int i = 0; i < cycle.size(); i++) {
-				Dependency dep = null;
-				if (i < cycle.size()-1) dep = g.getEdge(cycle.get(i), cycle.get(i+1));
-				else dep = g.getEdge(cycle.get(i), cycle.get(0));
-				edgesAlongCycle.add(dep);
+				Dependency dep = g.getEdge(cycle.get(i), cycle.get(i < cycle.size()-1 ? i+1 : 0));
+				if (dep != null) edgesAlongCycle.add(dep);
 			}
 			//[1,2], [2,1]
 
@@ -246,9 +243,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	}
 
 
-	private SimpleDirectedGraph<Integer,Dependency> depsToGraph(HashSet<Dependency> deps) {
+	private SimpleDirectedGraph<Integer,Dependency> depsToGraph(HashMap<Integer, Dependency> deps) {
 		SimpleDirectedGraph<Integer,Dependency> g = new SimpleDirectedGraph<Integer,Dependency>(Dependency.class);
-		for (Dependency dep : deps) {
+		for (int key : deps.keySet()) {
+			Dependency dep = deps.get(key);
 			g.addVertex(dep.getWaitingRobotID());
 			g.addVertex(dep.getDrivingRobotID());
 			if (!g.addEdge(dep.getWaitingRobotID(), dep.getDrivingRobotID(), dep))
@@ -257,9 +255,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		return g;
 	}
 
-	private HashSet<Dependency> computeClosestDependencies(HashMap<Integer,HashSet<Dependency>> allDeps, HashMap<Integer, HashSet<Dependency>> artificialDeps) {
+	private HashMap<Integer, Dependency> computeClosestDependencies(HashMap<Integer,HashSet<Dependency>> allDeps, HashMap<Integer, HashSet<Dependency>> artificialDeps) {
 
-		HashSet<Dependency> closestDeps = new HashSet<Dependency>();
+		HashMap<Integer, Dependency> closestDeps = new HashMap<Integer, Dependency>();
 
 		if (allDeps == null && artificialDeps == null || allDeps.isEmpty() && artificialDeps.isEmpty()) {
 			return closestDeps;
@@ -293,9 +291,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				Dependency depToSend = null; 
 				if (firstDep != null)
 					depToSend = firstArtificialDep != null ? (firstDep.compareTo(firstArtificialDep) < 0 ? firstDep : firstArtificialDep) : firstDep;
-					else
-						depToSend = firstArtificialDep;
-				closestDeps.add(depToSend);
+				else depToSend = firstArtificialDep;
+				closestDeps.put(depToSend.getWaitingRobotID(), depToSend);
 			}
 		}
 		return closestDeps;
@@ -310,8 +307,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		return this.isDeadlocked;
 	}
 
-	private HashMap<Integer,HashSet<Dependency>> findCurrentCycles(HashMap<Integer,HashSet<Dependency>> currentDeps, HashMap<Integer,HashSet<Dependency>> artificialDeps, HashSet<Dependency> reversibleDeps, HashMap<Integer,RobotReport> currentReports, Set<Integer> robotIDs) {
+	private HashMap<Integer,HashSet<Dependency>> findAndRepairNonliveCycles(HashMap<Integer,HashSet<Dependency>> currentDeps, HashMap<Integer,HashSet<Dependency>> artificialDeps, HashSet<Dependency> reversibleDeps, HashMap<Integer,RobotReport> currentReports, Set<Integer> robotIDs) {
 
+		//Create a copy of the current set of dependencies
 		HashMap<Integer,HashSet<Dependency>> allDeps = new HashMap<Integer, HashSet<Dependency>>();
 		for (int robotID : currentDeps.keySet()) {
 			HashSet<Dependency> set = new HashSet<Dependency>();
@@ -320,186 +318,219 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		}
 
 		//1. COMPUTE NONLIVE CYCLES
-
 		//Dep graph G = (V,E)
 		//  V = robots involved in current deps
 		//  E = {(u,v,dep) | exists dep stating that robot u should wait for robot v}
-		//Deadlock iff:
+		//Nonlive cycle iff:
 		//  Cycle <r_1, r_2, ... r_1> in G
 		//  Exists one selection of edges along the cycle such that
-		//    Exists (u,v,dep1) and (v,w,dep2) such that
-		//      v.dep2.waitingpoint <= v.dep1.releasingpoint
-
+		//    Exists (u,v,dep1) and (v,w,dep2) such that  v.dep2.waitingpoint <= v.dep1.releasingpoint
 		SimpleDirectedGraph<Integer,Dependency> g = depsToGraph(currentDependencies);
 		List<List<Integer>> nonliveCycles = findSimpleNonliveCycles(g);
-
-		this.isDeadlocked = nonliveCycles.size() > 0;
-
+		
 		// ... keep tracks of size and old cycles for statistics
+		nonliveStatesDetected.addAndGet(nonliveCycles.size());
+		
+		//2. IF THERE ARE NONLIVE CYCLES AND RE-ORDERING IS ENABLED, TRY RE-ORDER
+		if (breakDeadlocksByReordering) allDeps = callLocalReordering(nonliveCycles, artificialDeps, g, reversibleDeps, allDeps, currentReports);
+
+		//3. OTHERWISE, IF RE-PLAN IS ENABLED, TRY REPLANNING
+		if (breakDeadlocksByReplanning)
+			for (List<Integer> cycle : nonliveCycles) callOnePathReplan(cycle, g);		
+
+		return allDeps;
+	}
+	
+	private HashMap<Integer,HashSet<Dependency>> callLocalReordering(List<List<Integer>> nonliveCycles, HashMap<Integer, HashSet<Dependency>> artificialDeps, SimpleDirectedGraph<Integer,Dependency> g, HashSet<Dependency> reversibleDeps, HashMap<Integer,HashSet<Dependency>> allDeps, HashMap<Integer,RobotReport> currentReports) {
 		List<List<Integer>> nonliveCyclesNew = new ArrayList<List<Integer>>();
 		nonliveCyclesNew.addAll(nonliveCycles);
 		nonliveCyclesNew.removeAll(nonliveCyclesOld);
-		nonliveStatesDetected.addAndGet(nonliveCyclesNew.size());
 		nonliveCyclesOld.clear();
 		nonliveCyclesOld.addAll(nonliveCycles);
+		
+		int counter = 0;
+		while (counter < nonliveCycles.size()) { //if empty no problem
 
-		//2. IF THERE ARE NONLIVE CYCLES AND RE-ORDERING IS ENABLED, TRY RE-ORDER
-		if (breakDeadlocksByReordering) {
+			//get one cycle
+			List<Integer> cycle = nonliveCycles.get(counter);
+			counter++;
 
-			int counter = 0;
-
-			while (counter < nonliveCycles.size()) { //if empty no problem
-
-				//get one cycle
-				List<Integer> cycle = nonliveCycles.get(counter);
-				counter++;
-
-				//Get edges along the cycle...
-				ArrayList<Dependency> reversibleDepsAlongCycle = new ArrayList<Dependency>();
-				for (int i = 0; i < cycle.size(); i++) {
-					Dependency dep = null;
-					if (i < cycle.size()-1) {
-						dep = g.getEdge(cycle.get(i), cycle.get(i+1));
-					}
-					else {
-						dep = g.getEdge(cycle.get(i), cycle.get(0));
-					}
-					if (reversibleDeps.contains(dep) && !artificialDeps.containsKey(dep.getWaitingRobotID())) reversibleDepsAlongCycle.add(dep);
+			//Get edges along the cycle...
+			ArrayList<Dependency> reversibleDepsAlongCycle = new ArrayList<Dependency>();
+			for (int i = 0; i < cycle.size(); i++) {
+				Dependency dep = null;
+				if (i < cycle.size()-1) {
+					dep = g.getEdge(cycle.get(i), cycle.get(i+1));
 				}
-
-				//For each reversible edge ... 
-				//(note that if the dependency is reversible, then it is neither an artificial dependency,
-				//nor one related to an active parking critical section)
-				for (Dependency dep : reversibleDepsAlongCycle) {
-
-					if (depsToCS.containsKey(dep)) {
-						CriticalSection cs = depsToCS.get(dep);
-
-						//Try reversing the precedence
-						int waitingRobotID = dep.getDrivingRobotID();
-						TrajectoryEnvelope waitingTE = dep.getDrivingTrajectoryEnvelope();
-						int drivingRobotID = dep.getWaitingRobotID();
-						TrajectoryEnvelope drivingTE = dep.getWaitingTrajectoryEnvelope();
-						int drivingCurrentIndex = currentReports.get(drivingRobotID).getPathIndex();
-						int waitingPoint = getCriticalPoint(waitingRobotID, cs, drivingCurrentIndex);
-						int drivingCSEnd = (drivingRobotID == cs.getTe1().getRobotID()) ? cs.getTe1End() : cs.getTe2End();
-
-						Dependency revDep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd);
-
-						HashMap<Integer,HashSet<Dependency>> allDepsTmp = new HashMap<Integer,HashSet<Dependency>>(allDeps);
-
-						//and add the reversed dependency to the new waiting one
-						if (!allDepsTmp.containsKey(waitingRobotID)) allDepsTmp.put(waitingRobotID, new HashSet<Dependency>());
-						allDepsTmp.get(revDep.getWaitingRobotID()).add(revDep);
-
-						//remove the dependency to the old waiting robot
-						allDepsTmp.get(dep.getWaitingRobotID()).remove(dep);
-						if (allDepsTmp.get(dep.getWaitingRobotID()).isEmpty()) allDepsTmp.remove(dep.getWaitingRobotID());
-
-						//update a temporary map between critical sections and orders
-						HashMap<CriticalSection, Pair<Integer,Integer>> CSToDepsOrderTmp = new HashMap<CriticalSection, Pair<Integer,Integer>>(CSToDepsOrder);
-						CSToDepsOrderTmp.put(cs, new Pair<Integer,Integer>(revDep.getWaitingRobotID(), revDep.getWaitingPoint()));
-
-						//create a temporary map between dependencies and critical sections
-						HashMap<Dependency,CriticalSection> depsToCSTmp = new HashMap<Dependency, CriticalSection>(depsToCS);
-						depsToCSTmp.remove(dep);
-						depsToCSTmp.put(revDep, cs);
-
-						//update currentDeps
-						HashSet<Dependency> currentDepsTmp = computeClosestDependencies(allDepsTmp, artificialDeps);
-						SimpleDirectedGraph<Integer,Dependency> gTmp = depsToGraph(currentDepsTmp);
-
-						//compute cycles again. If the number of cycles is lower, keep this solution
-						List<List<Integer>> nonliveCyclesTmp = findSimpleNonliveCycles(gTmp);
-						if (nonliveCyclesTmp.size() < nonliveCycles.size()) {
-							nonliveStatesAvoided.incrementAndGet();
-							metaCSPLogger.info("REVERSING a precedence constraint to break a deadlock: " + revDep.getWaitingRobotID() + " now waits for " + revDep.getDrivingRobotID());						
-
-							//reset the counter
-							counter = 0;
-
-							//update all the variables according to the new choice
-							g = gTmp;
-							currentDependencies.clear();
-							currentDependencies.addAll(currentDepsTmp);				
-							allDeps = allDepsTmp;
-							nonliveCycles = nonliveCyclesTmp;					
-							CSToDepsOrder.clear();
-							CSToDepsOrder.putAll(CSToDepsOrderTmp);							
-							depsToCS.clear();
-							depsToCS.putAll(depsToCSTmp);	
-
-							break;
-						}
-						//else you should not update the solution (the cycle will reversed by re-planning if possible)
-					}
+				else {
+					dep = g.getEdge(cycle.get(i), cycle.get(0));
 				}
+				if (reversibleDeps.contains(dep) && !artificialDeps.containsKey(dep.getWaitingRobotID())) reversibleDepsAlongCycle.add(dep);
 			}
-		}
 
-		//2. OTHERWISE, IF RE-PLAN IS ENABLED, TRY REPLANNING
+			//For each reversible edge ... 
+			//(note that if the dependency is reversible, then it is neither an artificial dependency,
+			//nor one related to an active parking critical section)
+			for (Dependency dep : reversibleDepsAlongCycle) {
 
-		if (breakDeadlocksByReplanning) {
+				if (depsToCS.containsKey(dep)) {
+					CriticalSection cs = depsToCS.get(dep);
 
-			HashSet<Integer> spawnedThreadRobotSet = new HashSet<Integer>();
-			for (List<Integer> cycle : nonliveCycles) {
-				boolean spawnThread = true;
+					//Try reversing the precedence
+					int waitingRobotID = dep.getDrivingRobotID();
+					TrajectoryEnvelope waitingTE = dep.getDrivingTrajectoryEnvelope();
+					int drivingRobotID = dep.getWaitingRobotID();
+					TrajectoryEnvelope drivingTE = dep.getWaitingTrajectoryEnvelope();
+					int drivingCurrentIndex = currentReports.get(drivingRobotID).getPathIndex();
+					int waitingPoint = getCriticalPoint(waitingRobotID, cs, drivingCurrentIndex);
+					int drivingCSEnd = (drivingRobotID == cs.getTe1().getRobotID()) ? cs.getTe1End() : cs.getTe2End();
 
-				//Get edges along the cycle...
-				ArrayList<Dependency> depsAlongCycle = new ArrayList<Dependency>();
-				HashSet<Integer> deadlockedRobots = new HashSet<Integer>();
-				for (int i = 0; i < cycle.size(); i++) {
-					Dependency dep = null;
-					if (i < cycle.size()-1) {
-						dep = g.getEdge(cycle.get(i), cycle.get(i+1));
-					}
-					else {
-						dep = g.getEdge(cycle.get(i), cycle.get(0));
-					}
-					depsAlongCycle.add(dep);
-					deadlockedRobots.add(dep.getWaitingRobotID());
-					if (spawnedThreadRobotSet.contains(dep.getWaitingRobotID()) || spawnedThreadRobotSet.contains(dep.getDrivingRobotID())) {
-						spawnThread = false;
+					Dependency revDep = new Dependency(waitingTE, drivingTE, waitingPoint, drivingCSEnd);
+
+					HashMap<Integer,HashSet<Dependency>> allDepsTmp = new HashMap<Integer,HashSet<Dependency>>(allDeps);
+
+					//and add the reversed dependency to the new waiting one
+					if (!allDepsTmp.containsKey(waitingRobotID)) allDepsTmp.put(waitingRobotID, new HashSet<Dependency>());
+					allDepsTmp.get(revDep.getWaitingRobotID()).add(revDep);
+
+					//remove the dependency to the old waiting robot
+					allDepsTmp.get(dep.getWaitingRobotID()).remove(dep);
+					if (allDepsTmp.get(dep.getWaitingRobotID()).isEmpty()) allDepsTmp.remove(dep.getWaitingRobotID());
+
+					//update a temporary map between critical sections and orders
+					HashMap<CriticalSection, Pair<Integer,Integer>> CSToDepsOrderTmp = new HashMap<CriticalSection, Pair<Integer,Integer>>(CSToDepsOrder);
+					CSToDepsOrderTmp.put(cs, new Pair<Integer,Integer>(revDep.getWaitingRobotID(), revDep.getWaitingPoint()));
+
+					//create a temporary map between dependencies and critical sections
+					HashMap<Dependency,CriticalSection> depsToCSTmp = new HashMap<Dependency, CriticalSection>(depsToCS);
+					depsToCSTmp.remove(dep);
+					depsToCSTmp.put(revDep, cs);
+
+					//update currentDeps
+					HashMap<Integer, Dependency> currentDepsTmp = computeClosestDependencies(allDepsTmp, artificialDeps);
+					SimpleDirectedGraph<Integer,Dependency> gTmp = depsToGraph(currentDepsTmp);
+
+					//compute cycles again. If the number of cycles is lower, keep this solution
+					List<List<Integer>> nonliveCyclesTmp = findSimpleNonliveCycles(gTmp);
+					if (nonliveCyclesTmp.size() < nonliveCycles.size()) {
+						nonliveStatesAvoided.incrementAndGet();
+						metaCSPLogger.info("REVERSING a precedence constraint to break a deadlock: " + revDep.getWaitingRobotID() + " now waits for " + revDep.getDrivingRobotID());						
+
+						//reset the counter
+						counter = 0;
+
+						//update all the variables according to the new choice
+						g = gTmp;
+						currentDependencies.clear();
+						currentDependencies.putAll(currentDepsTmp);				
+						allDeps = allDepsTmp;
+						nonliveCycles = nonliveCyclesTmp;					
+						CSToDepsOrder.clear();
+						CSToDepsOrder.putAll(CSToDepsOrderTmp);							
+						depsToCS.clear();
+						depsToCS.putAll(depsToCSTmp);	
+
 						break;
 					}
-				}
-
-				if (spawnThread) {
-					//Get other robots (all the robot in the maximum connected set of a deadlocked one)
-
-					/*------------------------------------------------------------------------------------------
-					 * Notes on connectivity: example code. While strongly connected components are useful for 
-					 * computing cycles, connected components are used to get the set of robots to be considered 
-					 * as obstacles when replanning.
-					 * -----------------------------------------------------------------------------------------
-					 * 
-					 * 	SimpleDirectedGraph<Integer,Integer> g = new SimpleDirectedGraph(Integer.class);
-						for (int v=1; v< 6; v++) g.addVertex(v);
-						g.addEdge(1,2,1);
-						g.addEdge(2,3,2);
-						g.addEdge(3,1,3);
-						g.addEdge(4,2,4);
-						g.addEdge(3,5,5);
-						ConnectivityInspector<Integer,Integer> connInsp = new ConnectivityInspector<Integer,Integer>(g);
-						KosarajuStrongConnectivityInspector<Integer,Integer> kconnInsp = new KosarajuStrongConnectivityInspector<Integer,Integer>(g);
-						Set<Integer> cc2 = connInsp.connectedSetOf(2);
-						Set<Integer> cc3 = connInsp.connectedSetOf(3);
-						List<Set<Integer>> scc = kconnInsp.stronglyConnectedSets();
-						System.out.println("cc2: " + cc2.toString() + ", cc3: " + cc3.toString() + ", scc: " + scc.toString());
-						//Result: cc2: [1, 2, 3, 4, 5], cc3: [1, 2, 3, 4, 5], scc: [[4], [1, 2, 3], [5]]
-						---------------------------------------------------------------------------------------
-					 */
-
-					//TODO: see issue on Github
-					ConnectivityInspector<Integer,Dependency> connInsp = new ConnectivityInspector<Integer,Dependency>(g);
-					HashSet<Integer> allRobots = (HashSet<Integer>) connInsp.connectedSetOf(cycle.get(0));
-					spawnReplanning(depsAlongCycle, allRobots);
-					spawnedThreadRobotSet.addAll(deadlockedRobots);
+					//else you should not update the solution (the cycle will reversed by re-planning if possible)
 				}
 			}
 		}
-
+		//Update the status (FIXME Nonlive cycles MAY end up in a deadlock, but may also be solved at the next iteration).
+		isDeadlocked = nonliveCycles.size() > 0;
+		
 		return allDeps;
+	}
+	
+	/**
+	 * Re-plan the path for a given robot.
+	 * @param robotID The robot which path should be re-planned.
+	 * @return <code>true</code> if re-planning is correctly spawned.
+	 */
+	public boolean replanEnvelope(int robotID) {
+		return replanEnvelope(robotID, false);
+	}
+	
+	private boolean replanEnvelope(int robotID, boolean onlyIfDeadlocks) {
+		synchronized (solver) {
+			SimpleDirectedGraph<Integer,Dependency> g = depsToGraph(currentDependencies);
+			List<List<Integer>> nonliveCycles = null;
+			
+			if (onlyIfDeadlocks) {
+				//find the nonlive cycles and spawn one replanning thread only if the robots are in deadlocks
+				nonliveCycles = findSimpleNonliveCycles(g);
+				nonliveStatesDetected.addAndGet(nonliveCycles.size());
+				
+				//find one cycle containing the robot
+				for (List<Integer> cycle : nonliveCycles) {
+					if (cycle.contains(robotID)) return callOnePathReplan(cycle, g);
+				}
+			}
+			List<Integer> cycle = new ArrayList<Integer>();
+			cycle.add(robotID);
+			return callOnePathReplan(cycle, g);
+		}
+	}
+	
+	private boolean callOnePathReplan(List<Integer> cycle, SimpleDirectedGraph<Integer,Dependency> g) {
+		
+		//Get edges along the cycle...
+		Set<Integer> robotsToReplan = new HashSet<Integer>();
+		for (int i = 0; i < cycle.size(); i++) {
+			int robotID = cycle.get(i);
+			Dependency dep = g.getEdge(cycle.get(i), cycle.get(i < cycle.size()-1 ? i+1 : 0));
+			if (dep == null) {
+				AbstractTrajectoryEnvelopeTracker tracker = null;
+				synchronized (trackers) {
+					tracker = trackers.get(robotID);
+				}
+				if (tracker instanceof TrajectoryEnvelopeTrackerDummy) return false;
+				TrajectoryEnvelope te = tracker.getTrajectoryEnvelope();
+				int stoppingPoint = getForwardModel(robotID).getEarliestStoppingPathIndex(te, tracker.getLastRobotReport());
+				dep = new Dependency(te, null, stoppingPoint, 0);
+				currentDependencies.put(robotID, dep);
+				setCriticalPoint(robotID, stoppingPoint, false);
+			}
+			if (dep.getDrivingTrajectoryEnvelope() != null) robotsToReplan.add(dep.getDrivingRobotID());
+			robotsToReplan.add(dep.getWaitingRobotID());
+			RobotReport rrWaiting = getRobotReport(dep.getWaitingRobotID());
+
+
+			//avoid to re-plan if one of the robots is parked.
+			//In case of static re-plan, wait for a deadlock to happen before starting it
+			if (dep.getDrivingTrajectoryEnvelope() != null && inParkingPose(dep.getDrivingRobotID()) || inParkingPose(dep.getWaitingRobotID())
+					|| staticReplan && ((dep.getWaitingPoint() == 0 ? (rrWaiting.getPathIndex() < 0) : (rrWaiting.getPathIndex() < dep.getWaitingPoint()-1)))) 
+				return false;
+		}
+
+
+		//Get other robots (all the robot in the maximum connected set of a deadlocked one)
+
+		/*------------------------------------------------------------------------------------------
+		 * Notes on connectivity: example code. While strongly connected components are useful for 
+		 * computing cycles, connected components are used to get the set of robots to be considered 
+		 * as obstacles when replanning.
+		 * -----------------------------------------------------------------------------------------
+		 * 
+		 * 	SimpleDirectedGraph<Integer,Integer> g = new SimpleDirectedGraph(Integer.class);
+			for (int v=1; v < 6; v++) g.addVertex(v);
+			g.addEdge(1,2,1);
+			g.addEdge(2,3,2);
+			g.addEdge(3,1,3);
+			g.addEdge(4,2,4);
+			g.addEdge(3,5,5);
+			ConnectivityInspector<Integer,Integer> connInsp = new ConnectivityInspector<Integer,Integer>(g);
+			KosarajuStrongConnectivityInspector<Integer,Integer> kconnInsp = new KosarajuStrongConnectivityInspector<Integer,Integer>(g);
+			Set<Integer> cc2 = connInsp.connectedSetOf(2);
+			Set<Integer> cc3 = connInsp.connectedSetOf(3);
+			List<Set<Integer>> scc = kconnInsp.stronglyConnectedSets();
+			System.out.println("cc2: " + cc2.toString() + ", cc3: " + cc3.toString() + ", scc: " + scc.toString());
+			//Result: cc2: [1, 2, 3, 4, 5], cc3: [1, 2, 3, 4, 5], scc: [[4], [1, 2, 3], [5]]
+			---------------------------------------------------------------------------------------
+		 */
+		ConnectivityInspector<Integer,Dependency> connInsp = new ConnectivityInspector<Integer,Dependency>(g);
+		HashSet<Integer> allConnectedRobots = g.containsVertex(cycle.get(0)) ? (HashSet<Integer>) connInsp.connectedSetOf(cycle.get(0)) : new HashSet<Integer>(); //it may be empty if the robot has no dependency
+		return spawnReplanning(robotsToReplan, allConnectedRobots);
 	}
 
 	//returns true if robot1 should go before robot2
@@ -579,11 +610,11 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						}
 					}
 				}
-				synchronized(lockedRobots) {
-					if (lockedRobots.containsKey(robotID)) 	{
+				synchronized(replanningStoppingPoints) {
+					if (replanningStoppingPoints.containsKey(robotID)) 	{
 						//We should enforce the last robot stopping point while it is involved in a re-plan.
 						if (!currentDeps.containsKey(robotID)) currentDeps.put(robotID, new HashSet<Dependency>());
-						currentDeps.get(robotID).add(lockedRobots.get(robotID));
+						currentDeps.get(robotID).add(replanningStoppingPoints.get(robotID));
 					}			
 				}
 			}
@@ -883,18 +914,16 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			synchronized(currentDependencies) {
 
 				//FIXME: already synchronized (so maybe is ok currentDependencies = computeClosestDependencies(currentDeps, artificialDependencies);)
-				HashSet<Dependency> closestDeps  = computeClosestDependencies(currentDeps, artificialDependencies);
+				HashMap<Integer, Dependency> closestDeps  = computeClosestDependencies(currentDeps, artificialDependencies);
 				currentDependencies.clear();
-				currentDependencies.addAll(closestDeps);
+				currentDependencies.putAll(closestDeps);
 
-				//find cycles and revise dependencies if necessary
-				currentDeps = findCurrentCycles(currentDeps, artificialDependencies, currentReversibleDependencies, currentReports, robotIDs);
+				//find nonlive cycles and revise dependencies if necessary
+				currentDeps = findAndRepairNonliveCycles(currentDeps, artificialDependencies, currentReversibleDependencies, currentReports, robotIDs);
 
 				//send revised dependencies
 				HashMap<Integer,Dependency> constrainedRobotIDs = new HashMap<Integer,Dependency>();
-				for (Dependency dep : currentDependencies) {
-					constrainedRobotIDs.put(dep.getWaitingRobotID(),dep);				
-				}
+				constrainedRobotIDs.putAll(currentDependencies);
 				for (int robotID : robotIDs) {
 					AbstractTrajectoryEnvelopeTracker tracker = null;
 					synchronized (trackers) {
@@ -919,51 +948,52 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		}
 	}
 
-	private void spawnReplanning(ArrayList<Dependency> deadlockedDeps, HashSet<Integer> allConnectedRobots) {
-
-		boolean tryReplanning = true;
-		final HashSet<Integer> deadlockedRobots = new HashSet<Integer>();
-		final boolean useStaticReplan = staticReplan;
-
-		//collect the set of robots for which the re-plan will eventually tried
-		for (Dependency dep : deadlockedDeps) {
-			deadlockedRobots.add(dep.getWaitingRobotID());
-			deadlockedRobots.add(dep.getDrivingRobotID());
-			RobotReport rrWaiting = getRobotReport(dep.getWaitingRobotID());
-
-			//avoid to re-plan if one of the robots is parked.
-			//In case of static re-plan, wait for a deadlock to happen before starting it
-			if (inParkingPose(dep.getDrivingRobotID()) || inParkingPose(dep.getWaitingRobotID())
-					|| useStaticReplan && ((dep.getWaitingPoint() == 0 ? (rrWaiting.getPathIndex() < 0) : (rrWaiting.getPathIndex() < dep.getWaitingPoint()-1)))) {
-				tryReplanning = false;
-				break;
-			}
-		}
-
+	/**
+	 * Spawn a re-planning thread to remove the nonlive set of dependencies deadlockedDeps.
+	 * @param robotsToReplan The set of robots which may attempt to re-plan the path.
+	 * @param allConnectedRobots Set of robots in the same weakly connected component of the analyzed nonlive set.
+	 * @return <code>true</code> if the replanning thread is correctly spawned.
+	 */
+	private boolean spawnReplanning(final Set<Integer> robotsToReplan, final Set<Integer> allConnectedRobots) {
+		
 		//You should lock the robots if you want to start re-planning. 
 		//In this way, the last critical point communicated when the re-plan is started is forced not to be updated
-		synchronized (lockedRobots) {
+		synchronized (replanningStoppingPoints) {
+			if (setMaxCPDependencies(robotsToReplan)) {
+				metaCSPLogger.info("Will re-plan for one of the following deadlocked robots: " + robotsToReplan + " (" + allConnectedRobots + ")...");
+				new Thread() {
+					public void run() {
+						rePlanPath(robotsToReplan, allConnectedRobots);
+					}
+				}.start();
+				return true;
+
+			}
+			return false;
+		}
+	}
+	
+	private boolean setMaxCPDependencies(Set<Integer> robotsIDs) {
+		synchronized (replanningStoppingPoints) {
 			boolean tryLocking = true;
-			for (int robotID : deadlockedRobots) {
-				if (lockedRobots.containsKey(robotID)) {
+			for (int robotID : robotsIDs) {
+				if (replanningStoppingPoints.containsKey(robotID)) {
 					tryLocking = false;
 					break;
 				}
 			}
-			if (tryReplanning && tryLocking) {
-				final HashSet<Integer> allRobots = allConnectedRobots;
-				for (Dependency dep : deadlockedDeps) {
-					lockedRobots.put(dep.getWaitingRobotID(), new Dependency(dep.getWaitingTrajectoryEnvelope(), null, dep.getWaitingPoint(), 0));
-				}
-				metaCSPLogger.finest("Locking robots: " + deadlockedRobots.toString());
-				metaCSPLogger.info("Will re-plan for one of the following deadlocked robots: " + deadlockedRobots + " (" + allRobots + ")...");
-				new Thread() {
-					public void run() {
-						rePlanPath(deadlockedRobots, allRobots, useStaticReplan);
+			if (tryLocking) {
+				//FIXME Here it assumes all robots in robotsIDs has a dependency but it may not be true.
+				HashMap<Integer, Dependency> currentDeps = getCurrentDependencies();
+				for (int robotID : robotsIDs) {
+					if (currentDeps.containsKey(robotID)) {
+						Dependency dep = currentDeps.get(robotID);
+						replanningStoppingPoints.put(dep.getWaitingRobotID(), new Dependency(dep.getWaitingTrajectoryEnvelope(), null, dep.getWaitingPoint(), 0));
 					}
-				}.start();
-
+				}
+				metaCSPLogger.finest("Add maximum CP dependency (re-plan) for robots: " + robotsIDs.toString());
 			}
+			return tryLocking;
 		}
 	}
 
@@ -972,7 +1002,14 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		return false;
 	}
 
-	protected void rePlanPath(HashSet<Integer> robotsToReplan, HashSet<Integer> allRobots, boolean useStaticReplan) {
+	
+	/**
+	 * Try re-planning ONE path AMONG the set of robots robotsToReplan while considering robotsAsObstacles placed in their current CP as additional obstacles. 
+	 * @param robotsToReplan The set of robots which may attempt to re-plan the path.
+	 * @param robotsAsObstacles The set of robots to consider as additional obstacles while re-planning.
+	 * @param useStaticReplan <code>true</code> iff all robotsToReplan should yield in their current critical point before starting the re-plan.
+	 */
+	protected void rePlanPath(Set<Integer> robotsToReplan, Set<Integer> robotsAsObstacles) {
 		for (int robotID : robotsToReplan) {
 			int currentWaitingIndex = -1;
 			Pose currentWaitingPose = null;
@@ -983,24 +1020,26 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			Geometry[] obstacles = null;
 			int[] otherRobotIDs = null;
 			synchronized (getCurrentDependencies()) {
-				for (Dependency dep : getCurrentDependencies()) {
-					if (dep.getWaitingRobotID() == robotID) {
-						currentWaitingIndex = dep.getWaitingPoint();
-						currentWaitingPose = dep.getWaitingPose();
-						if (currentWaitingPose == null) throw new Error("Waiting pose should not be null in dep: " + dep);
-						Trajectory traj = dep.getWaitingTrajectoryEnvelope().getTrajectory();
-						oldPath = traj.getPoseSteering();
-						currentWaitingGoal = oldPath[oldPath.length-1].getPose();
-						break;
-					}
+				HashMap<Integer, Dependency> currentDeps = getCurrentDependencies();
+				Dependency dep = currentDeps.containsKey(robotID) ? currentDeps.get(robotID) : null;
+				if (dep != null) { //FIXME what if null??
+					currentWaitingIndex = dep.getWaitingPoint();
+					currentWaitingPose = dep.getWaitingPose();
+					if (currentWaitingPose == null) throw new Error("Waiting pose should not be null in dep: " + dep);
+					Trajectory traj = dep.getWaitingTrajectoryEnvelope().getTrajectory();
+					oldPath = traj.getPoseSteering();
+					currentWaitingGoal = oldPath[oldPath.length-1].getPose();
 				}
 
-				otherRobotIDs = new int[allRobots.size()-1];
-				int counter = 0;
-				for (int otherRobotID : allRobots) if (otherRobotID != robotID) otherRobotIDs[counter++] = otherRobotID;
+				if (robotsAsObstacles.size() > 0) {
+					otherRobotIDs = new int[robotsAsObstacles.size()-1];
+					int counter = 0;
+					for (int otherRobotID : robotsAsObstacles) if (otherRobotID != robotID) otherRobotIDs[counter++] = otherRobotID;
 
-				//FIXME not synchronized on current dependencies
-				obstacles = getObstaclesInCriticalPoints(otherRobotIDs);
+					//FIXME not synchronized on current dependencies
+					obstacles = getObstaclesInCriticalPoints(otherRobotIDs);
+
+				}
 			}
 
 			metaCSPLogger.info("Attempting to re-plan path of Robot" + robotID + " (with obstacles for robots " + Arrays.toString(otherRobotIDs) + ")...");
@@ -1019,7 +1058,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						if (i < currentWaitingIndex) newCompletePath[i] = oldPath[i];
 						else newCompletePath[i] = newPath[i-currentWaitingIndex];
 					}
-					replacePath(robotID, newCompletePath, currentWaitingIndex, robotsToReplan, useStaticReplan);
+					replacePath(robotID, newCompletePath, currentWaitingIndex, robotsToReplan);
 					successfulReplanningTrialsCounter.incrementAndGet();
 					metaCSPLogger.info("Successfully re-planned path of Robot" + robotID);
 					break;
@@ -1029,8 +1068,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				}
 			}
 		}
-		synchronized (lockedRobots) {
-			for (int robotID : robotsToReplan) lockedRobots.remove(robotID);
+		synchronized (replanningStoppingPoints) {
+			for (int robotID : robotsToReplan) replanningStoppingPoints.remove(robotID);
 			metaCSPLogger.finest("Unlocking robots: " + robotsToReplan.toString());
 		}
 	}
@@ -1182,7 +1221,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 * @param lockedRobotIDs The set of robots which have been locked when the re-plan started.
 	 * @param <code>true</code> whether the robot should be at the current critical point before starting a re-plan.
 	 */
-	public void replacePath(int robotID, PoseSteering[] newPath, int breakingPathIndex, HashSet<Integer> lockedRobotIDs, boolean useStaticReplan) {
+	public void replacePath(int robotID, PoseSteering[] newPath, int breakingPathIndex, Set<Integer> lockedRobotIDs) {
 
 		synchronized (solver) {
 
@@ -1200,14 +1239,12 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				//store the order of precedence (and waiting points) for every 
 				//critical section involving the robot which is re-planning
 				HashMap<CriticalSection,Pair<Integer,Integer>> holdingCS = new HashMap<CriticalSection,Pair<Integer,Integer>>();
-				if (!useStaticReplan) {
-					for (CriticalSection cs : CSToDepsOrder.keySet()) {
-						if (cs.getTe1().getRobotID() == robotID && cs.getTe1Start() <= breakingPathIndex || 
-								cs.getTe2().getRobotID() == robotID && cs.getTe2Start() <= breakingPathIndex) {
-							Pair<Integer,Integer> order = new Pair<Integer,Integer>(CSToDepsOrder.get(cs).getFirst(), CSToDepsOrder.get(cs).getSecond());
-							holdingCS.put(cs, order);
-							metaCSPLogger.finest("Saving " + order.toString() + " for critical section " + cs + ".");
-						}
+				for (CriticalSection cs : CSToDepsOrder.keySet()) {
+					if (cs.getTe1().getRobotID() == robotID && cs.getTe1Start() <= breakingPathIndex || 
+							cs.getTe2().getRobotID() == robotID && cs.getTe2Start() <= breakingPathIndex) {
+						Pair<Integer,Integer> order = new Pair<Integer,Integer>(CSToDepsOrder.get(cs).getFirst(), CSToDepsOrder.get(cs).getSecond());
+						holdingCS.put(cs, order);
+						metaCSPLogger.finest("Saving " + order.toString() + " for critical section " + cs + ".");
 					}
 				}
 				//---------------------------------------------------------
@@ -1257,66 +1294,54 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				//Recompute CSs involving this robot
 				computeCriticalSections();
 
-				//------------------ (static re-plan or starting from critical section) ----------------------
-				if (useStaticReplan || breakingPathIndex == 0) {
-					//The robot is waiting at its current critical point. Hence, it can stop by definition.
-					//To keep it simple, restart the communication.
-					synchronized (trackers) {
-						//if (breakingPathIndex == 0) trackers.get(robotID).resetStartingTimeInMillis();
-						communicatedCPs.remove(trackers.get(robotID));
-					}
-				}
-				else {
+				//------------------ (dynamic re-plan) --------------------
+				for (CriticalSection cs1 : allCriticalSections) {
+					if (cs1.getTe1().getRobotID() == robotID && cs1.getTe1Start() <= breakingPathIndex || 
+							cs1.getTe2().getRobotID() == robotID && cs1.getTe2Start() <= breakingPathIndex) {
+						for (CriticalSection cs2 : holdingCS.keySet()) {
+							if (cs1.getTe1().getRobotID() == cs2.getTe1().getRobotID() && cs1.getTe2().getRobotID() == cs2.getTe2().getRobotID() ||
+									cs1.getTe1().getRobotID() == cs2.getTe2().getRobotID() && cs1.getTe2().getRobotID() == cs2.getTe1().getRobotID()) {
 
-					//------------------ (dynamic re-plan) --------------------
-					for (CriticalSection cs1 : allCriticalSections) {
-						if (cs1.getTe1().getRobotID() == robotID && cs1.getTe1Start() <= breakingPathIndex || 
-								cs1.getTe2().getRobotID() == robotID && cs1.getTe2Start() <= breakingPathIndex) {
-							for (CriticalSection cs2 : holdingCS.keySet()) {
-								if (cs1.getTe1().getRobotID() == cs2.getTe1().getRobotID() && cs1.getTe2().getRobotID() == cs2.getTe2().getRobotID() ||
-										cs1.getTe1().getRobotID() == cs2.getTe2().getRobotID() && cs1.getTe2().getRobotID() == cs2.getTe1().getRobotID()) {
+								//We should restore all the dependency order which cannot be safely reverted.
+								//Each new critical section (cs1 = [start11,end11], [start12,end12]) containing the breaking point 
+								//can be matched to its related old one (one cs2 = [start21,end21], [start22,end22]) by reasoning about the spatial overlaps between TEs' intervals. 
+								//Note that start and end of each critical sections are both included (i.e., still overlapping configurations) 
+								//-- see {@link CriticalSection}, {@link AbstractTrajectoryEnvelopeCoordinaror}, function: getCriticalSections).
 
-									//We should restore all the dependency order which cannot be safely reverted.
-									//Each new critical section (cs1 = [start11,end11], [start12,end12]) containing the breaking point 
-									//can be matched to its related old one (one cs2 = [start21,end21], [start22,end22]) by reasoning about the spatial overlaps between TEs' intervals. 
-									//Note that start and end of each critical sections are both included (i.e., still overlapping configurations) 
-									//-- see {@link CriticalSection}, {@link AbstractTrajectoryEnvelopeCoordinaror}, function: getCriticalSections).
+								int start11 = cs1.getTe1().getRobotID() == robotID ? cs1.getTe1Start() : cs1.getTe2Start();
+								int start12 = cs1.getTe1().getRobotID() == robotID ? cs1.getTe2Start() : cs1.getTe1Start();
+								int end11 = cs1.getTe1().getRobotID() == robotID ? cs1.getTe1End() : cs1.getTe2End();
+								int end12 = cs1.getTe1().getRobotID() == robotID ? cs1.getTe2End() : cs1.getTe1End();
+								int start21 = cs2.getTe1().getRobotID() == robotID ? cs2.getTe1Start() : cs2.getTe2Start();
+								int start22 = cs2.getTe1().getRobotID() == robotID ? cs2.getTe2Start() : cs2.getTe1Start();
+								int end21 = cs2.getTe1().getRobotID() == robotID ? cs2.getTe1End() : cs2.getTe2End();
+								int end22 = cs2.getTe1().getRobotID() == robotID ? cs2.getTe2End() : cs2.getTe1End();
+								
+								//Here we should consider all the cases of spatial overlap between the new critical section (cs1 = [start11,end11], [start12,end12]) and the old 
+								//critical section (cs2 = [start21,end21], [start22,end22]). Note that start and end are still overlapping configurations (see {@link CriticalSection}, {@link AbstractTrajectoryEnvelopeCoordinaror}, function: getCriticalSections).
+								if ((start21 <= start11 && start11 <= end21) && !(end22 < start12 || end12 < start22)) {
+									metaCSPLogger.finest("Restoring  the order of critical section " + cs2 + "(" + holdingCS.get(cs2).toString() + ") for critical section " + cs1 + ".");
+									CSToDepsOrder.put(cs1, holdingCS.get(cs2));
 
-									int start11 = cs1.getTe1().getRobotID() == robotID ? cs1.getTe1Start() : cs1.getTe2Start();
-									int start12 = cs1.getTe1().getRobotID() == robotID ? cs1.getTe2Start() : cs1.getTe1Start();
-									int end11 = cs1.getTe1().getRobotID() == robotID ? cs1.getTe1End() : cs1.getTe2End();
-									int end12 = cs1.getTe1().getRobotID() == robotID ? cs1.getTe2End() : cs1.getTe1End();
-									int start21 = cs2.getTe1().getRobotID() == robotID ? cs2.getTe1Start() : cs2.getTe2Start();
-									int start22 = cs2.getTe1().getRobotID() == robotID ? cs2.getTe2Start() : cs2.getTe1Start();
-									int end21 = cs2.getTe1().getRobotID() == robotID ? cs2.getTe1End() : cs2.getTe2End();
-									int end22 = cs2.getTe1().getRobotID() == robotID ? cs2.getTe2End() : cs2.getTe1End();
-									
-									//Here we should consider all the cases of spatial overlap between the new critical section (cs1 = [start11,end11], [start12,end12]) and the old 
-									//critical section (cs2 = [start21,end21], [start22,end22]). Note that start and end are still overlapping configurations (see {@link CriticalSection}, {@link AbstractTrajectoryEnvelopeCoordinaror}, function: getCriticalSections).
-									if ((start21 <= start11 && start11 <= end21) && !(end22 < start12 || end12 < start22)) {
-										metaCSPLogger.finest("Restoring  the order of critical section " + cs2 + "(" + holdingCS.get(cs2).toString() + ") for critical section " + cs1 + ".");
-										CSToDepsOrder.put(cs1, holdingCS.get(cs2));
-
-										if (this.avoidDeadlockGlobally.get()) {
-											//re-add dependency to cyclesList and currentOrdersGraph
-											HashMap<Pair<Integer,Integer>,Integer> edgesToAdd = new HashMap<Pair<Integer,Integer>,Integer>();
-											int waitingRobotID = holdingCS.get(cs2).getFirst();
-											int drivingRobotID = waitingRobotID == cs2.getTe1().getRobotID() ? cs2.getTe2().getRobotID() : cs2.getTe1().getRobotID();
-											edgesToAdd.put(new Pair<Integer,Integer>(waitingRobotID, drivingRobotID),1);
-											addEdges(edgesToAdd);
-										}
-										break;
+									if (this.avoidDeadlockGlobally.get()) {
+										//re-add dependency to cyclesList and currentOrdersGraph
+										HashMap<Pair<Integer,Integer>,Integer> edgesToAdd = new HashMap<Pair<Integer,Integer>,Integer>();
+										int waitingRobotID = holdingCS.get(cs2).getFirst();
+										int drivingRobotID = waitingRobotID == cs2.getTe1().getRobotID() ? cs2.getTe2().getRobotID() : cs2.getTe1().getRobotID();
+										edgesToAdd.put(new Pair<Integer,Integer>(waitingRobotID, drivingRobotID),1);
+										addEdges(edgesToAdd);
 									}
-								}		
-							}
+									break;
+								}
+							}		
 						}
 					}
 				}
 
 				envelopesToTrack.remove(newTE);
 
-				synchronized (lockedRobots) {
-					for (int ID : lockedRobotIDs) lockedRobots.remove(ID);
+				synchronized (replanningStoppingPoints) {
+					for (int ID : lockedRobotIDs) replanningStoppingPoints.remove(ID);
 					metaCSPLogger.finest("Unlocking robots: " + lockedRobotIDs.toString());
 				}
 
@@ -1325,52 +1350,58 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			}
 		}
 	}
+	
 
 	/**
 	 * Truncate the {@link TrajectoryEnvelope} of a given robot at the closest dynamically-feasible path point. This path point is computed via the robot's {@link ForwardModel}.
 	 * @param robotID The ID of the robot whose {@link TrajectoryEnvelope} should be truncated.
-	 * @return the earliestStoppingIndex CP if the envelope is successfully truncated, -2 otherwise.
+	 * @return <code>true</code> iff the envelope is successfully truncated.
 	 */
-	public int truncateEnvelope(int robotID) {
+	public boolean truncateEnvelope(int robotID) {
+		return truncateEnvelope(robotID, true);
+	}
+	
+	/**
+	 * Truncate the {@link TrajectoryEnvelope} of a given robot at the closest dynamically-feasible path point. This path point is computed via the robot's {@link ForwardModel}.
+	 * @param robotID The ID of the robot whose {@link TrajectoryEnvelope} should be truncated.
+	 * @param ensureDynamicFeasibility If <code>true</code>, truncate at the closest dynamically-feasible path point, which is computed via the robot's {@link ForwardModel}; if <code>false</code>, truncate at the current path index.
+	 * @return <code>true</code> iff the envelope is successfully truncated.
+	 */
+	public boolean truncateEnvelope(int robotID, boolean ensureDynamicFeasibility) {
 		
 		synchronized (solver) {
 			
-			synchronized (lockedRobots) {
-				if (lockedRobots.containsKey(robotID)) return -2;
+			synchronized (replanningStoppingPoints) {
+				if (replanningStoppingPoints.containsKey(robotID)) return false;
 			}
 			
 			TrajectoryEnvelope te = this.getCurrentTrajectoryEnvelope(robotID);
-			AbstractTrajectoryEnvelopeTracker tet = this.trackers.get(robotID); 
+			AbstractTrajectoryEnvelopeTracker tet = null;
+			synchronized(trackers) {
+				tet = this.trackers.get(robotID); 
+			}
 			
 			int earliestStoppingPathIndex = -1;
-			int ret = -1;
 
 			if (!(tet instanceof TrajectoryEnvelopeTrackerDummy)) {
 				
-				earliestStoppingPathIndex = this.getForwardModel(robotID).getEarliestStoppingPathIndex(te, this.getRobotReport(robotID));
+				earliestStoppingPathIndex = ensureDynamicFeasibility ? this.getForwardModel(robotID).getEarliestStoppingPathIndex(te, this.getRobotReport(robotID)) : this.getRobotReport(robotID).getPathIndex();
 				
-				if (earliestStoppingPathIndex != -1) {
-					
-					//Check if you were already slowing down to stop in your critical point.
-					int lastCommunicatedCP = -1;
-					synchronized (trackers) {
-						//if (breakingPathIndex == 0) trackers.get(robotID).resetStartingTimeInMillis();
-						lastCommunicatedCP = communicatedCPs.get(trackers.get(robotID)).getFirst();
-					}
-					if (lastCommunicatedCP != -1) earliestStoppingPathIndex = Math.min(lastCommunicatedCP, earliestStoppingPathIndex);
-					
-					metaCSPLogger.info("Truncating " + te + " at " + earliestStoppingPathIndex);
-					
-					//Compute and add new TE, remove old TE (both driving and final parking)
-					PoseSteering[] truncatedPath = Arrays.copyOf(te.getTrajectory().getPoseSteering(), earliestStoppingPathIndex+1);
-					
-					//replace the path of this robot (will compute new envelope)
-					replacePath(robotID, truncatedPath, truncatedPath.length, new HashSet<Integer>(robotID),false);
-					ret = (earliestStoppingPathIndex == truncatedPath.length-1) ? -1 : earliestStoppingPathIndex;
-				}
+				//Check if you were already slowing down to stop in your critical point.
+				int lastCommunicatedCP = -1;
+				lastCommunicatedCP = communicatedCPs.get(tet).getFirst();
+				earliestStoppingPathIndex = (lastCommunicatedCP != -1) ? Math.min(lastCommunicatedCP, earliestStoppingPathIndex) : earliestStoppingPathIndex;
+								
+				//Compute and add new TE, remove old TE (both driving and final parking)
+				PoseSteering[] truncatedPath = Arrays.copyOf(te.getTrajectory().getPoseSteering(), earliestStoppingPathIndex+1);
+				
+				//replace the path of this robot (will compute new envelope)
+				replacePath(robotID, truncatedPath, truncatedPath.length-1, new HashSet<Integer>(robotID));
+				
+				metaCSPLogger.info("Truncating " + te + " at " + earliestStoppingPathIndex + ".");
 			}
-			
-			return ret;
+
+			return true;
 		}
 	}
 
@@ -1378,35 +1409,31 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 * Reverse the {@link TrajectoryEnvelope} of a given robot at the closest dynamically-feasible path point.
 	 * This path point is computed via the robot's {@link ForwardModel}.
 	 * @param robotID The ID of the robot whose {@link TrajectoryEnvelope} should be reversed.
-	 * @return the earliestStoppingIndex CP if the envelope is successfully truncated, -2 otherwise.
+	 * @return <code>true</code> iff the envelope is successfully truncated.
 	 */
-	public int reverseEnvelope(int robotID) {
-
+	public boolean reverseEnvelope(int robotID) {
 		synchronized (solver) {
 
-			synchronized (lockedRobots) {
-				if (lockedRobots.containsKey(robotID)) return -2;
+			synchronized (replanningStoppingPoints) {
+				if (replanningStoppingPoints.containsKey(robotID)) return false;
 			}
 
 			TrajectoryEnvelope te = this.getCurrentTrajectoryEnvelope(robotID);
-			AbstractTrajectoryEnvelopeTracker tet = this.trackers.get(robotID);
+			AbstractTrajectoryEnvelopeTracker tet = null;
+			synchronized(trackers) {
+				tet = this.trackers.get(robotID); 
+			}
 			
 			int earliestStoppingPathIndex = -1;
-			int ret = -1;
 			
 			if (!(tet instanceof TrajectoryEnvelopeTrackerDummy)) {
 				earliestStoppingPathIndex = this.getForwardModel(robotID).getEarliestStoppingPathIndex(te, this.getRobotReport(robotID));
-				
 				//Check if you were already slowing down to stop in your critical point.
 				int lastCommunicatedCP = -1;
-				synchronized (trackers) {
-					//if (breakingPathIndex == 0) trackers.get(robotID).resetStartingTimeInMillis();
-					lastCommunicatedCP = communicatedCPs.get(trackers.get(robotID)).getFirst();
-				}
-				if (lastCommunicatedCP != -1) earliestStoppingPathIndex = Math.min(lastCommunicatedCP, earliestStoppingPathIndex);
+				lastCommunicatedCP = communicatedCPs.get(tet).getFirst();
+				earliestStoppingPathIndex = (lastCommunicatedCP != -1) ? Math.min(lastCommunicatedCP, earliestStoppingPathIndex) : earliestStoppingPathIndex;
 				
 				if (earliestStoppingPathIndex != -1) {
-					metaCSPLogger.info("Reversing " + te + " at " + earliestStoppingPathIndex);
 
 					//Compute and add new TE, remove old TE (both driving and final parking)
 					PoseSteering[] truncatedPath = Arrays.copyOf(te.getTrajectory().getPoseSteering(), earliestStoppingPathIndex+1);
@@ -1415,12 +1442,13 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					for (int i = 1; i < truncatedPath.length; i++) overallPath[truncatedPath.length-1+i] = truncatedPath[truncatedPath.length-i];
 
 					//replace the path of this robot (will compute new envelope)
-					replacePath(robotID, overallPath, truncatedPath.length-1, new HashSet<Integer>(robotID),false);
-					ret = (earliestStoppingPathIndex == overallPath.length-1) ? -1 : earliestStoppingPathIndex;
+					replacePath(robotID, overallPath, truncatedPath.length-1, new HashSet<Integer>(robotID));
+					
+					metaCSPLogger.info("Reversing " + te + " at " + earliestStoppingPathIndex + ".");
 				}
 			}
 
-			return ret;
+			return true;
 		}
 	}
 
@@ -1607,12 +1635,12 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							}
 						}
 					}
-					synchronized(lockedRobots) {
-						if (lockedRobots.containsKey(robotID)) 	{
+					synchronized(replanningStoppingPoints) {
+						if (replanningStoppingPoints.containsKey(robotID)) 	{
 							//We should enforce the last robot stopping point while it is involved in a re-plan.
 							if (!currentDeps.containsKey(robotID)) currentDeps.put(robotID, new HashSet<Dependency>());
-							currentDeps.get(robotID).add(lockedRobots.get(robotID));
-							metaCSPLogger.info("Add Locking dependency to Robot" + robotID + ". Dep: " + lockedRobots.get(robotID));
+							currentDeps.get(robotID).add(replanningStoppingPoints.get(robotID));
+							metaCSPLogger.info("Add Locking dependency to Robot" + robotID + ". Dep: " + replanningStoppingPoints.get(robotID));
 						}			
 					}
 				}
@@ -2136,62 +2164,20 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			synchronized(currentDependencies) {
 
 				//FIXME: already synchronized (so maybe is ok currentDependencies = computeClosestDependencies(currentDeps, artificialDependencies);)
-				HashSet<Dependency> closestDeps  = computeClosestDependencies(currentDeps, artificialDependencies);
+				HashMap<Integer, Dependency> closestDeps  = computeClosestDependencies(currentDeps, artificialDependencies);
 				currentDependencies.clear();
-				currentDependencies.addAll(closestDeps);
+				currentDependencies.putAll(closestDeps);
 
 				//The global strategy builds upon the assumption that robots do not start from critical section. 
 				//If this is not the case, them pre-loading may bring to nonlive cycles. 
 				//To handle this case, switch to a local strategy whenever a robot is starting from a critical section and cannot
 				//exit from it.
-				/*if (!artificialDependencies.isEmpty()) {
-					this.breakDeadlocksByReplanning = true;
-
-					//find cycles and revise dependencies if necessary
-					findCurrentCycles(currentDeps, artificialDependencies, new HashSet<Dependency>(), currentReports, robotIDs);
-
-					this.breakDeadlocksByReplanning = false;
-				}*/
-
-				//re-plan for the set of robots that are currently in a critical section
-				SimpleDirectedGraph<Integer,Dependency> g = depsToGraph(currentDependencies);
-				List<List<Integer>> nonliveCycles = findSimpleNonliveCycles(g);
-				nonliveStatesDetected.addAndGet(nonliveCycles.size());
-
-				HashSet<Integer> spawnedThreadRobotSet = new HashSet<Integer>();
-				for (List<Integer> cycle : nonliveCycles) {
-					int robotID = -1;
-					for (int ID : askForReplan) {
-						if (cycle.contains(ID)) {
-							robotID = ID;
-							break;
-						}
-					}
-					if (robotID == -1) continue;
-
-					//the cycle contains a robot that is asking for re-plan.
-					//Find all the deps along the cycle
-					boolean spawnThread = true;
-					metaCSPLogger.info("Try re-plan for Robot" + robotID+ ".");
-					ArrayList<Dependency> depsAlongCycle = new ArrayList<Dependency>();
-					for (int i = 0; i < cycle.size(); i++) {
-						Dependency dep = g.getEdge(cycle.get(i), cycle.get(i < cycle.size()-1 ? i+1 : 0));
-						if (dep != null) depsAlongCycle.add(dep);
-						if (spawnedThreadRobotSet.contains(dep.getWaitingRobotID()) || spawnedThreadRobotSet.contains(dep.getDrivingRobotID())) spawnThread = false;
-					}
-					if (spawnThread) {
-						ConnectivityInspector<Integer,Dependency> connInsp = new ConnectivityInspector<Integer,Dependency>(g);
-						HashSet<Integer> allRobots = (HashSet<Integer>) connInsp.connectedSetOf(robotID);
-						spawnReplanning(depsAlongCycle, allRobots);
-						spawnedThreadRobotSet.addAll(cycle);
-					}
-				}
+				for (int robotID : askForReplan) replanEnvelope(robotID, true);
 
 				//send revised dependencies
 				HashMap<Integer,Dependency> constrainedRobotIDs = new HashMap<Integer,Dependency>();
-				for (Dependency dep : currentDependencies) {
-					constrainedRobotIDs.put(dep.getWaitingRobotID(),dep);				
-				}
+				constrainedRobotIDs.putAll(currentDependencies);
+				
 				for (int robotID : robotIDs) {
 					AbstractTrajectoryEnvelopeTracker tracker = null;
 					synchronized (trackers) {
@@ -2221,4 +2207,4 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 }//end class
 
 
-//FIXME Strating from critical section with checkAndRevise
+//FIXME Starting from critical section with checkAndRevise
