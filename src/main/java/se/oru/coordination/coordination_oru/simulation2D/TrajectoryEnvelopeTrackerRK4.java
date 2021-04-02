@@ -83,7 +83,9 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 	
 	public double[] getCurvatureDampening() {
 		return this.curvatureDampening;
-	}private void computeCurvatureDampening() {
+	}
+	
+	private void computeCurvatureDampening() {
 		PoseSteering[] path = this.traj.getPoseSteering();
 		double deltaSinTheta = 0;
 		double sinThetaPrev = Math.sin(Missions.wrapAngle180b(path[0].getTheta()));
