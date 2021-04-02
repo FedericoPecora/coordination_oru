@@ -42,9 +42,9 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	protected AtomicInteger totalMsgsLost = new AtomicInteger(0);
 	protected AtomicInteger totalPacketsLost = new AtomicInteger(0);
 	
-	protected int DEFAULT_ROBOT_TRACKING_PERIOD = 30;
-	protected double DEFAULT_MAX_VELOCITY = 10.0;
-	protected double DEFAULT_MAX_ACCELERATION = 1.0;
+	protected int DEFAULT_ROBOT_TRACKING_PERIOD;
+	protected double DEFAULT_MAX_VELOCITY;
+	protected double DEFAULT_MAX_ACCELERATION;
 	
 	/**
 	 * The default footprint used for robots if none is specified.
@@ -112,7 +112,7 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	 * <ul>
 	 * <li><code>CONTROL_PERIOD</code> = 1000</li>
 	 * <li><code>TEMPORAL_RESOLUTION</code> = 1000</li>
-	 * <li><code>trackingPeriodInMillis</code> = 30</li>
+	 * <li><code>DEFAULT_ROBOT_TRACKING_PERIOD</code> = 30</li>
 	 * <li><code>PARKING_DURATION</code> = 3000</li>
 	 * </ul>
 	 */
@@ -125,7 +125,7 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	 * <ul>
 	 * <li><code>CONTROL_PERIOD</code> = 1000</li>
 	 * <li><code>TEMPORAL_RESOLUTION</code> = 1000</li>
-	 * <li><code>trackingPeriodInMillis</code> = 30</li>
+	 * <li><code>DEFAULT_ROBOT_TRACKING_PERIOD</code> = 30</li>
 	 * <li><code>PARKING_DURATION</code> = 3000</li>
 	 * </ul>
 	 */
@@ -140,7 +140,7 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	 * <li><code>TEMPORAL_RESOLUTION</code> = 1000</li>
 	 * <li><code>MAX_VELOCITY</code> = 10.0</li>
 	 * <li><code>MAX_ACCELERATION</code> = 1.0</li>
-	 * <li><code>trackingPeriodInMillis</code> = 30</li>
+	 * <li><code>DEFAULT_ROBOT_TRACKING_PERIOD</code> = 30</li>
 	 * <li><code>PARKING_DURATION</code> = 3000</li>
 	 * </ul>
 	 */
