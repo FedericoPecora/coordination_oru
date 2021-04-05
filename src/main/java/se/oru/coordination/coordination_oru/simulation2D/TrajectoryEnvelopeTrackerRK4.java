@@ -33,7 +33,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 	protected State state = null;
 	protected double[] curvatureDampening = null;
 	private ArrayList<Integer> internalCriticalPoints = new ArrayList<Integer>();
-	private int maxDelayInMillis = 0;
+	private int numberOfReplicas = 1;
 	private Random rand = new Random(Calendar.getInstance().getTimeInMillis()); 
 	private TreeMap<Double,Double> slowDownProfile = null;
 	private boolean slowingDown = false;
@@ -49,6 +49,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 	
 	public TrajectoryEnvelopeTrackerRK4(TrajectoryEnvelope te, int timeStep, double temporalResolution, TrajectoryEnvelopeCoordinatorSimulation tec, TrackingCallback cb) {
 		this(te, timeStep, temporalResolution, 1.0, 0.1, tec, cb);
+		setNumberOfReplicas(tec.getNumberOfReplicas(), tec.getControlPeriod());
 	}
 	
 	private void computeInternalCriticalPoints() {
@@ -168,7 +169,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 			}
 			
 			long timeNow = Calendar.getInstance().getTimeInMillis();
-			final int numberOfReplicasReceiving = Math.max(1, (int)Math.ceil(tec.getNumberOfReplicas()*(double)trackingPeriodInMillis/tec.getControlPeriod()));
+			final int numberOfReplicasReceiving = this.numberOfReplicas;
 				
 			timeNow = Calendar.getInstance().getTimeInMillis();
 			long timeOfArrival = timeNow;
@@ -355,7 +356,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 
 		final int criticalPoint = criticalPointToSet;
 		final int externalCPCount = extCPCounter;
-		final int numberOfReplicas = tec.getNumberOfReplicas();
+		final int numberOfReplicas = this.numberOfReplicas;
 		
 		//Define a thread that will send the information
 		Thread waitToTXThread = new Thread("Wait to TX thread for robot " + te.getRobotID()) {
@@ -540,8 +541,16 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 		return new RobotReport(te.getRobotID(), pose, currentPathIndex, auxState.getVelocity(), auxState.getPosition(), -1);
 	}
 
-	public void delayIntegrationThread(int maxDelayInMillis) {
-		this.maxDelayInMillis = maxDelayInMillis;
+	public void setNumberOfReplicas(int numberOfReplicas) {
+		if (numberOfReplicas < 1) {
+			metaCSPLogger.warning("Set number of replicas failed: invalid argument.");
+			return;
+		}
+		this.numberOfReplicas = numberOfReplicas;
+	}
+	
+	public void setNumberOfReplicas(int coordinationNumberOfReplicas, int coordinationPeriodInMillis) {
+		this.numberOfReplicas = Math.max(1, (int)Math.ceil(coordinationNumberOfReplicas*(double)trackingPeriodInMillis/coordinationPeriodInMillis));
 	}
 	
 	@Override
@@ -600,7 +609,7 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 						
 			//Sleep for tracking period
 			int delay = trackingPeriodInMillis;
-			if (maxDelayInMillis > 0) delay += rand.nextInt(maxDelayInMillis);
+			if (NetworkConfiguration.getMaximumTxDelay() > 0) delay += rand.nextInt(NetworkConfiguration.getMaximumTxDelay());
 			try { Thread.sleep(delay); }
 			catch (InterruptedException e) { e.printStackTrace(); }
 			
