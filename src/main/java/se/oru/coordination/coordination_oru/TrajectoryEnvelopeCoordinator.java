@@ -1102,6 +1102,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							while (!missionsPool.isEmpty() && numberNewAddedMissions < MAX_ADDED_MISSIONS) {
 								Pair<TrajectoryEnvelope,Long> te = missionsPool.pollFirst();
 								envelopesToTrack.add(te.getFirst());
+								onNewMissionDispatched(te.getFirst().getRobotID());
 								numberNewAddedMissions++;
 							}
 							numberNewCriticalSections = allCriticalSections.size();

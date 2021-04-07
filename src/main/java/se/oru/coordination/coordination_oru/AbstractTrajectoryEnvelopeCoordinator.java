@@ -1763,6 +1763,12 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			metaCSPLogger.info(s);
 		}		
 	}
+	
+	/**
+	 * Specifies what happens when a new mission is dispatched.
+	 * @param robotID The ID of the robot which is starting a new mission.
+	 */
+	protected void onNewMissionDispatched(int robotID) {};
 
 	protected void setupInferenceCallback() {
 		
@@ -1776,27 +1782,12 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				
 				while (!stopInference) {
 					int numberNewAddedMissions = 0;
-					int numberDrivingRobots = 0;
 					synchronized (solver) {	
-						if (!missionsPool.isEmpty()) {
-							//get the oldest posted mission
-							/*int oldestMissionRobotID = -1;
-							long oldestMissionTime = Long.MAX_VALUE;
-							for (int robotID : missionsPool.keySet()) {
-								if (missionsPool.get(robotID).getSecond().compareTo(oldestMissionTime) < 0) {
-									oldestMissionTime = missionsPool.get(robotID).getSecond().longValue();
-									oldestMissionRobotID = robotID;
-								}
-							}
-							envelopesToTrack.add(missionsPool.get(oldestMissionRobotID).getFirst());
-							missionsPool.remove(oldestMissionRobotID);*/
-							//FIXME critical sections should be computed incrementally/asynchronously
-							for (Integer robotID : trackers.keySet()) 
-								if (!(trackers.get(robotID) instanceof TrajectoryEnvelopeTrackerDummy)) numberDrivingRobots++;
-							
+						if (!missionsPool.isEmpty()) {							
 							while (!missionsPool.isEmpty() && numberNewAddedMissions < MAX_ADDED_MISSIONS) {
 								Pair<TrajectoryEnvelope,Long> te = missionsPool.pollFirst();
 								envelopesToTrack.add(te.getFirst());
+								onNewMissionDispatched(te.getFirst().getRobotID());
 								numberNewAddedMissions++;
 							}
 							computeCriticalSections();
