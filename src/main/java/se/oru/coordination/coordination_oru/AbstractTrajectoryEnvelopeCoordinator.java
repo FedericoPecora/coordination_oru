@@ -75,7 +75,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 
 	public static final int PARKING_DURATION = 3000;
 	protected static final int DEFAULT_STOPPING_TIME = 5000;
-	protected int DEFAULT_ROBOT_TRACKING_PERIOD;
+	protected int DEFAULT_ROBOT_TRACKING_PERIOD = 30;
 	protected int CONTROL_PERIOD;
 	protected double TEMPORAL_RESOLUTION;
 	public static int EFFECTIVE_CONTROL_PERIOD = 0;
