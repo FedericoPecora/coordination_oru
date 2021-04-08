@@ -75,6 +75,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 
 	public static final int PARKING_DURATION = 3000;
 	protected static final int DEFAULT_STOPPING_TIME = 5000;
+	protected int DEFAULT_ROBOT_TRACKING_PERIOD;
 	protected int CONTROL_PERIOD;
 	protected double TEMPORAL_RESOLUTION;
 	public static int EFFECTIVE_CONTROL_PERIOD = 0;
@@ -181,6 +182,18 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 */
 	public double getTemporalResolution() {
 		return TEMPORAL_RESOLUTION;
+	}
+	
+	/**
+	 * Get the tracking period of a given robot in millis.
+	 * @param robotID The ID of the robot.
+	 * @return The tracking period of the robot (or the default value if not specified).
+	 */
+	public Integer getRobotTrackingPeriodInMillis(int robotID) {
+		if (this.robotTrackingPeriodInMillis.containsKey(robotID)) 
+			return this.robotTrackingPeriodInMillis.get(robotID);
+		metaCSPLogger.warning("Tracking period of Robot" + robotID + "is not specified. Returning the default value.");
+		return DEFAULT_ROBOT_TRACKING_PERIOD;
 	}
 	
 	/**
@@ -371,17 +384,6 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 */
 	public void setRobotMaxAcceleration(int robotID, double maxAcceleration) {
 		this.robotMaxAcceleration.put(robotID, maxAcceleration);
-	}
-	
-	/**
-	 * Get the tracking period of a given robot in millis.
-	 * @param robotID The ID of the robot.
-	 * @return The tracking period of the robot (null if not specified --- this should never happen).
-	 */
-	public Integer getRobotTrackingPeriodInMillis(int robotID) {
-		if (this.robotTrackingPeriodInMillis.containsKey(robotID)) 
-			return this.robotTrackingPeriodInMillis.get(robotID);
-		return null;
 	}
 	 
 	/**

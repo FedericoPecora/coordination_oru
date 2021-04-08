@@ -42,7 +42,6 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	protected AtomicInteger totalMsgsLost = new AtomicInteger(0);
 	protected AtomicInteger totalPacketsLost = new AtomicInteger(0);
 	
-	protected int DEFAULT_ROBOT_TRACKING_PERIOD;
 	protected double DEFAULT_MAX_VELOCITY;
 	protected double DEFAULT_MAX_ACCELERATION;
 	
@@ -196,19 +195,7 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	public void setUseInternalCriticalPoints(boolean value) {
 		this.useInternalCPs = value;
 	}
-	
-	/**
-	 * Get the tracking period of a given robot in millis.
-	 * @param robotID The ID of the robot.
-	 * @return The tracking period of the robot (or the default value if not specified).
-	 */
-	@Override
-	public Integer getRobotTrackingPeriodInMillis(int robotID) {
-		if (this.robotTrackingPeriodInMillis.containsKey(robotID)) 
-			return this.robotTrackingPeriodInMillis.get(robotID);
-		return DEFAULT_ROBOT_TRACKING_PERIOD;
-	}
-	
+		
 	/**
 	 * Get the maximum velocity of a given robot (m/s).
 	 * @param robotID The ID of the robot.
