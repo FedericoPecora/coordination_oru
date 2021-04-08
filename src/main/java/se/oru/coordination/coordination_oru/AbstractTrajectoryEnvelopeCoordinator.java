@@ -192,7 +192,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	public Integer getRobotTrackingPeriodInMillis(int robotID) {
 		if (this.robotTrackingPeriodInMillis.containsKey(robotID)) 
 			return this.robotTrackingPeriodInMillis.get(robotID);
-		metaCSPLogger.warning("Tracking period of Robot" + robotID + "is not specified. Returning the default value.");
+		metaCSPLogger.warning("Tracking period of Robot" + robotID + " is not specified. Returning the default value.");
 		return DEFAULT_ROBOT_TRACKING_PERIOD;
 	}
 	
