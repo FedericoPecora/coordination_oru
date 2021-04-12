@@ -21,6 +21,7 @@ import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeTracker;
 import se.oru.coordination.coordination_oru.CollisionEvent;
 import se.oru.coordination.coordination_oru.CriticalSection;
 import se.oru.coordination.coordination_oru.Dependency;
+import se.oru.coordination.coordination_oru.ForwardModel;
 import se.oru.coordination.coordination_oru.Mission;
 import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.TrackingCallback;
@@ -31,8 +32,6 @@ import se.oru.coordination.coordination_oru.motionplanning.AbstractMotionPlanner
 public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeCoordinator {
 
 	protected static final long START_TIME = Calendar.getInstance().getTimeInMillis();
-	protected double MAX_VELOCITY;
-	protected double MAX_ACCELERATION;
 	protected boolean useInternalCPs = true;
 	
 	protected boolean fake = false;
@@ -42,6 +41,25 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	
 	protected AtomicInteger totalMsgsLost = new AtomicInteger(0);
 	protected AtomicInteger totalPacketsLost = new AtomicInteger(0);
+	
+	protected double DEFAULT_MAX_VELOCITY;
+	protected double DEFAULT_MAX_ACCELERATION;
+	
+	/**
+	 * The default footprint used for robots if none is specified.
+	 * NOTE: coordinates in footprints must be given in in CCW or CW order. 
+	 */
+	public static Coordinate[] DEFAULT_FOOTPRINT = new Coordinate[] {
+			new Coordinate(-1.7, 0.7),	//back left
+			new Coordinate(-1.7, -0.7),	//back right
+			new Coordinate(2.7, -0.7),	//front right
+			new Coordinate(2.7, 0.7)	//front left
+	};
+
+	/**
+	 * Dimension of the default footprint.
+	 */
+	public static double MAX_DEFAULT_FOOTPRINT_DIMENSION = 4.4;
 	
 	/**
 	 * Enable the collision checking thread.
@@ -74,26 +92,26 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	}
 	
 	/**
-	 * Create a new {@link TrajectoryEnvelopeCoordinatorSimulation} with the following default values:
-	 * <ul>
-	 * <li><code>CONTROL_PERIOD</code> = 1000</li>
-	 * <li><code>TEMPORAL_RESOLUTION</code> = 1000</li>
-	 * <li><code>MAX_VELOCITY</code> = 10.0</li>
-	 * <li><code>MAX_ACCELERATION</code> = 1.0</li>
-	 * <li><code>trackingPeriodInMillis</code> = 30</li>
-	 * <li><code>PARKING_DURATION</code> = 3000</li>
-	 * </ul>
+	 * Create a new {@link TrajectoryEnvelopeCoordinatorSimulation} with given parameters.
+	 * @param CONTROL_PERIOD The control period of the coordinator (e.g., 1000 msec)
+	 * @param TEMPORAL_RESOLUTION The temporal resolution at which the control period is specified (e.g., 1000)
+	 * @param MAX_VELOCITY The maximum speed of a robot (used to appropriately instantiate the {@link TrajectoryEnvelopeTrackerRK4} instances).
+	 * @param MAX_ACCELERATION The maximum acceleration/deceleration of a robot (used to appropriately instantiate the {@link TrajectoryEnvelopeTrackerRK4} instances).
+	 * @param DEFAULT_ROBOT_TRACKING_PERIOD The default tracking period in milliseconds (used to appropriately instantiate the {@link TrajectoryEnvelopeTrackerRK4} instances).
 	 */
-	public TrajectoryEnvelopeCoordinatorSimulation() {
-		this(1000, 1000, 10.0, 1.0, 30);
+	public TrajectoryEnvelopeCoordinatorSimulation(int CONTROL_PERIOD, double TEMPORAL_RESOLUTION, double MAX_VELOCITY, double MAX_ACCELERATION, int DEFAULT_ROBOT_TRACKING_PERIOD) {
+		super(CONTROL_PERIOD, TEMPORAL_RESOLUTION);
+		this.DEFAULT_MAX_VELOCITY = MAX_VELOCITY;
+		this.DEFAULT_MAX_ACCELERATION = MAX_ACCELERATION;
+		this.DEFAULT_ROBOT_TRACKING_PERIOD = DEFAULT_ROBOT_TRACKING_PERIOD;
 	}
-
+	
 	/**
 	 * Create a new {@link TrajectoryEnvelopeCoordinatorSimulation} with the following default values:
 	 * <ul>
 	 * <li><code>CONTROL_PERIOD</code> = 1000</li>
 	 * <li><code>TEMPORAL_RESOLUTION</code> = 1000</li>
-	 * <li><code>trackingPeriodInMillis</code> = 30</li>
+	 * <li><code>DEFAULT_ROBOT_TRACKING_PERIOD</code> = 30</li>
 	 * <li><code>PARKING_DURATION</code> = 3000</li>
 	 * </ul>
 	 */
@@ -106,27 +124,27 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	 * <ul>
 	 * <li><code>CONTROL_PERIOD</code> = 1000</li>
 	 * <li><code>TEMPORAL_RESOLUTION</code> = 1000</li>
-	 * <li><code>trackingPeriodInMillis</code> = 30</li>
+	 * <li><code>DEFAULT_ROBOT_TRACKING_PERIOD</code> = 30</li>
 	 * <li><code>PARKING_DURATION</code> = 3000</li>
 	 * </ul>
 	 */
 	public TrajectoryEnvelopeCoordinatorSimulation(double MAX_VELOCITY, double MAX_ACCELERATION) {
 		this(1000, 1000, MAX_VELOCITY, MAX_ACCELERATION, 30);
 	}
-
+	
 	/**
 	 * Create a new {@link TrajectoryEnvelopeCoordinatorSimulation} with the following default values:
+	 * <ul>
+	 * <li><code>CONTROL_PERIOD</code> = 1000</li>
+	 * <li><code>TEMPORAL_RESOLUTION</code> = 1000</li>
 	 * <li><code>MAX_VELOCITY</code> = 10.0</li>
 	 * <li><code>MAX_ACCELERATION</code> = 1.0</li>
-	 * <li><code>trackingPeriodInMillis</code> = 30</li>
+	 * <li><code>DEFAULT_ROBOT_TRACKING_PERIOD</code> = 30</li>
 	 * <li><code>PARKING_DURATION</code> = 3000</li>
 	 * </ul>
-	 * and given parameters.
-	 * @param CONTROL_PERIOD The control period of the coordinator (e.g., 1000 msec)
-	 * @param TEMPORAL_RESOLUTION The temporal resolution at which the control period is specified (e.g., 1000)
 	 */
-	public TrajectoryEnvelopeCoordinatorSimulation(int CONTROL_PERIOD, double TEMPORAL_RESOLUTION) {
-		this(CONTROL_PERIOD, TEMPORAL_RESOLUTION, 10.0, 1.0, 30);
+	public TrajectoryEnvelopeCoordinatorSimulation() {
+		this(1000, 1000, 10.0, 1.0, 30);
 	}
 
 	private ArrayList<Integer> computeStoppingPoints(PoseSteering[] poses) {
@@ -171,31 +189,86 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 
 
 	/**
-	 * Create a new {@link TrajectoryEnvelopeCoordinatorSimulation} with given parameters.
-	 * @param CONTROL_PERIOD The control period of the coordinator (e.g., 1000 msec)
-	 * @param TEMPORAL_RESOLUTION The temporal resolution at which the control period is specified (e.g., 1000)
-	 * @param MAX_VELOCITY The maximum speed of a robot (used to appropriately instantiate the {@link TrajectoryEnvelopeTrackerRK4} instances).
-	 * @param MAX_ACCELERATION The maximum acceleration/deceleration of a robot (used to appropriately instantiate the {@link TrajectoryEnvelopeTrackerRK4} instances).
-	 * @param DEFAULT_ROBOT_TRACKING_PERIOD The default tracking period in milliseconds (used to appropriately instantiate the {@link TrajectoryEnvelopeTrackerRK4} instances).
-	 */
-	public TrajectoryEnvelopeCoordinatorSimulation(int CONTROL_PERIOD, double TEMPORAL_RESOLUTION, double MAX_VELOCITY, double MAX_ACCELERATION, int DEFAULT_ROBOT_TRACKING_PERIOD) {
-		super(CONTROL_PERIOD, TEMPORAL_RESOLUTION);
-		this.MAX_VELOCITY = MAX_VELOCITY;
-		this.MAX_ACCELERATION = MAX_ACCELERATION;
-		this.DEFAULT_ROBOT_TRACKING_PERIOD = DEFAULT_ROBOT_TRACKING_PERIOD;
-	}
-
-	/**
 	 * Enable (default) or disable the use of internal critical points in the {@link TrajectoryEnvelopeTrackerRK4} trackers.
 	 * @param value <code>true</code> if these critical points should be used to slow down, <code>false</code> otherwise.
 	 */
 	public void setUseInternalCriticalPoints(boolean value) {
 		this.useInternalCPs = value;
 	}
+		
+	/**
+	 * Get the maximum velocity of a given robot (m/s).
+	 * @param robotID The ID of the robot.
+	 * @return The maximum velocity of the robot (or the default value if not specified).
+	 */
+	@Override
+	public Double getRobotMaxVelocity(int robotID) {
+		if (this.robotMaxVelocity.containsKey(robotID)) 
+			return this.robotMaxVelocity.get(robotID);
+		return DEFAULT_MAX_VELOCITY;
+	}
+	
+	/**
+	 * Get the maximum acceleration of a given robot (m/s^2).
+	 * @param robotID The ID of the robot.
+	 * @return The maximum acceleration of the robot (or the default value if not specified).
+	 */
+	@Override
+	public Double getRobotMaxAcceleration(int robotID) {
+		if (this.robotMaxAcceleration.containsKey(robotID)) 
+			return this.robotMaxAcceleration.get(robotID);
+		return DEFAULT_MAX_ACCELERATION;
+	}
+	
+	@Override
+	protected Double getMaxFootprintDimension(int robotID) {
+		if (this.footprints.containsKey(robotID)) return maxFootprintDimensions.get(robotID);
+		return MAX_DEFAULT_FOOTPRINT_DIMENSION;
+	}
+
+	/**
+	 * Get the {@link Coordinate}s defining the default footprint of robots.
+	 * @return The {@link Coordinate}s defining the default footprint of robots.
+	 */
+	public Coordinate[] getDefaultFootprint() {
+		return DEFAULT_FOOTPRINT;
+	}
+
+	/**
+	 * Get the {@link Coordinate}s defining the footprint of a given robot.
+	 * @param robotID the ID of the robot
+	 * @return The {@link Coordinate}s defining the footprint of a given robot.
+	 */
+	@Override
+	public Coordinate[] getFootprint(int robotID) {
+		if (this.footprints.containsKey(robotID)) return this.footprints.get(robotID);
+		return DEFAULT_FOOTPRINT;
+	}
+	
+	/**
+	 * Get a {@link Geometry} representing the default footprint of robots.
+	 * @return A {@link Geometry} representing the default footprint of robots.
+	 */
+	public Geometry getDefaultFootprintPolygon() {
+		Geometry fpGeom = TrajectoryEnvelope.createFootprintPolygon(DEFAULT_FOOTPRINT);
+		return fpGeom;
+	}
+	
+	/**
+	 * Set the default footprint of robots, which is used for computing spatial envelopes.
+	 * Provide the bounding polygon of the machine assuming its reference point is in (0,0), and its
+	 * orientation is aligned with the x-axis. The coordinates must be in CW or CCW order.
+	 * @param coordinates The coordinates delimiting bounding polygon of the footprint.
+	 */
+	public void setDefaultFootprint(Coordinate ... coordinates) {
+		DEFAULT_FOOTPRINT = coordinates;
+		MAX_DEFAULT_FOOTPRINT_DIMENSION = computeMaxFootprintDimension(coordinates);
+	}
 
 	@Override
 	public AbstractTrajectoryEnvelopeTracker getNewTracker(TrajectoryEnvelope te, TrackingCallback cb) {
-		TrajectoryEnvelopeTrackerRK4 ret = new TrajectoryEnvelopeTrackerRK4(te, this.getRobotTrackingPeriodInMillis(te.getRobotID()), TEMPORAL_RESOLUTION, MAX_VELOCITY, MAX_ACCELERATION, this, cb) {
+		if (this.getRobotTrackingPeriodInMillis(te.getRobotID()) == null || this.getRobotMaxVelocity(te.getRobotID()) == null || this.getRobotMaxAcceleration(te.getRobotID()) == null) throw new Error("Robot" +  te.getRobotID() + ": missing kinodynamic parameters.");
+		TrajectoryEnvelopeTrackerRK4 ret = new TrajectoryEnvelopeTrackerRK4(te, this.getRobotTrackingPeriodInMillis(te.getRobotID()), TEMPORAL_RESOLUTION, this.getRobotMaxVelocity(te.getRobotID()), this.getRobotMaxAcceleration(te.getRobotID()), this, cb) {
 
 			//Method for measuring time in the trajectory envelope tracker
 			@Override

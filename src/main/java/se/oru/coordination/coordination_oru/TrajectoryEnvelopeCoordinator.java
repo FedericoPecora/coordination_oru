@@ -500,10 +500,11 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				}
 				if (tracker instanceof TrajectoryEnvelopeTrackerDummy) return false;
 				TrajectoryEnvelope te = tracker.getTrajectoryEnvelope();
-				int stoppingPoint = getForwardModel(robotID).getEarliestStoppingPathIndex(te, tracker.getLastRobotReport());
-				dep = new Dependency(te, null, stoppingPoint, 0);
+				int waitingPoint = getForwardModel(robotID).getEarliestStoppingPathIndex(te, tracker.getLastRobotReport());
+				dep = new Dependency(te, null, waitingPoint, 0);
+				metaCSPLogger.info("Added a stopping point to replan path of robot" + robotID + ": " + dep + ".");
 				currentDependencies.put(robotID, dep);
-				setCriticalPoint(robotID, stoppingPoint, true);
+				setCriticalPoint(robotID, waitingPoint, true);
 			}
 			if (dep.getDrivingTrajectoryEnvelope() != null) robotsToReplan.add(dep.getDrivingRobotID());
 			robotsToReplan.add(dep.getWaitingRobotID());
@@ -963,7 +964,6 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				}
 			}
 			if (tryLocking) {
-				//FIXME Here it assumes all robots in robotsIDs has a dependency but it may not be true.
 				HashMap<Integer, Dependency> currentDeps = getCurrentDependencies();
 				for (int robotID : robotsIDs) {
 					if (currentDeps.containsKey(robotID)) {
@@ -1022,7 +1022,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				}
 			}
 
-			metaCSPLogger.info("Attempting to re-plan path of Robot" + robotID + " (with obstacles for robots " + Arrays.toString(otherRobotIDs) + ")...");
+			metaCSPLogger.info("Attempting to re-plan path of Robot" + robotID + " (with obstacles for robots " + Arrays.toString(otherRobotIDs) + ", from " + 
+			currentWaitingPose + ", to " + currentWaitingGoal + ")...");
 			AbstractMotionPlanner mp = null;
 			if (this.motionPlanners.containsKey(robotID)) mp = this.motionPlanners.get(robotID);
 			else {
@@ -1101,6 +1102,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							while (!missionsPool.isEmpty() && numberNewAddedMissions < MAX_ADDED_MISSIONS) {
 								Pair<TrajectoryEnvelope,Long> te = missionsPool.pollFirst();
 								envelopesToTrack.add(te.getFirst());
+								onNewMissionDispatched(te.getFirst().getRobotID());
 								numberNewAddedMissions++;
 							}
 							numberNewCriticalSections = allCriticalSections.size();

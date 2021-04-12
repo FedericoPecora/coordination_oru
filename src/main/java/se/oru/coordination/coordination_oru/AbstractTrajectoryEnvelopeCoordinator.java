@@ -75,6 +75,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 
 	public static final int PARKING_DURATION = 3000;
 	protected static final int DEFAULT_STOPPING_TIME = 5000;
+	protected int DEFAULT_ROBOT_TRACKING_PERIOD = 30;
 	protected int CONTROL_PERIOD;
 	protected double TEMPORAL_RESOLUTION;
 	public static int EFFECTIVE_CONTROL_PERIOD = 0;
@@ -124,11 +125,9 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	protected HashMap<Integer,Coordinate[]> footprints = new HashMap<Integer, Coordinate[]>();
 	protected HashMap<Integer,Double> maxFootprintDimensions = new HashMap<Integer, Double>();
 	
-	/**
-	 * Default robot tracking period in millis
-	 */
-	protected int DEFAULT_ROBOT_TRACKING_PERIOD = 30;
 	protected HashMap<Integer, Integer> robotTrackingPeriodInMillis = new HashMap<Integer, Integer>();
+	protected HashMap<Integer, Double> robotMaxVelocity = new HashMap<Integer, Double>();
+	protected HashMap<Integer, Double> robotMaxAcceleration = new HashMap<Integer, Double>();
 
 	protected HashSet<Integer> muted = new HashSet<Integer>();
 
@@ -186,6 +185,18 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	}
 	
 	/**
+	 * Get the tracking period of a given robot in millis.
+	 * @param robotID The ID of the robot.
+	 * @return The tracking period of the robot (or the default value if not specified).
+	 */
+	public Integer getRobotTrackingPeriodInMillis(int robotID) {
+		if (this.robotTrackingPeriodInMillis.containsKey(robotID)) 
+			return this.robotTrackingPeriodInMillis.get(robotID);
+		metaCSPLogger.warning("Tracking period of Robot" + robotID + " is not specified. Returning the default value.");
+		return DEFAULT_ROBOT_TRACKING_PERIOD;
+	}
+	
+	/**
 	 * Utility method to treat internal resources from this library as filenames.
 	 * @param resource The internal resource to be loaded.
 	 * @return The absolute path of a temporary file which contains a copy of the resource.
@@ -200,22 +211,6 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		return dest.getAbsolutePath();
 	}
 	
-	/**
-	 * The default footprint used for robots if none is specified.
-	 * NOTE: coordinates in footprints must be given in in CCW or CW order. 
-	 */
-	public static Coordinate[] DEFAULT_FOOTPRINT = new Coordinate[] {
-			new Coordinate(-1.7, 0.7),	//back left
-			new Coordinate(-1.7, -0.7),	//back right
-			new Coordinate(2.7, -0.7),	//front right
-			new Coordinate(2.7, 0.7)	//front left
-	};
-
-	/**
-	 * Dimension of the default footprint.
-	 */
-	public static double MAX_DEFAULT_FOOTPRINT_DIMENSION = 4.4;
-
 	/**
 	 * Set whether this {@link TrajectoryEnvelopeCoordinator} should print info at every period.
 	 * @param value Set to <code>true</code> if this {@link TrajectoryEnvelopeCoordinator} should print info at every period.
@@ -309,17 +304,9 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		muted.remove(robotID);
 	}
 
-	protected double getMaxFootprintDimension(int robotID) {
+	protected Double getMaxFootprintDimension(int robotID) {
 		if (this.footprints.containsKey(robotID)) return maxFootprintDimensions.get(robotID);
-		return MAX_DEFAULT_FOOTPRINT_DIMENSION;
-	}
-
-	/**
-	 * Get the {@link Coordinate}s defining the default footprint of robots.
-	 * @return The {@link Coordinate}s defining the default footprint of robots.
-	 */
-	public Coordinate[] getDefaultFootprint() {
-		return DEFAULT_FOOTPRINT;
+		return null;
 	}
 
 	/**
@@ -329,18 +316,9 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 */
 	public Coordinate[] getFootprint(int robotID) {
 		if (this.footprints.containsKey(robotID)) return this.footprints.get(robotID);
-		return DEFAULT_FOOTPRINT;
+		return null;
 	}
-
-	/**
-	 * Get a {@link Geometry} representing the default footprint of robots.
-	 * @return A {@link Geometry} representing the default footprint of robots.
-	 */
-	public Geometry getDefaultFootprintPolygon() {
-		Geometry fpGeom = TrajectoryEnvelope.createFootprintPolygon(DEFAULT_FOOTPRINT);
-		return fpGeom;
-	}
-	
+		
 	/**
 	 * Get a {@link Geometry} representing the footprint of a given robot.
 	 * @param robotID the ID of the robot
@@ -391,16 +369,44 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	}
 	
 	/**
-	 * Get the tracking period of a given robot in millis.
+	 * Set the maximum velocity of a given robot in m/s.
 	 * @param robotID The ID of the robot.
-	 * @return The tracking period of the robot.
+	 * @param maxVelocity The maximum velocity of the robot.
 	 */
-	public int getRobotTrackingPeriodInMillis(int robotID) {
-		if (this.robotTrackingPeriodInMillis.containsKey(robotID)) 
-			return this.robotTrackingPeriodInMillis.get(robotID);
-		else return DEFAULT_ROBOT_TRACKING_PERIOD;
+	public void setRobotMaxVelocity(int robotID, double maxVelocity) {
+		this.robotMaxVelocity.put(robotID, maxVelocity);
 	}
-
+	
+	/**
+	 * Set the maximum acceleration of a given robot in m/s^2.
+	 * @param robotID The ID of the robot.
+	 * @param maxAcceleration The maximum acceleration of the robot.
+	 */
+	public void setRobotMaxAcceleration(int robotID, double maxAcceleration) {
+		this.robotMaxAcceleration.put(robotID, maxAcceleration);
+	}
+	 
+	/**
+	 * Get the maximum velocity of a given robot (m/s).
+	 * @param robotID The ID of the robot.
+	 * @return The maximum velocity of the robot (null if not specified --- this should never happen).
+	 */
+	public Double getRobotMaxVelocity(int robotID) {
+		if (this.robotMaxVelocity.containsKey(robotID)) 
+			return this.robotMaxVelocity.get(robotID);
+		return null;
+	}
+	
+	/**
+	 * Get the maximum acceleration of a given robot (m/s^2).
+	 * @param robotID The ID of the robot.
+	 * @return The maximum acceleration of the robot (null if not specified --- this should never happen).
+	 */
+	public Double getRobotMaxAcceleration(int robotID) {
+		if (this.robotMaxAcceleration.containsKey(robotID)) 
+			return this.robotMaxAcceleration.get(robotID);
+		return null;
+	}
 
 	protected void setupLogging() {
 		//logDirName = "log-" + Calendar.getInstance().getTimeInMillis();
@@ -486,30 +492,6 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	}
 
 	/**
-	 * Set the default footprint of robots, which is used for computing spatial envelopes.
-	 * Provide the bounding polygon of the machine assuming its reference point is in (0,0), and its
-	 * orientation is aligned with the x-axis. The coordinates must be in CW or CCW order.
-	 * @param coordinates The coordinates delimiting bounding polygon of the footprint.
-	 */
-	public void setDefaultFootprint(Coordinate ... coordinates) {
-		DEFAULT_FOOTPRINT = coordinates;
-		MAX_DEFAULT_FOOTPRINT_DIMENSION = computeMaxFootprintDimension(coordinates);
-	}
-
-
-	/**
-	 * Set the default footprint of robots, which is used for computing spatial envelopes.
-	 * Provide the bounding polygon of the machine assuming its reference point is in (0,0), and its
-	 * orientation is aligned with the x-axis. The coordinates must be in CW or CCW order.
-	 * @param coordinates The coordinates delimiting bounding polygon of the footprint.
-	 */
-	@Deprecated
-	public void setFootprint(Coordinate ... coordinates) {
-		DEFAULT_FOOTPRINT = coordinates;
-		MAX_DEFAULT_FOOTPRINT_DIMENSION = computeMaxFootprintDimension(coordinates);
-	}
-
-	/**
 	 * Set the footprint of a given robot, which is used for computing spatial envelopes.
 	 * Provide the bounding polygon of the machine assuming its reference point is in (0,0), and its
 	 * orientation is aligned with the x-axis. The coordinates must be in CW or CCW order.
@@ -518,10 +500,10 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 */
 	public void setFootprint(int robotID, Coordinate ... coordinates) {
 		this.footprints.put(robotID, coordinates);
-		maxFootprintDimensions.put(robotID,computeMaxFootprintDimension(coordinates));
+		maxFootprintDimensions.put(robotID, computeMaxFootprintDimension(coordinates));
 	}
 
-	private double computeMaxFootprintDimension(Coordinate[] coords) {
+	protected double computeMaxFootprintDimension(Coordinate[] coords) {
 		ArrayList<Double> fpX = new ArrayList<Double>();
 		ArrayList<Double> fpY = new ArrayList<Double>();
 		for (Coordinate coord : coords) {
@@ -1783,6 +1765,12 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			metaCSPLogger.info(s);
 		}		
 	}
+	
+	/**
+	 * Specifies what happens when a new mission is dispatched.
+	 * @param robotID The ID of the robot which is starting a new mission.
+	 */
+	protected void onNewMissionDispatched(int robotID) {};
 
 	protected void setupInferenceCallback() {
 		
@@ -1796,27 +1784,12 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				
 				while (!stopInference) {
 					int numberNewAddedMissions = 0;
-					int numberDrivingRobots = 0;
 					synchronized (solver) {	
-						if (!missionsPool.isEmpty()) {
-							//get the oldest posted mission
-							/*int oldestMissionRobotID = -1;
-							long oldestMissionTime = Long.MAX_VALUE;
-							for (int robotID : missionsPool.keySet()) {
-								if (missionsPool.get(robotID).getSecond().compareTo(oldestMissionTime) < 0) {
-									oldestMissionTime = missionsPool.get(robotID).getSecond().longValue();
-									oldestMissionRobotID = robotID;
-								}
-							}
-							envelopesToTrack.add(missionsPool.get(oldestMissionRobotID).getFirst());
-							missionsPool.remove(oldestMissionRobotID);*/
-							//FIXME critical sections should be computed incrementally/asynchronously
-							for (Integer robotID : trackers.keySet()) 
-								if (!(trackers.get(robotID) instanceof TrajectoryEnvelopeTrackerDummy)) numberDrivingRobots++;
-							
+						if (!missionsPool.isEmpty()) {							
 							while (!missionsPool.isEmpty() && numberNewAddedMissions < MAX_ADDED_MISSIONS) {
 								Pair<TrajectoryEnvelope,Long> te = missionsPool.pollFirst();
 								envelopesToTrack.add(te.getFirst());
+								onNewMissionDispatched(te.getFirst().getRobotID());
 								numberNewAddedMissions++;
 							}
 							computeCriticalSections();
