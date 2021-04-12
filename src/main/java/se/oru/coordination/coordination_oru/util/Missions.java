@@ -3,11 +3,13 @@ package se.oru.coordination.coordination_oru.util;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Type;
@@ -144,13 +146,52 @@ public class Missions {
 	}
 	
 	/**
+	 * Get the resolution of the current map, if set.
+	 * @return The resolution of the current map, <code>0</code> if no map is known.
+	 */
+	public static double getMapResolution() {
+		return Missions.mapResolution;
+	}
+
+	/**
+	 * Get the origin of the current map, if set.
+	 * @return The origin of the current map, <code>null</code> if no map is known.
+	 */
+	public static Coordinate getMapOrigin() {
+		return Missions.mapOrigin;
+	}
+
+	/**
 	 * Get the YAML file of the current map, if set.
 	 * @return The YAML file of the current map, <code>null</code> if no map is known.
 	 */
 	public static String getMapYAML() {
 		return Missions.mapYAML;
 	}
-
+	
+	/**
+	 * Save the current map (if known) as PNG with the corresponding YAML descriptor.
+	 * @param fileName The name of the image/YAML files to save.
+	 */
+	public static void saveMap(String fileName) {
+		if (Missions.map == null) throw new Error("Cannot save map as no map is known");
+		File imageFilename = new File(fileName+".png");
+		String yamlFilename = fileName + ".yaml";
+		Missions.mapYAML = "\nimage: " + imageFilename;
+		Missions.mapYAML += "\nresolution: " + Missions.mapResolution;
+		Missions.mapYAML += "\norigin: [" + Missions.mapOrigin.x + ", " + Missions.mapOrigin.y + ", 0]";
+		//TODO: make these static members of Missions and load them as well
+		Missions.mapYAML +=  "\nnegate: 0";
+		Missions.mapYAML += "\noccupied_thresh: 0.3";
+		try { 
+			ImageIO.write(Missions.map, "png", imageFilename);
+			PrintWriter writer = new PrintWriter(yamlFilename);
+			writer.println(Missions.mapYAML);
+			writer.close();
+		}
+		catch (IOException e) { e.printStackTrace(); }
+	}
+	
 	private static String extractZipFile(String fileName) {
 		String json = "";
 		try {
@@ -221,23 +262,35 @@ public class Missions {
 	}
 	
 	/**
-	 * Save the current scenario. A scenario consists of all known locations and paths,
-	 * all known missions, and a map of the environment if it is known. This is stored in a
-	 * ZIP file with the given name, and can be re-loaded via a call to {@link Missions#loadScenario(String)}.
+	 * Save the current scenario. A scenario consists of all known locations and paths (a roadmap),
+	 * all known missions, and a map of the environment. These are stored in a ZIP file with the
+	 * given name, and can be loaded via a call to {@link Missions#loadScenario(String)}.
 	 * @param scenarioName The name of the archive in which to save the current scenario.
 	 */
 	public static void saveScenario(String scenarioName) {
         try {
         	String zipFilename = scenarioName+".zip";
-            System.out.println("Saving scenario in ZIP file: " + zipFilename);
+            metaCSPLogger.info("Saving scenario in ZIP file: " + zipFilename);
             String jsonFilename = scenarioName + ".json";
             PrintWriter writer = new PrintWriter(jsonFilename);
             ScenarioContainer sc = new ScenarioContainer();
             String scenarioJSON = Missions.getJSONString(sc);
             writer.println(scenarioJSON);
             writer.close();
-            if (Missions.mapImageFilename != null) makeZipFile(Missions.mapImageFilename,jsonFilename,zipFilename);
-            else makeZipFile(jsonFilename,zipFilename);
+            
+            //Create map files if the map is only in memory for some reason...
+            if (Missions.map != null && (Missions.mapImageFilename == null || Missions.mapYAML == null)) {
+            	Missions.saveMap(scenarioName);
+            	Missions.setMap(scenarioName+".yaml");
+            }
+            
+            if (Missions.mapImageFilename != null) {
+            	makeZipFile(Missions.mapImageFilename,jsonFilename,zipFilename);
+            }
+            else {
+            	metaCSPLogger.info("Saving scenario without map because no map is known - use setMap() method to set one if you want to save the map along with the scenario.");
+            	makeZipFile(jsonFilename,zipFilename);
+            }
         }
         catch (IOException e) { 
         	e.printStackTrace(); 
@@ -270,7 +323,7 @@ public class Missions {
 		Missions.mapYAML = (String)parseJSONString(String.class, sc.mapYAMLJSON);
 		Missions.mapResolution = (Double)parseJSONString(Double.TYPE, sc.mapResolutionJSON);
 		Missions.mapOrigin = (Coordinate)parseJSONString(Coordinate.class, sc.mapOriginJSON);
-		Missions.buildGraph();
+		Missions.buildGraph();		
 	}
 	
 	private static String getJSONString(Object o) {
@@ -295,15 +348,17 @@ public class Missions {
 			String st;
 			Missions.mapYAML = "";
 			while((st=br.readLine()) != null){
-				Missions.mapYAML += st;
-				String key = st.substring(0, st.indexOf(":")).trim();
-				String value = st.substring(st.indexOf(":")+1).trim();
-				if (key.equals("image")) Missions.mapImageFilename = file.getParentFile()+File.separator+value;
-				else if (key.equals("resolution")) Missions.mapResolution = Double.parseDouble(value);
-				else if (key.equals("origin")) {
-					String x = value.substring(1, value.indexOf(",")).trim();
-					String y = value.substring(value.indexOf(",")+1, value.indexOf(",", value.indexOf(",")+1)).trim();
-					Missions.mapOrigin = new Coordinate(Double.parseDouble(x),Double.parseDouble(y));
+				if (!st.trim().startsWith("#") && !st.trim().isEmpty()) {
+					Missions.mapYAML += st+"\n";
+					String key = st.substring(0, st.indexOf(":")).trim();
+					String value = st.substring(st.indexOf(":")+1).trim();
+					if (key.equals("image")) Missions.mapImageFilename = file.getParentFile()+File.separator+value;
+					else if (key.equals("resolution")) Missions.mapResolution = Double.parseDouble(value);
+					else if (key.equals("origin")) {
+						String x = value.substring(1, value.indexOf(",")).trim();
+						String y = value.substring(value.indexOf(",")+1, value.indexOf(",", value.indexOf(",")+1)).trim();
+						Missions.mapOrigin = new Coordinate(Double.parseDouble(x),Double.parseDouble(y));
+					}
 				}
 			}
 			br.close();
@@ -335,6 +390,19 @@ public class Missions {
 		for (Integer robotID : missions.keySet()) {
 			Mission m = Missions.peekMission(robotID);
 			if (m != null) ret.put(robotID, m.getFromPose());
+		}
+		return ret;
+	}
+	
+	/**
+	 * Get the IDs of robots involved in at least one {@link Mission}.
+	 * @return The IDs of robots involved in at least one {@link Mission}.
+	 */
+	public static int[] getIDsOfRobotsWithMissions() {
+		int[] ret = new int[missions.keySet().size()];
+		int index = 0;
+		for (int robotID : missions.keySet()) {
+			ret[index++] = robotID;
 		}
 		return ret;
 	}

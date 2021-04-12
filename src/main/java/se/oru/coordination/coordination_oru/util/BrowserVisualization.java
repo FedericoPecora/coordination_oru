@@ -3,6 +3,7 @@ package se.oru.coordination.coordination_oru.util;
 
 import java.awt.Desktop;
 import java.awt.Dimension;
+import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -298,11 +299,6 @@ public class BrowserVisualization implements FleetVisualization {
 		sendMessage(callRefresh);
 	}
 	
-	
-	private Geometry createArrow(Pose pose) {
-		return createArrow(pose, Math.sqrt(robotFootprintArea)*0.5, Math.sqrt(robotFootprintArea)*0.5);
-		
-	}
 	private Geometry createArrow(Pose pose, double length, double size) {		
 		GeometryFactory gf = new GeometryFactory();
 		double aux = 1.8;
@@ -353,6 +349,12 @@ public class BrowserVisualization implements FleetVisualization {
 		return ret;
 	}
 
+	public void setMap(BufferedImage mapImage, double resolution, Coordinate origin) {
+		BrowserVisualizationSocket.map = mapImage;
+		BrowserVisualizationSocket.resolution = resolution;
+		BrowserVisualizationSocket.origin = origin;
+	}
+	
 	public void setMap(String mapYAMLFile) {
 		try {
 			File file = new File(mapYAMLFile);
@@ -381,7 +383,32 @@ public class BrowserVisualization implements FleetVisualization {
 		}
 		catch (IOException e) { e.printStackTrace(); }
 	}
-
+	
+	public void setMapYAML(String mapYAMLSpec, String pathPrefix) {
+		try {
+			String imageFileName = "";
+			if (pathPrefix != null) imageFileName = pathPrefix+File.separator;
+			for (String st : mapYAMLSpec.split("\n")) { 
+				if (!st.trim().startsWith("#") && !st.trim().isEmpty()) {
+					String key = st.substring(0, st.indexOf(":")).trim();
+					String value = st.substring(st.indexOf(":")+1).trim();
+					if (key.equals("image")) imageFileName += value;
+					else if (key.equals("resolution")) BrowserVisualizationSocket.resolution = Double.parseDouble(value);
+					else if (key.equals("origin")) {
+						String x = value.substring(1, value.indexOf(",")).trim();
+						String y = value.substring(value.indexOf(",")+1, value.indexOf(",", value.indexOf(",")+1)).trim();
+						BrowserVisualizationSocket.origin = new Coordinate(Double.parseDouble(x),Double.parseDouble(y));
+						//bottomLeftOrigin = new Coordinate(Double.parseDouble(x),Double.parseDouble(y));
+					}
+				}
+			}
+			System.out.println(imageFileName);
+			BrowserVisualizationSocket.map = ImageIO.read(new File(imageFileName));
+			//BrowserVisualizationSocket.origin = new Coordinate(bottomLeftOrigin.x, BrowserVisualizationSocket.map.getHeight()*BrowserVisualizationSocket.resolution-bottomLeftOrigin.y);
+		}
+		catch (IOException e) { e.printStackTrace(); }
+	}
+	
 	@Override
 	public int periodicEnvelopeRefreshInMillis() {
 		return 1000;
