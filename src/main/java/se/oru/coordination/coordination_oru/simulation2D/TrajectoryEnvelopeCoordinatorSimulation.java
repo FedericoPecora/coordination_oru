@@ -34,7 +34,6 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 	protected static final long START_TIME = Calendar.getInstance().getTimeInMillis();
 	protected boolean useInternalCPs = true;
 	
-	protected boolean fake = false;
 	protected boolean checkCollisions = false;
 	protected ArrayList<CollisionEvent> collisionsList = new ArrayList<CollisionEvent>();
 	protected Thread collisionThread = null;
@@ -69,14 +68,6 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 		this.checkCollisions = enable;
 	}
 		
-	/**
-	 * Enable fake coordination.
-	 * @param enable <code>true</code> whether the coordinator does not impose any precedence constraints.
-	 */
-	public void setFakeCoordination(boolean fake) {
-		this.fake = fake;
-	}
-
 	/** 
 	 * Just for statistic purposes (simulation).
 	 */
@@ -432,19 +423,6 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 					
 			};
 			collisionThread.start();
-		}
-	}
-	
-	@Override
-	protected void updateDependencies() {
-		synchronized(solver) {
-			if (this.fake) {
-				for (int robotID : trackers.keySet()) setCriticalPoint(robotID, -1, true);
-				return;
-			}
-			if (this.avoidDeadlockGlobally.get()) globalCheckAndRevise();
-			else localCheckAndRevise(); 
-			
 		}
 	}
 }
