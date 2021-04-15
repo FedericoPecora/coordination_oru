@@ -99,9 +99,8 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 	/**
 	 * Operations that should be performed when the {@link TrajectoryEnvelope} of this tracker
 	 * is updated online.
-	 * @param te The updated {@link TrajectoryEnvelope}.
 	 */
-	protected abstract void onTrajectoryEnvelopeUpdate(TrajectoryEnvelope te);
+	protected abstract void onTrajectoryEnvelopeUpdate();
 	
 	/**
 	 * Update the {@link TrajectoryEnvelope} of this tracker (used for truncating/reversing/re-planning {@link TrajectoryEnvelope}s online).
@@ -116,7 +115,7 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 				this.te = te;
 				this.cb.updateTrajectoryEnvelope(te);
 				this.traj = te.getTrajectory();
-				this.onTrajectoryEnvelopeUpdate(te);
+				this.onTrajectoryEnvelopeUpdate();
 			}
 		}
 	}
