@@ -111,11 +111,13 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 	 */
 	public void updateTrajectoryEnvelope(TrajectoryEnvelope te) {
 		synchronized(tec.getSolver()) {
-			metaCSPLogger.info("Updating trajectory Robot" +this.te.getRobotID()+". TEID: " + this.te.getID() + "--> TEID: " + te.getID()+ ".");
-			this.te = te;
-			this.cb.updateTrajectoryEnvelope(te);
-			this.traj = te.getTrajectory();
-			this.onTrajectoryEnvelopeUpdate(te);
+			synchronized(this.te) {
+				metaCSPLogger.info("Updating trajectory Robot" +this.te.getRobotID()+". TEID: " + this.te.getID() + "--> TEID: " + te.getID()+ ".");
+				this.te = te;
+				this.cb.updateTrajectoryEnvelope(te);
+				this.traj = te.getTrajectory();
+				this.onTrajectoryEnvelopeUpdate(te);
+			}
 		}
 	}
 	
