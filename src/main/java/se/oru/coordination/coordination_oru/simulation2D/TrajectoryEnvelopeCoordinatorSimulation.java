@@ -289,13 +289,13 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 		
 		synchronized (trackers) {
 			ret.add("Status @ "  + getCurrentTimeInMillis() + " ms");
-			ret.add(CONNECTOR_BRANCH + "Eff period ..... " + EFFECTIVE_CONTROL_PERIOD + " ms");
-			ret.add(CONNECTOR_BRANCH + "Network ........ " + numVar + " variables, " + numCon + " constraints");
+			ret.add(CONNECTOR_BRANCH + 		"Eff period .......... " + EFFECTIVE_CONTROL_PERIOD + " ms");
+			ret.add(CONNECTOR_BRANCH + 		"Constraint network .. " + numVar + " variables, " + numCon + " constraints");
 			HashSet<Integer> allRobots = new HashSet<Integer>();
 			for (Integer robotID : trackers.keySet()) {
 				allRobots.add(robotID);
 			}
-			String st = CONNECTOR_BRANCH + "Robots really .. ";
+			String st = CONNECTOR_BRANCH +	"Robot states ........ ";
 			for (Integer robotID : allRobots) {
 				AbstractTrajectoryEnvelopeTracker tracker = trackers.get(robotID);
 				RobotReport rr = tracker.getRobotReport(); 
@@ -306,7 +306,7 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 				st += ": " + currentPP + "   ";
 			}
 			ret.add(st);
-			st = CONNECTOR_BRANCH + "Robots view .... ";
+			st = CONNECTOR_BRANCH + 		"Robots' view ........ ";
 			for (Integer robotID : allRobots) {
 				AbstractTrajectoryEnvelopeTracker tracker = trackers.get(robotID);
 				RobotReport rr = getRobotReport(robotID); 
@@ -321,25 +321,28 @@ public class TrajectoryEnvelopeCoordinatorSimulation extends TrajectoryEnvelopeC
 			ret.add(st);
 		}
 		synchronized (currentDependencies) {
-			ret.add(CONNECTOR_BRANCH + "Dependencies ... " + currentDependencies);
+			ret.add(CONNECTOR_BRANCH + 		"Dependencies ........ " + currentDependencies);
 		}
 		if (checkCollisions) {
 			int numberOfCollisions = 0;
 			synchronized (collisionsList) {
 				numberOfCollisions = collisionsList.size();		
-				ret.add(CONNECTOR_BRANCH + "Number of collisions ... " + numberOfCollisions + ".");
+				ret.add(CONNECTOR_BRANCH + 	"Collisions .......... " + numberOfCollisions + ".");
 				if (numberOfCollisions>0) {
-					for (CollisionEvent ce : collisionsList) {
-						ret.add(CONNECTOR_BRANCH + " ....................... " + ce.toString());
+					for (int cindex = 0; cindex < collisionsList.size()-1; cindex++) {
+						CollisionEvent ce = collisionsList.get(cindex);
+						ret.add(" " + CONNECTOR_BRANCH + " " + ce.toString());
 					}
+					CollisionEvent ce = collisionsList.get(collisionsList.size()-1);
+					ret.add(" " + CONNECTOR_LEAF + " " + ce.toString());
 				}
 			}
 			
 		}
-		ret.add(CONNECTOR_BRANCH + "Total number of obsolete critical sections ... " + criticalSectionCounter.get() + ".");
-		ret.add(CONNECTOR_BRANCH + "Total messages sent: ... " + totalMsgsSent.get() + ", lost: " + totalMsgsLost.get() + ", retransmitted: " + totalMsgsReTx.get() + ". Packets lost: " + totalPacketsLost.get() + ", number of replicas: " + numberOfReplicas + ".");
-		ret.add(CONNECTOR_BRANCH + "Total unalive states detected: ... " + nonliveStatesDetected.get() + ", avoided: " + nonliveStatesAvoided.get() + ", revised according to heuristic: " + currentOrdersHeurusticallyDecided.get() + ".");
-		ret.add(CONNECTOR_LEAF + "Total re-planned path: ... " + replanningTrialsCounter.get() + ", successful: " + successfulReplanningTrialsCounter.get() + ".");
+		ret.add(CONNECTOR_BRANCH + 			"Obsolete crit sect .. " + criticalSectionCounter.get() + ".");
+		ret.add(CONNECTOR_BRANCH + 			"Messages sent ....... " + totalMsgsSent.get() + ", lost: " + totalMsgsLost.get() + ", retransmitted: " + totalMsgsReTx.get() + ". Packets lost: " + totalPacketsLost.get() + ", number of replicas: " + numberOfReplicas + ".");
+		ret.add(CONNECTOR_BRANCH + 			"Unalive states ...... " + nonliveStatesDetected.get() + ", avoided: " + nonliveStatesAvoided.get() + ", revised according to heuristic: " + currentOrdersHeurusticallyDecided.get() + ".");
+		ret.add(CONNECTOR_LEAF + 			"Re-planned paths .... " + replanningTrialsCounter.get() + ", successful: " + successfulReplanningTrialsCounter.get() + ".");
 		return ret.toArray(new String[ret.size()]);
 	}
 	
