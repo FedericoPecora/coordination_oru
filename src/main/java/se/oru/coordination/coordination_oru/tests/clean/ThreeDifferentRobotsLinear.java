@@ -18,6 +18,7 @@ import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPla
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
 import se.oru.coordination.coordination_oru.util.BrowserVisualization;
 import se.oru.coordination.coordination_oru.util.JTSDrawingPanelVisualization;
+import se.oru.coordination.coordination_oru.util.Missions;
 
 @DemoDescription(desc = "One-shot navigation of 3 robots with different footprints coordinating on paths obtained with the ReedsSheppCarPlanner.")
 public class ThreeDifferentRobotsLinear {
@@ -48,9 +49,9 @@ public class ThreeDifferentRobotsLinear {
 			}
 		});
 		
-		NetworkConfiguration.setDelays(0,3000);
-		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0.1;
-		tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, NetworkConfiguration.getMaximumTxDelay(), 0.01);
+//		NetworkConfiguration.setDelays(0,3000);
+//		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0.1;
+//		tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, NetworkConfiguration.getMaximumTxDelay(), 0.01);
 
 		//You can set a footprint that is specific for each robot
 		Coordinate[] fp1 = new Coordinate[] {
@@ -140,7 +141,10 @@ public class ThreeDifferentRobotsLinear {
 		Mission m1 = new Mission(1,pss1);
 		Mission m2 = new Mission(2,pss2);
 		Mission m3 = new Mission(3,pss3);
-		tec.addMissions(m1,m2,m3);
+		Missions.enqueueMission(m1);
+		Missions.enqueueMission(m2);
+		Missions.enqueueMission(m3);
+		Missions.startMissionDispatchers(tec, 1,2,3);
 
 	}
 

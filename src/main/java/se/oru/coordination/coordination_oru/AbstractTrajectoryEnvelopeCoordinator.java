@@ -48,7 +48,7 @@ import se.oru.coordination.coordination_oru.util.StringUtils;
 
 /**
  * This class provides coordination for a fleet of robots. An instantiatable {@link AbstractTrajectoryEnvelopeCoordinator}
- * must provide an implementation of the updateDependency function and of a time keeping method, a {@link TrajectoryEnvelope} tracker factory, and
+ * must provide an implementation of the {@link #updateDependencies()} function and of a time keeping method, a {@link TrajectoryEnvelope} tracker factory, and
  * a criteria with which robots are to be prioritized.
  * 
  * @author fpa
@@ -57,7 +57,8 @@ import se.oru.coordination.coordination_oru.util.StringUtils;
 public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	
 	public static String TITLE = "coordination_oru - Robot-agnostic online coordination for multiple robots";
-	public static String COPYRIGHT = "Copyright \u00a9 2017-2020 Federico Pecora";
+	public static String COPYRIGHT = "Copyright \u00a9 2017-" + Calendar.getInstance().get(Calendar.YEAR) + " Federico Pecora";
+	public static String[] CONTRIBUTORS = {"Anna Mannucci", "Chittaranjan Swaminathan", "Paolo Forte"};
 
 	//null -> public (GPL3) license
 	public static String LICENSE = null;
@@ -1885,7 +1886,11 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	
 	private static void printLicense() {
 		System.out.println("\n"+TrajectoryEnvelopeCoordinator.TITLE);
-		System.out.println(TrajectoryEnvelopeCoordinator.COPYRIGHT+"\n");
+		String cpr = TrajectoryEnvelopeCoordinator.COPYRIGHT;
+		for (String cont : TrajectoryEnvelopeCoordinator.CONTRIBUTORS) cpr += ", " + cont;
+		List<String> cprJust = StringUtils.fitWidth(cpr, 77, 0);
+		for (String st : cprJust) System.out.println(st);
+		System.out.println();
 		if (TrajectoryEnvelopeCoordinator.LICENSE != null) {
 			List<String> lic = StringUtils.fitWidth(TrajectoryEnvelopeCoordinator.PRIVATE_LICENSE, 72, 5);
 			for (String st : lic) System.out.println(st);
