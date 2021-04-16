@@ -37,7 +37,7 @@ public abstract class TrajectoryEnvelopeTrackerDummy extends AbstractTrajectoryE
 	}
 	
 	@Override
-	protected void onTrajectoryEnvelopeUpdate(TrajectoryEnvelope te) { }
+	protected void onTrajectoryEnvelopeUpdate() { }
 	
 	@Override
 	public void startTracking() { }

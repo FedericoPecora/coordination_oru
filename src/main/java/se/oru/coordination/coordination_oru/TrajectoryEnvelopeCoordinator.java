@@ -71,6 +71,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	protected boolean isDeadlocked = false;
 	
 	protected Callback deadlockedCallback = null;
+	
+	//Set if inferring precedence constraints
+	protected boolean fake = false;
 
 
 	/**
@@ -120,6 +123,14 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		this.staticReplan = value;
 	}
 
+	/**
+	 * Enable fake coordination.
+	 * @param enable <code>true</code> whether the coordinator does not impose any precedence constraints.
+	 */
+	public void setFakeCoordination(boolean fake) {
+		this.fake = fake;
+	}
+	
 	/**
 	 * Create a new {@link TrajectoryEnvelopeCoordinator}, with control period 1000 msec,
 	 * and temporal resolution 1000 (milliseconds).
@@ -584,6 +595,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	@Override
 	protected void updateDependencies() {
 		synchronized(solver) {
+			if (this.fake) {
+				for (int robotID : trackers.keySet()) setCriticalPoint(robotID, -1, true);
+				return;
+			}
 			if (this.avoidDeadlockGlobally.get()) globalCheckAndRevise();
 			else localCheckAndRevise();
 		}
