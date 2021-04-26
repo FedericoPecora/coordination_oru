@@ -1356,16 +1356,17 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 * @return <code>true</code> iff the envelope is successfully truncated.
 	 */
 	public boolean truncateEnvelope(int robotID) {
-		return truncateEnvelope(robotID, true);
+		return truncateEnvelopeAt(robotID, -1);
 	}
 	
 	/**
 	 * Truncate the {@link TrajectoryEnvelope} of a given robot at the closest dynamically-feasible path point. This path point is computed via the robot's {@link ForwardModel}.
 	 * @param robotID The ID of the robot whose {@link TrajectoryEnvelope} should be truncated.
-	 * @param ensureDynamicFeasibility If <code>true</code>, truncate at the closest dynamically-feasible path point, which is computed via the robot's {@link ForwardModel}; if <code>false</code>, truncate at the current path index.
-	 * @return <code>true</code> iff the envelope is successfully truncated.
+	 * @param pathIndex The path index at which the envelope should be truncated (-1 if not specified)
+	 * @return <code>true</code> iff the envelope is successfully truncated at the desired path index (if specified and if kinodynamically feasible),
+	 * 							 or at the closest kinodynamically-feasible one otherwise.
 	 */
-	public boolean truncateEnvelope(int robotID, boolean ensureDynamicFeasibility) {
+	public boolean truncateEnvelopeAt(int robotID, int pathIndex) {
 		
 		synchronized (solver) {
 			
@@ -1383,26 +1384,28 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 			if (!(tet instanceof TrajectoryEnvelopeTrackerDummy)) {
 				
-				earliestStoppingPathIndex = ensureDynamicFeasibility ? this.getForwardModel(robotID).getEarliestStoppingPathIndex(te, this.getRobotReport(robotID)) : this.getRobotReport(robotID).getPathIndex();
+				earliestStoppingPathIndex = this.getForwardModel(robotID).getEarliestStoppingPathIndex(te, this.getRobotReport(robotID));
 				
 				//Check if you were already slowing down to stop in your critical point.
 				int lastCommunicatedCP = -1;
 				lastCommunicatedCP = communicatedCPs.get(tet).getFirst();
 				earliestStoppingPathIndex = (lastCommunicatedCP != -1) ? Math.min(lastCommunicatedCP, earliestStoppingPathIndex) : earliestStoppingPathIndex;
+				if (pathIndex != -1 && pathIndex < earliestStoppingPathIndex) return false;
 								
 				//Compute and add new TE, remove old TE (both driving and final parking)
-				PoseSteering[] truncatedPath = Arrays.copyOf(te.getTrajectory().getPoseSteering(), earliestStoppingPathIndex+1);
+				int stoppingIndex = pathIndex != -1 ? pathIndex : earliestStoppingPathIndex;
+				PoseSteering[] truncatedPath = Arrays.copyOf(te.getTrajectory().getPoseSteering(),stoppingIndex+1);
 				
 				//replace the path of this robot (will compute new envelope)
 				replacePath(robotID, truncatedPath, truncatedPath.length-1, new HashSet<Integer>(robotID));
 				
-				metaCSPLogger.info("Truncating " + te + " at " + earliestStoppingPathIndex + ".");
+				metaCSPLogger.info("Truncating " + te + " at " + stoppingIndex + ".");
 			}
 
 			return true;
 		}
 	}
-
+	
 	/**
 	 * Reverse the {@link TrajectoryEnvelope} of a given robot at the closest dynamically-feasible path point.
 	 * This path point is computed via the robot's {@link ForwardModel}.
