@@ -198,7 +198,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		return ret.toArray(new String[ret.size()]);
 	}
 
-	private List<List<Integer>> findSimpleNonliveCycles(SimpleDirectedGraph<Integer,Dependency> g) {
+	protected List<List<Integer>> findSimpleNonliveCycles(SimpleDirectedGraph<Integer,Dependency> g) {
 
 		JohnsonSimpleCycles<Integer, Dependency> cycleFinder = new JohnsonSimpleCycles<Integer, Dependency>(g);
 		List<List<Integer>> cycles = cycleFinder.findSimpleCycles();
@@ -247,7 +247,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	}
 
 
-	private SimpleDirectedGraph<Integer,Dependency> depsToGraph(HashMap<Integer, Dependency> deps) {
+	protected SimpleDirectedGraph<Integer,Dependency> depsToGraph(HashMap<Integer, Dependency> deps) {
 		SimpleDirectedGraph<Integer,Dependency> g = new SimpleDirectedGraph<Integer,Dependency>(Dependency.class);
 		for (int key : deps.keySet()) {
 			Dependency dep = deps.get(key);
@@ -259,7 +259,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		return g;
 	}
 
-	private HashMap<Integer, Dependency> computeClosestDependencies(HashMap<Integer,HashSet<Dependency>> allDeps, HashMap<Integer, HashSet<Dependency>> artificialDeps) {
+	protected HashMap<Integer, Dependency> computeClosestDependencies(HashMap<Integer,HashSet<Dependency>> allDeps, HashMap<Integer, HashSet<Dependency>> artificialDeps) {
 
 		HashMap<Integer, Dependency> closestDeps = new HashMap<Integer, Dependency>();
 
@@ -333,7 +333,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		return this.isDeadlocked;
 	}
 
-	private HashMap<Integer,HashSet<Dependency>> findAndRepairNonliveCycles(HashMap<Integer,HashSet<Dependency>> currentDeps, HashMap<Integer,HashSet<Dependency>> artificialDeps, HashSet<Dependency> reversibleDeps, HashMap<Integer,RobotReport> currentReports, Set<Integer> robotIDs) {
+	protected HashMap<Integer,HashSet<Dependency>> findAndRepairNonliveCycles(HashMap<Integer,HashSet<Dependency>> currentDeps, HashMap<Integer,HashSet<Dependency>> artificialDeps, HashSet<Dependency> reversibleDeps, HashMap<Integer,RobotReport> currentReports, Set<Integer> robotIDs) {
 
 		//Create a copy of the current set of dependencies
 		HashMap<Integer,HashSet<Dependency>> allDeps = new HashMap<Integer, HashSet<Dependency>>();
@@ -368,7 +368,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		return allDeps;
 	}
 	
-	private HashMap<Integer,HashSet<Dependency>> callLocalReordering(List<List<Integer>> nonliveCycles, HashMap<Integer, HashSet<Dependency>> artificialDeps, SimpleDirectedGraph<Integer,Dependency> g, HashSet<Dependency> reversibleDeps, HashMap<Integer,HashSet<Dependency>> allDeps, HashMap<Integer,RobotReport> currentReports) {
+	protected HashMap<Integer,HashSet<Dependency>> callLocalReordering(List<List<Integer>> nonliveCycles, HashMap<Integer, HashSet<Dependency>> artificialDeps, SimpleDirectedGraph<Integer,Dependency> g, HashSet<Dependency> reversibleDeps, HashMap<Integer,HashSet<Dependency>> allDeps, HashMap<Integer,RobotReport> currentReports) {
 		List<List<Integer>> nonliveCyclesNew = new ArrayList<List<Integer>>();
 		nonliveCyclesNew.addAll(nonliveCycles);
 		nonliveCyclesNew.removeAll(nonliveCyclesOld);
@@ -476,7 +476,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		return replanEnvelope(robotID, false);
 	}
 	
-	private boolean replanEnvelope(int robotID, boolean onlyIfDeadlocks) {
+	protected boolean replanEnvelope(int robotID, boolean onlyIfDeadlocks) {
 		synchronized (solver) {
 			SimpleDirectedGraph<Integer,Dependency> g = depsToGraph(currentDependencies);
 			List<List<Integer>> nonliveCycles = null;
@@ -497,7 +497,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		}
 	}
 	
-	private boolean callOnePathReplan(List<Integer> cycle, SimpleDirectedGraph<Integer,Dependency> g) {
+	protected boolean callOnePathReplan(List<Integer> cycle, SimpleDirectedGraph<Integer,Dependency> g) {
 		
 		//Get edges along the cycle...
 		Set<Integer> robotsToReplan = new HashSet<Integer>();
@@ -950,7 +950,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 * @param allConnectedRobots Set of robots in the same weakly connected component of the analyzed nonlive set.
 	 * @return <code>true</code> if the replanning thread is correctly spawned.
 	 */
-	private boolean spawnReplanning(final Set<Integer> robotsToReplan, final Set<Integer> allConnectedRobots) {
+	protected boolean spawnReplanning(final Set<Integer> robotsToReplan, final Set<Integer> allConnectedRobots) {
 		
 		//You should lock the robots if you want to start re-planning. 
 		//In this way, the last critical point communicated when the re-plan is started is forced not to be updated
@@ -969,7 +969,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		}
 	}
 	
-	private boolean setMaxCPDependencies(Set<Integer> robotsIDs) {
+	protected boolean setMaxCPDependencies(Set<Integer> robotsIDs) {
 		synchronized (replanningStoppingPoints) {
 			boolean tryLocking = true;
 			for (int robotID : robotsIDs) {
@@ -992,7 +992,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		}
 	}
 
-	private boolean nonlivePair(Dependency dep1, Dependency dep2) {
+	protected boolean nonlivePair(Dependency dep1, Dependency dep2) {
 		if (dep2.getWaitingPoint() <= dep1.getReleasingPoint()) return true;
 		return false;
 	}
@@ -2185,7 +2185,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 	}//end checkAndRevise
 	
-	private void sendCriticalPoint(int robotID, HashMap<Integer, RobotReport> currentReports) {
+	protected void sendCriticalPoint(int robotID, HashMap<Integer, RobotReport> currentReports) {
 		AbstractTrajectoryEnvelopeTracker tracker = null;
 		synchronized (trackers) {
 			tracker = trackers.get(robotID);
