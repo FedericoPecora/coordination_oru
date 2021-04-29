@@ -821,23 +821,33 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		//Compute one obstacle per given robot, placed in the robot's waiting pose
 		ArrayList<Geometry> ret = new ArrayList<Geometry>();
 		for (int robotID : robotIDs) {
-			HashMap<Integer, Dependency> currentDeps = getCurrentDependencies();
-			Dependency dep = currentDeps.containsKey(robotID) ? getCurrentDependencies().get(robotID) : null;
-			if (dep != null) {
-				Pose waitingPose = dep.getWaitingPose();
-				int waitingPoint = dep.getWaitingPoint();
-				Geometry currentFP = makeObstacles(robotID, waitingPose)[0]; 
-						
-				//In case the robot has stopped a little beyond the critical point
-				int currentPoint = this.getRobotReport(robotID).getPathIndex();
-				if (currentPoint != -1 && currentPoint > waitingPoint) {
-					Pose currentPose = dep.getWaitingTrajectoryEnvelope().getTrajectory().getPose()[currentPoint];
-					currentFP = makeObstacles(robotID, currentPose)[0];
-					System.out.println("Oops: " + waitingPoint + " < " + currentPoint);
-				}
-				
-				ret.add(currentFP);
+			AbstractTrajectoryEnvelopeTracker tracker = null;
+			synchronized(trackers) {
+				tracker = trackers.get(robotID);
 			}
+			Geometry currentFP = null;
+			if (tracker instanceof TrajectoryEnvelopeTrackerDummy) {
+				Pose currentPose = this.getRobotReport(robotID).getPose();
+				currentFP = makeObstacles(robotID, currentPose)[0];
+			}
+			else {
+				HashMap<Integer, Dependency> currentDeps = getCurrentDependencies();
+				Dependency dep = currentDeps.containsKey(robotID) ? getCurrentDependencies().get(robotID) : null;
+				if (dep != null) {
+					Pose waitingPose = dep.getWaitingPose();
+					int waitingPoint = dep.getWaitingPoint();
+					currentFP = makeObstacles(robotID, waitingPose)[0];
+				
+					//In case the robot has stopped a little beyond the critical point
+					int currentPoint = this.getRobotReport(robotID).getPathIndex();
+					if (currentPoint != -1 && currentPoint > waitingPoint) {
+							Pose currentPose = dep.getWaitingTrajectoryEnvelope().getTrajectory().getPose()[currentPoint];
+							currentFP = makeObstacles(robotID, currentPose)[0];
+							System.out.println("Oops: " + waitingPoint + " < " + currentPoint);
+					}
+				}
+			}
+			ret.add(currentFP);
 		}
 		return ret.toArray(new Geometry[ret.size()]);
 	}
