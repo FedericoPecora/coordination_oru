@@ -1210,6 +1210,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		}
 	}
 
+	
 	/**
 	 * Replace the path of a robot's {@link TrajectoryEnvelope} on the fly.
 	 * @param robotID The ID of the robot whose {@link TrajectoryEnvelope} is to be recomputed.
@@ -1219,8 +1220,29 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 * @param <code>true</code> whether the robot should be at the current critical point before starting a re-plan.
 	 */
 	public void replacePath(int robotID, PoseSteering[] newPath, int breakingPathIndex, Set<Integer> lockedRobotIDs) {
+		replacePath(robotID, newPath, breakingPathIndex, true, lockedRobotIDs);
+	}
+	
+	/**
+	 * Replace the path of a robot's {@link TrajectoryEnvelope} on the fly while discarding a piece of the old path.
+	 * @param robotID The ID of the robot whose {@link TrajectoryEnvelope} is to be recomputed.
+	 * @param newPath The path based on which the new {@link TrajectoryEnvelope} should be computed.
+	 * @param breakingPathIndex Last point on the current path to preserve. 
+	 * @param concatenatePaths <code>true</code> whether the new path should be concatenated with the old one.
+	 * @param lockedRobotIDs The set of robots which have been locked when the re-plan started.
+	 * @param <code>true</code> whether the robot should be at the current critical point before starting a re-plan.
+	 * @ATTENTION When the path is not concatenated, it is supposed the robot has already traversed the overall path.
+	 */
+	public void replacePath(int robotID, PoseSteering[] newPath, int breakingPathIndex, boolean concatenatePaths, Set<Integer> lockedRobotIDs) {
 
 		synchronized (solver) {
+			
+			synchronized(trackers) {
+				if (!trackers.containsKey(robotID)) {
+					metaCSPLogger.warning("Invalid robotID. Place the robot before!");
+					return;
+				}
+			}
 
 			synchronized (allCriticalSections) {
 				//Get current envelope
@@ -1292,10 +1314,12 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				computeCriticalSections();
 
 				//------------------ (dynamic re-plan) --------------------
+				//Here we have to shift the start and end of the old critical section if the path is new
+				int offset = concatenatePaths ? 0 : -breakingPathIndex;
 				for (CriticalSection cs1 : allCriticalSections) {
-					if (cs1.getTe1().getRobotID() == robotID && cs1.getTe1Start() <= breakingPathIndex || 
-							cs1.getTe2().getRobotID() == robotID && cs1.getTe2Start() <= breakingPathIndex) {
-						for (CriticalSection cs2 : holdingCS.keySet()) {
+					if (cs1.getTe1().getRobotID() == robotID && cs1.getTe1Start() <= breakingPathIndex+offset || 
+							cs1.getTe2().getRobotID() == robotID && cs1.getTe2Start() <= breakingPathIndex+offset) {
+						for (CriticalSection cs2 : holdingCS.keySet()) {//cs2 are the old ones which should be affected by the offset for the robot that is replanning
 							if (cs1.getTe1().getRobotID() == cs2.getTe1().getRobotID() && cs1.getTe2().getRobotID() == cs2.getTe2().getRobotID() ||
 									cs1.getTe1().getRobotID() == cs2.getTe2().getRobotID() && cs1.getTe2().getRobotID() == cs2.getTe1().getRobotID()) {
 
@@ -1309,10 +1333,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 								int start12 = cs1.getTe1().getRobotID() == robotID ? cs1.getTe2Start() : cs1.getTe1Start();
 								int end11 = cs1.getTe1().getRobotID() == robotID ? cs1.getTe1End() : cs1.getTe2End();
 								int end12 = cs1.getTe1().getRobotID() == robotID ? cs1.getTe2End() : cs1.getTe1End();
-								int start21 = cs2.getTe1().getRobotID() == robotID ? cs2.getTe1Start() : cs2.getTe2Start();
-								int start22 = cs2.getTe1().getRobotID() == robotID ? cs2.getTe2Start() : cs2.getTe1Start();
-								int end21 = cs2.getTe1().getRobotID() == robotID ? cs2.getTe1End() : cs2.getTe2End();
-								int end22 = cs2.getTe1().getRobotID() == robotID ? cs2.getTe2End() : cs2.getTe1End();
+								int start21 = cs2.getTe1().getRobotID() == robotID ? cs2.getTe1Start()+offset : cs2.getTe2Start();
+								int start22 = cs2.getTe1().getRobotID() == robotID ? cs2.getTe2Start()+offset : cs2.getTe1Start();
+								int end21 = cs2.getTe1().getRobotID() == robotID ? cs2.getTe1End()+offset : cs2.getTe2End();
+								int end22 = cs2.getTe1().getRobotID() == robotID ? cs2.getTe2End()+offset : cs2.getTe1End();
 								
 								//Here we should consider all the cases of spatial overlap between the new critical section (cs1 = [start11,end11], [start12,end12]) and the old 
 								//critical section (cs2 = [start21,end21], [start22,end22]). Note that start and end are still overlapping configurations (see {@link CriticalSection}, {@link AbstractTrajectoryEnvelopeCoordinaror}, function: getCriticalSections).
