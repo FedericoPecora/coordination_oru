@@ -67,6 +67,7 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 	private boolean ready = false;
 	private String mapFileName = null;
 	private boolean darkColors = true;
+	private boolean publishPartialEnvelope = false;
 	
 	private static String rvizEntry = ""+
 			"    - Class: rviz/MarkerArray\n" + 
@@ -144,6 +145,13 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 		this.node = node;
 		this.ready = true;
 	}
+	
+	public RVizVisualization(ConnectedNode node, String mapFrameID, boolean publishPartialEnvelope) {
+		this(false, mapFrameID);
+		this.node = node;
+		this.ready = true;
+		this.publishPartialEnvelope = publishPartialEnvelope;
+	}
 
 	public RVizVisualization(boolean startROSCore) {
 		this(startROSCore,"/map");
@@ -173,6 +181,10 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 			catch (InterruptedException e) { e.printStackTrace(); }
 			System.out.println("ROS-core started");
 		}
+	}
+	
+	public void setPublishPartialEnvelope(boolean publishPartialEnvelope) {
+		this.publishPartialEnvelope = publishPartialEnvelope;
 	}
 	
 	public void setDarkColors(boolean dark) {
@@ -349,7 +361,7 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 			synchronized(robotStatusMarkers) {
 				this.robotStatusMarkers.get(rr.getRobotID()).add(markerName);
 			}
-
+			if (this.publishPartialEnvelope) createPartialEnvelopeGeometryMarker(te, rr.getPathIndex() > 0 ? rr.getPathIndex() : te.getPathLength()-1, te.getPathLength()-1);
 		}
 	}
 	
@@ -648,8 +660,12 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 
 	@Override
 	public void addEnvelope(TrajectoryEnvelope te) {
-		GeometricShapeDomain dom = (GeometricShapeDomain)te.getEnvelopeVariable().getDomain();
-		Coordinate[] verts = dom.getGeometry().getCoordinates();
+		createPartialEnvelopeGeometryMarker(te, 0, te.getPathLength()-1);
+	}
+	
+	private void createPartialEnvelopeGeometryMarker(TrajectoryEnvelope te, int indexFrom, int indexTo) {
+		
+		Coordinate[] verts = te.getPartialEnvelopeGeometry(indexFrom, indexTo).getCoordinates();
 
 		visualization_msgs.Marker marker = node.getTopicMessageFactory().newFromType(visualization_msgs.Marker._TYPE);
 		marker.getHeader().setFrameId(mapFrameID);
@@ -690,7 +706,7 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 
 		if (this.envelopeMarkers == null) this.envelopeMarkers = new HashMap<Integer,visualization_msgs.Marker>();
 		synchronized(envelopeMarkers) {
-			this.envelopeMarkers.put(te.getRobotID(),marker);
+			this.envelopeMarkers.put(te.getRobotID(), marker);
 		}
 
 	}

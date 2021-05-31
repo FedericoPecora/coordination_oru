@@ -1,6 +1,5 @@
 package se.oru.coordination.coordination_oru;
 
-import org.metacsp.multi.allenInterval.AllenIntervalConstraint;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelopeSolver;
 
@@ -140,7 +139,7 @@ public abstract class TrajectoryEnvelopeTrackerDummy extends AbstractTrajectoryE
 	
 	@Override
 	public void onPositionUpdate() {
-		if (tec.getVisualization() != null) tec.getVisualization().displayRobotState(te.getFootprint(), getRobotReport());
+		if (tec.getVisualization() != null) tec.getVisualization().displayRobotState(te, getRobotReport());
 	}
 
 	

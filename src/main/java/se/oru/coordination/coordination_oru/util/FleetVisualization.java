@@ -7,9 +7,9 @@ import se.oru.coordination.coordination_oru.RobotReport;
 
 public interface FleetVisualization {
 	
-	@Deprecated
 	public void displayRobotState(TrajectoryEnvelope te, RobotReport rr, String ... extraStatusInfo);
 	
+	@Deprecated
 	public void displayRobotState(Polygon fp, RobotReport rr, String ... extraStatusInfo);
 	
 	public void displayDependency(RobotReport rrWaiting, RobotReport rrDriving, String dependencyDescriptor);

@@ -255,7 +255,7 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 		if (tec.getVisualization() != null) {
 			//Update the position of the robot in the GUI
 			RobotReport rr = getRobotReport();
-			tec.getVisualization().displayRobotState(te.getFootprint(), rr, extraRobotState);
+			tec.getVisualization().displayRobotState(te, rr, extraRobotState);
 			
 			//Draw an arrow if there is a critical point
 			RobotReport rrWaiting = getRobotReport();
