@@ -361,7 +361,7 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 			synchronized(robotStatusMarkers) {
 				this.robotStatusMarkers.get(rr.getRobotID()).add(markerName);
 			}
-			if (this.publishPartialEnvelope) createPartialEnvelopeGeometryMarker(te, rr.getPathIndex() > 0 ? rr.getPathIndex() : te.getPathLength()-1, te.getPathLength()-1);
+			if (this.publishPartialEnvelope) createPartialEnvelopeGeometryMarker(te, rr.getPathIndex() >= 0 ? rr.getPathIndex() : te.getPathLength()-1, te.getPathLength()-1);
 		}
 	}
 	
