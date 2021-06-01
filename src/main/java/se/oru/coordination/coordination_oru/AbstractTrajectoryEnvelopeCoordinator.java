@@ -881,7 +881,10 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			//mp.clearObstacles();
 			if (obstaclesToConsider != null && obstaclesToConsider.length > 0) mp.addObstacles(obstaclesToConsider);
 			boolean replanningSuccessful = mp.plan();
-			if (!replanningSuccessful) mp.writeDebugImage();
+			if (!replanningSuccessful) {
+				try { mp.writeDebugImage(); }
+				catch (NullPointerException nex) { System.out.println("Failed to write debug image"); }
+			}
 			if (obstaclesToConsider != null && obstaclesToConsider.length > 0) mp.clearObstacles();
 			if (replanningSuccessful) return mp.getPath();
 			return null;
