@@ -124,26 +124,23 @@ public class ThreeDifferentRobotsLinear {
 		rsp.setStart(startPoseRobot1);
 		rsp.setGoals(goalPoseRobot1);
 		if (!rsp.plan()) throw new Error ("No path between " + startPoseRobot1 + " and " + goalPoseRobot1);
-		PoseSteering[] pss1 = rsp.getPath();
+		Missions.enqueueMission(new Mission(1,rsp.getPath()));
+		Missions.enqueueMission(new Mission(1,rsp.getPathInv()));
 
 		rsp.setFootprint(fp2);
 		rsp.setStart(startPoseRobot2);
 		rsp.setGoals(goalPoseRobot2);
 		if (!rsp.plan()) throw new Error ("No path between " + startPoseRobot2 + " and " + goalPoseRobot2);
-		PoseSteering[] pss2 = rsp.getPath();
+		Missions.enqueueMission(new Mission(2,rsp.getPath()));
+		Missions.enqueueMission(new Mission(2,rsp.getPathInv()));
 
 		rsp.setFootprint(fp3);
 		rsp.setStart(startPoseRobot3);
 		rsp.setGoals(goalPoseRobot3);
 		if (!rsp.plan()) throw new Error ("No path between " + startPoseRobot3 + " and " + goalPoseRobot3);
-		PoseSteering[] pss3 = rsp.getPath();
+		Missions.enqueueMission(new Mission(3,rsp.getPath()));
+		Missions.enqueueMission(new Mission(3,rsp.getPathInv()));
 
-		Mission m1 = new Mission(1,pss1);
-		Mission m2 = new Mission(2,pss2);
-		Mission m3 = new Mission(3,pss3);
-		Missions.enqueueMission(m1);
-		Missions.enqueueMission(m2);
-		Missions.enqueueMission(m3);
 		Missions.startMissionDispatchers(tec, 1,2,3);
 
 	}

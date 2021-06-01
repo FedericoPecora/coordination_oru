@@ -67,7 +67,8 @@ public class Diameter {
 		
 		//Setup a simple GUI (null means empty map, otherwise provide yaml file)
 		BrowserVisualization viz = new BrowserVisualization();
-		viz.setInitialTransform(10, 85, 48);
+		//viz.setInitialTransform(10, 85, 48);
+		viz.setInitialTransform(30, 27, 15);
 		tec.setVisualization(viz);
 		
 		//MetaCSPLogging.setLevel(tec.getClass().getSuperclass(), Level.FINEST);

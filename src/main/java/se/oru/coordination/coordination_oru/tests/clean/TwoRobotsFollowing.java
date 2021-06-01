@@ -51,9 +51,9 @@ public class TwoRobotsFollowing {
 		});
 		tec.setUseInternalCriticalPoints(false);
 		
-		NetworkConfiguration.setDelays(0, 3000);
-		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0.0;
-		tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, NetworkConfiguration.getMaximumTxDelay(), 0);
+//		NetworkConfiguration.setDelays(0, 3000);
+//		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0.0;
+//		tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, NetworkConfiguration.getMaximumTxDelay(), 0);
 		
 		Coordinate footprint1 = new Coordinate(-0.5,0.5);
 		Coordinate footprint2 = new Coordinate(-0.5,-0.5);

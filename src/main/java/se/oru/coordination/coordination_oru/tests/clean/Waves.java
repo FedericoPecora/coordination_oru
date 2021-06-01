@@ -113,7 +113,7 @@ public class Waves {
 		for (int i = 0; i < numRobots; i++) robotIDs[i] = i+1;
 		
 		BrowserVisualization viz = new BrowserVisualization();
-		viz.setInitialTransform(19.64, 3.18, 16.49); //viz.setInitialTransform(20.0, 45, 20);
+		viz.setInitialTransform(31, 12, 6); //viz.setInitialTransform(20.0, 45, 20);
 		tec.setVisualization(viz);
 		
 		for (int index = 0; index < robotIDs.length; index++) {
@@ -123,7 +123,7 @@ public class Waves {
 
 			tec.setForwardModel(robotID, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getRobotTrackingPeriodInMillis(robotID)));
 			Pose from = new Pose(0.0,index*deltaY,0.0);
-			Pose to = new Pose(4*period,index*deltaY,0.0);
+			Pose to = new Pose(2*period,index*deltaY,0.0);
 			if (index%2 != 0) mag*=(-1);
 			PoseSteering[] robotPath = getSinePath(period, mag, from, to);
 			PoseSteering[] robotPathInv = invertPath(robotPath);
