@@ -466,6 +466,16 @@ public class Missions {
 	}
 	
 	/**
+	 * Get the path between two locations if such a path exists in the roadmap.
+	 * @param from The name of the source location.
+	 * @param to The name of the target location.
+	 * @return The path between the given locations, <code>null</code> if the roadmap does not contain this edge.
+	 */
+	public static PoseSteering[] getPath(String from, String to) {
+		return paths.get(from+"->"+to);
+	}
+	
+	/**
 	 * Get all the {@link Mission}s currently known for one robot
 	 * @param robotID A robot identifier
 	 * @return All the {@link Mission}s currently known for one robot
