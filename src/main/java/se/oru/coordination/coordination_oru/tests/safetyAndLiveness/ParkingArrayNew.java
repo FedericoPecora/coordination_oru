@@ -83,9 +83,9 @@ public class ParkingArrayNew {
 		//MetaCSPLogging.setLevel(TrajectoryEnvelopeCoordinator.class, Level.FINEST);
 		
 		//Setup the network parameters
-		NetworkConfiguration.setDelays(10, 500);
-		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0.;
-		tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, NetworkConfiguration.getMaximumTxDelay(), 0.02);
+//		NetworkConfiguration.setDelays(10, 500);
+//		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0.;
+//		tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, NetworkConfiguration.getMaximumTxDelay(), 0.02);
 				
 		//Set the footprint
 		Coordinate[] footprint = new Coordinate[] { 

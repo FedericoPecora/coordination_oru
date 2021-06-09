@@ -6,22 +6,18 @@ import org.metacsp.multi.spatioTemporal.paths.Pose;
 
 import com.vividsolutions.jts.geom.Coordinate;
 
-import se.oru.coordination.coordination_oru.NetworkConfiguration;
 import se.oru.coordination.coordination_oru.ConstantAccelerationForwardModel;
 import se.oru.coordination.coordination_oru.CriticalSection;
 import se.oru.coordination.coordination_oru.Mission;
 import se.oru.coordination.coordination_oru.RobotAtCriticalSection;
 import se.oru.coordination.coordination_oru.RobotReport;
-import se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
 import se.oru.coordination.coordination_oru.util.BrowserVisualization;
-import se.oru.coordination.coordination_oru.util.JTSDrawingPanelVisualization;
 import se.oru.coordination.coordination_oru.util.Missions;
-import se.oru.coordination.coordination_oru.util.RVizVisualization;
 
-@DemoDescription(desc = "Example showing coordination in opposing directions (following should happen here).")
+@DemoDescription(desc = "Example showing coordination with completely overlapping trajectory envelopes (robots should follow each other).")
 public class TwoRobotsTotalOverlap {
 
 	public static void main(String[] args) throws InterruptedException {
@@ -90,12 +86,12 @@ public class TwoRobotsTotalOverlap {
 		viz.setInitialTransform(40.6, -1.26, 4.5);
 		tec.setVisualization(viz);
 
-		Pose startRobot1 = new Pose(45.0,5.0,0.0);
+//		Pose startRobot1 = new Pose(45.0,5.0,0.0);
 		Pose goalRobot11 = new Pose(40.0,7.0,0.0);
 		Pose goalRobot12 = new Pose(10.0,7.0,0.0);
 //		Pose goalRobot13 = new Pose(5.0,5.0,0.0);
 		
-		Pose startRobot2 = new Pose(45.0,9.0,Math.PI);
+//		Pose startRobot2 = new Pose(45.0,9.0,Math.PI);
 		Pose goalRobot21 = new Pose(40.0,7.0,Math.PI);
 		Pose goalRobot22 = new Pose(10.0,7.0,Math.PI);
 //		Pose goalRobot23 = new Pose(5.0,9.0,Math.PI);
@@ -104,8 +100,8 @@ public class TwoRobotsTotalOverlap {
 		// -- creates a trajectory envelope for each location, representing the fact that the robot is parked
 		// -- each trajectory envelope has a path of one pose (the pose of the location)
 		// -- each trajectory envelope is the footprint of the corresponding robot in that pose
-		tec.placeRobot(1, startRobot1);
-		tec.placeRobot(2, startRobot2);
+		tec.placeRobot(1, goalRobot11);
+		tec.placeRobot(2, goalRobot22);
 
 		//Set up path planner (using empty map)
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
@@ -113,31 +109,20 @@ public class TwoRobotsTotalOverlap {
 		rsp.setFootprint(footprint1, footprint2, footprint3, footprint4);
 		rsp.setTurningRadius(4.0);
 		rsp.setDistanceBetweenPathPoints(0.1);
-
-		rsp.setStart(startRobot1);
-		rsp.setGoals(goalRobot11);
-		rsp.plan();
-		Mission m11 = new Mission(1,rsp.getPath());
-		Missions.enqueueMission(m11);
 		
 		rsp.setStart(goalRobot11);
 		rsp.setGoals(goalRobot12);
 		rsp.plan();
 		Mission m12 = new Mission(1,rsp.getPath());
-		m12.setStoppingPoint(rsp.getPath()[rsp.getPath().length-10].getPose(), 40000);
+		//m12.setStoppingPoint(rsp.getPath()[rsp.getPath().length-50].getPose(), 40000);
 		Missions.enqueueMission(m12);
 
-		rsp.setStart(startRobot2);
+		
+		rsp.setStart(goalRobot22);
 		rsp.setGoals(goalRobot21);
 		rsp.plan();
-		Mission m21 = new Mission(2,rsp.getPath());
-		Missions.enqueueMission(m21);
-		
-		rsp.setStart(goalRobot21);
-		rsp.setGoals(goalRobot22);
-		rsp.plan();
 		Mission m22 = new Mission(2,rsp.getPath());
-		m22.setStoppingPoint(rsp.getPath()[rsp.getPath().length-10].getPose(), 40000);
+		//m22.setStoppingPoint(rsp.getPath()[rsp.getPath().length-150].getPose(), 40000);
 		Missions.enqueueMission(m22);
 		
 		System.out.println("Added missions " + Missions.getMissions());

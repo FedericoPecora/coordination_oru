@@ -925,8 +925,8 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	protected abstract void updateDependencies();
 	
 	/**
-	 * Return if a robot, which is starting from a critical sections, 
-	 * is able to exit safetly from it.
+	 * Return if a robot, which is starting from a critical section, 
+	 * is able to exit safely from it.
 	 */
 	protected boolean canExitCriticalSection(int drivingCurrentIndex, int waitingCurrentIndex, TrajectoryEnvelope drivingTE, TrajectoryEnvelope waitingTE, int lastIndexOfCSDriving) {
 		drivingCurrentIndex = Math.max(drivingCurrentIndex,0);
