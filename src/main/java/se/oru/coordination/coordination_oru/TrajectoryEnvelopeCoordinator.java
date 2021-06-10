@@ -1015,7 +1015,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 			//FIXME not synchronized on current dependencies
 			Geometry[] obstacles = null;
-			int[] otherRobotIDs = null;
+			HashSet<Integer> otherRobotIDs = null;
 			synchronized (getCurrentDependencies()) {
 				HashMap<Integer, Dependency> currentDeps = getCurrentDependencies();
 				Dependency dep = currentDeps.containsKey(robotID) ? currentDeps.get(robotID) : null;
@@ -1031,13 +1031,14 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				currentWaitingGoal = oldPath[oldPath.length-1].getPose();
 				
 				if (robotsAsObstacles.size() > 0) {
-					otherRobotIDs = new int[robotsAsObstacles.size()-1];
-					int counter = 0;
-					for (int otherRobotID : robotsAsObstacles) if (otherRobotID != robotID && currentDeps.containsKey(otherRobotID)) otherRobotIDs[counter++] = otherRobotID;
+					otherRobotIDs = new HashSet<Integer>();
+					for (int otherRobotID : robotsAsObstacles) if (otherRobotID != robotID && currentDeps.containsKey(otherRobotID)) otherRobotIDs.add(otherRobotID);
 
 					//FIXME not synchronized on current dependencies
-					obstacles = getObstaclesInCriticalPoints(otherRobotIDs);
-
+					if (!otherRobotIDs.isEmpty()) {
+						int[] otherRobotIDsArray = new int[otherRobotIDs.size()];
+						obstacles = getObstaclesInCriticalPoints(otherRobotIDsArray);
+					}
 				}
 			}
 
