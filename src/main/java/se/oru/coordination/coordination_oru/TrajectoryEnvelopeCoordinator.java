@@ -1001,7 +1001,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	/**
 	 * Try re-planning ONE path AMONG the set of robots robotsToReplan while considering robotsAsObstacles placed in their current CP as additional obstacles. 
 	 * @param robotsToReplan The set of robots which may attempt to re-plan the path.
-	 * @param robotsAsObstacles The set of robots to consider as additional obstacles while re-planning.
+	 * @param robotsAsObstacles The set of robots to consider as additional obstacles while re-planning (only if they have a critical point).
 	 * @param useStaticReplan <code>true</code> iff all robotsToReplan should yield in their current critical point before starting the re-plan.
 	 */
 	protected boolean rePlanPath(Set<Integer> robotsToReplan, Set<Integer> robotsAsObstacles) {
@@ -1019,19 +1019,21 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			synchronized (getCurrentDependencies()) {
 				HashMap<Integer, Dependency> currentDeps = getCurrentDependencies();
 				Dependency dep = currentDeps.containsKey(robotID) ? currentDeps.get(robotID) : null;
-				if (dep != null) { //FIXME what if null??
-					currentWaitingIndex = dep.getWaitingPoint();
-					currentWaitingPose = dep.getWaitingPose();
-					if (currentWaitingPose == null) throw new Error("Waiting pose should not be null in dep: " + dep);
-					Trajectory traj = dep.getWaitingTrajectoryEnvelope().getTrajectory();
-					oldPath = traj.getPoseSteering();
-					currentWaitingGoal = oldPath[oldPath.length-1].getPose();
+				if (dep == null) {
+					metaCSPLogger.info("Robot " + robotID + " cannot is not deadlocked ... ");
+					continue;
 				}
-
+				currentWaitingIndex = dep.getWaitingPoint();
+				currentWaitingPose = dep.getWaitingPose();
+				if (currentWaitingPose == null) throw new Error("Waiting pose should not be null in dep: " + dep);
+				Trajectory traj = dep.getWaitingTrajectoryEnvelope().getTrajectory();
+				oldPath = traj.getPoseSteering();
+				currentWaitingGoal = oldPath[oldPath.length-1].getPose();
+				
 				if (robotsAsObstacles.size() > 0) {
 					otherRobotIDs = new int[robotsAsObstacles.size()-1];
 					int counter = 0;
-					for (int otherRobotID : robotsAsObstacles) if (otherRobotID != robotID) otherRobotIDs[counter++] = otherRobotID;
+					for (int otherRobotID : robotsAsObstacles) if (otherRobotID != robotID && currentDeps.containsKey(otherRobotID)) otherRobotIDs[counter++] = otherRobotID;
 
 					//FIXME not synchronized on current dependencies
 					obstacles = getObstaclesInCriticalPoints(otherRobotIDs);
