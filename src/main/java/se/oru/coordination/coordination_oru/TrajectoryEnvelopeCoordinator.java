@@ -1004,7 +1004,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 * @param robotsAsObstacles The set of robots to consider as additional obstacles while re-planning.
 	 * @param useStaticReplan <code>true</code> iff all robotsToReplan should yield in their current critical point before starting the re-plan.
 	 */
-	protected void rePlanPath(Set<Integer> robotsToReplan, Set<Integer> robotsAsObstacles) {
+	protected boolean rePlanPath(Set<Integer> robotsToReplan, Set<Integer> robotsAsObstacles) {
+		boolean ret = false;
+		
 		for (int robotID : robotsToReplan) {
 			int currentWaitingIndex = -1;
 			Pose currentWaitingPose = null;
@@ -1057,6 +1059,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					replacePath(robotID, newCompletePath, currentWaitingIndex, robotsToReplan);
 					successfulReplanningTrialsCounter.incrementAndGet();
 					metaCSPLogger.info("Successfully re-planned path of Robot" + robotID);
+					ret = true;
 					break;
 				}
 				else {
@@ -1068,6 +1071,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			for (int robotID : robotsToReplan) replanningStoppingPoints.remove(robotID);
 			metaCSPLogger.finest("Unlocking robots: " + robotsToReplan.toString());
 		}
+		return ret;
 	}
 
 	@Override
