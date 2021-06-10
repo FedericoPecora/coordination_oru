@@ -738,7 +738,6 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 						
 						boolean r1CanExit = canExitCriticalSection(robotReport1.getPathIndex(), robotReport2.getPathIndex(), robotTracker1.getTrajectoryEnvelope(), robotTracker2.getTrajectoryEnvelope(), cs.getTe1End());
 						boolean r2CanExit = canExitCriticalSection(robotReport2.getPathIndex(), robotReport1.getPathIndex(), robotTracker2.getTrajectoryEnvelope(), robotTracker1.getTrajectoryEnvelope(), cs.getTe2End());
-
 						
 						//Force the dependency for the robot footprint
 						if (//the last critical point was before the critical section (can stop by induction)
@@ -820,7 +819,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 									
 									metaCSPLogger.info("Robot" + drivingRobotID + " cannot escape from CS: " + cs + ". Let's create a deadlock. Add artificial dependencies " + dep1 + " and " + dep2);
 								}
-								else {									
+								else {
 									//Check if the robot that is parked can exit from critical section.
 									drivingRobotID = r1CanExit ? robotReport1.getRobotID() : robotReport2.getRobotID();
 									waitingRobotID = r1CanExit ? robotReport2.getRobotID() : robotReport1.getRobotID();	
