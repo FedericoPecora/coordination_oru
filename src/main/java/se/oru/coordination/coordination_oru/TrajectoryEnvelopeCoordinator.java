@@ -1019,10 +1019,22 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 			HashSet<Integer> otherRobotIDs = null;
 			synchronized (getCurrentDependencies()) {
 				HashMap<Integer, Dependency> currentDeps = getCurrentDependencies();
-				Dependency dep = currentDeps.containsKey(robotID) ? currentDeps.get(robotID) : null;
-				if (dep == null) {
-					metaCSPLogger.info("Robot " + robotID + " cannot is not deadlocked ... ");
-					continue;
+				Dependency dep = null;
+				if (robotsToReplan.size() == 1) {
+					synchronized(replanningStoppingPoints) {
+						if (!replanningStoppingPoints.containsKey(robotID)) {
+							metaCSPLogger.info("Invalid replan " + robotID + " ... ");
+							return false;
+						}
+						dep = replanningStoppingPoints.get(robotID);
+					}
+				}
+				else { //replanning for deadlock
+					if (!currentDeps.containsKey(robotID)) {
+						metaCSPLogger.info("Robot " + robotID + " is not deadlocked ... ");
+						continue;
+					}
+					dep = currentDeps.get(robotID);
 				}
 				currentWaitingIndex = dep.getWaitingPoint();
 				currentWaitingPose = dep.getWaitingPose();
@@ -1066,7 +1078,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				}
 			}
 		}
-		synchronized (replanningStoppingPoints) {
+		synchronized(replanningStoppingPoints) {
 			for (int robotID : robotsToReplan) replanningStoppingPoints.remove(robotID);
 			metaCSPLogger.finest("Unlocking robots: " + robotsToReplan.toString());
 		}
