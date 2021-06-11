@@ -13,6 +13,7 @@ import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.commons.lang.ArrayUtils;
 import org.jgrapht.alg.ConnectivityInspector;
 import org.jgrapht.alg.KosarajuStrongConnectivityInspector;
 import org.jgrapht.alg.cycle.JohnsonSimpleCycles;
@@ -1035,14 +1036,11 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					for (int otherRobotID : robotsAsObstacles) if (otherRobotID != robotID && currentDeps.containsKey(otherRobotID)) otherRobotIDs.add(otherRobotID);
 
 					//FIXME not synchronized on current dependencies
-					if (!otherRobotIDs.isEmpty()) {
-						int[] otherRobotIDsArray = new int[otherRobotIDs.size()];
-						obstacles = getObstaclesInCriticalPoints(otherRobotIDsArray);
-					}
+					if (!otherRobotIDs.isEmpty()) obstacles = getObstaclesInCriticalPoints(ArrayUtils.toPrimitive(otherRobotIDs.toArray(new Integer[0])));
 				}
 			}
 
-			metaCSPLogger.info("Attempting to re-plan path of Robot" + robotID + " (with obstacles for robots " + Arrays.toString(otherRobotIDs) + ", from " + 
+			metaCSPLogger.info("Attempting to re-plan path of Robot" + robotID + " (with obstacles for robots " + otherRobotIDs.toString() + ", from " + 
 					currentWaitingPose + ", to " + currentWaitingGoal + ")...");
 			AbstractMotionPlanner mp = null;
 			if (this.motionPlanners.containsKey(robotID)) mp = this.motionPlanners.get(robotID);
