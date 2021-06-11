@@ -1042,11 +1042,12 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				Trajectory traj = dep.getWaitingTrajectoryEnvelope().getTrajectory();
 				oldPath = traj.getPoseSteering();
 				currentWaitingGoal = oldPath[oldPath.length-1].getPose();
+				if (currentWaitingGoal == null) throw new Error("Waiting goal should not be null in dep: " + dep);
 				
 				if (robotsAsObstacles.size() > 0) {
 					otherRobotIDs = new HashSet<Integer>();
 					for (int otherRobotID : robotsAsObstacles) if (otherRobotID != robotID) otherRobotIDs.add(otherRobotID);
-					if (!otherRobotIDs.isEmpty()) obstacles = getObstaclesInCriticalPoints(ArrayUtils.toPrimitive(otherRobotIDs.toArray(new Integer[0])));
+					if (!otherRobotIDs.isEmpty()) obstacles = getObstaclesInCriticalPoints(ArrayUtils.toPrimitive(otherRobotIDs.toArray(new Integer[otherRobotIDs.size()])));
 				}
 			}
 
@@ -1080,7 +1081,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		}
 		synchronized(replanningStoppingPoints) {
 			for (int robotID : robotsToReplan) replanningStoppingPoints.remove(robotID);
-			metaCSPLogger.finest("Unlocking robots: " + robotsToReplan.toString());
+			metaCSPLogger.info("Removing replanning stopping points of robots: " + robotsToReplan.toString());
 		}
 		return ret;
 	}
