@@ -1016,7 +1016,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 			//FIXME not synchronized on current dependencies
 			Geometry[] obstacles = null;
-			HashSet<Integer> otherRobotIDs = null;
+			HashSet<Integer> otherRobotIDs = new HashSet<Integer>();
 			synchronized (getCurrentDependencies()) {
 				HashMap<Integer, Dependency> currentDeps = getCurrentDependencies();
 				Dependency dep = null;
