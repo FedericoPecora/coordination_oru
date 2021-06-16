@@ -44,8 +44,6 @@ import com.vividsolutions.jts.geom.Coordinate;
 
 import geometry_msgs.Transform;
 import nav_msgs.OccupancyGrid;
-import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeCoordinator;
-import se.oru.coordination.coordination_oru.ForwardModel;
 import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.util.FleetVisualization;
 import se.oru.coordination.coordination_oru.util.Missions;
@@ -60,6 +58,7 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 	private ConnectedNode node = null;
 	private HashMap<String,Publisher<visualization_msgs.MarkerArray>> boxMarkerPublishers = null;
 	private HashMap<String,ArrayList<visualization_msgs.Marker>> boxMarkerMarkers = null;
+
 	private HashMap<Integer,Publisher<visualization_msgs.MarkerArray>> robotStatusPublishers = null;
 	private HashMap<Integer,Publisher<visualization_msgs.MarkerArray>> dependencyPublishers = null;
 	private HashMap<Integer,ArrayList<visualization_msgs.Marker>> robotStatusMarkers = null;
@@ -68,10 +67,8 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 	private boolean ready = false;
 	private String mapFileName = null;
 	private boolean darkColors = true;
-	private boolean publishCollisionEnvelope = false;
-	private AbstractTrajectoryEnvelopeCoordinator tec = null;
-	private int collisionLookaheadInMillis = -1;
-
+	private boolean publishPartialEnvelope = false;
+	
 	private static String rvizEntry = ""+
 			"    - Class: rviz/MarkerArray\n" + 
 			"      Enabled: true\n" + 
@@ -136,11 +133,11 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 	}
 	
 	public RVizVisualization(String mapFrameID) {
-		this(true, mapFrameID);
+		this(true,mapFrameID);
 	}
 
 	public RVizVisualization(ConnectedNode node) {
-		this(node, "/map");
+		this(node,"/map");
 	}
 	
 	public RVizVisualization(ConnectedNode node, String mapFrameID) {
@@ -149,26 +146,15 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 		this.ready = true;
 	}
 	
-	public RVizVisualization(ConnectedNode node, String mapFrameID, boolean publishCollisionEnvelope, AbstractTrajectoryEnvelopeCoordinator tec, int collisionLookaheadInMillis) {
+	public RVizVisualization(ConnectedNode node, String mapFrameID, boolean publishPartialEnvelope) {
 		this(false, mapFrameID);
 		this.node = node;
 		this.ready = true;
-		this.publishCollisionEnvelope = publishCollisionEnvelope;
-		this.tec = tec;
-		this.collisionLookaheadInMillis = collisionLookaheadInMillis;
+		this.publishPartialEnvelope = publishPartialEnvelope;
 	}
-	
-	public RVizVisualization(boolean publishCollisionEnvelope, AbstractTrajectoryEnvelopeCoordinator tec, int collisionLookaheadInMillis) {
-		this(true, "/map");
-		this.ready = true;
-		this.publishCollisionEnvelope = publishCollisionEnvelope;
-		this.tec = tec;
-		this.collisionLookaheadInMillis = collisionLookaheadInMillis;
-	}
-
 
 	public RVizVisualization(boolean startROSCore) {
-		this(startROSCore, "/map");
+		this(startROSCore,"/map");
 	}
 	
 	public RVizVisualization(boolean startROSCore, String mapFrameID) {
@@ -195,6 +181,10 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 			catch (InterruptedException e) { e.printStackTrace(); }
 			System.out.println("ROS-core started");
 		}
+	}
+	
+	public void setPublishPartialEnvelope(boolean publishPartialEnvelope) {
+		this.publishPartialEnvelope = publishPartialEnvelope;
 	}
 	
 	public void setDarkColors(boolean dark) {
@@ -371,10 +361,9 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 			synchronized(robotStatusMarkers) {
 				this.robotStatusMarkers.get(rr.getRobotID()).add(markerName);
 			}
-
-			if (this.publishCollisionEnvelope && rr.getPathIndex() > 0 && tec != null) { 
-				ForwardModel fm = tec.getForwardModel(rr.getRobotID());
-				if (fm != null)	createPartialEnvelopeGeometryMarker(te, rr.getPathIndex(), fm.getLatestPathIndexIn(te, rr, this.collisionLookaheadInMillis));
+			//if (this.publishPartialEnvelope) createPartialEnvelopeGeometryMarker(te, rr.getPathIndex() >= 0 ? rr.getPathIndex() : te.getPathLength()-1, te.getPathLength()-1);
+			if (this.publishPartialEnvelope && rr.getPathIndex() > 0) { 
+				createPartialEnvelopeGeometryMarker(te, rr.getPathIndex(), te.getPathLength()-1);
 			}
 		}
 	}

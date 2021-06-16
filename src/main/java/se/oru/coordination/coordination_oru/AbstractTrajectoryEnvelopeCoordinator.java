@@ -346,8 +346,18 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 */
 	public ForwardModel getForwardModel(int robotID) {
 		if (forwardModels.containsKey(robotID)) return forwardModels.get(robotID);
-		metaCSPLogger.warning("Forward model of robot" + robotID + "is not specified!");
-		return null;
+		System.out.println("Returning default FM for " + robotID);
+		return new ForwardModel() {
+			@Override
+			public boolean canStop(TrajectoryEnvelope te, RobotReport currentState, int targetPathIndex, boolean useVelocity) {
+				return true;
+			}
+			@Override
+			public int getEarliestStoppingPathIndex(TrajectoryEnvelope te, RobotReport currentState) {
+				// TODO Auto-generated method stub
+				return 0;
+			}
+		};
 	}
 	
 	/**
