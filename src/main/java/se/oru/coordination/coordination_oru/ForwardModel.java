@@ -7,5 +7,7 @@ public interface ForwardModel {
 	public boolean canStop(TrajectoryEnvelope te, RobotReport currentState, int targetPathIndex, boolean useVelocity);
 	
 	public int getEarliestStoppingPathIndex(TrajectoryEnvelope te, RobotReport currentState);
+	
+	public int getLatestPathIndexIn(TrajectoryEnvelope te, RobotReport currentState, long durationInMillis);
 
 }

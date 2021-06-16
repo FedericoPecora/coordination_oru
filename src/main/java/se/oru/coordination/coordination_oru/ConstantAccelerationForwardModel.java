@@ -87,5 +87,18 @@ public class ConstantAccelerationForwardModel implements ForwardModel {
 		}
 		return getPathIndex(te,state);
 	}
+	
+	public int getLatestPathIndexIn(TrajectoryEnvelope te, RobotReport currentState, long durationInMillis) {
+		State state = new State(currentState.getDistanceTraveled(), currentState.getVelocity());
+		double time = 0.0;
+		double deltaTime = 0.0001;
+		if (durationInMillis > 0) {
+			while (time*temporalResolution < durationInMillis) {
+				se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeTrackerRK4.integrateRK4(state, time, deltaTime, false, maxVel, 1.0, maxAccel*1.1);
+				time += deltaTime;
+			}
+		}
+		return getPathIndex(te, state);
+	}
 
 }
