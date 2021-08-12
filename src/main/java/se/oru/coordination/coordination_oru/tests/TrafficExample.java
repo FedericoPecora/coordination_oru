@@ -83,8 +83,8 @@ public class TrafficExample {
 		});
 
 		//Define a network with uncertainties (see Mannucci et al., 2019)
-		NetworkConfiguration.setDelays(0,3000);
-		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0.1;
+		//NetworkConfiguration.setDelays(0,3000);
+		//NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0.1;
 		
 		//Tell the coordinator
 		// (1) what is known about the communication channel, and

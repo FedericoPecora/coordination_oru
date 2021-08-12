@@ -1,4 +1,4 @@
-package se.oru.coordination.coordination_oru.tests.clean;
+package se.oru.coordination.coordination_oru.tests.debug;
 
 import java.util.Comparator;
 
@@ -17,8 +17,8 @@ import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoord
 import se.oru.coordination.coordination_oru.util.BrowserVisualization;
 import se.oru.coordination.coordination_oru.util.Missions;
 
-@DemoDescription(desc = "Example showing coordination with completely overlapping trajectory envelopes (robots should follow each other).")
-public class TwoRobotsTotalOverlap {
+@DemoDescription(desc = "Example showing coordination with completely overlapping trajectory envelopes in opposing directions (should lead to blocking).")
+public class TwoRobotsTotalOverlapOpposing {
 
 	public static void main(String[] args) throws InterruptedException {
 
@@ -67,41 +67,36 @@ public class TwoRobotsTotalOverlap {
 		//Start the thread that checks and enforces dependencies at every clock tick
 		tec.startInference();
 		
-		//Robot should follow but does not
+		//Error: FIXME! Lost dependency and order cannot be restored! Key value not found.
 		tec.setBreakDeadlocks(false, false, false);
 		
-//		//Robot should follow but does not
+//		//Error: FIXME! Lost dependency and order cannot be restored! Key value not found.
 //		tec.setBreakDeadlocks(false, true, false);
 
-//		//Robot should follow but does not
+//		//Error: FIXME! Lost dependency and order cannot be restored! Key value not found.
 //		tec.setBreakDeadlocks(false, true, true);
 
-//		//Robot should follow but does not
+//		//Error: FIXME! Lost dependency and order cannot be restored! Key value not found.
 //		tec.setBreakDeadlocks(false, false, true);
 		
-//		//Collision!
+//		//OK!
 //		tec.setBreakDeadlocks(true, false, false);
 
 		BrowserVisualization viz = new BrowserVisualization();
 		viz.setInitialTransform(40.6, -1.26, 4.5);
 		tec.setVisualization(viz);
 
-//		Pose startRobot1 = new Pose(45.0,5.0,0.0);
-		Pose goalRobot11 = new Pose(40.0,7.0,0.0);
-		Pose goalRobot12 = new Pose(10.0,7.0,0.0);
-//		Pose goalRobot13 = new Pose(5.0,5.0,0.0);
+		Pose pose_45 = new Pose(45.0,0.0,0.0);
+		Pose pose_40 = new Pose(40.0,0.0,0.0);
+		Pose pose_10 = new Pose(10.0,0.0,0.0);
+		Pose pose_5 = new Pose(5.0,0.0,0.0);
 		
-//		Pose startRobot2 = new Pose(45.0,9.0,Math.PI);
-		Pose goalRobot21 = new Pose(40.0,7.0,Math.PI);
-		Pose goalRobot22 = new Pose(10.0,7.0,Math.PI);
-//		Pose goalRobot23 = new Pose(5.0,9.0,Math.PI);
-
 		//Place robots in their initial locations (looked up in the data file that was loaded above)
 		// -- creates a trajectory envelope for each location, representing the fact that the robot is parked
 		// -- each trajectory envelope has a path of one pose (the pose of the location)
 		// -- each trajectory envelope is the footprint of the corresponding robot in that pose
-		tec.placeRobot(1, goalRobot11);
-		tec.placeRobot(2, goalRobot22);
+		tec.placeRobot(1, pose_5);
+		tec.placeRobot(2, pose_45);
 
 		//Set up path planner (using empty map)
 		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
@@ -110,21 +105,16 @@ public class TwoRobotsTotalOverlap {
 		rsp.setTurningRadius(4.0);
 		rsp.setDistanceBetweenPathPoints(0.1);
 		
-		rsp.setStart(goalRobot11);
-		rsp.setGoals(goalRobot12);
+		rsp.setStart(pose_5);
+		rsp.setGoals(pose_45);
 		rsp.plan();
-		Mission m12 = new Mission(1,rsp.getPath());
-		//m12.setStoppingPoint(rsp.getPath()[rsp.getPath().length-50].getPose(), 40000);
-		Missions.enqueueMission(m12);
+		Missions.enqueueMission(new Mission(1,rsp.getPath()));
 
-		
-		rsp.setStart(goalRobot22);
-		rsp.setGoals(goalRobot21);
+		rsp.setStart(pose_45);
+		rsp.setGoals(pose_5);
 		rsp.plan();
-		Mission m22 = new Mission(2,rsp.getPath());
-		//m22.setStoppingPoint(rsp.getPath()[rsp.getPath().length-150].getPose(), 40000);
-		Missions.enqueueMission(m22);
-		
+		Missions.enqueueMission(new Mission(2,rsp.getPath()));
+
 		System.out.println("Added missions " + Missions.getMissions());
 
 		Missions.startMissionDispatchers(tec, false, 1,2);
