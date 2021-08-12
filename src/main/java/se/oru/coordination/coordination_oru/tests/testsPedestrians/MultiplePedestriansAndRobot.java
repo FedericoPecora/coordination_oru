@@ -56,6 +56,7 @@ public class MultiplePedestriansAndRobot {
 
         File robotDir = new File(robotPathDir);
         for (final File f : robotDir.listFiles(matchingRobotPathNameFilter)) {
+            ColorPrint.info("FileName is: " + f.getName());
             robotPathFilesName.add(f.getName().split(".path")[0]);
         }
 
@@ -273,6 +274,8 @@ public class MultiplePedestriansAndRobot {
             @Override
             public void performOperation() {
                 ColorPrint.error("Deadlock has happened. Replanning is necessary.");
+                ColorPrint.error("Ending session.");
+                System.exit(0);
             }
         });
 
