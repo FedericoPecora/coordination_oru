@@ -1849,10 +1849,15 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		//1) add code for the checking the network delay.
 		//2) check the correctness of the function with asymmetric intersections.
 		if (!allCriticalSections.contains(cs) || rr1.getPathIndex() > cs.getTe1End() || rr2.getPathIndex() > cs.getTe2End()) {
-			metaCSPLogger.info("isAhead: the critical sections is no more active.");
+			metaCSPLogger.info("isAhead: the critical sections is no longer active.");
 			return -2;
 		}
+		
 		if (rr1.getPathIndex() >= cs.getTe1Start() && rr2.getPathIndex() >= cs.getTe2Start()) {
+
+			//This might be better?
+//			return cs.getTe1End()-rr1.getPathIndex() > cs.getTe2End()-rr2.getPathIndex() ? -1 : 1;
+			
 			//Robot 1 is ahead --> return true
 			PoseSteering[] pathRobot1 = cs.getTe1().getTrajectory().getPoseSteering();
 			PoseSteering[] pathRobot2 = cs.getTe2().getTrajectory().getPoseSteering();
@@ -1866,6 +1871,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			}
 			//metaCSPLogger.finest("Dist R" + rr1.getRobotID() + " = " + dist1 + "; Dist R" + rr2.getRobotID() + " = " + dist2);
 			return dist1 > dist2 ? 1 : -1;
+			
 		}
 		return 0;
 	}

@@ -488,7 +488,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 				//find one cycle containing the robot
 				for (List<Integer> cycle : nonliveCycles) {
-					if (cycle.contains(robotID)) return callOnePathReplan(cycle, g);
+					if (cycle.contains(robotID)) {
+						return callOnePathReplan(cycle, g);
+					}
 				}
 			}
 			List<Integer> cycle = new ArrayList<Integer>();
@@ -649,8 +651,6 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				}
 			}
 
-
-
 			//Make deps from critical sections, and remove obsolete critical sections
 			synchronized(allCriticalSections) {
 
@@ -666,9 +666,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				for (CriticalSection cs : this.allCriticalSections) {
 
 					//Will be assigned depending on current situation of robot reports...
+					int waitingPoint = -1;
+					int drivingCurrentIndex = -1;
 					AbstractTrajectoryEnvelopeTracker waitingTracker = null;
 					AbstractTrajectoryEnvelopeTracker drivingTracker = null;
-					int drivingCurrentIndex = -1;
 
 					AbstractTrajectoryEnvelopeTracker robotTracker1 = trackers.get(cs.getTe1().getRobotID());
 					RobotReport robotReport1 = currentReports.get(cs.getTe1().getRobotID());
@@ -685,8 +686,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 					//The critical section could be still active. One of the two robots could already have exited the critical section,
 					//but the information has not been received.
-					int waitingPoint = -1;
 
+					//If the precedence IS CONSTRAINED BY PARKED ROBOTS ...
 					if (robotTracker1 instanceof TrajectoryEnvelopeTrackerDummy || robotTracker2 instanceof TrajectoryEnvelopeTrackerDummy) {
 
 						boolean createAParkingDep = false;
@@ -842,10 +843,11 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 									//Try to recover the lost order.
 									int ahead = 0;
+
 									//Only the leading robot may be already commanded to go beyond the critical section end.
 									if (communicatedCPs.containsKey(robotTracker1) && (communicatedCPs.get(robotTracker1).getFirst() == -1 || communicatedCPs.get(robotTracker1).getFirst() > cs.getTe1End())) ahead = 1;
 									else if (communicatedCPs.containsKey(robotTracker2) && (communicatedCPs.get(robotTracker2).getFirst() == -1 || communicatedCPs.get(robotTracker2).getFirst() > cs.getTe2End())) ahead = -1;
-
+									
 									//Otherwise, if both the robots are inside the critical section check their poses.
 									if (ahead == 0) ahead = isAhead(cs, robotReport1, robotReport2);
 
@@ -859,7 +861,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 									else {
 										drivingRobotID = ahead == 1 ? robotReport1.getRobotID() : robotReport2.getRobotID();
 										waitingRobotID = drivingRobotID == robotReport1.getRobotID() ? robotReport2.getRobotID() : robotReport1.getRobotID();
-										metaCSPLogger.info("<<<<<<<<< Restoring the lost order via estimation for Robot" + drivingRobotID);
+										metaCSPLogger.info("<<<<<<<<< Restoring the lost order via estimation for Robot" + drivingRobotID);										
 									}					
 								}			
 							}
@@ -1684,18 +1686,16 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							}
 						}
 					}
-					synchronized(replanningStoppingPoints) {
-						if (replanningStoppingPoints.containsKey(robotID)) 	{
-							//We should enforce the last robot stopping point while it is involved in a re-plan.
-							if (!currentDeps.containsKey(robotID)) currentDeps.put(robotID, new HashSet<Dependency>());
-							currentDeps.get(robotID).add(replanningStoppingPoints.get(robotID));
-							metaCSPLogger.info("Add Locking dependency to Robot" + robotID + ". Dep: " + replanningStoppingPoints.get(robotID));
-						}			
-					}
+				}
+				synchronized(replanningStoppingPoints) {
+					if (replanningStoppingPoints.containsKey(robotID)) 	{
+						//We should enforce the last robot stopping point while it is involved in a re-plan.
+						if (!currentDeps.containsKey(robotID)) currentDeps.put(robotID, new HashSet<Dependency>());
+						currentDeps.get(robotID).add(replanningStoppingPoints.get(robotID));
+						metaCSPLogger.info("Add Locking dependency to Robot" + robotID + ". Dep: " + replanningStoppingPoints.get(robotID));
+					}			
 				}
 			}
-
-
 
 			//Make deps from critical sections, and remove obsolete critical sections
 			synchronized(allCriticalSections) {
@@ -1811,7 +1811,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 
 						//For each reversible constraint, we pre-load the precedence according to the FCFS heuristic or to the previous decided ones.
-						//We will check if the heuristic after.
+						//We will check the heuristic later...
 						if (canStopRobot1 && canStopRobot2) {
 							reversibleCS.add(cs);
 							boolean robot2Yields;	
@@ -1915,9 +1915,9 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							//if (lastWaitingRobotCP >= startingWaitingRobotCS) {
 							if (!canExitCriticalSection(drivingCurrentIndex, waitingCurrentIndex, drivingTracker.getTrajectoryEnvelope(), waitingTracker.getTrajectoryEnvelope(),lastIndexOfCSDriving)) {
 								//it's too late for escaping. Let's create a deadlock: the parked robot should wait for the moving one,
-								//while the other should be commanded to do not proceed beyond its last communicated CP. Both the dependencies should be added to the current set.									
+								//while the other should be commanded to not proceed beyond its last communicated CP. Both the dependencies should be added to the current set.									
 
-								//The parked robot should wait for the other at its current path index till the moving robot has not been exited from its critical section.
+								//The parked robot should wait for the other at its current path index till the moving robot has not exited from its critical section.
 								int artWaitingPoint = communicatedCPs.containsKey(drivingTracker) ? communicatedCPs.get(drivingTracker).getFirst() :
 									(drivingRobotID == robotReport1.getRobotID() ? robotReport1.getPathIndex() : robotReport2.getPathIndex());
 								int artDrivingCSEnd = waitingRobotID == cs.getTe1().getRobotID() ? cs.getTe1End() : cs.getTe2End();
@@ -2220,7 +2220,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				//If this is not the case, them pre-loading may bring to nonlive cycles. 
 				//To handle this case, switch to a local strategy whenever a robot is starting from a critical section and cannot
 				//exit from it.
-				for (int robotID : askForReplan) replanEnvelope(robotID, true);
+				//for (int robotID : askForReplan) replanEnvelope(robotID, true);
 
 				//send revised dependencies
 				for (int robotID : robotIDs) sendCriticalPoint(robotID, currentReports);

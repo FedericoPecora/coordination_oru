@@ -79,7 +79,7 @@ public class TwoRobotsTotalOverlapOpposing {
 //		//Error: FIXME! Lost dependency and order cannot be restored! Key value not found.
 //		tec.setBreakDeadlocks(false, false, true);
 		
-//		//OK!
+//		//OK! One robot proceeds, but not the other, and the first robot yields
 //		tec.setBreakDeadlocks(true, false, false);
 
 		BrowserVisualization viz = new BrowserVisualization();

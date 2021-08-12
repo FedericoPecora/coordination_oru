@@ -79,7 +79,7 @@ public class TwoRobotsTotalOverlap {
 //		//OK!
 //		tec.setBreakDeadlocks(false, false, true);
 		
-//		//Collision!
+//		//OK! No following, which is acceptable behavior for the global strategy
 		tec.setBreakDeadlocks(true, false, false);
 
 		BrowserVisualization viz = new BrowserVisualization();
