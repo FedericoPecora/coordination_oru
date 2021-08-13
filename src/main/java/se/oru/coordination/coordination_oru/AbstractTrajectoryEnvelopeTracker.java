@@ -247,6 +247,8 @@ public abstract class AbstractTrajectoryEnvelopeTracker {
 
 	public abstract double getStoppageTime();
 
+	public abstract double getElapsedTrackingTime();
+
 	protected void onPositionUpdate() {
 	
 		String[] extraRobotState = null;

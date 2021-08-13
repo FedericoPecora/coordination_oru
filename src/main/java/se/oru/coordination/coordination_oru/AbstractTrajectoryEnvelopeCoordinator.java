@@ -736,13 +736,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	}
 	
 	/**
-	 * Get the path index beyond which a robot should not navigate, given the {@link TrajectoryEnvelope} of another robot.  
-	 * @param te1 The {@link TrajectoryEnvelope} of the leading robot.
-	 * @param te2 The {@link TrajectoryEnvelope} of the yielding robot.
-	 * @param currentPIR1 The current path index of the leading robot.
-	 * @param te1Start The path index
-	 * @param te1End
-	 * @param te2Start
+	 * Get the path index beyond which a robot should not navigate, given the {@link TrajectoryEnvelope} of another robot.
 	 * @return The path index beyond which a robot should not navigate, given the {@link TrajectoryEnvelope} of another robot.
 	 */
 	protected int getCriticalPoint(int yieldingRobotID, CriticalSection cs, int leadingRobotCurrentPathIndex) {

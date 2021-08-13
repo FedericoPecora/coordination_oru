@@ -46,6 +46,9 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 	private HashMap<Integer,Integer> userCPReplacements = null;
 
 	@Override
+	public double getElapsedTrackingTime() { return elapsedTrackingTime; }
+
+	@Override
 	public double getStoppageTime() { return stoppageTime; }
 
 	@Override

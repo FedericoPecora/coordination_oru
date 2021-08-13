@@ -36,6 +36,9 @@ public abstract class TrajectoryEnvelopeTrackerPedestrian extends AbstractTrajec
 	protected PedestrianTrajectory pedestrianTraj;
 
 	@Override
+	public double getElapsedTrackingTime() { return elapsedTrackingTime; }
+
+	@Override
 	public double getStoppageTime() { return stoppageTime; }
 
 	@Override
@@ -298,7 +301,6 @@ public abstract class TrajectoryEnvelopeTrackerPedestrian extends AbstractTrajec
 	}
 
 	protected void updatePedestrianState(boolean stopping) {
-
 		// Time that has passed for the pedestrian is the tracking time that has elapsed minus the stoppageTime.
 		double timePassed = this.elapsedTrackingTime - this.stoppageTime;
 
@@ -343,6 +345,7 @@ public abstract class TrajectoryEnvelopeTrackerPedestrian extends AbstractTrajec
 		int myTEID = te.getID();
 
 		ColorPrint.positive("Pedestrian " + this.getRobotReport().getRobotID() + " is being tracked...");
+		ColorPrint.positive("Pedestrian " + this.getRobotReport().getRobotID() + "'s tracking time: " + elapsedTrackingTime);
 
 		while (true) {
 
@@ -413,6 +416,6 @@ public abstract class TrajectoryEnvelopeTrackerPedestrian extends AbstractTrajec
 			try { Thread.sleep(trackingPeriodInMillis); }
 			catch (InterruptedException e) { e.printStackTrace(); }
 		}
-		metaCSPLogger.info("RK4 tracking thread terminates (Robot " + myRobotID + ", TrajectoryEnvelope " + myTEID + ")");
+		metaCSPLogger.info("Pedestrian tracking thread terminates (Robot " + myRobotID + ", TrajectoryEnvelope " + myTEID + ")");
 	}
 }

@@ -74,13 +74,16 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 	public double getRobotStoppageTime(int robotID) {
 		if(trackers.get(robotID) == null) { return 0.0; }
-
 		return trackers.get(robotID).getStoppageTime();
+	}
+
+	public double getElapsedTrackingTime(int robotID) {
+		if(trackers.get(robotID) == null) { return 0.0; }
+		return trackers.get(robotID).getElapsedTrackingTime();
 	}
 
 	public int getRobotStops(int robotID) {
 		if(trackers.get(robotID) == null) { return 0; }
-
 		return trackers.get(robotID).getStops();
 	}
 

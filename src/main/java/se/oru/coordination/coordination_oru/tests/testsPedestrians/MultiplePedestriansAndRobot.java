@@ -184,16 +184,16 @@ public class MultiplePedestriansAndRobot {
 
         //JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
         //BrowserVisualization viz = new BrowserVisualization();
-        //RVizVisualization viz = new RVizVisualization(false);
-        //viz.setMap("maps/atc.yaml");
+        RVizVisualization viz = new RVizVisualization(false);
+        viz.setMap("maps/atc.yaml");
         int[] nums_primitive = new int[nums.size()];
         for (int i = 0; i < nums_primitive.length; i++) {
             nums_primitive[i] = nums.get(i);
         }
         //RVizVisualization.writeRVizConfigFile(nums_primitive);
         //viz.setInitialTransform(40, 3, -10);  // Ellipse / warehouse map
-        //viz.setInitialTransform(10, -10, 30); // ATC map
-        //tec.setVisualization(viz);
+        //viz.setInitialTransform(20, -10, 30); // ATC map
+        tec.setVisualization(viz);
 
         PedestrianTrajectory[] pedestrianTrajectories = new PedestrianTrajectory[nums_primitive.length];
 
@@ -211,6 +211,7 @@ public class MultiplePedestriansAndRobot {
                 tec.addUncontrollableRobots(nums.get(i));
                 tec.setForwardModel(nums.get(i), new PedestrianForwardModel());
                 tec.addPedestrianTrajectory(nums.get(i), pedestrianTrajectories[i]);
+                tec.addTrackingCallback(nums.get(i), new PedestrianTrackingCallback(nums.get(i), tec));
                 Missions.enqueueMission(new Mission(nums.get(i), pedestrianTrajectories[i].getPoseSteeringAsArray()));
 
             } else {
@@ -250,7 +251,7 @@ public class MultiplePedestriansAndRobot {
 
             @Override
             public String[] onPositionUpdate() {
-                return null;
+                return new String[] {"T: " + tec.getElapsedTrackingTime(1729)};
             }
 
             @Override
