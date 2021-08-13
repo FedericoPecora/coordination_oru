@@ -48,6 +48,7 @@ public abstract class TrajectoryEnvelopeTrackerPedestrian extends AbstractTrajec
 		super(te, temporalResolution, tec, timeStep, cb);
 		this.pedestrianTraj = pedestrianTraj;
 		this.currentPose = pedestrianTraj.getPoses().get(0);
+		this.elapsedTrackingTime = 0.0;
 		this.totalDistance = this.computeDistance(0, traj.getPose().length-1);
 		this.positionToStop = this.totalDistance;
 		this.th = new Thread(this, "Pedestrian tracker " + te.getComponent());

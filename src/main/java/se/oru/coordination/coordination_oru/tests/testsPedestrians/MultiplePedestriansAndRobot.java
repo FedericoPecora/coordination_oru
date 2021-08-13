@@ -211,7 +211,7 @@ public class MultiplePedestriansAndRobot {
                 tec.addUncontrollableRobots(nums.get(i));
                 tec.setForwardModel(nums.get(i), new PedestrianForwardModel());
                 tec.addPedestrianTrajectory(nums.get(i), pedestrianTrajectories[i]);
-                tec.addTrackingCallback(nums.get(i), new PedestrianTrackingCallback(nums.get(i), tec));
+                tec.addTrackingCallback(nums.get(i), new PedestrianTrackingCallback(nums.get(i), tec, pedestrianTrajectories[i].getStartTime()));
                 Missions.enqueueMission(new Mission(nums.get(i), pedestrianTrajectories[i].getPoseSteeringAsArray()));
 
             } else {

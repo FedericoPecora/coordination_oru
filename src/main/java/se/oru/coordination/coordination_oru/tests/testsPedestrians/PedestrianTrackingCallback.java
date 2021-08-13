@@ -7,10 +7,12 @@ public class PedestrianTrackingCallback extends TrackingCallback {
 
     protected int robot_id;
     protected TrajectoryEnvelopeCoordinatorSimulationWithPedestrians tec;
+    double startTime = 0.0;
 
-    public PedestrianTrackingCallback(int robot_id, TrajectoryEnvelopeCoordinatorSimulationWithPedestrians tec) {
+    public PedestrianTrackingCallback(int robot_id, TrajectoryEnvelopeCoordinatorSimulationWithPedestrians tec, double startTime) {
         this.robot_id = robot_id;
         this.tec = tec;
+        this.startTime = startTime;
     }
 
     @Override
@@ -25,7 +27,7 @@ public class PedestrianTrackingCallback extends TrackingCallback {
 
     @Override
     public String[] onPositionUpdate() {
-        return new String[]{"T: " + tec.getElapsedTrackingTime(robot_id)};
+        return new String[]{"T: " + tec.getElapsedTrackingTime(robot_id), "S: " + startTime};
     }
 
     @Override

@@ -171,7 +171,7 @@ public class PedestrianTrajectory {
             startTime = timeStamps.get(0);
 
             for(int i = 0; i < timeStamps.size(); i++) {
-                timeStamps.set(i, timeStamps.get(i) - timeStamps.get(0));
+                timeStamps.set(i, timeStamps.get(i) - startTime);
             }
 
             if (check(poses, speeds, timeStamps)) {
