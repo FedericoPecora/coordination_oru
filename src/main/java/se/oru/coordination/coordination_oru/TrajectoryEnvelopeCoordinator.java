@@ -13,6 +13,7 @@ import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.commons.lang.ArrayUtils;
 import org.jgrapht.alg.ConnectivityInspector;
 import org.jgrapht.alg.KosarajuStrongConnectivityInspector;
 import org.jgrapht.alg.cycle.JohnsonSimpleCycles;
@@ -1001,10 +1002,12 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	/**
 	 * Try re-planning ONE path AMONG the set of robots robotsToReplan while considering robotsAsObstacles placed in their current CP as additional obstacles. 
 	 * @param robotsToReplan The set of robots which may attempt to re-plan the path.
-	 * @param robotsAsObstacles The set of robots to consider as additional obstacles while re-planning.
+	 * @param robotsAsObstacles The set of robots to consider as additional obstacles while re-planning (only if they have a critical point).
 	 * @param useStaticReplan <code>true</code> iff all robotsToReplan should yield in their current critical point before starting the re-plan.
 	 */
-	protected void rePlanPath(Set<Integer> robotsToReplan, Set<Integer> robotsAsObstacles) {
+	protected boolean rePlanPath(Set<Integer> robotsToReplan, Set<Integer> robotsAsObstacles) {
+		boolean ret = false;
+		
 		for (int robotID : robotsToReplan) {
 			int currentWaitingIndex = -1;
 			Pose currentWaitingPose = null;
@@ -1013,31 +1016,42 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 			//FIXME not synchronized on current dependencies
 			Geometry[] obstacles = null;
-			int[] otherRobotIDs = null;
+			HashSet<Integer> otherRobotIDs = new HashSet<Integer>();
 			synchronized (getCurrentDependencies()) {
 				HashMap<Integer, Dependency> currentDeps = getCurrentDependencies();
-				Dependency dep = currentDeps.containsKey(robotID) ? currentDeps.get(robotID) : null;
-				if (dep != null) { //FIXME what if null??
-					currentWaitingIndex = dep.getWaitingPoint();
-					currentWaitingPose = dep.getWaitingPose();
-					if (currentWaitingPose == null) throw new Error("Waiting pose should not be null in dep: " + dep);
-					Trajectory traj = dep.getWaitingTrajectoryEnvelope().getTrajectory();
-					oldPath = traj.getPoseSteering();
-					currentWaitingGoal = oldPath[oldPath.length-1].getPose();
+				Dependency dep = null;
+				if (robotsToReplan.size() == 1) {
+					synchronized(replanningStoppingPoints) {
+						if (!replanningStoppingPoints.containsKey(robotID)) {
+							metaCSPLogger.info("Invalid replan " + robotID + " ... ");
+							return false;
+						}
+						dep = replanningStoppingPoints.get(robotID);
+					}
 				}
-
+				else { //replanning for deadlock
+					if (!currentDeps.containsKey(robotID)) {
+						metaCSPLogger.info("Robot " + robotID + " is not deadlocked ... ");
+						continue;
+					}
+					dep = currentDeps.get(robotID);
+				}
+				currentWaitingIndex = dep.getWaitingPoint();
+				currentWaitingPose = dep.getWaitingPose();
+				if (currentWaitingPose == null) throw new Error("Waiting pose should not be null in dep: " + dep);
+				Trajectory traj = dep.getWaitingTrajectoryEnvelope().getTrajectory();
+				oldPath = traj.getPoseSteering();
+				currentWaitingGoal = oldPath[oldPath.length-1].getPose();
+				if (currentWaitingGoal == null) throw new Error("Waiting goal should not be null in dep: " + dep);
+				
 				if (robotsAsObstacles.size() > 0) {
-					otherRobotIDs = new int[robotsAsObstacles.size()-1];
-					int counter = 0;
-					for (int otherRobotID : robotsAsObstacles) if (otherRobotID != robotID) otherRobotIDs[counter++] = otherRobotID;
-
-					//FIXME not synchronized on current dependencies
-					obstacles = getObstaclesInCriticalPoints(otherRobotIDs);
-
+					otherRobotIDs = new HashSet<Integer>();
+					for (int otherRobotID : robotsAsObstacles) if (otherRobotID != robotID) otherRobotIDs.add(otherRobotID);
+					if (!otherRobotIDs.isEmpty()) obstacles = getObstaclesInCriticalPoints(ArrayUtils.toPrimitive(otherRobotIDs.toArray(new Integer[otherRobotIDs.size()])));
 				}
 			}
 
-			metaCSPLogger.info("Attempting to re-plan path of Robot" + robotID + " (with obstacles for robots " + Arrays.toString(otherRobotIDs) + ", from " + 
+			metaCSPLogger.info("Attempting to re-plan path of Robot" + robotID + " (with obstacles for robots " + otherRobotIDs.toString() + ", from " + 
 					currentWaitingPose + ", to " + currentWaitingGoal + ")...");
 			AbstractMotionPlanner mp = null;
 			if (this.motionPlanners.containsKey(robotID)) mp = this.motionPlanners.get(robotID);
@@ -1057,6 +1071,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 					replacePath(robotID, newCompletePath, currentWaitingIndex, robotsToReplan);
 					successfulReplanningTrialsCounter.incrementAndGet();
 					metaCSPLogger.info("Successfully re-planned path of Robot" + robotID);
+					ret = true;
 					break;
 				}
 				else {
@@ -1064,10 +1079,11 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				}
 			}
 		}
-		synchronized (replanningStoppingPoints) {
+		synchronized(replanningStoppingPoints) {
 			for (int robotID : robotsToReplan) replanningStoppingPoints.remove(robotID);
-			metaCSPLogger.finest("Unlocking robots: " + robotsToReplan.toString());
+			metaCSPLogger.info("Removing replanning stopping points of robots: " + robotsToReplan.toString());
 		}
+		return ret;
 	}
 
 	@Override

@@ -826,26 +826,23 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				tracker = trackers.get(robotID);
 			}
 			Geometry currentFP = null;
-			if (tracker instanceof TrajectoryEnvelopeTrackerDummy) {
+			if (tracker instanceof TrajectoryEnvelopeTrackerDummy) { // the robot is parked
 				Pose currentPose = this.getRobotReport(robotID).getPose();
 				currentFP = makeObstacles(robotID, currentPose)[0];
 			}
 			else {
 				HashMap<Integer, Dependency> currentDeps = getCurrentDependencies();
 				Dependency dep = currentDeps.containsKey(robotID) ? getCurrentDependencies().get(robotID) : null;
-				if (dep != null) {
-					Pose waitingPose = dep.getWaitingPose();
-					int waitingPoint = dep.getWaitingPoint();
-					currentFP = makeObstacles(robotID, waitingPose)[0];
+				Pose waitingPose = (dep == null) ? tracker.getTrajectoryEnvelope().getTrajectory().getPose()[tracker.getTrajectoryEnvelope().getTrajectory().getPose().length-1] : dep.getWaitingPose();
+				currentFP = makeObstacles(robotID, waitingPose)[0];
 				
-					//In case the robot has stopped a little beyond the critical point
-					int currentPoint = this.getRobotReport(robotID).getPathIndex();
-					if (currentPoint != -1 && currentPoint > waitingPoint) {
-							Pose currentPose = dep.getWaitingTrajectoryEnvelope().getTrajectory().getPose()[currentPoint];
-							currentFP = makeObstacles(robotID, currentPose)[0];
-							System.out.println("Oops: " + waitingPoint + " < " + currentPoint);
-					}
-				}
+				//In case the robot has stopped a little beyond the critical point
+				int currentPoint = this.getRobotReport(robotID).getPathIndex();
+				if (currentPoint != -1 && dep != null && currentPoint > dep.getWaitingPoint()) {
+						Pose currentPose = dep.getWaitingTrajectoryEnvelope().getTrajectory().getPose()[currentPoint];
+						currentFP = makeObstacles(robotID, currentPose)[0];
+						System.out.println("Oops: " + dep.getWaitingPoint() + " < " + currentPoint);
+				}				
 			}
 			ret.add(currentFP);
 		}
