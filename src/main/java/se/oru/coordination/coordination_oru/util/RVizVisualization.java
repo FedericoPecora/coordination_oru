@@ -146,7 +146,7 @@ public class RVizVisualization implements FleetVisualization, NodeMain {
 	}
 
 	public RVizVisualization(boolean startROSCore) {
-		this(startROSCore,"/map");
+		this(startROSCore,"map");
 	}
 	
 	public RVizVisualization(boolean startROSCore, String mapFrameID) {

@@ -9,11 +9,9 @@ import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.simulation2D.PedestrianForwardModel;
 import se.oru.coordination.coordination_oru.simulation2D.PedestrianTrajectory;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulationWithPedestrians;
-import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeTrackerPedestrian;
 import se.oru.coordination.coordination_oru.util.*;
 import org.metacsp.utility.logging.MetaCSPLogging;
 
-import java.awt.*;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.util.*;
@@ -33,12 +31,14 @@ public class MultiplePedestriansAndRobot {
         Integer totalAgentsToLoad = 20;
         String timeStr = "t3";
         String scenarioType = "corridor2";
+        String explicitRobotPath = "";
 
 
         Map<String, String> environmentVariables = System.getenv();
         if(environmentVariables.containsKey("P_TIME")) { timeStr = environmentVariables.get("P_TIME"); }
         if(environmentVariables.containsKey("S_TYPE")) { scenarioType = environmentVariables.get("S_TYPE"); }
         if(environmentVariables.containsKey("NUM_AGENTS")) { totalAgentsToLoad = Integer.parseInt(environmentVariables.get("NUM_AGENTS")); }
+        if(environmentVariables.containsKey("ONE_PATH")) { explicitRobotPath = environmentVariables.get("ONE_PATH"); }
 
         String scenarioStr = "atc/" + scenarioType;
         String scenarioName =  scenarioType + "-" + timeStr;
@@ -56,7 +56,6 @@ public class MultiplePedestriansAndRobot {
 
         File robotDir = new File(robotPathDir);
         for (final File f : robotDir.listFiles(matchingRobotPathNameFilter)) {
-            ColorPrint.info("FileName is: " + f.getName());
             robotPathFilesName.add(f.getName().split(".path")[0]);
         }
 
@@ -72,9 +71,14 @@ public class MultiplePedestriansAndRobot {
             }
         });
 
-        String pathFileName = robotPathFilesName.get(Integer.parseInt(args[0]));
+        final String pathFileName = robotPathFilesName.get(Integer.parseInt(args[0]));
 
-        ColorPrint.info("Robot Path file is: " + pathFileName);
+        if(!explicitRobotPath.isEmpty()) {
+            ColorPrint.info("Robot Path file is: " + explicitRobotPath);
+        }
+        else {
+            ColorPrint.info("Robot Path file is: " + pathFileName);
+        }
 
         final double threshold = 2.0;
 
@@ -184,21 +188,29 @@ public class MultiplePedestriansAndRobot {
 
         //JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
         //BrowserVisualization viz = new BrowserVisualization();
-        //RVizVisualization viz = new RVizVisualization(false);
-        //viz.setMap("maps/atc.yaml");
+        RVizVisualization viz = new RVizVisualization(false);
+        viz.setMap("maps/atc.yaml");
         int[] nums_primitive = new int[nums.size()];
         for (int i = 0; i < nums_primitive.length; i++) {
             nums_primitive[i] = nums.get(i);
         }
-        //RVizVisualization.writeRVizConfigFile(nums_primitive);
+        RVizVisualization.writeRVizConfigFile(nums_primitive);
         //viz.setInitialTransform(40, 3, -10);  // Ellipse / warehouse map
         //viz.setInitialTransform(20, -10, 30); // ATC map
-        //tec.setVisualization(viz);
+        tec.setVisualization(viz);
 
         PedestrianTrajectory[] pedestrianTrajectories = new PedestrianTrajectory[nums_primitive.length];
 
+        PoseSteering[] robotPathAux;
         // Robot Path
-        PoseSteering[] robotPathAux = Missions.loadPathFromFile(robotPathDir + "/" + pathFileName + ".path");
+        if(!explicitRobotPath.isEmpty()) {
+            robotPathAux = Missions.loadPathFromFile(explicitRobotPath + ".path");
+            ColorPrint.info("Loading Explicit Robot Path file....");
+        }
+        else {
+            robotPathAux = Missions.loadPathFromFile(robotPathDir + "/" + pathFileName + ".path");
+        }
+        
         Missions.setMinPathDistance(0.2);
         final PoseSteering[] robotPath = Missions.resamplePath(robotPathAux);
 
