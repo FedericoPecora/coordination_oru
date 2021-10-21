@@ -46,14 +46,14 @@ import se.oru.coordination.coordination_oru.util.StringUtils;
 
 /**
  * This class provides coordination for a fleet of robots. An instantiatable {@link AbstractTrajectoryEnvelopeCoordinator}
- * must provide an implementation of the updateDependency function and of a time keeping method, a {@link TrajectoryEnvelope} tracker factory,
- * a criteria with which robots are to be prioritized, and an implementation of the {@link RobotTypeInterface} class.
+ * must provide an implementation of the updateDependency function and of a time keeping method, a {@link TrajectoryEnvelope} tracker factory, and
+ * a criteria with which robots are to be prioritized.
  * 
  * @author fpa
  *
  */
 public abstract class AbstractTrajectoryEnvelopeCoordinator {
-		
+	
 	public static String TITLE = "coordination_oru - Robot-agnostic online coordination for multiple robots";
 	public static String COPYRIGHT = "Copyright \u00a9 2017-2020 Federico Pecora";
 
@@ -121,8 +121,9 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	
 	//Robots knowledge
 	protected HashMap<Integer,ForwardModel> forwardModels = new HashMap<Integer, ForwardModel>();
+
 	protected HashMap<Integer,Coordinate[]> footprints = new HashMap<Integer, Coordinate[]>();
-	protected HashMap<Integer,RobotTypeInterface> types = new HashMap<Integer, RobotTypeInterface>();
+	protected HashMap<Integer,Integer> types = new HashMap<Integer, Integer>();
 	protected HashMap<Integer,Double> maxFootprintDimensions = new HashMap<Integer, Double>();
 
 	protected HashSet<Integer> muted = new HashSet<Integer>();
@@ -163,6 +164,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		return (isDriving.containsKey(robotID) && isDriving.get(robotID));
 	}
 	
+	
 	/**
 	 * Returning the number of messages required by each send to be effective
 	 * (i.e. the probability of unsuccessful delivery will be lower than the threshold maxFaultsProbability)
@@ -175,20 +177,18 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 * Return the IDs of the tracked robots.
 	 */
 	public Set<Integer> getAllRobotIDs() {
-		synchronized (trackers) {
-			return trackers.keySet();
-		}
+		return trackers.keySet();
 	}
 	
 	/**
-	 * Return the current parking envelope of a robot.
+	 * Return the current parking envelope of the robot with the specified ID.
 	 * @param robotID The ID of the robot.
-	 * @return Its current parking envelope.
+	 * @return
 	 */
 	public TrajectoryEnvelope getCurrentParkingEnvelope(int robotID) {
 		if (currentParkingEnvelopes.containsKey(robotID))
 			return currentParkingEnvelopes.get(robotID);
-		metaCSPLogger.severe("Invalid robot ID.");
+		metaCSPLogger.severe("[getCurrentParkingEnvelope] Invalid robot ID.");
 		return null;
 	}
 	
@@ -395,51 +395,12 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	}
 	
 	/**
-	 * Set the {@link RobotType} of a given robot.
+	 * Set the type of a given robot.
 	 * @param robotID The ID of the robot.
-	 * @param type The type of the robot.
+	 * @param type The robot's type.
 	 */
-	public void setRobotType(int robotID, RobotTypeInterface type) {
+	public void setForwardModel(int robotID, int type) {
 		this.types.put(robotID, type); 
-	}
-	
-	/**
-	 * Get the type of a given robot.
-	 * @param robotID The ID of the robot.
-	 * @return The {@link RobotType} of the robot (null in case of unknown robotID).
-	 */
-	public RobotTypeInterface getRobotType(int robotID) {
-		if (this.types.containsKey(robotID)) return this.types.get(robotID); 
-		metaCSPLogger.severe("Invalid robotID.");
-		return null;
-	}
-	
-	/**
-	 * Get all the robot IDs which are compatible with a specific robot type.
-	 * @param type The robot type.
-	 * @return The robot IDs which are compatible with the specific robot type.
-	 */
-	public Integer[] getAllCompatibleRobotIDs(RobotTypeInterface type) {
-		ArrayList<Integer> compatibleIDs = new ArrayList<Integer>();
-		for (int robotID : this.getAllRobotIDs()) {
-			if (!this.types.containsKey(robotID)) metaCSPLogger.severe("Type of Robot" + robotID + " is not specified");
-			else if (this.types.get(robotID) == type) compatibleIDs.add(robotID);
-		}
-		return compatibleIDs.toArray(new Integer[compatibleIDs.size()]);
-	}
-	
-	/**
-	 * Return IDs of the robots which are currently idle.
-	 * @return The IDs the robots which are currently idle.
-	 * FIXME check better with respect to isParked/isDriving flags.
-	 */
-	public Integer[] getIdleRobotIDs() {
-		ArrayList<Integer> ret = new ArrayList<Integer>();
-		synchronized (trackers) {
-			for (int robotID : trackers.keySet()) 
-				if (trackers.get(robotID) instanceof TrajectoryEnvelopeTrackerDummy) ret.add(robotID);
-		}
-		return ret.toArray(new Integer[ret.size()]);
 	}
 		
 	protected void setupLogging() {
@@ -1725,7 +1686,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 							Pose stoppingPose = entry.getKey();
 							int stoppingPoint = te.getSequenceNumber(new Coordinate(stoppingPose.getX(), stoppingPose.getY()));
 							if (stoppingPoint == te.getPathLength()-1) stoppingPoint -= 2;
-							int duration = entry.getValue().intValue();
+							int duration = entry.getValue();
 							if (!stoppingPoints.keySet().contains(robotID)) {
 								stoppingPoints.put(robotID, new ArrayList<Integer>());
 								stoppingTimes.put(robotID, new ArrayList<Integer>());

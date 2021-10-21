@@ -41,8 +41,8 @@ import com.google.gson.reflect.TypeToken;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 
-import se.oru.coordination.coordination_oru.AbstractTrajectoryEnvelopeCoordinator;
 import se.oru.coordination.coordination_oru.Mission;
+import se.oru.coordination.coordination_oru.TrajectoryEnvelopeCoordinator;
 import se.oru.coordination.coordination_oru.motionplanning.AbstractMotionPlanner;
 
 /**
@@ -73,7 +73,7 @@ public class Missions {
 	
 	/**
 	 * Set the minimum acceptable distance between path poses. This is used to re-sample paths
-	 * when they are loaded from file or when the method {@link #filterPathsSamplesInRoadMap()} is called.
+	 * when they are loaded from file or when the method {@link #resamplePathsInRoadMap()} is called.
 	 * @param minPathDist The minimum acceptable distance between path poses.
 	 */
 	public static void setMinPathDistance(double minPathDist) {
@@ -81,21 +81,16 @@ public class Missions {
 	}
 	
 	/**
-	 * Filter the samples of all paths so that the minimum distance between path poses is the value
+	 * Re-sample all paths so that the minimum distance between path poses is the value
 	 * set by {@link #setMinPathDistance(double)}.
 	 */
-	public static void filterPathsSamplesInRoadMap() {
+	public static void resamplePathsInRoadMap() {
 		for (String pathname : paths.keySet()) {
-			paths.put(pathname, filterPathSamples(paths.get(pathname)));
+			paths.put(pathname, resamplePath(paths.get(pathname)));
 		}
 	}
-
-	/**
-	 * Filter the samples of a given paths so that the minimum distance between path poses is the value
-	 * set by {@link #setMinPathDistance(double)}.
-	 * @param path The path to be filtered.
-	 */
-	private static PoseSteering[] filterPathSamples(PoseSteering[] path) {
+	
+	private static PoseSteering[] resamplePath(PoseSteering[] path) {
 		if (minPathDistance < 0) return path;
 		ArrayList<PoseSteering> ret = new ArrayList<PoseSteering>();
 		PoseSteering lastAdded = path[0];
@@ -955,18 +950,18 @@ public class Missions {
 	 * @param tec The {@link TrajectoryEnvelopeCoordinator} that coordinates the missions.
 	 * @param robotIDs The robot IDs for which a dispatching thread should be started.
 	 */
-	public static void startMissionDispatchers(final AbstractTrajectoryEnvelopeCoordinator tec, int ... robotIDs) {
+	public static void startMissionDispatchers(final TrajectoryEnvelopeCoordinator tec, int ... robotIDs) {
 		startMissionDispatchers(tec, true, robotIDs);
 	}
 	
 	/**
 	 * Start a thread for each robot that cycles through the known missions for that
 	 * robot and dispatches them when the robot is free.
-	 * @param tec The implementation of the {@link AbstractTrajectoryEnvelopeCoordinator} that coordinates the missions.
+	 * @param tec The {@link TrajectoryEnvelopeCoordinator} that coordinates the missions.
 	 * @param loop Set to <code>false</code> if missions should be de-queued once dispatched. 
 	 * @param robotIDs The robot IDs for which a dispatching thread should be started.
 	 */
-	public static void startMissionDispatchers(final AbstractTrajectoryEnvelopeCoordinator tec, final boolean loop, int ... robotIDs) {
+	public static void startMissionDispatchers(final TrajectoryEnvelopeCoordinator tec, final boolean loop, int ... robotIDs) {
 		//Start a mission dispatching thread for each robot, which will run forever
 		for (final int robotID : robotIDs) {
 			//For each robot, create a thread that dispatches the "next" mission when the robot is free 
@@ -982,6 +977,7 @@ public class Missions {
 										//cat with future missions if necessary
 										if (concatenatedMissions.containsKey(m)) {
 											ArrayList<Mission> catMissions = concatenatedMissions.get(m);
+											m = new Mission(m.getRobotID(), m.getFromLocation(), catMissions.get(catMissions.size()-1).getToLocation(), m.getFromPose(), catMissions.get(catMissions.size()-1).getToPose());
 											ArrayList<PoseSteering> path = new ArrayList<PoseSteering>();
 											for (int i = 0; i < catMissions.size(); i++) {
 												Mission oneMission = catMissions.get(i);
@@ -992,7 +988,7 @@ public class Missions {
 												}
 												if (i == catMissions.size()-1) path.add(oneMission.getPath()[oneMission.getPath().length-1]);
 											}
-											m = new Mission(m.getRobotID(), path.toArray(new PoseSteering[path.size()]), m.getFromLocation(), catMissions.get(catMissions.size()-1).getToLocation(), m.getFromPose(), catMissions.get(catMissions.size()-1).getToPose());
+											m.setPath(path.toArray(new PoseSteering[path.size()]));
 										}
 										else if (mdcs.containsKey(robotID)) mdcs.get(robotID).beforeMissionDispatch(m);							
 									}
@@ -1071,7 +1067,7 @@ public class Missions {
 		}
 		catch (FileNotFoundException e) { e.printStackTrace(); }
 		PoseSteering[] retArray = ret.toArray(new PoseSteering[ret.size()]);
-		return filterPathSamples(retArray);
+		return resamplePath(retArray);
 	}
 	
 
