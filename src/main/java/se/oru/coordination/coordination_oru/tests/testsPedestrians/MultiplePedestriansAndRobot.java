@@ -30,7 +30,7 @@ public class MultiplePedestriansAndRobot {
 
         Integer totalAgentsToLoad = 20;
         String timeStr = "t3";
-        String scenarioType = "corridor2";
+        String scenarioType = "scenario1";
         String explicitRobotPath = "";
 
 
@@ -40,10 +40,10 @@ public class MultiplePedestriansAndRobot {
         if(environmentVariables.containsKey("NUM_AGENTS")) { totalAgentsToLoad = Integer.parseInt(environmentVariables.get("NUM_AGENTS")); }
         if(environmentVariables.containsKey("ONE_PATH")) { explicitRobotPath = environmentVariables.get("ONE_PATH"); }
 
-        String scenarioStr = "atc/" + scenarioType;
+        String scenarioStr = "warehouse/" + scenarioType;
         String scenarioName =  scenarioType + "-" + timeStr;
-        String robotPathDir = "chitt_tests/robot/" + scenarioStr + "/" + timeStr;
-        String pedestrianPathDir = "chitt_tests/pedestrians/atc/" + timeStr;
+        String robotPathDir = "chitt_tests/robot/" + scenarioStr;
+        String pedestrianPathDir = "chitt_tests/pedestrians/warehouse/" + timeStr;
 
         Vector<String> robotPathFilesName = new Vector<String>();
 
