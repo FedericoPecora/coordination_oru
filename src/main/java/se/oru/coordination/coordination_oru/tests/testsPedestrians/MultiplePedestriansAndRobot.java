@@ -2,7 +2,6 @@ package se.oru.coordination.coordination_oru.tests.testsPedestrians;
 
 import com.vividsolutions.jts.geom.Coordinate;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
-import org.metacsp.multi.spatioTemporal.paths.Trajectory;
 import org.metacsp.utility.UI.Callback;
 import se.oru.coordination.coordination_oru.*;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
@@ -40,11 +39,12 @@ public class MultiplePedestriansAndRobot {
         if(environmentVariables.containsKey("NUM_AGENTS")) { totalAgentsToLoad = Integer.parseInt(environmentVariables.get("NUM_AGENTS")); }
         if(environmentVariables.containsKey("ONE_PATH")) { explicitRobotPath = environmentVariables.get("ONE_PATH"); }
 
-        String scenarioStr = "atc/" + scenarioType;
+        String scenarioStr = "warehouse/" + scenarioType;
         String scenarioName =  scenarioType + "-" + timeStr;
-        String robotPathDir = "chitt_tests/robot/" + scenarioStr + "/" + timeStr;
-        String pedestrianPathDir = "chitt_tests/pedestrians/atc/" + timeStr;
+        String robotPathDir = "chitt_tests/robot/" + scenarioStr + "/t1/";
+        String pedestrianPathDir = "chitt_tests/pedestrians/warehouse/" + timeStr;
 
+        ColorPrint.info("Robot Path Directory" + robotPathDir);
         Vector<String> robotPathFilesName = new Vector<String>();
 
         FilenameFilter matchingRobotPathNameFilter = new FilenameFilter() {
@@ -187,7 +187,7 @@ public class MultiplePedestriansAndRobot {
         nums.add(1729);
 
         //JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
-        //BrowserVisualization viz = new BrowserVisualization();
+        // BrowserVisualization viz = new BrowserVisualization();
         //RVizVisualization viz = new RVizVisualization(false);
         //viz.setMap("maps/atc.yaml");
         int[] nums_primitive = new int[nums.size()];
@@ -195,9 +195,9 @@ public class MultiplePedestriansAndRobot {
             nums_primitive[i] = nums.get(i);
         }
         //RVizVisualization.writeRVizConfigFile(nums_primitive);
-        //viz.setInitialTransform(40, 3, -10);  // Ellipse / warehouse map
+        // viz.setInitialTransform(40, 3, -10);  // Ellipse / warehouse map
         //viz.setInitialTransform(20, -10, 30); // ATC map
-        //tec.setVisualization(viz);
+        // tec.setVisualization(viz);
 
         PedestrianTrajectory[] pedestrianTrajectories = new PedestrianTrajectory[nums_primitive.length];
 
