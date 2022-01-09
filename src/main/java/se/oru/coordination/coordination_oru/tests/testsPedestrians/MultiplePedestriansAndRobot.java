@@ -29,7 +29,7 @@ public class MultiplePedestriansAndRobot {
 
         Integer totalAgentsToLoad = 20;
         String timeStr = "t3";
-        String scenarioType = "corridor2";
+        String scenarioType = "scenario1";
         String explicitRobotPath = "";
 
 
