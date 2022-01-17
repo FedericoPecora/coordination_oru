@@ -14,12 +14,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.lang.ArrayUtils;
-import org.jgrapht.alg.ConnectivityInspector;
-import org.jgrapht.alg.KosarajuStrongConnectivityInspector;
+import org.jgrapht.alg.connectivity.ConnectivityInspector;
+import org.jgrapht.alg.connectivity.KosarajuStrongConnectivityInspector;
 import org.jgrapht.alg.cycle.JohnsonSimpleCycles;
 import org.jgrapht.graph.DefaultWeightedEdge;
 import org.jgrapht.graph.DirectedMultigraph;
-import org.jgrapht.graph.DirectedSubgraph;
 import org.jgrapht.graph.SimpleDirectedGraph;
 import org.jgrapht.graph.SimpleDirectedWeightedGraph;
 import org.metacsp.framework.Constraint;
@@ -213,7 +212,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 			//Get edges along the cycle...
 			ArrayList<Dependency> edgesAlongCycle = new ArrayList<Dependency>();
-			Collections.reverse(cycle);
+			//Collections.reverse(cycle);
 			for (int i = 0; i < cycle.size(); i++) {
 				Dependency dep = g.getEdge(cycle.get(i), cycle.get(i < cycle.size()-1 ? i+1 : 0));
 				if (dep != null) edgesAlongCycle.add(dep);
@@ -1572,13 +1571,27 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 			//compute strongly connected components
 			KosarajuStrongConnectivityInspector<Integer,DefaultWeightedEdge> ksccFinder = new KosarajuStrongConnectivityInspector<Integer,DefaultWeightedEdge>(currentOrdersGraph);
-			List<DirectedSubgraph<Integer,DefaultWeightedEdge>> sccs = ksccFinder.stronglyConnectedSubgraphs();
-			metaCSPLogger.finest("Connected components: " + sccs.toString());
+			List<Set<Integer>> sets = ksccFinder.stronglyConnectedSets();
+		    List<SimpleDirectedWeightedGraph<Integer,DefaultWeightedEdge>> sccs = new ArrayList<SimpleDirectedWeightedGraph<Integer,DefaultWeightedEdge>>(sets.size());
+            for (Set<Integer> set : sets) {
+            	SimpleDirectedWeightedGraph<Integer,DefaultWeightedEdge> subG = new SimpleDirectedWeightedGraph<Integer,DefaultWeightedEdge>(DefaultWeightedEdge.class);
+            	for(Integer v : set) subG.addVertex(v);
+            	for(DefaultWeightedEdge e : currentOrdersGraph.edgeSet()) {
+            		if(subG.containsVertex(currentOrdersGraph.getEdgeSource(e)) && subG.containsVertex(currentOrdersGraph.getEdgeTarget(e))) {
+            			DefaultWeightedEdge e_ = subG.addEdge(currentOrdersGraph.getEdgeSource(e), currentOrdersGraph.getEdgeTarget(e));
+            			if (e_ == null) metaCSPLogger.severe("<<<<<<<<< Add egde fails (8). Edge: " + e.toString());
+            			subG.setEdgeWeight(e_, currentOrdersGraph.getEdgeWeight(e));
+            		}
+            	}
+            	sccs.add(subG);
+            }
+			
+			metaCSPLogger.info("Connected components: " + sccs.toString());
 
 			//update the cycle list. Use a map to avoid recomputing cycles of each connected component.
 			for (Pair<Integer,Integer> pair : toAdd) {
 				//search the strongly connected components containing the two vertices
-				for (DirectedSubgraph<Integer,DefaultWeightedEdge> scc : sccs) {
+				for (SimpleDirectedWeightedGraph<Integer,DefaultWeightedEdge> scc : sccs) {
 					if (scc.containsVertex(pair.getFirst()) ||	scc.containsVertex(pair.getSecond())) {
 						if (scc.containsVertex(pair.getFirst()) && scc.containsVertex(pair.getSecond())) {
 							//get cycles in this strongly connected components
@@ -1586,7 +1599,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							List<List<Integer>> cycles = cycleFinder.findSimpleCycles();
 							if (!cycles.isEmpty()) {
 								for(List<Integer> cycle : cycles) {
-									Collections.reverse(cycle);
+									//Collections.reverse(cycle);
 									//update the list of cycles for each edge
 									for (int i = 0; i < cycle.size(); i++) {
 										int j = i < cycle.size()-1 ? i+1 : 0;
