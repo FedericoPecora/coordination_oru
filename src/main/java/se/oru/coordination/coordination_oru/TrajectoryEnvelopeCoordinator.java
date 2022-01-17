@@ -212,7 +212,6 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 
 			//Get edges along the cycle...
 			ArrayList<Dependency> edgesAlongCycle = new ArrayList<Dependency>();
-			//Collections.reverse(cycle);
 			for (int i = 0; i < cycle.size(); i++) {
 				Dependency dep = g.getEdge(cycle.get(i), cycle.get(i < cycle.size()-1 ? i+1 : 0));
 				if (dep != null) edgesAlongCycle.add(dep);
@@ -1599,7 +1598,6 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							List<List<Integer>> cycles = cycleFinder.findSimpleCycles();
 							if (!cycles.isEmpty()) {
 								for(List<Integer> cycle : cycles) {
-									//Collections.reverse(cycle);
 									//update the list of cycles for each edge
 									for (int i = 0; i < cycle.size(); i++) {
 										int j = i < cycle.size()-1 ? i+1 : 0;
