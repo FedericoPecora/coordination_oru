@@ -23,10 +23,7 @@ import javax.swing.SwingUtilities;
 
 import org.apache.commons.collections.comparators.ComparatorChain;
 import org.metacsp.framework.Constraint;
-import org.metacsp.meta.spatioTemporal.paths.Map;
 import org.metacsp.multi.allenInterval.AllenIntervalConstraint;
-import org.metacsp.multi.spatial.DE9IM.GeometricShapeDomain;
-import org.metacsp.multi.spatial.DE9IM.GeometricShapeVariable;
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
@@ -166,6 +163,24 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 */
 	public boolean isDriving(int robotID) {
 		return (isDriving.containsKey(robotID) && isDriving.get(robotID));
+	}
+	
+	/**
+	 * Get the current set of idle robots
+	 * @return The current set of idle robots
+	 */	
+	public ArrayList<Integer> getIdleRobots() {
+		if (solver == null) {
+			metaCSPLogger.severe("Solver not initialized, please call method setupSolver() first!");
+			throw new Error("Solver not initialized, please call method setupSolver() first!");
+		}
+		synchronized(solver) {
+			ArrayList<Integer> idleRobots = new ArrayList<Integer>();
+			for (int robotID : this.trackers.keySet()){
+				if (isFree(robotID)) idleRobots.add(robotID);
+			}
+			return idleRobots;
+		}
 	}
 	
 	
@@ -523,7 +538,6 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 * @param horizon The maximum time (milliseconds).
 	 */
 	public void setupSolver(long origin, long horizon) {
-
 		//Create meta solver and solver
 		solver = new TrajectoryEnvelopeSolver(origin, horizon);
 	}
@@ -533,7 +547,6 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 * checking and enforcing dependencies at every clock tick.
 	 */
 	public void startInference() {
-		
 		if (solver == null) {
 			metaCSPLogger.severe("Solver not initialized, please call method setupSolver() first!");
 			throw new Error("Solver not initialized, please call method setupSolver() first!");
@@ -1882,6 +1895,10 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 * @return <code>true</code> iff the robot is free to accept a new mission (that is, the robot is in state WAITING_FOR_TASK).
 	 */
 	public boolean isFree(int robotID) {
+		if (solver == null) {
+			metaCSPLogger.severe("Solver not initialized, please call method setupSolver() first!");
+			throw new Error("Solver not initialized, please call method setupSolver() first!");
+		}
 		synchronized (solver) {
 			if (muted.contains(robotID)) return false;
 			for (Pair<TrajectoryEnvelope,Long> te : missionsPool) if (te.getFirst().getRobotID() == robotID) return false;
