@@ -15,6 +15,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Random;
+import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
@@ -181,6 +182,14 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			}
 			return idleRobots;
 		}
+	}
+	
+	/**
+	 * Return all robotIDs.
+	 * @return The set of robotIDs.
+	 */
+	public Set<Integer> getAllRobotIDs() {
+		return trackers.keySet();
 	}
 	
 	
