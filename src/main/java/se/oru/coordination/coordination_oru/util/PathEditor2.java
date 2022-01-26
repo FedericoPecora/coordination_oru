@@ -3,15 +3,12 @@ package se.oru.coordination.coordination_oru.util;
 import java.awt.Color;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.NoninvertibleTransformException;
 import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
-import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -21,8 +18,12 @@ import java.util.Set;
 import java.util.TreeMap;
 
 import javax.swing.AbstractAction;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.KeyStroke;
+import javax.swing.UIManager;
+import java.awt.Font;
+import javax.swing.plaf.FontUIResource;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
@@ -682,7 +683,10 @@ public class PathEditor2 {
 			private static final long serialVersionUID = 8788274388808789053L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				JOptionPane.showMessageDialog(panel,getHelp());
+				String helpStr = getHelp();
+				JLabel label = new JLabel(new String("<html>").concat(helpStr.replace("\n", "<br/>")).concat("</html>"));
+				label.setFont(new Font("Sans", Font.BOLD, 22));
+				JOptionPane.showMessageDialog(panel, label);
 			}
 		};
 		panel.getActionMap().put("Help",actHelp);
