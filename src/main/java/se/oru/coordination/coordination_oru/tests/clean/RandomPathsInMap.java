@@ -34,9 +34,9 @@ public class RandomPathsInMap {
 		//MetaCSPLogging.setLevel(TrajectoryEnvelopeCoordinator.class, Level.FINEST);
 		
 		//Setup the network parameters
-		NetworkConfiguration.setDelays(10, 500);
-		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0;
-		tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, NetworkConfiguration.getMaximumTxDelay(), 1e-2);
+//		NetworkConfiguration.setDelays(10, 500);
+//		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0;
+//		tec.setNetworkParameters(NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS, NetworkConfiguration.getMaximumTxDelay(), 1e-2);
 
 		double xl = 1.0;
 		double yl = .5;
