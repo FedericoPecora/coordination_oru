@@ -22,6 +22,7 @@ public class BrowserVisualizationSocket extends WebSocketAdapter {
 	public static double resolution = 1;
 	public static Coordinate origin = null;
 	public static double initialScale = 1;
+	public static double fontScale = 0.8;
 	public static Coordinate initialTranslation = null;
 		
     @Override
@@ -61,6 +62,14 @@ public class BrowserVisualizationSocket extends WebSocketAdapter {
 				}
 				catch(IOException e) { e.printStackTrace(); }
 	        }
+	        try {
+				System.out.println("Sending initial font scale to newly connected client...");
+				String setFontScaleString = "{ \"operation\" : \"setFontScale\","
+						+ "\"data\" : "
+						+ "{ \"scale\" : " + fontScale + "}}";
+				super.getRemote().sendString(setFontScaleString);			
+			}
+			catch(IOException e) { e.printStackTrace(); }
         }
 	}
     

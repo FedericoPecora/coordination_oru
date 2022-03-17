@@ -14,6 +14,9 @@ class Visualization {
 		this.geometryExtraData = {};
 		this.geometryTimeouts = {};
 		this.deletedForever = [];
+		
+		//Default for scaling text (if not user defined)
+		this.fontScale = -1;
 
 		this.currentTextScale = this.originalScale;		
 		this.matrix = Matrix.from( 1, 0, 0, 1, 0, 0 );
@@ -69,6 +72,7 @@ class Visualization {
 		this.mapResolution = 1.0;
 		this.mapOrigin = { x : 0, y : 0 };
 		this.footprintSize = 1;
+		
 	}
 
 	encode(input) {
@@ -222,6 +226,17 @@ class Visualization {
 		delete this.geometryExtraData[nameToRem];
 		if (nameToRem.startsWith("_") && !(nameToRem.includes("-")) && !this.deletedForever.includes(nameToRem)) this.deletedForever.push(nameToRem);
 	}
+	
+	//Not used, but should work
+	updateFontScale(sc) {
+		//console.log("updating font scale " + sc.value);
+		this.fontScale = sc.value;
+	}
+	
+	setFontScale(sc) {
+		//console.log("setting font scale " + sc.value);
+		this.fontScale = sc.scale;
+	}
 
 	refresh() {
 		//Remove old geoms
@@ -286,8 +301,9 @@ class Visualization {
 			//if (key.startsWith("R")) {
 			//	//textSize = Math.sqrt(area)/2;
 			//	textSize = 1.3*Math.sqrt(area);
-			//}
-			var textSize = 1.3*Math.sqrt(maxArea);
+			//}	
+			//console.log("scale is " + viz.fontScale);
+			var textSize = viz.fontScale*Math.sqrt(maxArea);
 			if (!key.startsWith("_")) {
 				var text = key;
 				if (viz.geometryExtraData[key] != null) {

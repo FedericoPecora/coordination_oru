@@ -107,6 +107,10 @@ public class BrowserVisualization implements FleetVisualization {
 		BrowserVisualizationSocket.initialTranslation = new Coordinate(xTrans,yTrans);		
 	}
 	
+	public void setFontScale(double scale) {
+		BrowserVisualizationSocket.fontScale = scale;
+	}
+	
 	private static int getScreenDPI() {
 		//Dimension screen = java.awt.Toolkit.getDefaultToolkit().getScreenSize();
 		//System.out.println("Screen width: "+screen.getWidth()); 
@@ -292,6 +296,15 @@ public class BrowserVisualization implements FleetVisualization {
 		// This method does nothing - reason:
 		// Viz change events are buffered and sent by an internal thread
 		// in bursts every UPDATE_PERIOD ms to avoid blocking of RemoteEndpopints
+	}
+	
+	public void updateFontScale(double scale) {
+		String jsonString = "{ \"operation\" : \"updateFontScale\","
+				+ "\"data\" : "
+				+ "{ \"value\" : \""+ scale +"\" }}";
+//		String jsonString = "{ \"operation\" : \"updateFontScale\" }";
+		
+		enqueueMessage(jsonString);
 	}
 	
 	public void sendUpdate() {

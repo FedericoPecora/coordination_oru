@@ -33,6 +33,9 @@ public class ThreeRobotsSimple {
 		// -- the getCurrentTimeInMillis() method, which is used by the coordinator to keep time
 		//You still need to add one or more comparators to determine robot orderings thru critical sections (comparators are evaluated in the order in which they are added)
 		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(MAX_VEL,MAX_ACCEL);
+		
+		
+		/*
 		tec.addComparator(new Comparator<RobotAtCriticalSection> () {
 			@Override
 			public int compare(RobotAtCriticalSection o1, RobotAtCriticalSection o2) {
@@ -48,6 +51,7 @@ public class ThreeRobotsSimple {
 				return (o2.getRobotReport().getRobotID()-o1.getRobotReport().getRobotID());
 			}
 		});
+		*/
 		
 		//You probably also want to provide a non-trivial forward model
 		//(the default assumes that robots can always stop)
@@ -60,7 +64,7 @@ public class ThreeRobotsSimple {
 		Coordinate footprint3 = new Coordinate(0.25,-0.25);
 		Coordinate footprint4 = new Coordinate(-0.25,-0.25);
 		tec.setDefaultFootprint(footprint1, footprint2, footprint3, footprint4);
-
+		
 		//Need to setup infrastructure that maintains the representation
 		tec.setupSolver(0, 100000000);
 		//Start the thread that checks and enforces dependencies at every clock tick

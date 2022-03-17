@@ -140,7 +140,14 @@ public class ThreeDifferentRobotsLinear {
 		if (!rsp.plan()) throw new Error ("No path between " + startPoseRobot3 + " and " + goalPoseRobot3);
 		Missions.enqueueMission(new Mission(3,rsp.getPath()));
 		Missions.enqueueMission(new Mission(3,rsp.getPathInv()));
+		
+		tec.setBreakDeadlocks(false, false, true);
+		tec.setMotionPlanner(1, rsp);
+		tec.setMotionPlanner(2, rsp);
+		tec.setMotionPlanner(3, rsp);
 
+//		Thread.sleep(6000);
+		
 		Missions.startMissionDispatchers(tec, 1,2,3);
 
 	}
