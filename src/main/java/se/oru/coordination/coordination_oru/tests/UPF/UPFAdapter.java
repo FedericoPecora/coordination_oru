@@ -67,6 +67,7 @@ public class UPFAdapter {
 		BrowserVisualization viz = new BrowserVisualization();
 		viz.setMap(yamlFile);
 		viz.setInitialTransform(20.0, 9.0, 2.0);
+		viz.setFontScale(1.6);
 		tec.setVisualization(viz);
 		
 		Missions.loadRoadMap(roadMapFile);
@@ -110,7 +111,7 @@ public class UPFAdapter {
 			}
 		}
 		
-		//Plan a path and enqueue a mission for each goto action
+		//Plan a path and enqueue a mission for each movement action
 		for (String action : plan) {
 			if (action.startsWith(movementAction)) {
 				String[] arguments = getArgs(action);
