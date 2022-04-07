@@ -1,4 +1,13 @@
 #!/bin/sh
+export P_TIME="t4"
+export S_TYPE="corridor3"
+mkdir journal_logs/corridor3-t4
+./src/main/java/se/oru/coordination/coordination_oru/tests/testsPedestrians/start_experiments.sh
+echo "*********************************"
+echo "*********************************"
+echo "************* DONE **************"
+echo "*********************************"
+echo "*********************************"
 export P_TIME="t1"
 export S_TYPE="corridor2"
 mkdir journal_logs/corridor2-t1
