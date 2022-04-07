@@ -196,7 +196,7 @@ public class MultiplePedestriansAndRobot {
         }
         //RVizVisualization.writeRVizConfigFile(nums_primitive);
         // viz.setInitialTransform(40, 3, -10);  // Ellipse / warehouse map
-        viz.setInitialTransform(10, -10, 30); // ATC map
+        viz.setInitialTransform(20, 43, 25); // ATC map
         tec.setVisualization(viz);
 
         PedestrianTrajectory[] pedestrianTrajectories = new PedestrianTrajectory[nums_primitive.length];
