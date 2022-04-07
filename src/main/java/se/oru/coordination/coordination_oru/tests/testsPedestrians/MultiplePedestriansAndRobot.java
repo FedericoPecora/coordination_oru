@@ -39,10 +39,10 @@ public class MultiplePedestriansAndRobot {
         if(environmentVariables.containsKey("NUM_AGENTS")) { totalAgentsToLoad = Integer.parseInt(environmentVariables.get("NUM_AGENTS")); }
         if(environmentVariables.containsKey("ONE_PATH")) { explicitRobotPath = environmentVariables.get("ONE_PATH"); }
 
-        String scenarioStr = "warehouse/" + scenarioType;
+        String scenarioStr = "atc/" + scenarioType;
         String scenarioName =  scenarioType + "-" + timeStr;
         String robotPathDir = "chitt_tests/robot/" + scenarioStr + "/t1/";
-        String pedestrianPathDir = "chitt_tests/pedestrians/warehouse/" + timeStr;
+        String pedestrianPathDir = "chitt_tests/pedestrians/atc/" + timeStr;
 
         ColorPrint.info("Robot Path Directory" + robotPathDir);
         Vector<String> robotPathFilesName = new Vector<String>();
@@ -187,17 +187,17 @@ public class MultiplePedestriansAndRobot {
         nums.add(1729);
 
         //JTSDrawingPanelVisualization viz = new JTSDrawingPanelVisualization();
-        // BrowserVisualization viz = new BrowserVisualization();
+        BrowserVisualization viz = new BrowserVisualization();
         //RVizVisualization viz = new RVizVisualization(false);
-        //viz.setMap("maps/atc.yaml");
+        viz.setMap("maps/atc.yaml");
         int[] nums_primitive = new int[nums.size()];
         for (int i = 0; i < nums_primitive.length; i++) {
             nums_primitive[i] = nums.get(i);
         }
         //RVizVisualization.writeRVizConfigFile(nums_primitive);
         // viz.setInitialTransform(40, 3, -10);  // Ellipse / warehouse map
-        //viz.setInitialTransform(20, -10, 30); // ATC map
-        // tec.setVisualization(viz);
+        viz.setInitialTransform(10, -10, 30); // ATC map
+        tec.setVisualization(viz);
 
         PedestrianTrajectory[] pedestrianTrajectories = new PedestrianTrajectory[nums_primitive.length];
 
