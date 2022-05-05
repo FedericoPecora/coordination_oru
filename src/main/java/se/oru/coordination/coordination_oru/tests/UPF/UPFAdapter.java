@@ -14,6 +14,7 @@ import se.oru.coordination.coordination_oru.motionplanning.AbstractMotionPlanner
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
 import se.oru.coordination.coordination_oru.util.BrowserVisualization;
+import se.oru.coordination.coordination_oru.util.MissionDispatchingCallback;
 import se.oru.coordination.coordination_oru.util.Missions;
 
 public class UPFAdapter {
@@ -85,6 +86,15 @@ public class UPFAdapter {
 
 	}
 	
+	/**
+	 * Dispatches the motion actions in a given plan. Motions are computed and dispatched. Safety (non-interference between motions)
+	 * and liveness are ensured by the underlying coordination framework. 
+	 * @param init The initial state, stating at least where the robots are
+	 * @param plan The action plan
+	 * @param robotPrefix The prefix of objects that correspond to robots.
+	 * @param atPredicate The predicate indicating where a robot is (assumes two arguments, robot and location, in any oder). 
+	 * @param movementAction The name of the action that requires motion planning (assumes arguments in the order "robot, from, to").
+	 */
 	public UPFAdapter(String[] init, String[] plan, String robotPrefix, String atPredicate, String movementAction) {
 
 		//Gather robotIDs
@@ -125,8 +135,12 @@ public class UPFAdapter {
 			}
 		}
 		
+		
 	}
 	
+	/**
+	 * Starts execution of the plan's movement actions.
+	 */
 	public void startPlanExecution() {
 		int[] robotIDs = new int[robotsToIDs.size()];
 		int counter = 0;

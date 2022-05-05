@@ -1242,7 +1242,7 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 	 * @param robotID The ID of the robot whose {@link TrajectoryEnvelope} is to be recomputed.
 	 * @param newPath The path based on which the new {@link TrajectoryEnvelope} should be computed.
 	 * @param breakingPathIndex Last point on the current path to preserve. 
-	 * @param concatenatePaths <code>true</code> whether the new path should be concatenated with the old one.
+	 * @param concatenatePaths <code>true</code> if the new path should be concatenated with the old one.
 	 * @param lockedRobotIDs The set of robots which have been locked when the re-plan started.
 	 * @param <code>true</code> whether the robot should be at the current critical point before starting a re-plan.
 	 * @ATTENTION When the path is not concatenated, it is supposed the robot has already traversed the overall path.

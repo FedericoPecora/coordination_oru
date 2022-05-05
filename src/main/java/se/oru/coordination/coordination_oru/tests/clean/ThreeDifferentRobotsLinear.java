@@ -1,6 +1,7 @@
 package se.oru.coordination.coordination_oru.tests.clean;
 
 import java.util.Comparator;
+import java.util.HashMap;
 
 import org.metacsp.multi.spatioTemporal.paths.Pose;
 import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
@@ -25,14 +26,24 @@ public class ThreeDifferentRobotsLinear {
 
 	public static void main(String[] args) throws InterruptedException {
 
+		final HashMap<Integer,Integer> robotIDtoPriority = new HashMap<Integer, Integer>();
+		
+		//biggest first
+		robotIDtoPriority.put(1, 2); //Med
+		robotIDtoPriority.put(2, 3); //Small
+		robotIDtoPriority.put(3, 1); //Big
+		
 		double MAX_ACCEL = 1.0;
 		double MAX_VEL = 4.0;
+		
 		//Instantiate a trajectory envelope coordinator.
 		//The TrajectoryEnvelopeCoordinatorSimulation implementation provides
 		// -- the factory method getNewTracker() which returns a trajectory envelope tracker
 		// -- the getCurrentTimeInMillis() method, which is used by the coordinator to keep time
 		//You still need to add one or more comparators to determine robot orderings thru critical sections (comparators are evaluated in the order in which they are added)
 		final TrajectoryEnvelopeCoordinatorSimulation tec = new TrajectoryEnvelopeCoordinatorSimulation(MAX_VEL,MAX_ACCEL);
+
+		//CLOSEST FIRST
 		tec.addComparator(new Comparator<RobotAtCriticalSection> () {
 			@Override
 			public int compare(RobotAtCriticalSection o1, RobotAtCriticalSection o2) {
@@ -42,12 +53,33 @@ public class ThreeDifferentRobotsLinear {
 				return ((cs.getTe1Start()-robotReport1.getPathIndex())-(cs.getTe2Start()-robotReport2.getPathIndex()));
 			}
 		});
-		tec.addComparator(new Comparator<RobotAtCriticalSection> () {
-			@Override
-			public int compare(RobotAtCriticalSection o1, RobotAtCriticalSection o2) {
-				return (o2.getRobotReport().getRobotID()-o1.getRobotReport().getRobotID());
-			}
-		});
+		
+		//IDs
+//		tec.addComparator(new Comparator<RobotAtCriticalSection> () {
+//			@Override
+//			public int compare(RobotAtCriticalSection o1, RobotAtCriticalSection o2) {
+//				return (o2.getRobotReport().getRobotID()-o1.getRobotReport().getRobotID());
+//			}
+//		});
+		
+		//FIXED PRIO
+//		tec.addComparator(new Comparator<RobotAtCriticalSection> () {
+//			@Override
+//			public int compare(RobotAtCriticalSection o1, RobotAtCriticalSection o2) {
+//				return robotIDtoPriority.get(o1.getRobotReport().getRobotID()) - robotIDtoPriority.get(o2.getRobotReport().getRobotID());
+//			}
+//		});
+		
+		//FCFS
+//		tec.addComparator(new Comparator<RobotAtCriticalSection> () {
+//			@Override
+//			public int compare(RobotAtCriticalSection o1, RobotAtCriticalSection o2) {
+//				return (int)Math.signum(o1.getRobotReport().getDistanceTraveled() - o1.getRobotReport().getDistanceTraveled());
+//			}
+//		});
+		
+		
+		tec.setYieldIfParking(true);
 		
 //		NetworkConfiguration.setDelays(0,3000);
 //		NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS = 0.1;
@@ -109,8 +141,8 @@ public class ThreeDifferentRobotsLinear {
 		Pose goalPoseRobot1 = new Pose(16.0,15.0,Math.PI/4);
 		Pose startPoseRobot2 = new Pose(6.0,16.0,-Math.PI/4);
 		Pose goalPoseRobot2 = new Pose(25.0,3.0,-Math.PI/4);
-		Pose startPoseRobot3 = new Pose(9.0,6.0,Math.PI/2);
-		Pose goalPoseRobot3 = new Pose(21.0,3.0,-Math.PI/2);
+		Pose startPoseRobot3 =new Pose(9.0,6.0,Math.PI/2);
+		Pose goalPoseRobot3 =  new Pose(21.0,3.0,-Math.PI/2);
 
 		//Place robots in their initial locations (looked up in the data file that was loaded above)
 		// -- creates a trajectory envelope for each location, representing the fact that the robot is parked
@@ -118,7 +150,7 @@ public class ThreeDifferentRobotsLinear {
 		// -- each trajectory envelope is the footprint of the corresponding robot in that pose
 		tec.placeRobot(1, startPoseRobot1);
 		tec.placeRobot(2, startPoseRobot2);
-		tec.placeRobot(3, startPoseRobot3);
+		tec.placeRobot(3, goalPoseRobot3);
 
 		rsp.setFootprint(fp1);
 		rsp.setStart(startPoseRobot1);
@@ -138,15 +170,16 @@ public class ThreeDifferentRobotsLinear {
 		rsp.setStart(startPoseRobot3);
 		rsp.setGoals(goalPoseRobot3);
 		if (!rsp.plan()) throw new Error ("No path between " + startPoseRobot3 + " and " + goalPoseRobot3);
-		Missions.enqueueMission(new Mission(3,rsp.getPath()));
 		Missions.enqueueMission(new Mission(3,rsp.getPathInv()));
+		Missions.enqueueMission(new Mission(3,rsp.getPath()));
 		
-		tec.setBreakDeadlocks(false, false, true);
+		
+		tec.setBreakDeadlocks(true, false, false);
 		tec.setMotionPlanner(1, rsp);
 		tec.setMotionPlanner(2, rsp);
 		tec.setMotionPlanner(3, rsp);
 
-//		Thread.sleep(6000);
+		Thread.sleep(6000);
 		
 		Missions.startMissionDispatchers(tec, 1,2,3);
 

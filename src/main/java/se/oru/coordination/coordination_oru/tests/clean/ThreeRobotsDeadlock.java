@@ -104,6 +104,8 @@ public class ThreeRobotsDeadlock {
 			Missions.enqueueMission(new Mission(i+1,rsp.getPathInv()));
 			tec.setMotionPlanner(i+1, rsp);
 		}
+		
+		//Thread.sleep(6000);
 
 		Missions.startMissionDispatchers(tec, 1,2,3);
 
