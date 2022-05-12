@@ -16,6 +16,7 @@ import se.oru.coordination.coordination_oru.RobotAtCriticalSection;
 import se.oru.coordination.coordination_oru.RobotReport;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
+import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner.PLANNING_ALGORITHM;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
 import se.oru.coordination.coordination_oru.util.BrowserVisualization;
 import se.oru.coordination.coordination_oru.util.JTSDrawingPanelVisualization;
@@ -179,7 +180,7 @@ public class ThreeDifferentRobotsLinear {
 		tec.setMotionPlanner(2, rsp);
 		tec.setMotionPlanner(3, rsp);
 
-		Thread.sleep(6000);
+		//Thread.sleep(6000);
 		
 		Missions.startMissionDispatchers(tec, 1,2,3);
 

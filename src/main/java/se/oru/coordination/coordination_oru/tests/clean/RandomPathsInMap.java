@@ -13,6 +13,7 @@ import se.oru.coordination.coordination_oru.Mission;
 import se.oru.coordination.coordination_oru.NetworkConfiguration;
 import se.oru.coordination.coordination_oru.demo.DemoDescription;
 import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner;
+import se.oru.coordination.coordination_oru.motionplanning.ompl.ReedsSheppCarPlanner.PLANNING_ALGORITHM;
 import se.oru.coordination.coordination_oru.simulation2D.TrajectoryEnvelopeCoordinatorSimulation;
 import se.oru.coordination.coordination_oru.util.BrowserVisualization;
 import se.oru.coordination.coordination_oru.util.Missions;
@@ -60,11 +61,11 @@ public class RandomPathsInMap {
 		viz.setInitialTransform(20.0, 9.0, 2.0);
 		tec.setVisualization(viz);
 		
-		Missions.loadRoadMap("missions/icaps_locations_and_paths_4.txt");
+		Missions.loadRoadMap("missions/icaps_locations_and_paths_1.txt");
 
 		//MetaCSPLogging.setLevel(tec.getClass().getSuperclass(), Level.FINEST);
 	
-		int[] robotIDs = new int[] {1,2,3,4,5,6,7};
+		int[] robotIDs = new int[] {1,2};
 		int locationCounter = 0;
 		
 		//Preload goals and starts. Make them as obstacles for all the other robots
@@ -91,7 +92,7 @@ public class RandomPathsInMap {
 			locationCounter += 2;
 		}
 		//Instantiate a simple motion planner
-		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner();
+		ReedsSheppCarPlanner rsp = new ReedsSheppCarPlanner(PLANNING_ALGORITHM.RRTConnect);
 		rsp.setMap(yamlFile);
 		rsp.setRadius(0.1);
 		rsp.setFootprint(tec.getDefaultFootprint());

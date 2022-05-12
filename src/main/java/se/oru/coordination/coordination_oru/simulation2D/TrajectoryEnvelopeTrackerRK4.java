@@ -128,6 +128,8 @@ public abstract class TrajectoryEnvelopeTrackerRK4 extends AbstractTrajectoryEnv
 			this.overallDistance = totalDistance;
 			this.internalCriticalPoints.clear();
 			this.computeInternalCriticalPoints();
+			this.slowDownProfile = this.getSlowdownProfile();
+			this.positionToSlowDown = this.computePositionToSlowDown();
 			reportsList.clear();
 			reportTimeLists.clear(); //semplify to avoid discontinuities ... to be fixed.
 		}

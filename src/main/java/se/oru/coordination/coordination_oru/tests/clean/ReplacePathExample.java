@@ -73,32 +73,33 @@ public class ReplacePathExample {
 		tec.setMotionPlanner(1, rsp);
 		tec.setForwardModel(1, new ConstantAccelerationForwardModel(MAX_ACCEL, MAX_VEL, tec.getTemporalResolution(), tec.getControlPeriod(), tec.getRobotTrackingPeriodInMillis(1)));
 		tec.placeRobot(1, Missions.getLocationPose("L_0"));
-
-		PoseSteering[] pathL0R0 = null;		
+		
+		PoseSteering[] initialPath = null;		
 		rsp.setStart(Missions.getLocationPose("L_0"));
 		rsp.setGoals(Missions.getLocationPose("R_0"));
 		rsp.plan();
 		if (rsp.getPath() == null) throw new Error("No path found.");
-		pathL0R0 = rsp.getPath();
+		initialPath = rsp.getPath();
 	
-		int midIndex = pathL0R0.length/2;
-		Pose midPoint = pathL0R0[midIndex].getPose();
-		rsp.setStart(midPoint);
-		rsp.setGoals(Missions.getLocationPose("R_6"));
+		int replacementIndex = initialPath.length*2/3;
+		Pose replacementPose = initialPath[replacementIndex].getPose();
+		rsp.setStart(replacementPose);
+		rsp.setGoals(Missions.getLocationPose("R_4"));
 		rsp.plan();
 		if (rsp.getPath() == null) throw new Error("No path found.");
-		PoseSteering[] pathL0R6 = new PoseSteering[midIndex+rsp.getPath().length];
-		for (int i = 0; i < midIndex; i++) pathL0R6[i] = pathL0R0[i];
-		for (int i = 0; i < rsp.getPath().length; i++) pathL0R6[i+midIndex] = rsp.getPath()[i];
+		PoseSteering[] replacementPath = new PoseSteering[replacementIndex+rsp.getPath().length];
+		for (int i = 0; i < replacementIndex; i++) replacementPath[i] = initialPath[i];
+		for (int i = 0; i < rsp.getPath().length; i++) replacementPath[i+replacementIndex] = rsp.getPath()[i];
 
-		Mission m = new Mission(1, pathL0R0);
+		Mission m = new Mission(1, initialPath);
 		Missions.enqueueMission(m);
 
 		Missions.startMissionDispatchers(tec, false, 1);
 
-		Thread.sleep(7000);
-
-		tec.replacePath(1,pathL0R6,midIndex,false,null);
+		int buffer = 20;
+		while (tec.getRobotReport(1).getPathIndex() < replacementIndex-buffer) Thread.sleep(50);
+		
+		tec.replacePath(1,replacementPath,replacementIndex,false,null);
 
 	}
 

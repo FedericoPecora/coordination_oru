@@ -1376,8 +1376,10 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 				envelopesToTrack.remove(newTE);
 
 				synchronized (replanningStoppingPoints) {
-					for (int ID : lockedRobotIDs) replanningStoppingPoints.remove(ID);
-					metaCSPLogger.finest("Unlocking robots: " + lockedRobotIDs.toString());
+					if (lockedRobotIDs != null) {
+						for (int ID : lockedRobotIDs) replanningStoppingPoints.remove(ID);
+						metaCSPLogger.finest("Unlocking robots: " + lockedRobotIDs.toString());
+					}
 				}
 
 				forceCriticalPointReTransmission.put(robotID, true);
