@@ -147,6 +147,18 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	//State knowledge
 	protected HashMap<Integer,Boolean> isDriving = new HashMap<Integer, Boolean>();
 	
+	
+	public ArrayList<SpatialEnvelope> getDrivingEnvelope() {
+		//Collect all driving envelopes and current pose indices
+		ArrayList<SpatialEnvelope> drivingEnvelopes = new ArrayList<SpatialEnvelope>();
+		for (AbstractTrajectoryEnvelopeTracker atet : trackers.values()) {
+			if (!(atet instanceof TrajectoryEnvelopeTrackerDummy)) {
+				drivingEnvelopes.add(atet.getTrajectoryEnvelope().getSpatialEnvelope());
+				//metaCSPLogger.info(atet.getRobotReport().getRobotID() + " is driving.");
+			}
+		}
+	return drivingEnvelopes;
+	}
 
 	/**
 	 * Check if a robot is known to the coordinator and parked.
