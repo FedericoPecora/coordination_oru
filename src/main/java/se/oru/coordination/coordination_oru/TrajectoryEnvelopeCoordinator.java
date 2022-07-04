@@ -1084,6 +1084,15 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 		return ret;
 	}
 
+	private void updateParkedEnvelopeVisualizations() {
+		if (this.viz != null) {
+			for (TrajectoryEnvelope te : this.currentParkingEnvelopes) {
+				viz.displayRobotState(te, getRobotReport(te.getRobotID()));
+				//viz.addEnvelope(te);
+			}
+		}
+	}
+	
 	@Override
 	protected void setupInferenceCallback() {
 
@@ -1154,6 +1163,8 @@ public abstract class TrajectoryEnvelopeCoordinator extends AbstractTrajectoryEn
 							printStatisticsTime = Calendar.getInstance().getTimeInMillis()-printStatisticsTime;
 						}
 						if (overlay) overlayStatistics();
+						
+						updateParkedEnvelopeVisualizations();
 					}
 
 					//Sleep a little...
