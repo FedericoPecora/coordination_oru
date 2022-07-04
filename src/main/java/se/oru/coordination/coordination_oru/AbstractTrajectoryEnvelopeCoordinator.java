@@ -53,7 +53,7 @@ import se.oru.coordination.coordination_oru.util.StringUtils;
  *
  */
 public abstract class AbstractTrajectoryEnvelopeCoordinator {
-	
+
 	public static String TITLE = "coordination_oru - Robot-agnostic online coordination for multiple robots";
 	public static String COPYRIGHT = "Copyright \u00a9 2017-" + Calendar.getInstance().get(Calendar.YEAR) + " Federico Pecora";
 	public static String[] CONTRIBUTORS = {"Anna Mannucci", "Chittaranjan Swaminathan", "Paolo Forte"};
@@ -81,12 +81,12 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 
 	protected boolean overlay = false;
 	protected boolean quiet = false;
-	
+
 	//For statistics
 	protected AtomicInteger totalMsgsSent = new AtomicInteger(0);
 	protected AtomicInteger totalMsgsReTx = new AtomicInteger(0);
 	protected AtomicInteger criticalSectionCounter =  new AtomicInteger(0);
-																			
+
 	protected TrajectoryEnvelopeSolver solver = null;
 	protected Thread inference = null;
 	protected volatile Boolean stopInference = new Boolean(true);
@@ -94,10 +94,10 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	//protected JTSDrawingPanel panel = null;
 	protected FleetVisualization viz = null;
 	protected TreeSet<Pair<TrajectoryEnvelope,Long>> missionsPool = new TreeSet<Pair<TrajectoryEnvelope,Long>>(new Comparator<Pair<TrajectoryEnvelope,Long>>() {
-        @Override
-        public int compare(Pair<TrajectoryEnvelope,Long> te1, Pair<TrajectoryEnvelope,Long> te2) {
-            return te1.getSecond() < te2.getSecond() ? 1 : -1; 
-        }
+		@Override
+		public int compare(Pair<TrajectoryEnvelope,Long> te1, Pair<TrajectoryEnvelope,Long> te2) {
+			return te1.getSecond() < te2.getSecond() ? 1 : -1; 
+		}
 	});
 	protected ArrayList<TrajectoryEnvelope> envelopesToTrack = new ArrayList<TrajectoryEnvelope>();
 	protected ArrayList<TrajectoryEnvelope> currentParkingEnvelopes = new ArrayList<TrajectoryEnvelope>();
@@ -111,7 +111,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 
 	protected HashMap<Integer,AbstractTrajectoryEnvelopeTracker> trackers = new HashMap<Integer, AbstractTrajectoryEnvelopeTracker>();
 	protected HashMap<Integer, Dependency> currentDependencies = new HashMap<Integer, Dependency>();
-	
+
 	protected static Logger metaCSPLogger = MetaCSPLogging.getLogger(TrajectoryEnvelopeCoordinator.class);
 	protected String logDirName = null;
 
@@ -123,7 +123,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 
 	protected HashMap<Integer,Coordinate[]> footprints = new HashMap<Integer, Coordinate[]>();
 	protected HashMap<Integer,Double> maxFootprintDimensions = new HashMap<Integer, Double>();
-	
+
 	protected HashMap<Integer, Integer> robotTrackingPeriodInMillis = new HashMap<Integer, Integer>();
 	protected HashMap<Integer, Double> robotMaxVelocity = new HashMap<Integer, Double>();
 	protected HashMap<Integer, Double> robotMaxAcceleration = new HashMap<Integer, Double>();
@@ -135,19 +135,19 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 
 	protected HashMap<Integer,TrackingCallback> trackingCallbacks = new HashMap<Integer, TrackingCallback>();	
 	protected Callback inferenceCallback = null;
-	
+
 	protected HashMap<Integer,AbstractMotionPlanner> motionPlanners = new HashMap<Integer, AbstractMotionPlanner>();
-	
+
 	//Network knowledge
 	protected double packetLossProbability = NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS;
 	public static int MAX_TX_DELAY = NetworkConfiguration.getMaximumTxDelay();
 	protected double maxFaultsProbability = NetworkConfiguration.PROBABILITY_OF_PACKET_LOSS;
 	protected int numberOfReplicas = 1;
-	
+
 	//State knowledge
 	protected HashMap<Integer,Boolean> isDriving = new HashMap<Integer, Boolean>();
-	
-	
+
+
 	public ArrayList<SpatialEnvelope> getDrivingEnvelope() {
 		//Collect all driving envelopes and current pose indices
 		ArrayList<SpatialEnvelope> drivingEnvelopes = new ArrayList<SpatialEnvelope>();
@@ -157,7 +157,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				//metaCSPLogger.info(atet.getRobotReport().getRobotID() + " is driving.");
 			}
 		}
-	return drivingEnvelopes;
+		return drivingEnvelopes;
 	}
 
 	/**
@@ -177,7 +177,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	public boolean isDriving(int robotID) {
 		return (isDriving.containsKey(robotID) && isDriving.get(robotID));
 	}
-	
+
 	/**
 	 * Get the current set of idle robots
 	 * @return The current set of idle robots
@@ -195,7 +195,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			return idleRobots;
 		}
 	}
-	
+
 	/**
 	 * Return all robotIDs.
 	 * @return The set of robotIDs.
@@ -203,8 +203,8 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	public Set<Integer> getAllRobotIDs() {
 		return trackers.keySet();
 	}
-	
-	
+
+
 	/**
 	 * Returning the number of messages required by each send to be effective
 	 * (i.e. the probability of unsuccessful delivery will be lower than the threshold maxFaultsProbability)
@@ -212,7 +212,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	public int getNumberOfReplicas() {
 		return numberOfReplicas;
 	}
-	
+
 	/**
 	 * Return the temporal resolution of the control period.
 	 * @return The temporal resolution of the control period, e.g., 1000 for milliseconds.
@@ -220,7 +220,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	public double getTemporalResolution() {
 		return TEMPORAL_RESOLUTION;
 	}
-	
+
 	/**
 	 * Get the tracking period of a given robot in millis.
 	 * @param robotID The ID of the robot.
@@ -232,7 +232,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		metaCSPLogger.warning("Tracking period of Robot" + robotID + " is not specified. Returning the default value.");
 		return DEFAULT_ROBOT_TRACKING_PERIOD;
 	}
-	
+
 	/**
 	 * Utility method to treat internal resources from this library as filenames.
 	 * @param resource The internal resource to be loaded.
@@ -247,7 +247,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		catch (IOException e) { e.printStackTrace(); }
 		return dest.getAbsolutePath();
 	}
-	
+
 	/**
 	 * Set whether this {@link TrajectoryEnvelopeCoordinator} should print info at every period.
 	 * @param value Set to <code>true</code> if this {@link TrajectoryEnvelopeCoordinator} should print info at every period.
@@ -255,7 +255,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	public void setQuiet(boolean value) {
 		this.quiet = value;
 	}
-	
+
 	/**
 	 * Set the network parameters (packet loss probability, max delay and max faults probability).
 	 * This allows to compute the number of messages <code>numberOfReplicas</code> required for each send to be effective
@@ -272,7 +272,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		this.numberOfReplicas =  (packetLossProbability > 0 && maxFaultsProbability > 0) ? (int)Math.ceil(Math.log(1-Math.sqrt(1-maxFaultsProbability))/Math.log(packetLossProbability)) : 1;
 		metaCSPLogger.info("Number of replicas for each send: " + numberOfReplicas);
 	}
-	
+
 	/**
 	 * Set a {@link Callback} that will be called at every cycle.
 	 * @param cb A {@link Callback} that will be called at every cycle.
@@ -280,7 +280,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	public void setInferenceCallback(Callback cb) {
 		this.inferenceCallback = cb;
 	}
-	
+
 	/**
 	 * Get the control period of this {@link TrajectoryEnvelopeCoordinator}.
 	 * @return the control period (in milliseconds) of this {@link TrajectoryEnvelopeCoordinator}.
@@ -288,7 +288,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	public int getControlPeriod() {
 		return this.CONTROL_PERIOD;
 	}
-	
+
 	/**
 	 * Set whether robots that will park in a critical section should yield to other robots.
 	 * @param value <code>true</code> if robots that will park in a critical section should yield to other robots.
@@ -296,7 +296,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	public void setYieldIfParking(boolean value) {
 		this.yieldIfParking = value;
 	}
-	
+
 	/**
 	 * Set whether completely overlapping paths should lead to a warning.
 	 * @param value <code>true</code> if completely overlapping paths should lead to a warning.
@@ -304,7 +304,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	public void setCheckEscapePoses(boolean value) {
 		this.checkEscapePoses = value;
 	}
-	
+
 	/**
 	 * Toggle mute/unmute communication with a given robot. 
 	 * @param robotID The robot to toggle mute/unmute communication with.
@@ -355,7 +355,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		if (this.footprints.containsKey(robotID)) return this.footprints.get(robotID);
 		return null;
 	}
-		
+
 	/**
 	 * Get a {@link Geometry} representing the footprint of a given robot.
 	 * @param robotID the ID of the robot
@@ -395,7 +395,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			}
 		};
 	}
-	
+
 	/**
 	 * Set the tracking period of a given robot in millis.
 	 * @param robotID The ID of the robot.
@@ -404,7 +404,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	public void setRobotTrackingPeriodInMillis(int robotID, int trackingPeriodInMillis) {
 		this.robotTrackingPeriodInMillis.put(robotID, trackingPeriodInMillis);
 	}
-	
+
 	/**
 	 * Set the maximum velocity of a given robot in m/s.
 	 * @param robotID The ID of the robot.
@@ -413,7 +413,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	public void setRobotMaxVelocity(int robotID, double maxVelocity) {
 		this.robotMaxVelocity.put(robotID, maxVelocity);
 	}
-	
+
 	/**
 	 * Set the maximum acceleration of a given robot in m/s^2.
 	 * @param robotID The ID of the robot.
@@ -422,7 +422,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	public void setRobotMaxAcceleration(int robotID, double maxAcceleration) {
 		this.robotMaxAcceleration.put(robotID, maxAcceleration);
 	}
-	 
+
 	/**
 	 * Get the maximum velocity of a given robot (m/s).
 	 * @param robotID The ID of the robot.
@@ -433,7 +433,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			return this.robotMaxVelocity.get(robotID);
 		return null;
 	}
-	
+
 	/**
 	 * Get the maximum acceleration of a given robot (m/s^2).
 	 * @param robotID The ID of the robot.
@@ -451,27 +451,27 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		File dir = new File(logDirName);
 		dir.mkdir();
 		MetaCSPLogging.setLogDir(logDirName);
-	
+
 	}
-	
+
 	protected void writeStat(String fileName, String stat) {
-        try {
-        	//Append to file
-            PrintWriter writer = new PrintWriter(new FileOutputStream(new File(fileName), true)); 
-            writer.println(stat);
-            writer.close();
-        }
-        catch (Exception e) { e.printStackTrace(); }
+		try {
+			//Append to file
+			PrintWriter writer = new PrintWriter(new FileOutputStream(new File(fileName), true)); 
+			writer.println(stat);
+			writer.close();
+		}
+		catch (Exception e) { e.printStackTrace(); }
 	}
-	
+
 	protected void initStat(String fileName, String stat) {
-        try {
-        	//Append to file
-            PrintWriter writer = new PrintWriter(new FileOutputStream(new File(fileName), false)); 
-            writer.println(stat);
-            writer.close();
-        }
-        catch (Exception e) { e.printStackTrace(); }
+		try {
+			//Append to file
+			PrintWriter writer = new PrintWriter(new FileOutputStream(new File(fileName), false)); 
+			writer.println(stat);
+			writer.close();
+		}
+		catch (Exception e) { e.printStackTrace(); }
 	}
 
 	/**
@@ -482,7 +482,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	public TrajectoryEnvelopeSolver getSolver() {
 		return this.solver;
 	}
-	
+
 	/**
 	 * Instruct a given robot's tracker that it may not navigate beyond a given 
 	 * path index.  
@@ -491,41 +491,41 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 * @param retransmitt True if the message should be send once again.
 	 */
 	public void setCriticalPoint(int robotID, int criticalPoint, boolean retransmitt) {
-		
+
 		synchronized (trackers) {
 			AbstractTrajectoryEnvelopeTracker tracker = trackers.get(robotID);
-		
+
 			//If the robot is not muted
 			if (tracker != null && !muted.contains(robotID) && !(tracker instanceof TrajectoryEnvelopeTrackerDummy)) {
-					
+
 				if (!communicatedCPs.containsKey(tracker) || communicatedCPs.containsKey(tracker) && communicatedCPs.get(tracker).getFirst() != criticalPoint || retransmitt ) {
 					communicatedCPs.put(tracker, new Pair<Integer,Long>(criticalPoint, Calendar.getInstance().getTimeInMillis()));
 					externalCPCounters.replace(tracker,externalCPCounters.get(tracker)+1);
 					tracker.setCriticalPoint(criticalPoint, externalCPCounters.get(tracker)%Integer.MAX_VALUE);
-					
+
 					//for statistics
 					totalMsgsSent.incrementAndGet(); 
 					if (retransmitt) totalMsgsReTx.incrementAndGet();
-					
+
 					//metaCSPLogger.info("Sent critical point " + criticalPoint + " to Robot" + robotID +".");
 				}
 			}
 		}
 	}
-	
+
 	/**
 	 * Get the current state of a given robot.
 	 * @param robotID The ID of the robot of which the state should be returned.
 	 * @return The current state of a given robot.
 	 */
 	public RobotReport getRobotReport(int robotID) {
-		
+
 		//Read the last message received
 		synchronized (trackers) {
 			if (!trackers.containsKey(robotID)) return null;
 			return trackers.get(robotID).getLastRobotReport();
 		}
-		
+
 	}
 
 	/**
@@ -562,7 +562,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		//Create meta solver and solver
 		solver = new TrajectoryEnvelopeSolver(origin, horizon);
 	}
-	
+
 	/**
 	 * Call this method to start the thread that dispatches trajectories and critical points to robots,
 	 * checking and enforcing dependencies at every clock tick.
@@ -572,7 +572,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			metaCSPLogger.severe("Solver not initialized, please call method setupSolver() first!");
 			throw new Error("Solver not initialized, please call method setupSolver() first!");
 		}
-		
+
 		if (!stopInference) {
 			metaCSPLogger.info("Inference is already started.");
 			return;
@@ -581,14 +581,14 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		//Start the thread that checks and enforces dependencies at every clock tick
 		this.setupInferenceCallback();
 	}
-	
+
 	/**
 	 * Call this method to stop the thread that checks and enforces dependencies at every clock tick.
 	 * This will also cause the robots to no longer receive new trajectories or updates of critical points,
 	 * so the fleet will come to a (safe) stop once this method is called.
 	 */
 	public void stopInference() {
-		
+
 		if (solver == null) {
 			metaCSPLogger.severe("Solver not initialized, please call method setupSolver() first!");
 			throw new Error("Solver not initialized, please call method setupSolver() first!");
@@ -605,7 +605,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	public boolean isStartedInference() {
 		return !stopInference;
 	}
-	
+
 	/**
 	 * Get the current time of the system, in milliseconds.
 	 * @return The current time of the system, in milliseconds.
@@ -652,7 +652,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			//Can provide null parking or null currentPose, but not both
 			if (parking == null) parking = solver.createParkingEnvelope(robotID, PARKING_DURATION, currentPose, location, getFootprint(robotID));
 			else currentPose = parking.getTrajectory().getPose()[0];
-			
+
 			this.isDriving.put(robotID,false);
 
 			AllenIntervalConstraint release = new AllenIntervalConstraint(AllenIntervalConstraint.Type.Release, new Bounds(time, time));
@@ -694,7 +694,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 					return null;
 				}
 			};
-			
+
 			//Now start the tracker for this parking (will be ended by call to addMissions for this robot)
 			final TrajectoryEnvelopeTrackerDummy tracker = new TrajectoryEnvelopeTrackerDummy(parking, 300, TEMPORAL_RESOLUTION, this, cb) {
 				@Override
@@ -708,12 +708,12 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			synchronized (trackers) {
 				externalCPCounters.remove(trackers.get(robotID));
 				trackers.remove(robotID);
-				
+
 				trackers.put(robotID, tracker);
 				externalCPCounters.put(tracker, -1);
 			}			
 		}
-			
+
 	}
 
 	/**
@@ -733,7 +733,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			return this.currentDependencies;
 		}
 	}
-	
+
 	/**
 	 * Get the path index beyond which a robot should not navigate, given the {@link TrajectoryEnvelope} of another robot.  
 	 * @param te1 The {@link TrajectoryEnvelope} of the leading robot.
@@ -802,7 +802,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		return Math.max(0, yieldingRobotStart-TRAILING_PATH_POINTS);
 
 	}
-	
+
 	/**
 	 * Returns <code>true</code> iff the given robot is at a stopping point.
 	 * @param robotID The ID of a robot.
@@ -811,7 +811,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	public boolean atStoppingPoint(int robotID) {
 		return stoppingPointTimers.containsKey(robotID);
 	}
-	
+
 	/** Spawn a waiting thread at this stopping point.
 	 * @param robotID Which robot should wait.
 	 * @param index The stopping point.
@@ -841,7 +841,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		stoppingPointTimers.put(robotID,stoppingPointTimer);
 		stoppingPointTimer.start();
 	}
-	
+
 	/**
 	 * Return true if the robot is in its parking pose.
 	 * @param robotID The robot to be checked.
@@ -850,7 +850,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	protected boolean inParkingPose(int robotID) {
 		return this.getRobotReport(robotID).getPathIndex() == -1;
 	}
-		
+
 	protected Geometry[] getObstaclesInCriticalPoints(int ... robotIDs) {
 		//Compute one obstacle per given robot, placed in the robot's waiting pose
 		ArrayList<Geometry> ret = new ArrayList<Geometry>();
@@ -869,20 +869,20 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				Dependency dep = currentDeps.containsKey(robotID) ? getCurrentDependencies().get(robotID) : null;
 				Pose waitingPose = (dep == null) ? tracker.getTrajectoryEnvelope().getTrajectory().getPose()[tracker.getTrajectoryEnvelope().getTrajectory().getPose().length-1] : dep.getWaitingPose();
 				currentFP = makeObstacles(robotID, waitingPose)[0];
-				
+
 				//In case the robot has stopped a little beyond the critical point
 				int currentPoint = this.getRobotReport(robotID).getPathIndex();
 				if (currentPoint != -1 && dep != null && currentPoint > dep.getWaitingPoint()) {
-						Pose currentPose = dep.getWaitingTrajectoryEnvelope().getTrajectory().getPose()[currentPoint];
-						currentFP = makeObstacles(robotID, currentPose)[0];
-						System.out.println("Oops: " + dep.getWaitingPoint() + " < " + currentPoint);
+					Pose currentPose = dep.getWaitingTrajectoryEnvelope().getTrajectory().getPose()[currentPoint];
+					currentFP = makeObstacles(robotID, currentPose)[0];
+					System.out.println("Oops: " + dep.getWaitingPoint() + " < " + currentPoint);
 				}				
 			}
 			ret.add(currentFP);
 		}
 		return ret.toArray(new Geometry[ret.size()]);
 	}
-	
+
 	protected Geometry[] getObstaclesFromWaitingRobots(int robotID) {
 		//Compute one obstacle per robot that is waiting for this robot, placed in the waiting robot's waiting pose
 		ArrayList<Geometry> ret = new ArrayList<Geometry>();
@@ -894,7 +894,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		}
 		return ret.toArray(new Geometry[ret.size()]);
 	}
-	
+
 	/**
 	 * Plan a new path from a given starting pose to a target one, calling the defined motion planner.
 	 * The given set of obstacles is added to the map used for planning.
@@ -921,7 +921,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			return null;
 		}
 	}
-		
+
 	/**
 	 * Generate obstacles representing the placement(s) of a given robot in given poses.
 	 * @param robotID The ID of the robot whose footprint should be used.
@@ -948,13 +948,13 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		}
 		return ret.toArray(new Geometry[ret.size()]);
 	}
-	
+
 	/**
 	 * The key function of all the coordination algorithm, 
 	 * defining how dependencies should be updated every coordination cycle.
 	 */
 	protected abstract void updateDependencies();
-	
+
 	/**
 	 * Return if a robot, which is starting from a critical sections, 
 	 * is able to exit safetly from it.
@@ -969,7 +969,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		}
 		return true;
 	}
-	
+
 
 	/**
 	 * Set a motion planner to be used for re-planning for a specific
@@ -980,7 +980,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	public void setMotionPlanner(int robotID, AbstractMotionPlanner mp) {
 		this.motionPlanners.put(robotID, mp);
 	}
-	
+
 
 	/**
 	 * Get the motion planner used for re-planning for a specific robot.
@@ -1001,7 +1001,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	public void addComparator(Comparator<RobotAtCriticalSection> c) {
 		this.comparators.addComparator(c);
 	}
-	
+
 	/**
 	 * Update the set of current critical sections. This should be called every time
 	 * a new set of {@link Mission}s has been successfully added.
@@ -1009,16 +1009,16 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	protected void computeCriticalSections() {
 
 		int numberOfCriticalSections = 0;
-				
+
 		synchronized(allCriticalSections) {
-			
+
 			synchronized (trackers) {
-			
+
 				//Update the coordinator view
 				HashMap<Integer,RobotReport> currentReports = new HashMap<Integer,RobotReport>();
 				for (int robotID : trackers.keySet()) currentReports.put(robotID, this.getRobotReport(robotID));
 				//metaCSPLogger.info("Current reports: " + currentReports.toString());
-	
+
 				//Collect all driving envelopes and current pose indices
 				ArrayList<TrajectoryEnvelope> drivingEnvelopes = new ArrayList<TrajectoryEnvelope>();
 				for (AbstractTrajectoryEnvelopeTracker atet : trackers.values()) {
@@ -1027,7 +1027,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 						//metaCSPLogger.info(atet.getRobotReport().getRobotID() + " is driving.");
 					}
 				}
-	
+
 				//Compute critical sections between driving and new envelopes
 				for (int i = 0; i < drivingEnvelopes.size(); i++) {
 					for (int j = 0; j < envelopesToTrack.size(); j++) {	
@@ -1036,13 +1036,13 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 							int minStart2 = currentReports.containsKey(envelopesToTrack.get(j).getRobotID()) ? currentReports.get(envelopesToTrack.get(j).getRobotID()).getPathIndex() : -1;
 							double maxDimensionOfSmallestRobot = Math.min(getMaxFootprintDimension(drivingEnvelopes.get(i).getRobotID()), getMaxFootprintDimension(envelopesToTrack.get(j).getRobotID()));
 							for (CriticalSection cs : getCriticalSections(null, null, drivingEnvelopes.get(i), minStart1, envelopesToTrack.get(j), minStart2, this.checkEscapePoses, maxDimensionOfSmallestRobot)) {
-									this.allCriticalSections.add(cs);
-									//metaCSPLogger.info("computeCriticalSections(): add (1) " + cs); 								
+								this.allCriticalSections.add(cs);
+								//metaCSPLogger.info("computeCriticalSections(): add (1) " + cs); 								
 							}
 						}
 					}
 				}	
-	
+
 				//Compute critical sections between new envelopes
 				for (int i = 0; i < envelopesToTrack.size(); i++) {
 					for (int j = i+1; j < envelopesToTrack.size(); j++) {
@@ -1051,13 +1051,13 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 							int minStart2 = currentReports.containsKey(envelopesToTrack.get(j).getRobotID()) ? currentReports.get(envelopesToTrack.get(j).getRobotID()).getPathIndex() : -1;
 							double maxDimensionOfSmallestRobot = Math.min(getMaxFootprintDimension(envelopesToTrack.get(i).getRobotID()), getMaxFootprintDimension(envelopesToTrack.get(j).getRobotID()));
 							for (CriticalSection cs : getCriticalSections(null, null, envelopesToTrack.get(i), minStart1, envelopesToTrack.get(j), minStart2, this.checkEscapePoses, maxDimensionOfSmallestRobot)) {
-									this.allCriticalSections.add(cs);
-									//metaCSPLogger.info("computeCriticalSections(): add (2) " + cs);
+								this.allCriticalSections.add(cs);
+								//metaCSPLogger.info("computeCriticalSections(): add (2) " + cs);
 							}
 						}
 					}
 				}
-	
+
 				//Compute critical sections between driving envelopes and current parking envelopes	
 				for (int i = 0; i < drivingEnvelopes.size(); i++) {
 					for (int j = 0; j < currentParkingEnvelopes.size(); j++) {
@@ -1066,13 +1066,13 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 							int minStart2 = currentReports.containsKey(currentParkingEnvelopes.get(j).getRobotID()) ? currentReports.get(currentParkingEnvelopes.get(j).getRobotID()).getPathIndex() : -1;
 							double maxDimensionOfSmallestRobot = Math.min(getMaxFootprintDimension(drivingEnvelopes.get(i).getRobotID()), getMaxFootprintDimension(currentParkingEnvelopes.get(j).getRobotID()));
 							for (CriticalSection cs : getCriticalSections(null, null, drivingEnvelopes.get(i), minStart1, currentParkingEnvelopes.get(j), minStart2, this.checkEscapePoses, maxDimensionOfSmallestRobot)) {
-									this.allCriticalSections.add(cs);	
-									//metaCSPLogger.info("computeCriticalSections(): add (3) " + cs);
+								this.allCriticalSections.add(cs);	
+								//metaCSPLogger.info("computeCriticalSections(): add (3) " + cs);
 							}
 						}
 					}
 				}
-	
+
 				//Compute critical sections between NEW driving envelopes and current parking envelopes	
 				for (int i = 0; i < envelopesToTrack.size(); i++) {
 					for (int j = 0; j < currentParkingEnvelopes.size(); j++) {
@@ -1081,30 +1081,30 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 							int minStart2 = currentReports.containsKey(currentParkingEnvelopes.get(j).getRobotID()) ? currentReports.get(currentParkingEnvelopes.get(j).getRobotID()).getPathIndex() : -1;
 							double maxDimensionOfSmallestRobot = Math.min(getMaxFootprintDimension(envelopesToTrack.get(i).getRobotID()), getMaxFootprintDimension(currentParkingEnvelopes.get(j).getRobotID()));
 							for (CriticalSection cs : getCriticalSections(null, null, envelopesToTrack.get(i), minStart1, currentParkingEnvelopes.get(j), minStart2, this.checkEscapePoses, maxDimensionOfSmallestRobot)) {
-									this.allCriticalSections.add(cs);
-									//metaCSPLogger.info("computeCriticalSections(): add (4) " + cs);
+								this.allCriticalSections.add(cs);
+								//metaCSPLogger.info("computeCriticalSections(): add (4) " + cs);
 							}
 						}
 					}
 				}			
 			}
 			filterCriticalSections();
-			
+
 			//metaCSPLogger.info("Critical sections: " + allCriticalSections.toString());
-			
+
 			numberOfCriticalSections = this.allCriticalSections.size();
 			metaCSPLogger.info("There are now " + numberOfCriticalSections + " critical sections");
-			
+
 		}
-		
+
 		onCriticalSectionUpdate();
 	}
-	
+
 	/**
 	 * Utility that is called at the end of each critical section update.
 	 */
 	protected void onCriticalSectionUpdate() {};
-	
+
 	protected void filterCriticalSections() {
 		ArrayList<CriticalSection> toAdd = new ArrayList<CriticalSection>();
 		ArrayList<CriticalSection> toRemove = new ArrayList<CriticalSection>();
@@ -1180,7 +1180,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			for (CriticalSection cs : toRemove) {
 				this.allCriticalSections.remove(cs);
 				//metaCSPLogger.info("filterCriticalSection(): remove (1) " + cs);
-//				this.CSToDepsOrder.remove(cs);
+				//				this.CSToDepsOrder.remove(cs);
 			}
 			for (CriticalSection cs : toAdd) {
 				this.allCriticalSections.add(cs);
@@ -1189,13 +1189,13 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			}
 		}
 		while (!toAdd.isEmpty() || !toRemove.isEmpty());
-		
+
 		toRemove.clear();
 		ArrayList<CriticalSection> allCriticalSectionsList = new ArrayList<CriticalSection>();
 		for (CriticalSection cs : this.allCriticalSections) {
 			allCriticalSectionsList.add(cs);
 		}
-		
+
 		for (int i = 0; i < allCriticalSectionsList.size(); i++) {
 			for (int j = i+1; j < allCriticalSectionsList.size(); j++) {
 				CriticalSection cs1 = allCriticalSectionsList.get(i);
@@ -1212,29 +1212,29 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		for (CriticalSection cs : toRemove) {
 			this.allCriticalSections.remove(cs);
 			//metaCSPLogger.info("filterCriticalSection(): remove (2) " + cs);
-//			this.CSToDepsOrder.remove(cs);
+			//			this.CSToDepsOrder.remove(cs);
 		}
 
 	}
-		
+
 	public static CriticalSection[] getCriticalSections(SpatialEnvelope se1, SpatialEnvelope se2, TrajectoryEnvelope te1, int minStart1, TrajectoryEnvelope te2, int minStart2, boolean checkEscapePoses, double maxDimensionOfSmallestRobot) {
 
 		ArrayList<CriticalSection> css = new ArrayList<CriticalSection>();
-			
-//		GeometricShapeVariable poly1 = te1.getEnvelopeVariable();
-//		GeometricShapeVariable poly2 = te2.getEnvelopeVariable();
-//		Geometry shape1 = ((GeometricShapeDomain)poly1.getDomain()).getGeometry();
-//		Geometry shape2 = ((GeometricShapeDomain)poly2.getDomain()).getGeometry();
+
+		//		GeometricShapeVariable poly1 = te1.getEnvelopeVariable();
+		//		GeometricShapeVariable poly2 = te2.getEnvelopeVariable();
+		//		Geometry shape1 = ((GeometricShapeDomain)poly1.getDomain()).getGeometry();
+		//		Geometry shape2 = ((GeometricShapeDomain)poly2.getDomain()).getGeometry();
 
 		if (te1 != null) se1 = te1.getSpatialEnvelope();
 		if (te2 != null) se2 = te2.getSpatialEnvelope();
-		
+
 		Geometry shape1 = se1.getPolygon();
 		Geometry shape2 = se2.getPolygon();
-				
+
 		if (shape1.intersects(shape2)) {
-//			PoseSteering[] path1 = te1.getTrajectory().getPoseSteering();
-//			PoseSteering[] path2 = te2.getTrajectory().getPoseSteering();
+			//			PoseSteering[] path1 = te1.getTrajectory().getPoseSteering();
+			//			PoseSteering[] path2 = te2.getTrajectory().getPoseSteering();
 
 			PoseSteering[] path1 = se1.getPath();
 			PoseSteering[] path2 = se2.getPath();
@@ -1340,10 +1340,10 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 							//css.add(oneCS);
 							cssOneIntersectionPiece.add(oneCS);
 						}
-							
+
 					}					
 				}
-				
+
 				//pre-filter obsolete critical sections to avoid merging them with the new computed.
 				te1Starts.clear();
 				te2Starts.clear();
@@ -1355,8 +1355,8 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 					te1Ends.add(cs.getTe1End());
 					te2Ends.add(cs.getTe2End());
 				}
-				
-				
+
+
 				// SPURIOUS INTERSECTIONS (can ignore)
 				if (te1Starts.size() == 0 || te2Starts.size() == 0) {
 					cssOneIntersectionPiece.clear();
@@ -1388,7 +1388,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 
 			}
 		}
-		
+
 		return css.toArray(new CriticalSection[css.size()]);
 	}
 
@@ -1396,15 +1396,15 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	public static CriticalSection[] getCriticalSections(SpatialEnvelope se1, SpatialEnvelope se2, TrajectoryEnvelope te1, TrajectoryEnvelope te2, boolean checkEscapePoses, double maxDimensionOfSmallestRobot) {
 		return getCriticalSections(se1, se2, te1, -1, te2, -1, checkEscapePoses, maxDimensionOfSmallestRobot);
 	}
-	
+
 	public static CriticalSection[] getCriticalSections(SpatialEnvelope se1, SpatialEnvelope se2, boolean checkEscapePoses, double maxDimensionOfSmallestRobot) {
 		return getCriticalSections(se1, se2, null, -1, null, -1, checkEscapePoses, maxDimensionOfSmallestRobot);
 	}
-	
+
 	public static CriticalSection[] getCriticalSections(SpatialEnvelope se1, SpatialEnvelope se2, double maxDimensionOfSmallestRobot) {
 		return getCriticalSections(se1, se2, null, -1, null, -1, true, maxDimensionOfSmallestRobot);
 	}
-	
+
 	protected void cleanUp(TrajectoryEnvelope te) {
 		synchronized (solver) {
 			metaCSPLogger.info("Cleaning up " + te);
@@ -1413,7 +1413,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			solver.removeVariable(te);
 		}
 	}
-	
+
 	protected void cleanUpRobotCS(int robotID, int lastWaitingPoint) {
 		synchronized (allCriticalSections) {
 			metaCSPLogger.info("Cleaning up critical sections of Robot" + robotID);
@@ -1430,7 +1430,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 					//increment the counter
 					if (cs.getTe1().getRobotID() == robotID && (cs.getTe1Start() <= lastWaitingPoint || lastWaitingPoint == -1) || 
 							cs.getTe2().getRobotID() == robotID && (cs.getTe2Start() <= lastWaitingPoint || lastWaitingPoint == -1))
-							this.criticalSectionCounter.incrementAndGet();
+						this.criticalSectionCounter.incrementAndGet();
 				}
 			}
 			for (CriticalSection cs : toRemove) {
@@ -1464,7 +1464,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 * Start the trackers associated to the last batch of {@link Mission}s that has been added.
 	 */
 	protected void startTrackingAddedMissions() {
-		
+
 		//FIXME: if this is not placed into the control loop (), then a robot can pass from (P) to (D) without 
 		//affecting the set of dependencies.
 
@@ -1492,13 +1492,13 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				//Add onStart call back that cleans up parking tracker
 				//Note: onStart is triggered only when earliest start of this tracker's envelope is < current time
 				TrackingCallback cb = new TrackingCallback(te) {
-					
+
 					private long lastEnvelopeRefresh = Calendar.getInstance().getTimeInMillis();
 					private boolean trackingFinished = false;
-					
+
 					@Override
 					public void beforeTrackingStart() {
-						
+
 						if (trackingCallbacks.containsKey(myTE.getRobotID())) {
 							trackingCallbacks.get(myTE.getRobotID()).myTE = this.myTE;
 							trackingCallbacks.get(myTE.getRobotID()).beforeTrackingStart();
@@ -1509,11 +1509,11 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 							try { Thread.sleep(100); }
 							catch (InterruptedException e) { e.printStackTrace(); }							
 						}
-						
-//						//Sleep for one control period
-//						//(allows to impose critical points before tracking actually starts)
-//						try { Thread.sleep(CONTROL_PERIOD); }
-//						catch (InterruptedException e) { e.printStackTrace(); }
+
+						//						//Sleep for one control period
+						//						//(allows to impose critical points before tracking actually starts)
+						//						try { Thread.sleep(CONTROL_PERIOD); }
+						//						catch (InterruptedException e) { e.printStackTrace(); }
 					}
 
 					@Override
@@ -1538,7 +1538,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 
 						synchronized (solver) {
 							metaCSPLogger.info("Tracking finished for " + myTE);
-							
+
 							if (trackingCallbacks.containsKey(myTE.getRobotID())) trackingCallbacks.get(myTE.getRobotID()).onTrackingFinished();
 
 							if (viz != null) viz.removeEnvelope(myTE);
@@ -1567,7 +1567,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 									}
 								}
 							}
-							
+
 							//clean up this tracker's TE
 							cleanUp(myTE);
 
@@ -1611,7 +1611,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				//Now we can signal the parking that it can end (i.e., its deadline will no longer be prolonged)
 				//Note: the parking tracker will anyway wait to exit until earliest end time has been reached
 				startParkingTracker.finishParking();	
-				
+
 				this.isDriving.put(te.getRobotID(),true);
 			}
 			envelopesToTrack.clear();
@@ -1684,7 +1684,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 							}
 						}
 					}
-				
+
 					//If many missions, add destinations as stopping points
 					for (int i = 0; i < e.getValue().size()-1; i++) {
 						Mission m = e.getValue().get(i);
@@ -1723,7 +1723,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 				missionsPool.add(new Pair<TrajectoryEnvelope,Long>(te, Calendar.getInstance().getTimeInMillis()));
 			}
 		}
-		
+
 		return true;
 	}
 
@@ -1810,7 +1810,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			metaCSPLogger.info(s);
 		}		
 	}
-	
+
 	/**
 	 * Specifies what happens when a new mission is dispatched.
 	 * @param robotID The ID of the robot which is starting a new mission.
@@ -1818,15 +1818,15 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	protected void onNewMissionDispatched(int robotID) {};
 
 	protected void setupInferenceCallback() {
-		
+
 		this.stopInference = false;
 		this.inference = new Thread("Coordinator inference") {
-			
+
 			@Override
 			public void run() {
 				long threadLastUpdate = Calendar.getInstance().getTimeInMillis();
 				int MAX_ADDED_MISSIONS = 1;
-				
+
 				while (!stopInference) {
 					int numberNewAddedMissions = 0;
 					synchronized (solver) {	
@@ -1841,7 +1841,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 							startTrackingAddedMissions();
 						}
 						updateDependencies();
-						
+
 						if (!quiet) printStatistics();
 						if (overlay) overlayStatistics();
 					}
@@ -1855,7 +1855,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 					long threadCurrentUpdate = Calendar.getInstance().getTimeInMillis();
 					EFFECTIVE_CONTROL_PERIOD = (int)(threadCurrentUpdate-threadLastUpdate);
 					threadLastUpdate = threadCurrentUpdate;
-					
+
 					if (inferenceCallback != null) inferenceCallback.performOperation();
 
 				}
@@ -1864,7 +1864,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		inference.setPriority(Thread.MAX_PRIORITY);
 		inference.start();
 	}
-	
+
 	/**
 	 * Try to restore the order of traversing each active critical section.
 	 * If both the current reports assert that the robots should still enter the critical section, 
@@ -1909,7 +1909,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	 * @return An instance of a trajectory envelope tracker.
 	 */
 	public abstract AbstractTrajectoryEnvelopeTracker getNewTracker(TrajectoryEnvelope te, TrackingCallback cb);
-	
+
 	/**
 	 * Determine if a robot is free to accept a new mission (that is, the robot is in state WAITING_FOR_TASK).
 	 * @param robotID The ID of the robot.
@@ -1931,7 +1931,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 			}
 		}
 	}
-	
+
 	private static void printLicense() {
 		System.out.println("\n"+TrajectoryEnvelopeCoordinator.TITLE);
 		String cpr = TrajectoryEnvelopeCoordinator.COPYRIGHT;
@@ -1950,6 +1950,6 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		System.out.println();
 	}
 
-	
+
 }
 
