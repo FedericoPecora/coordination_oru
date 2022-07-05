@@ -678,7 +678,6 @@ public class Missions {
 	public static HashMap<String,Pose> getLocationsAndPoses() {
 		return locations;
 	}
-
 	
 	/**
 	 * Load location and path data from a file.
