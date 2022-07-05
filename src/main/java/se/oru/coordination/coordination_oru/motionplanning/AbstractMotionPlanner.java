@@ -22,6 +22,8 @@ public abstract class AbstractMotionPlanner {
 	
 	protected Pose start = null;
 	protected Pose[] goal = null;
+	protected String startLocationName = null;
+	protected String[] goalLocationNames = null; 
 	protected Coordinate[] footprintCoords = null;
 	protected boolean verifyPlanning = true;
 	protected Pose collidingPose = null;
@@ -74,6 +76,29 @@ public abstract class AbstractMotionPlanner {
 		//for (Pose pose : p) newGoals.add(new Pose(pose.getX(),pose.getY(),Missions.wrapAngle360(pose.getTheta())));
 		this.goal = newGoals.toArray(new Pose[newGoals.size()]);
 	}
+	
+	public void setStart(String locationName) {
+		Pose p = Missions.getLocationPose(locationName);
+		if (p == null) throw new Error("Cannot use unknown location " + locationName + " as starting pose!");
+		this.setStart(p);
+		this.startLocationName = locationName;
+	}
+
+	public void setGoals(String ... locationNames) {
+		this.goalLocationNames = new String[locationNames.length];
+		Pose[] locs = new Pose[locationNames.length];
+		for (int i = 0; i < locationNames.length; i++) {
+			Pose pi = Missions.getLocationPose(locationNames[i]);
+			if (pi == null) {
+				this.goalLocationNames = null;
+				throw new Error("Cannot use unknown location " + locationNames[i] + " as goal pose!");
+			}
+			locs[i] = pi;
+			this.goalLocationNames[i] = locationNames[i];
+		}
+		this.setGoals(locs);
+	}
+
 		
 	public void setMap(String mapYAMLFile) {
 		this.noMap = false;
