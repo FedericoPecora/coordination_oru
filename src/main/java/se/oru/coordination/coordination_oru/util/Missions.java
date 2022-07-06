@@ -564,7 +564,7 @@ public class Missions {
 	 * @return The first mission from the queue of a given robot.
 	 */
 	public static Mission dequeueMission(int robotID) {
-		if (!missions.get(robotID).isEmpty()) {
+		if (hasMissions(robotID) && !missions.get(robotID).isEmpty()) {
 			Mission m = missions.get(robotID).get(0);
 			missions.get(robotID).remove(0);
 			return m;
@@ -579,7 +579,7 @@ public class Missions {
 	 */
 	@Deprecated
 	public static Mission popMission(int robotID) {
-		if (!missions.get(robotID).isEmpty()) {
+		if (hasMissions(robotID) && !missions.get(robotID).isEmpty()) {
 			Mission m = missions.get(robotID).get(0);
 			missions.get(robotID).remove(0);
 			return m;
@@ -593,7 +593,7 @@ public class Missions {
 	 * @return The first mission from the queue of a given robot.
 	 */
 	public static Mission peekMission(int robotID) {
-		if (!missions.get(robotID).isEmpty()) {
+		if (hasMissions(robotID) && !missions.get(robotID).isEmpty()) {
 			Mission m = missions.get(robotID).get(0);
 			return m;
 		}
