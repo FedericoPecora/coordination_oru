@@ -81,6 +81,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 
 	protected boolean overlay = false;
 	protected boolean quiet = false;
+	protected boolean filterCSs = true;
 
 	//For statistics
 	protected AtomicInteger totalMsgsSent = new AtomicInteger(0);
@@ -147,7 +148,43 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	//State knowledge
 	protected HashMap<Integer,Boolean> isDriving = new HashMap<Integer, Boolean>();
 
+	/**
+	 * Specifies whether critical sections should be filtered. This merges critical sections like this:
+	 * 
+	 * CS_r1:   -----
+	 * CS_r1:             ------
+	 * CS_r2: --------------------
+	 * 
+	 * becomes
+	 * 
+	 * CS_r1:   ----------------
+	 * CS_r2: --------------------
+	 * 
+	 * The filtering also checks for and removes duplicate critical sections.
+	 * 
+	 * @param filter Whether or not to filter critical sections.
+	 */
+	public void setFilterCriticalSections(boolean filter) {
+		this.filterCSs = filter;
+	}
 
+	/**
+	 * Get the envelopes representing robots that are not idle.
+	 * @return Envelopes representing robots that are not idle.
+	 */
+	public ArrayList<SpatialEnvelope> getDrivingEnvelopes() {
+		//Collect all driving envelopes and current pose indices
+		ArrayList<SpatialEnvelope> drivingEnvelopes = new ArrayList<SpatialEnvelope>();
+		for (AbstractTrajectoryEnvelopeTracker atet : trackers.values()) {
+			if (!(atet instanceof TrajectoryEnvelopeTrackerDummy)) {
+				drivingEnvelopes.add(atet.getTrajectoryEnvelope().getSpatialEnvelope());
+				//metaCSPLogger.info(atet.getRobotReport().getRobotID() + " is driving.");
+			}
+		}
+		return drivingEnvelopes;
+	}
+	
+	@Deprecated
 	public ArrayList<SpatialEnvelope> getDrivingEnvelope() {
 		//Collect all driving envelopes and current pose indices
 		ArrayList<SpatialEnvelope> drivingEnvelopes = new ArrayList<SpatialEnvelope>();
@@ -1088,7 +1125,7 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 					}
 				}			
 			}
-			filterCriticalSections();
+			if (filterCSs) filterCriticalSections();
 
 			//metaCSPLogger.info("Critical sections: " + allCriticalSections.toString());
 
