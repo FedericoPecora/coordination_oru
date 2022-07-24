@@ -30,6 +30,7 @@ public class MultiplePedestriansAndRobot {
         Integer totalAgentsToLoad = 20;
         String timeStr = "t3";
         String scenarioType = "scenario1";
+        Double planningDuration = 1.0;
         String explicitRobotPath = "";
 
 
@@ -38,10 +39,10 @@ public class MultiplePedestriansAndRobot {
         if(environmentVariables.containsKey("S_TYPE")) { scenarioType = environmentVariables.get("S_TYPE"); }
         if(environmentVariables.containsKey("NUM_AGENTS")) { totalAgentsToLoad = Integer.parseInt(environmentVariables.get("NUM_AGENTS")); }
         if(environmentVariables.containsKey("ONE_PATH")) { explicitRobotPath = environmentVariables.get("ONE_PATH"); }
-
+        if(environmentVariables.containsKey("PLANNING_DURATION")) { planningDuration = Double.parseDouble(environmentVariables.get("PLANNING_DURATION")); }
         String scenarioStr = "atc/" + scenarioType;
         String scenarioName =  scenarioType + "-" + timeStr;
-        String robotPathDir = "chitt_tests/robot/" + scenarioStr + "/t1/";
+        String robotPathDir = "chitt_tests/robot/warehouse-sampling/paths_csv/paths_" + planningDuration + "s/";
         String pedestrianPathDir = "chitt_tests/pedestrians/atc/" + timeStr;
 
         ColorPrint.info("Robot Path Directory" + robotPathDir);
@@ -62,9 +63,14 @@ public class MultiplePedestriansAndRobot {
         robotPathFilesName.sort(new Comparator<String>() {
             @Override
             public int compare(String s, String t1) {
-                //ColorPrint.warning(s + ", " + s.lastIndexOf("_") + ", " + s.length() + ", " + s.substring(s.lastIndexOf("_")+1, s.length()-1));
-                Integer s_num = Integer.parseInt(s.substring(s.lastIndexOf("_")+1));
-                Integer t_num = Integer.parseInt(t1.substring(t1.lastIndexOf("_")+1));
+                // This is for Journal Paper 1
+                // Integer s_num = Integer.parseInt(s.substring(s.lastIndexOf("_")+1));
+                // Integer t_num = Integer.parseInt(t1.substring(t1.lastIndexOf("_")+1));
+
+                // This is for Sampling Paper
+                Integer s_num = Integer.parseInt(s.substring(0, s.indexOf("-")));
+                Integer t_num = Integer.parseInt(t1.substring(0, t1.indexOf("-")));
+
                 if(t_num < s_num) return 1;
                 else if (s_num < t_num) return -1;
                 else return 0;
@@ -142,7 +148,7 @@ public class MultiplePedestriansAndRobot {
         MetaCSPLogging.setLevel(tec.getClass().getSuperclass(), Level.INFO);
 
         tec.setUseInternalCriticalPoints(false);
-        
+
         // Pedestrian Footprints
         // A small circle of diameter 0.3m
         Coordinate[] pedestrianFootprint = {
@@ -210,7 +216,7 @@ public class MultiplePedestriansAndRobot {
         else {
             robotPathAux = Missions.loadPathFromFile(robotPathDir + "/" + pathFileName + ".path");
         }
-        
+
         Missions.setMinPathDistance(0.2);
         final PoseSteering[] robotPath = Missions.resamplePath(robotPathAux);
 
