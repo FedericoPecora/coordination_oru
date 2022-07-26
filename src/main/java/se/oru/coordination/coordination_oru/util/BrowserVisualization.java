@@ -21,6 +21,7 @@ import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.websocket.api.RemoteEndpoint;
 import org.metacsp.multi.spatial.DE9IM.GeometricShapeDomain;
 import org.metacsp.multi.spatioTemporal.paths.Pose;
+import org.metacsp.multi.spatioTemporal.paths.PoseSteering;
 import org.metacsp.multi.spatioTemporal.paths.TrajectoryEnvelope;
 
 import com.vividsolutions.jts.geom.Coordinate;
@@ -251,6 +252,21 @@ public class BrowserVisualization implements FleetVisualization {
 		String jsonStringArrow = "{ \"operation\" : \"addGeometry\", \"data\" : " + this.geometryToJSONString("_"+name, arrowGeom, "#ffffff", -1, true, null) + "}";
 		enqueueMessage(jsonString);
 		enqueueMessage(jsonStringArrow);
+	}
+	
+	public void addPath(String pathName, PoseSteering[] ps, double arrowLength, String color) {
+		for (int i = 0; i < ps.length; i++) {
+			Geometry arrowGeom = createArrow(ps[i].getPose(), arrowLength, 0.2*arrowLength);		
+			String jsonStringArrow = "{ \"operation\" : \"addGeometry\", \"data\" : " + this.geometryToJSONString("_"+pathName+"_"+i, arrowGeom, color, -1, true, null) + "}";
+			enqueueMessage(jsonStringArrow);
+		}
+	}
+	
+	public void removePath(String pathName, PoseSteering[] ps) {
+		for (int i = 0; i < ps.length; i++) {
+			String jsonString = "{ \"operation\" : \"removeGeometry\"," + "\"data\" : " + "{ \"name\" : \"" + "_"+pathName+"_"+i +"\" }}";
+			enqueueMessage(jsonString);
+		}
 	}
 
 	@Override

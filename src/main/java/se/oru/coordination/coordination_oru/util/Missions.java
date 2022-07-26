@@ -15,12 +15,15 @@ import java.io.PrintWriter;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Scanner;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -96,6 +99,10 @@ public class Missions {
 		}
 	}
 	
+	/**
+	 * Re-sample a given path so that the minimum distance between path poses is the value
+	 * set by {@link #setMinPathDistance(double)}.
+	 */
 	public static PoseSteering[] resamplePath(PoseSteering[] path) {
 		if (minPathDistance < 0) return path;
 		ArrayList<PoseSteering> ret = new ArrayList<PoseSteering>();
@@ -136,7 +143,29 @@ public class Missions {
 		}
 		return length;
 	}
+	
+	public static String[] getNearLocations(String location) {
+		return getNearLocations(getLocationPose(location));
+	}
 
+	public static String[] getNearLocations(Pose p) {
+		ArrayList<String> ret = new ArrayList<String>();
+		for (String  loc : Missions.getLocationsAndPoses().keySet()) ret.add(loc);
+		
+		Collections.sort(ret, new Comparator<String>() {
+			@Override
+			public int compare(String arg0, String arg1) {
+				double dist0 = Missions.getLocationPose(arg0).distanceTo(p);
+				double dist1 = Missions.getLocationPose(arg1).distanceTo(p);
+				if (dist0 < dist1) return -1;
+				if (dist0 > dist1) return 1;
+				return 0;
+			}
+		});
+		
+		return ret.toArray(new String[ret.size()]);
+	}
+	
 	/**
 	 * Get the image of the current map, if set.
 	 * @return The image of the current map, <code>null</code> if no map is known.

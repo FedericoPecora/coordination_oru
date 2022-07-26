@@ -29,6 +29,7 @@ public abstract class AbstractMotionPlanner {
 	protected Pose collidingPose = null;
 	protected OccupancyMap om = null;
 	protected boolean noMap = true;
+	protected boolean checkGoalPose = true;
 	
 	protected PoseSteering[] pathPS = null;
 
@@ -139,6 +140,10 @@ public abstract class AbstractMotionPlanner {
 	public OccupancyMap getOccupancyMap() {
 		return this.om;
 	}
+	
+	public Geometry[] getObstacles() {
+		return this.om == null ? null : this.om.getObstacles();
+	}
 
 	/**
 	 * This method needs to write the protected field PoseSteering[] pathPS.
@@ -157,13 +162,18 @@ public abstract class AbstractMotionPlanner {
 		return foot;
 	}
 	
-	public synchronized boolean plan() {
+	protected Geometry getFootprintInPose(Pose p) {
 		Geometry goalFoot = getFootprintAsGeometry();
 		AffineTransformation at = new AffineTransformation();
-		at.rotate(this.goal[this.goal.length-1].getTheta());
-		at.translate(this.goal[this.goal.length-1].getX(), this.goal[this.goal.length-1].getY());
+		at.rotate(p.getTheta());
+		at.translate(p.getX(), p.getY());
 		goalFoot = at.transform(goalFoot);
-		if (this.om != null) {
+		return goalFoot;
+	}
+	
+	public synchronized boolean plan() {
+		Geometry goalFoot = this.getFootprintInPose(this.goal[this.goal.length-1]);
+		if (this.om != null && checkGoalPose) {
 			for (Geometry obs : this.om.getObstacles()) {
 				if (obs.intersects(goalFoot)) {
 					metaCSPLogger.info("Goal intersects with an obstacle, no path can exist");
@@ -184,11 +194,7 @@ public abstract class AbstractMotionPlanner {
 
 		for (int i = 0; i < path.length; i++) {
 			Pose p = path[i].getPose();
-			Geometry checkFoot = getFootprintAsGeometry();
-			at = new AffineTransformation();
-			at.rotate(p.getTheta());
-			at.translate(p.getX(), p.getY());
-			checkFoot = at.transform(checkFoot);
+			Geometry checkFoot = getFootprintInPose(p);
 			if (this.om != null) {
 				for (Geometry obs : this.om.getObstacles()) {
 					if (obs.intersects(checkFoot)) {
