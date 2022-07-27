@@ -1136,6 +1136,96 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 
 		onCriticalSectionUpdate();
 	}
+	
+	private CriticalSection joinIfNoGap(CriticalSection cs1, CriticalSection cs2) {
+	
+		//If they are about the same robots
+		if (!cs1.equals(cs2) && ((cs1.getTe1().equals(cs2.getTe1()) && cs1.getTe2().equals(cs2.getTe2())
+				|| (cs1.getTe1().equals(cs2.getTe2()) && cs1.getTe2().equals(cs2.getTe1()))))) {
+			
+			int start11 = cs1.getTe1Start();
+			int start12 = cs1.getTe2Start();
+			int start21 = cs1.getTe1().equals(cs2.getTe1()) ? cs2.getTe1Start() : cs2.getTe2Start();
+			int start22 = cs1.getTe1().equals(cs2.getTe1()) ? cs2.getTe2Start() : cs2.getTe1Start();
+			int end11 = cs1.getTe1End();
+			int end12 = cs1.getTe2End();
+			int end21 = cs1.getTe1().equals(cs2.getTe1()) ? cs2.getTe1End() : cs2.getTe2End();
+			int end22 = cs1.getTe1().equals(cs2.getTe1()) ? cs2.getTe2End() : cs2.getTe1End();
+			
+			Geometry collideAgainst = null;
+			PoseSteering[] path = null;
+			int robotID = -1;
+			int from = -1;
+			int to = -1;
+			
+			int newStart = -1;
+			int newEnd = -1;
+			
+			boolean mergedTE1 = false;
+			
+			if (end12 < start22) {
+				from = end12;
+				to = start22;
+				collideAgainst = cs1.getTe1().getSpatialEnvelope().getPolygon();
+				path = cs1.getTe2().getTrajectory().getPoseSteering();
+				newStart = start12;
+				newEnd = end22;
+				mergedTE1 = false;
+			}
+			else if (end11 < start21) {
+				from = end11;
+				to = start21;
+				collideAgainst = cs1.getTe2().getSpatialEnvelope().getPolygon();
+				path = cs1.getTe1().getTrajectory().getPoseSteering();
+				newStart = start11;
+				newEnd = end21;
+				mergedTE1 = true;
+			}
+			else if (end22 < start12) {
+				from = end22;
+				to = start12;
+				collideAgainst = cs1.getTe1().getSpatialEnvelope().getPolygon();
+				path = cs1.getTe2().getTrajectory().getPoseSteering();
+				newStart = start22;
+				newEnd = end12;
+				mergedTE1 = false;
+			}
+			else if (end21 < start11) {
+				from = end21;
+				to = start11;
+				collideAgainst = cs1.getTe2().getSpatialEnvelope().getPolygon();
+				path = cs1.getTe1().getTrajectory().getPoseSteering();
+				newStart = start21;
+				newEnd = end11;
+				mergedTE1 = true;
+			}
+			
+			for (int i = from; i < to; i++) {
+				//Check if there is a free pose, if not filter, if yes don't
+				Geometry geom = this.getFootprintInPose(robotID, path[i].getPose());
+				if (!geom.intersects(collideAgainst)) {
+					return null;
+				}		
+			}
+
+			CriticalSection newCS = null;
+			if (!mergedTE1) newCS = new CriticalSection(cs1.getTe1(), cs1.getTe2(), start11, newStart, end11, newEnd);
+			else newCS = new CriticalSection(cs1.getTe1(), cs1.getTe2(), newStart, start12, newEnd, end12);
+			metaCSPLogger.finest("MERGED: " + cs1 + " + " + cs2 + " = " + newCS);
+			return newCS;
+		}
+		
+		return null;
+	}
+		
+	protected Geometry getFootprintInPose(int robotID, Pose p) {
+		Geometry goalFoot = this.getFootprintPolygon(robotID);
+		AffineTransformation at = new AffineTransformation();
+		at.rotate(p.getTheta());
+		at.translate(p.getX(), p.getY());
+		goalFoot = at.transform(goalFoot);
+		return goalFoot;
+	}
 
 	/**
 	 * Utility that is called at the end of each critical section update.
@@ -1155,61 +1245,11 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 					//If CS1 and CS2 are about the same pair of robots
 					if (!cs1.equals(cs2) && ((cs1.getTe1().equals(cs2.getTe1()) && cs1.getTe2().equals(cs2.getTe2())
 							|| (cs1.getTe1().equals(cs2.getTe2()) && cs1.getTe2().equals(cs2.getTe1()))))) {
-						int start11 = cs1.getTe1Start();
-						int start12 = cs1.getTe2Start();
-						int start21 = cs1.getTe1().equals(cs2.getTe1()) ? cs2.getTe1Start() : cs2.getTe2Start();
-						int start22 = cs1.getTe1().equals(cs2.getTe1()) ? cs2.getTe2Start() : cs2.getTe1Start();
-						int end11 = cs1.getTe1End();
-						int end12 = cs1.getTe2End();
-						int end21 = cs1.getTe1().equals(cs2.getTe1()) ? cs2.getTe1End() : cs2.getTe2End();
-						int end22 = cs1.getTe1().equals(cs2.getTe1()) ? cs2.getTe2End() : cs2.getTe1End();
-						//CS1 before CS2
-						if (start11 <= start21 && end11 >= start21) {
-							//CS1 ends after CS2 starts
+						CriticalSection newCS = joinIfNoGap(cs1,cs2);
+						if (newCS != null) {
 							toRemove.add(cs1);
 							toRemove.add(cs2);
-							int newStart1 = start11;
-							int newEnd1 = Math.max(end11, end21);
-							int newStart2 = Math.min(start12, start22);
-							int newEnd2 = Math.max(end12, end22);
-							CriticalSection newCS = new CriticalSection(cs1.getTe1(), cs1.getTe2(), newStart1, newStart2, newEnd1, newEnd2); 
 							toAdd.add(newCS);
-							metaCSPLogger.finest("(Pass " + passNum + ") MERGED (ends-after-start): " + cs1 + " + " + cs2 + " = " + newCS);
-						}
-						else if (start21 <= start11 && end21 >= start11) {
-							toRemove.add(cs1);
-							toRemove.add(cs2);
-							int newStart1 = start21;
-							int newEnd1 = Math.max(end11, end21);
-							int newStart2 = Math.min(start12, start22);
-							int newEnd2 = Math.max(end12, end22);
-							CriticalSection newCS = new CriticalSection(cs1.getTe1(), cs1.getTe2(), newStart1, newStart2, newEnd1, newEnd2); 
-							toAdd.add(newCS);
-							metaCSPLogger.finest("(Pass " + passNum + ") MERGED (ends-after-start): " + cs1 + " + " + cs2 + " = " + newCS);
-						}
-						else if (start12 <= start22 && end12 >= start22) {
-							toRemove.add(cs1);
-							toRemove.add(cs2);
-							int newStart2 = start12;
-							int newEnd2 = Math.max(end12, end22);
-							int newStart1 = Math.min(start11, start21);
-							int newEnd1 = Math.max(end11, end21);
-							CriticalSection newCS = new CriticalSection(cs1.getTe1(), cs1.getTe2(), newStart1, newStart2, newEnd1, newEnd2); 
-							toAdd.add(newCS);
-							metaCSPLogger.finest("(Pass " + passNum + ") MERGED (ends-after-start): " + cs1 + " + " + cs2 + " = " + newCS);
-
-						}
-						else if (start22 <= start12 && end22 >= start12) {
-							toRemove.add(cs1);
-							toRemove.add(cs2);
-							int newStart2 = start22;
-							int newEnd2 = Math.max(end22, end12);
-							int newStart1 = Math.min(start11, start21);
-							int newEnd1 = Math.max(end11, end21);
-							CriticalSection newCS = new CriticalSection(cs1.getTe1(), cs1.getTe2(), newStart1, newStart2, newEnd1, newEnd2); 
-							toAdd.add(newCS);
-							metaCSPLogger.finest("(Pass " + passNum + ") MERGED (ends-after-start): " + cs1 + " + " + cs2 + " = " + newCS);
-
 						}
 					}
 				}
@@ -1253,6 +1293,133 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		}
 
 	}
+	
+//	protected void filterCriticalSectionsOLD() {
+//		ArrayList<CriticalSection> toAdd = new ArrayList<CriticalSection>();
+//		ArrayList<CriticalSection> toRemove = new ArrayList<CriticalSection>();
+//		int passNum = 0;
+//		do {
+//			passNum++;
+//			toAdd.clear();
+//			toRemove.clear();
+//			for (CriticalSection cs1 : this.allCriticalSections) {
+//				for (CriticalSection cs2 : this.allCriticalSections) {
+//					//If CS1 and CS2 are about the same pair of robots
+//					if (!cs1.equals(cs2) && ((cs1.getTe1().equals(cs2.getTe1()) && cs1.getTe2().equals(cs2.getTe2())
+//							|| (cs1.getTe1().equals(cs2.getTe2()) && cs1.getTe2().equals(cs2.getTe1()))))) {
+//						
+//						int start11 = cs1.getTe1Start();
+//						int start12 = cs1.getTe2Start();
+//						int start21 = cs1.getTe1().equals(cs2.getTe1()) ? cs2.getTe1Start() : cs2.getTe2Start();
+//						int start22 = cs1.getTe1().equals(cs2.getTe1()) ? cs2.getTe2Start() : cs2.getTe1Start();
+//						int end11 = cs1.getTe1End();
+//						int end12 = cs1.getTe2End();
+//						int end21 = cs1.getTe1().equals(cs2.getTe1()) ? cs2.getTe1End() : cs2.getTe2End();
+//						int end22 = cs1.getTe1().equals(cs2.getTe1()) ? cs2.getTe2End() : cs2.getTe1End();
+//						//CS1 before CS2
+//						if (start11 <= start21 && end11 >= start21) {
+//							//CS1 ends after CS2 starts
+//							toRemove.add(cs1);
+//							toRemove.add(cs2);
+//							int newStart1 = start11;
+//							int newEnd1 = Math.max(end11, end21);
+//							int newStart2 = Math.min(start12, start22);
+//							int newEnd2 = Math.max(end12, end22);
+//							CriticalSection newCS = new CriticalSection(cs1.getTe1(), cs1.getTe2(), newStart1, newStart2, newEnd1, newEnd2); 
+//							toAdd.add(newCS);
+//							metaCSPLogger.finest("(Pass " + passNum + ") MERGED (a): " + cs1 + " + " + cs2 + " = " + newCS +
+//									"\n\tstart11 = " + start11 + " end11 = " + end11 +
+//									"\n\tstart12 = " + start12 + " end12 = " + end12 +
+//									"\n\tstart21 = " + start21 + " end21 = " + end21 +
+//									"\n\tstart22 = " + start22 + " end22 = " + end22);
+//						}
+//						else if (start21 <= start11 && end21 >= start11) {
+//							toRemove.add(cs1);
+//							toRemove.add(cs2);
+//							int newStart1 = start21;
+//							int newEnd1 = Math.max(end11, end21);
+//							int newStart2 = Math.min(start12, start22);
+//							int newEnd2 = Math.max(end12, end22);
+//							CriticalSection newCS = new CriticalSection(cs1.getTe1(), cs1.getTe2(), newStart1, newStart2, newEnd1, newEnd2); 
+//							toAdd.add(newCS);
+//							metaCSPLogger.finest("(Pass " + passNum + ") MERGED (b): " + cs1 + " + " + cs2 + " = " + newCS +
+//									"\n\tstart11 = " + start11 + " end11 = " + end11 +
+//									"\n\tstart12 = " + start12 + " end12 = " + end12 +
+//									"\n\tstart21 = " + start21 + " end21 = " + end21 +
+//									"\n\tstart22 = " + start22 + " end22 = " + end22);
+//						}
+//						else if (start12 <= start22 && end12 >= start22) {
+//							toRemove.add(cs1);
+//							toRemove.add(cs2);
+//							int newStart2 = start12;
+//							int newEnd2 = Math.max(end12, end22);
+//							int newStart1 = Math.min(start11, start21);
+//							int newEnd1 = Math.max(end11, end21);
+//							CriticalSection newCS = new CriticalSection(cs1.getTe1(), cs1.getTe2(), newStart1, newStart2, newEnd1, newEnd2); 
+//							toAdd.add(newCS);
+//							metaCSPLogger.finest("(Pass " + passNum + ") MERGED (c): " + cs1 + " + " + cs2 + " = " + newCS +
+//									"\n\tstart11 = " + start11 + " end11 = " + end11 +
+//									"\n\tstart12 = " + start12 + " end12 = " + end12 +
+//									"\n\tstart21 = " + start21 + " end21 = " + end21 +
+//									"\n\tstart22 = " + start22 + " end22 = " + end22);
+//						}
+//						else if (start22 <= start12 && end22 >= start12) {
+//							toRemove.add(cs1);
+//							toRemove.add(cs2);
+//							int newStart2 = start22;
+//							int newEnd2 = Math.max(end22, end12);
+//							int newStart1 = Math.min(start11, start21);
+//							int newEnd1 = Math.max(end11, end21);
+//							CriticalSection newCS = new CriticalSection(cs1.getTe1(), cs1.getTe2(), newStart1, newStart2, newEnd1, newEnd2); 
+//							toAdd.add(newCS);
+//							metaCSPLogger.finest("(Pass " + passNum + ") MERGED (d): " + cs1 + " + " + cs2 + " = " + newCS +
+//									"\n\tstart11 = " + start11 + " end11 = " + end11 +
+//									"\n\tstart12 = " + start12 + " end12 = " + end12 +
+//									"\n\tstart21 = " + start21 + " end21 = " + end21 +
+//									"\n\tstart22 = " + start22 + " end22 = " + end22);
+//						}
+//					}
+//				}
+//			}
+//			for (CriticalSection cs : toRemove) {
+//				this.allCriticalSections.remove(cs);
+//				//metaCSPLogger.info("filterCriticalSection(): remove (1) " + cs);
+//				//				this.CSToDepsOrder.remove(cs);
+//			}
+//			for (CriticalSection cs : toAdd) {
+//				this.allCriticalSections.add(cs);
+//				//metaCSPLogger.info("filterCriticalSection(): add (1) " + cs);
+//				//this.CSToDepsOrder.put(cs, new HashSet<Dependency>());
+//			}
+//		}
+//		while (!toAdd.isEmpty() || !toRemove.isEmpty());
+//
+//		toRemove.clear();
+//		ArrayList<CriticalSection> allCriticalSectionsList = new ArrayList<CriticalSection>();
+//		for (CriticalSection cs : this.allCriticalSections) {
+//			allCriticalSectionsList.add(cs);
+//		}
+//
+//		for (int i = 0; i < allCriticalSectionsList.size(); i++) {
+//			for (int j = i+1; j < allCriticalSectionsList.size(); j++) {
+//				CriticalSection cs1 = allCriticalSectionsList.get(i);
+//				CriticalSection cs2 = allCriticalSectionsList.get(j);
+//				//If CS1 and CS2 are about the same pair of robots
+//				if (cs1.equals(cs2)) {
+//					//CS1 and CS2 are identical
+//					toRemove.add(cs1);
+//					metaCSPLogger.finest("(Pass " + passNum + ") Removed one of " + cs1 + " and " + cs2);
+//
+//				}
+//			}
+//		}
+//		for (CriticalSection cs : toRemove) {
+//			this.allCriticalSections.remove(cs);
+//			//metaCSPLogger.info("filterCriticalSection(): remove (2) " + cs);
+//			//			this.CSToDepsOrder.remove(cs);
+//		}
+//
+//	}
 
 	public static CriticalSection[] getCriticalSections(SpatialEnvelope se1, SpatialEnvelope se2, TrajectoryEnvelope te1, int minStart1, TrajectoryEnvelope te2, int minStart2, boolean checkEscapePoses, double maxDimensionOfSmallestRobot) {
 
