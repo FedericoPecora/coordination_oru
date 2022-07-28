@@ -50,4 +50,13 @@ body {
     color: white;
 }
 
+#instructions{
+	font: italic 8pt Calibri;
+    position: absolute;
+    bottom: 10px;
+    right: 20px;
+    font-size: 30px;
+    color: gray;
+}
+
 
