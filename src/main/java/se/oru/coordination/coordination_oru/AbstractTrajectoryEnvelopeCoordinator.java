@@ -1137,128 +1137,6 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 		onCriticalSectionUpdate();
 	}
 	
-	private CriticalSection joinIfPossible(CriticalSection cs1, CriticalSection cs2) {
-	
-		//If they are about the same robots
-		if (!cs1.equals(cs2) && ((cs1.getTe1().equals(cs2.getTe1()) && cs1.getTe2().equals(cs2.getTe2())
-				|| (cs1.getTe1().equals(cs2.getTe2()) && cs1.getTe2().equals(cs2.getTe1()))))) {
-			
-			int start11 = cs1.getTe1Start();
-			int start12 = cs1.getTe2Start();
-			int start21 = cs1.getTe1().equals(cs2.getTe1()) ? cs2.getTe1Start() : cs2.getTe2Start();
-			int start22 = cs1.getTe1().equals(cs2.getTe1()) ? cs2.getTe2Start() : cs2.getTe1Start();
-			int end11 = cs1.getTe1End();
-			int end12 = cs1.getTe2End();
-			int end21 = cs1.getTe1().equals(cs2.getTe1()) ? cs2.getTe1End() : cs2.getTe2End();
-			int end22 = cs1.getTe1().equals(cs2.getTe1()) ? cs2.getTe2End() : cs2.getTe1End();
-			
-//			int gapTE1Start = -1;
-//			int gapTE1End = -1;
-//			int gapTE2Start = -1;
-//			int gapTE2End = -1;
-//			
-//			if (start21 > end11) {
-//				gapTE1Start = end11;
-//				gapTE1End = start21;
-//			}
-//			else {
-//				gapTE1Start = end21;
-//				gapTE1End = start11;
-//			}
-//			if (start22 > end12) {
-//				gapTE2Start = end12;
-//				gapTE2End = start22;
-//			}
-//			else {
-//				gapTE2Start = end22;
-//				gapTE2End = start12;
-//			}
-//			
-//			boolean hasGapTE1 = false;
-//			boolean hasGapTE2 = false;
-//			
-//			for (int i = gapTE1Start; i < gapTE1End; i++) {
-//				
-//			}
-			
-			
-			//for (int num : new int[] {start11, start12, start21, start22, end11, end12, end21, end22}) if (num < 0) return null;
-			
-			Geometry collideAgainst = null;
-			PoseSteering[] path = null;
-			int robotID = -1;
-			int from = -1;
-			int to = -1;
-			
-			int newStart = -1;
-			int newEnd = -1;
-			
-			boolean mergedTE1 = false;
-			
-			if (end12 < start22 && end11 >= start21) {
-				from = end12;
-				to = start22;
-				collideAgainst = cs1.getTe1().getSpatialEnvelope().getPolygon();
-				path = cs1.getTe2().getTrajectory().getPoseSteering();
-				newStart = start12;
-				newEnd = end22;
-				mergedTE1 = false;
-//				System.out.println("(a)");
-			}
-			else if (end11 < start21 && end12 >= start22) {
-				from = end11;
-				to = start21;
-				collideAgainst = cs1.getTe2().getSpatialEnvelope().getPolygon();
-				path = cs1.getTe1().getTrajectory().getPoseSteering();
-				newStart = start11;
-				newEnd = end21;
-				mergedTE1 = true;
-//				System.out.println("(b)");
-			}
-			else if (end22 < start12 && end11 >= start21) {
-				from = end22;
-				to = start12;
-				collideAgainst = cs1.getTe1().getSpatialEnvelope().getPolygon();
-				path = cs1.getTe2().getTrajectory().getPoseSteering();
-				newStart = start22;
-				newEnd = end12;
-				mergedTE1 = false;
-//				System.out.println("(c)");
-			}
-			else if (end21 < start11 && end12 >= start22) {
-				from = end21;
-				to = start11;
-				collideAgainst = cs1.getTe2().getSpatialEnvelope().getPolygon();
-				path = cs1.getTe1().getTrajectory().getPoseSteering();
-				newStart = start21;
-				newEnd = end11;
-				mergedTE1 = true;
-//				System.out.println("(d)");
-			}
-			else return null;
-			
-			for (int i = from; i < to; i++) {
-				//Check if there is a free pose, if not filter, if yes don't
-				Geometry geom = this.getFootprintInPose(robotID, path[i].getPose());
-				if (!geom.intersects(collideAgainst)) {
-					return null;
-				}		
-			}
-
-			CriticalSection newCS = null;
-			if (!mergedTE1) newCS = new CriticalSection(cs1.getTe1(), cs1.getTe2(), start11, newStart, end11, newEnd);
-			else newCS = new CriticalSection(cs1.getTe1(), cs1.getTe2(), newStart, start12, newEnd, end12);
-//			System.out.println("MERGED: " + cs1 + " + " + cs2 + " = " + newCS +
-//					"\n\tstart11 = " + start11 + " end11 = " + end11 +
-//					"\n\tstart12 = " + start12 + " end12 = " + end12 +
-//					"\n\tstart21 = " + start21 + " end21 = " + end21 +
-//					"\n\tstart22 = " + start22 + " end22 = " + end22);
-			return newCS;
-		}
-		
-		return null;
-	}
-		
 	protected Geometry getFootprintInPose(int robotID, Pose p) {
 		Geometry goalFoot = this.getFootprintPolygon(robotID);
 		AffineTransformation at = new AffineTransformation();
@@ -1274,68 +1152,21 @@ public abstract class AbstractTrajectoryEnvelopeCoordinator {
 	protected void onCriticalSectionUpdate() {};
 
 	protected void filterCriticalSections() {
-		ArrayList<CriticalSection> toAdd = new ArrayList<CriticalSection>();
 		ArrayList<CriticalSection> toRemove = new ArrayList<CriticalSection>();
-		int passNum = 0;
-		do {
-			passNum++;
-			toAdd.clear();
-			toRemove.clear();
-			for (CriticalSection cs1 : this.allCriticalSections) {
-				for (CriticalSection cs2 : this.allCriticalSections) {
-					//If CS1 and CS2 are about the same pair of robots
-					if (!cs1.equals(cs2) && ((cs1.getTe1().equals(cs2.getTe1()) && cs1.getTe2().equals(cs2.getTe2())
-							|| (cs1.getTe1().equals(cs2.getTe2()) && cs1.getTe2().equals(cs2.getTe1()))))) {
-						CriticalSection newCS = joinIfPossible(cs1,cs2);
-						//Disabled temporarily while assessing need to merge CSs
-						if (false && newCS != null) {
-							toRemove.add(cs1);
-							toRemove.add(cs2);
-							toAdd.add(newCS);
-						}
-					}
-				}
-			}
-			for (CriticalSection cs : toRemove) {
-				this.allCriticalSections.remove(cs);
-				System.out.println("REMOVED (1): " + cs);
-				//metaCSPLogger.info("filterCriticalSection(): remove (1) " + cs);
-				//				this.CSToDepsOrder.remove(cs);
-			}
-			for (CriticalSection cs : toAdd) {
-				this.allCriticalSections.add(cs);
-				//metaCSPLogger.info("filterCriticalSection(): add (1) " + cs);
-				//this.CSToDepsOrder.put(cs, new HashSet<Dependency>());
-			}
-		}
-		while (!toAdd.isEmpty() || !toRemove.isEmpty());
-
-		toRemove.clear();
 		ArrayList<CriticalSection> allCriticalSectionsList = new ArrayList<CriticalSection>();
-		for (CriticalSection cs : this.allCriticalSections) {
-			allCriticalSectionsList.add(cs);
-		}
+		for (CriticalSection cs : this.allCriticalSections) allCriticalSectionsList.add(cs);
 
 		for (int i = 0; i < allCriticalSectionsList.size(); i++) {
 			for (int j = i+1; j < allCriticalSectionsList.size(); j++) {
 				CriticalSection cs1 = allCriticalSectionsList.get(i);
 				CriticalSection cs2 = allCriticalSectionsList.get(j);
-				//If CS1 and CS2 are about the same pair of robots
 				if (cs1.equals(cs2)) {
-					//CS1 and CS2 are identical
 					toRemove.add(cs1);
-					metaCSPLogger.finest("(Pass " + passNum + ") Removed one of " + cs1 + " and " + cs2);
-
+					metaCSPLogger.finest("Removed one of " + cs1 + " and " + cs2);
 				}
 			}
 		}
-		for (CriticalSection cs : toRemove) {
-			this.allCriticalSections.remove(cs);
-			System.out.println("REMOVED (2): " + cs);
-			//metaCSPLogger.info("filterCriticalSection(): remove (2) " + cs);
-			//			this.CSToDepsOrder.remove(cs);
-		}
-
+		for (CriticalSection cs : toRemove) this.allCriticalSections.remove(cs);
 	}
 	
 	protected void filterCriticalSectionsOLD() {
