@@ -20,10 +20,21 @@ import se.oru.coordination.coordination_oru.util.Missions;
  */
 public class RoadMapPlanner extends AbstractMotionPlanner {
 
+	/**
+	 * Instantiate a new {@link RoadMapPlanner}. This constructor sets the <code>escapePoseMode</code> flag to false,
+	 * meaning that planning fails if paths are obstructed by obstacles.
+	 */
 	public RoadMapPlanner() {
 		this(false);
 	}
 
+	/**
+	 * Instantiate a new {@link RoadMapPlanner}. This constructor allows to set the behavior of the planner
+	 * in case paths are obstructed by obstacles.
+	 * @param escapePoseMode If this flag is set to <code>true</code> the planner seeks a path through the nearest
+	 * node to the goal in case the goal is obstructed by an obstacle. This allows to obtain paths with a "waiting pose"
+	 * that is obstacle free which a robot could use to wait for the obstructing ribit to be assigned a new task.
+	 */
 	public RoadMapPlanner(boolean escapePoseMode) {
 		super();
 		if (escapePoseMode) {
