@@ -14,6 +14,8 @@ class Visualization {
 		this.geometryExtraData = {};
 		this.geometryTimeouts = {};
 		this.deletedForever = [];
+
+		this.selectedGeoms = new Set();
 		
 		//Default for scaling text (if not user defined)
 		this.fontScale = -1;
@@ -53,7 +55,8 @@ class Visualization {
 		this.overlay.appendChild(this.overlayText);
 
 		//this.canvas.addEventListener('wheel', this.processWheel(this), false);
-		this.isDragging = false;
+		this.isMouseDown = false;
+		this.dragged = false;
 		this.mousePos = { x : 0, y : 0 };
 		this.dragDelta = { x : 0, y : 0 };
 		this.scaleDelta = 1;
@@ -152,27 +155,80 @@ class Visualization {
 
 	processMouseDown(viz) {
 		return function(e) {
-			viz.isDragging = true;
+			viz.isMouseDown = true;
 			viz.mousePos.x = e.clientX;
 			viz.mousePos.y = e.clientY;
-			viz.ctrlOverlayOn();
-			viz.updateCtrlOverlayText();
+			viz.dragged = false;
+//			viz.ctrlOverlayOn();
+//			viz.updateCtrlOverlayText();
 		};
 	}
 
 	processMouseUp(viz) {
 		return function(e) {
-			viz.isDragging = false;
-			viz.dragDelta.x = 0;
-			viz.dragDelta.y = 0;
-			viz.scaleDelta = 1;
-			viz.ctrlOverlayOff();
+			viz.isMouseDown = false;
+			if (viz.dragged) {
+				viz.dragDelta.x = 0;
+				viz.dragDelta.y = 0;
+				viz.scaleDelta = 1;
+				viz.ctrlOverlayOff();
+			}
+			else {
+				var clickedKey = "";
+				var tPoint = viz.matrix.inverse().applyToPoint(viz.mousePos.x, viz.mousePos.y);
+				console.log("Clicked in (" + tPoint.x + "," + tPoint.y + ")");
+				Object.keys(viz.geometries).forEach(function(key,index) {
+					// key: the name of the object key
+					// index: the ordinal position of the key within the object
+					if (!key.startsWith("_") && !(key.includes("-"))) {
+						
+						//console.log(viz.clickedInside(viz.geometries[key],tPoint));
+						
+						if (viz.clickedInside(viz.geometries[key],tPoint)) {
+							clickedKey = key;
+							return;
+						}
+
+					}
+				});
+				viz.selectedGeoms.clear();
+				viz.selectedGeoms.add(clickedKey);
+			}
 		};
+	}
+	
+	clickedInside(vertices, point) {
+	    // ray-casting algorithm based on
+	    // https://wrf.ecse.rpi.edu/Research/Short_Notes/pnpoly.html/pnpoly.html
+	    	    
+		const x = point.x
+		const y = point.y
+
+		let inside = false
+		for (let i = 0, j = vertices.length - 1; i < vertices.length; j = i++) {
+  			const xi = vertices[i].x,
+    			yi = vertices[i].y
+  				const xj = vertices[j].x,
+    			yj = vertices[j].y
+
+			const intersect = yi > y != yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi
+  			if (intersect) inside = !inside
+		}
+		
+		return inside
+	
+	}
+	
+	distanceTo(coord1,coord2) {
+		return Math.sqrt( (coord1.x-coord2.x)*(coord1.x-coord2.x) + (coord1.y-coord2.y)*(coord1.y-coord2.y));
 	}
 
 	processMouseMove(viz) {
 		return function(e) {
-			if (viz.isDragging) {
+			if (viz.isMouseDown) {
+				viz.dragged = true;
+				viz.ctrlOverlayOn();
+				viz.updateCtrlOverlayText();
 				////
 //				var onmousestop = function() {
 //					viz.dragDelta.x = 0;
@@ -296,7 +352,8 @@ class Visualization {
 			//var linewidth = Math.sqrt(area)/70;
 			var linewidth = Math.sqrt(maxArea)/30;
 			//var linewidth = 0.1;
-			viz.drawPolygon(viz.geometries[key], viz.geometryColors[key], !viz.geometryFilled[key], linewidth);
+			if (viz.selectedGeoms.has(key)) viz.drawPolygon(viz.geometries[key], viz.geometryColors[key], viz.geometryFilled[key], linewidth);
+			else viz.drawPolygon(viz.geometries[key], viz.geometryColors[key], !viz.geometryFilled[key], linewidth);
 			//var textSize = 0.2;
 			//if (key.startsWith("R")) {
 			//	//textSize = Math.sqrt(area)/2;
@@ -343,12 +400,12 @@ class Visualization {
 
 		return Math.abs(total);
 	}
-
+	
 	drawPolygon(coordinates, color, empty, linewidth) {
 		this.ctx.globalAlpha = 0.5;
 		this.ctx.fillStyle = color;
 		this.ctx.strokeStyle = color;
-		this.ctx.lineWidth=linewidth;
+		this.ctx.lineWidth = linewidth;
 		this.ctx.beginPath();
 		this.ctx.moveTo(coordinates[0].x, coordinates[0].y);
 		for (var i = 1; i < coordinates.length; i++) {

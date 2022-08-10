@@ -70,6 +70,7 @@ public class FourRobotsCircle {
 		final BrowserVisualization viz = new BrowserVisualization();
 		//viz.setInitialTransform(43, 11, 1.6);
 		tec.setVisualization(viz);
+		viz.setFontScale(1.5);
 
 		//If set to true, attempts to make simulated robots slow down at cusps (this is buggy, but only affects
 		//the 2D simulation, not the coordination)
