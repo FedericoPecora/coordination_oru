@@ -215,8 +215,7 @@ class Visualization {
   			if (intersect) inside = !inside
 		}
 		
-		return inside
-	
+		return inside	
 	}
 	
 	distanceTo(coord1,coord2) {
